@@ -276,17 +276,6 @@ export const testimonials = [
   },
 ];
 
-// The people behind Crix — rendered on the About page. `color` maps to the
-// avatar-* classes already in styles/global.css (blue / purple / teal / amber).
-export const team = [
-  { name: "Raj Patel", role: "Founder & CEO", initials: "RP", color: "blue" },
-  { name: "Nisha Shah", role: "Head of Internships", initials: "NS", color: "purple" },
-  { name: "Dev Mehta", role: "Lead Instructor", initials: "DM", color: "teal" },
-  { name: "Pooja Joshi", role: "Marketing Lead", initials: "PJ", color: "amber" },
-  { name: "Kiran Dave", role: "Tech Lead", initials: "KD", color: "teal" },
-  { name: "Anil Rao", role: "Student Success", initials: "AR", color: "purple" },
-];
-
 // ============================================================
 // LEGAL — Privacy Policy & Terms of Service. Rendered verbatim
 // on /privacy-policy and /terms-of-service.

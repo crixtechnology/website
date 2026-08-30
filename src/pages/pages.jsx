@@ -4,7 +4,7 @@ import {
   Reveal, InfoCard, BenefitIcon, BuyModal, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
 import {
-  site, hero, internships, services, courses, process, benefits, stats, about, testimonials, team, legal,
+  site, hero, internships, services, courses, process, benefits, stats, about, testimonials, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company,
 } from "../data/content.js";
 import { submitContact, getCourses, getCourse } from "../services/api.js";
@@ -433,22 +433,6 @@ export function About() {
 
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
-          <Reveal as="span" variant="reveal-r" className="eyebrow">Our Team</Reveal>
-          <Reveal as="h2" variant="reveal-r">The people behind Crix.</Reveal>
-          <div className="grid4 stagger">
-            {team.map((m, i) => (
-              <Reveal key={m.name} variant="reveal" className="benefit" style={{ "--i": i, textAlign: "center" }}>
-                <span className={`avatar avatar-${m.color}`} style={{ width: 56, height: 56, fontSize: "1rem", margin: "0 auto 12px" }}>{m.initials}</span>
-                <h3>{m.name}</h3>
-                <p>{m.role}</p>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section" style={{ paddingTop: 20 }}>
-        <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Intern Stories</Reveal>
           <Reveal as="h2" variant="reveal-l">What our interns say.</Reveal>
           <div className="grid4 stagger">
@@ -568,19 +552,19 @@ function LegalPage({ eyebrow, title, doc }) {
   return (
     <>
       <PageHead eyebrow={eyebrow} title={title} text={legal.updated} />
-      <section className="section" style={{ paddingTop: 20 }}>
+      {/* Legal copy is text-heavy — skip the scroll-reveal animation and the
+          section's top/bottom mask fade so every line stays fully legible. */}
+      <section className="section section--plain" style={{ paddingTop: 44 }}>
         <div className="wrap" style={{ maxWidth: 780 }}>
-          <Reveal variant="reveal">
-            <p style={{
-              color: "var(--text)", lineHeight: 1.8, marginBottom: 40, padding: "18px 22px",
-              background: "rgba(20,201,201,.08)", borderLeft: "3px solid var(--teal)", borderRadius: 12,
-            }}>{doc.intro}</p>
-          </Reveal>
-          {doc.sections.map((s, i) => (
-            <Reveal key={s.title} variant="reveal" style={{ "--i": i, marginBottom: 32 }}>
+          <p style={{
+            color: "var(--text)", lineHeight: 1.8, marginBottom: 40, padding: "18px 22px",
+            background: "rgba(20,201,201,.08)", borderLeft: "3px solid var(--teal)", borderRadius: 12,
+          }}>{doc.intro}</p>
+          {doc.sections.map((s) => (
+            <div key={s.title} style={{ marginBottom: 32 }}>
               <h3 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{s.title}</h3>
               <p style={{ color: "var(--muted)", lineHeight: 1.85, whiteSpace: "pre-line" }}>{s.content}</p>
-            </Reveal>
+            </div>
           ))}
         </div>
       </section>

@@ -36,6 +36,9 @@ h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
   background-position:center top;
   -webkit-mask-image:linear-gradient(to bottom,transparent,#000 8%,#000 92%,transparent);
   mask-image:linear-gradient(to bottom,transparent,#000 8%,#000 92%,transparent)}
+/* text-heavy pages (legal): drop the decorative grid + top/bottom fade so copy never looks washed out or blurred */
+.section--plain{background-image:none;-webkit-mask-image:none;mask-image:none}
+.section--plain .reveal,.section--plain .reveal-l,.section--plain .reveal-r,.section--plain .reveal-zoom,.section--plain .reveal-top{opacity:1;filter:none;transform:none}
 
 #progress{position:fixed;top:0;left:0;height:3px;width:0%;z-index:99;background:linear-gradient(90deg,var(--teal),var(--cyan),var(--amber));box-shadow:0 0 12px rgba(20,201,201,.6)}
 
