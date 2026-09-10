@@ -1,0 +1,8 @@
+# Copy to .dev.vars for `wrangler dev` (local). These are the SECRET values
+# that in production are set with `wrangler secret put`. .dev.vars is
+# gitignored. The non-secret vars (endpoint/region/bucket) come from
+# wrangler.toml [vars] and don't go here.
+
+SIGNING_SECRET=change_this_to_a_long_random_string
+B2_KEY_ID=your_b2_application_key_id
+B2_APP_KEY=your_b2_application_key

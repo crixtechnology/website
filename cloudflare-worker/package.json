@@ -1,0 +1,17 @@
+{
+  "name": "crix-video-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker: the only reader of the private Backblaze B2 video bucket. Verifies HMAC-signed URLs and streams range requests.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "aws4fetch": "^1.0.20"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

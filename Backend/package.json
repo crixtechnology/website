@@ -1,0 +1,31 @@
+{
+  "name": "crix-technology-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "dev:memory": "node src/scripts/devWithMemoryServer.js",
+    "seed:admin": "node src/scripts/seedAdmin.js",
+    "seed:programs": "node src/scripts/seedPrograms.js",
+    "migrate:enrollment-startdate": "node src/scripts/backfillEnrollmentStartDate.js",
+    "migrate:drop-recorded-lectures": "node src/scripts/dropRecordedLectures.js",
+    "videos:resequence": "node src/scripts/resequenceCourseVideos.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "disposable-email-domains": "^1.0.62",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "google-auth-library": "^11.0.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.5.1",
+    "nodemailer": "^9.0.6",
+    "razorpay": "^2.9.4"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.0.0"
+  }
+}

@@ -1,6 +1,27 @@
+# dependencies
 node_modules/
-build/
+**/node_modules/
+
+# env / secrets
 .env
 .env.local
-server/.env
+**/.env
+**/.env.local
+cloudflare-worker/.dev.vars
+scripts/**/.env
+scripts/**/service-account*.json
+
+# sync script local state
+scripts/drive-to-b2-sync/.sync-state*.json
+
+# build output
+Frontend/build/
+build/
+
+# cloudflare
+.wrangler/
+**/.wrangler/
+
+# logs / os
 *.log
+.DS_Store

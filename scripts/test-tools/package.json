@@ -1,0 +1,16 @@
+{
+  "name": "crix-video-test-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Tiny standalone tools to test B2 storage + the Worker gateway before the rest of the pipeline exists.",
+  "scripts": {
+    "upload": "node upload-test-video.js",
+    "link": "node generate-signed-link.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@aws-sdk/lib-storage": "^3.658.0",
+    "dotenv": "^16.4.5"
+  }
+}

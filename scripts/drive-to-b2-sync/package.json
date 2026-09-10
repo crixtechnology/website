@@ -1,0 +1,20 @@
+{
+  "name": "crix-drive-to-b2-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Streams new Google Meet recordings from a Drive folder into the private B2 bucket and registers them with the course API.",
+  "bin": {
+    "drive-to-b2-sync": "index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "loop": "node index.js --loop"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@aws-sdk/lib-storage": "^3.658.0",
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0"
+  }
+}

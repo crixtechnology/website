@@ -1,0 +1,29 @@
+name = "crix-video-gateway"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# ---------------------------------------------------------------------------
+# Non-secret config. Fill these in for your B2 bucket, then `npm run deploy`.
+# The B2 S3 endpoint + region come from the B2 bucket page ("Endpoint" like
+# s3.us-west-004.backblazeb2.com  ->  region is the "us-west-004" part).
+# ---------------------------------------------------------------------------
+[vars]
+B2_S3_ENDPOINT = "s3.us-east-005.backblazeb2.com"
+B2_REGION = "us-east-005"
+B2_BUCKET = "Recorded-Lecture-1"
+# Optional: lock CORS to your site instead of "*". Leave "*" if unsure —
+# the URLs are single-use-ish and short-lived anyway.
+ALLOW_ORIGIN = "*"
+
+# ---------------------------------------------------------------------------
+# Secrets — DO NOT put these here. Set them once with wrangler:
+#   wrangler secret put SIGNING_SECRET     (must match Backend/.env SIGNING_SECRET)
+#   wrangler secret put B2_KEY_ID          (B2 application keyID)
+#   wrangler secret put B2_APP_KEY         (B2 application key)
+# ---------------------------------------------------------------------------
+
+# Custom domain route (recommended). Point a subdomain at the Worker in the
+# Cloudflare dashboard, or uncomment and set this:
+# [[routes]]
+# pattern = "videos.crixtechnology.com"
+# custom_domain = true
