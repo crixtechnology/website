@@ -8,6 +8,7 @@
     "dev": "node --watch src/index.js",
     "dev:memory": "node src/scripts/devWithMemoryServer.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
+    "reset:admin-password": "node src/scripts/resetAdminPassword.js",
     "seed:programs": "node src/scripts/seedPrograms.js",
     "migrate:enrollment-startdate": "node src/scripts/backfillEnrollmentStartDate.js",
     "migrate:drop-recorded-lectures": "node src/scripts/dropRecordedLectures.js",
