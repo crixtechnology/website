@@ -314,7 +314,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .form-error{font-size:.8rem;color:#f0997b;margin:0 0 12px;line-height:1.4}
 .link-btn{background:none;border:none;padding:0;margin:0;font:inherit;color:var(--cyan);cursor:pointer;text-decoration:underline}
 .link-btn:hover{color:var(--teal)}
-.google-btn-wrap{display:flex;justify-content:center;min-height:44px;max-width:100%;overflow:hidden}
+.google-btn-wrap{display:flex;justify-content:center;min-height:44px;max-width:100%;border-radius:999px;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease}
+.google-btn-wrap:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(6,11,26,.35)}
+.google-btn-wrap iframe{border-radius:999px!important}
 .auth-divider{display:flex;align-items:center;gap:14px;margin:12px 0;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em}
 .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--line)}
 .info-row{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px dashed rgba(147,163,188,.18)}

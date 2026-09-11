@@ -416,7 +416,7 @@ export function AuthModal() {
       const avail = googleBtnRef.current.getBoundingClientRect().width;
       const btnWidth = Math.max(220, Math.min(320, Math.round(avail || 320)));
       window.google.accounts.id.renderButton(googleBtnRef.current, {
-        theme: "filled_black", size: "large", width: btnWidth,
+        theme: "filled_black", size: "large", width: btnWidth, shape: "pill", logo_alignment: "center",
         text: mode === "signup" ? "signup_with" : "signin_with",
       });
     });
