@@ -5,7 +5,7 @@ import {
 } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
-const EMPTY_FORM = { title: "", scheduledAt: "", link: "", notes: "" };
+const EMPTY_FORM = { title: "", scheduledAt: "", scheduledEndAt: "", link: "", notes: "" };
 
 // Datetime-local inputs want "YYYY-MM-DDTHH:mm" — Lecture.scheduledAt comes
 // back as a full ISO string from the API.
@@ -60,7 +60,10 @@ export default function AdminLectures() {
 
   const startEdit = (l) => {
     setEditingId(l._id);
-    setForm({ title: l.title, scheduledAt: toLocalInput(l.scheduledAt), link: l.link, notes: l.notes || "" });
+    setForm({
+      title: l.title, scheduledAt: toLocalInput(l.scheduledAt), scheduledEndAt: toLocalInput(l.scheduledEndAt),
+      link: l.link, notes: l.notes || "",
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const cancelEdit = () => { setEditingId(null); setForm(EMPTY_FORM); };
@@ -68,12 +71,14 @@ export default function AdminLectures() {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.link.trim()) { setError("Title and Google Meet link are required."); return; }
-    if (!form.scheduledAt) { setError("Date & time are required."); return; }
+    if (!form.scheduledAt || !form.scheduledEndAt) { setError("Start and end time are both required."); return; }
+    if (new Date(form.scheduledEndAt) <= new Date(form.scheduledAt)) { setError("End time must be after the start time."); return; }
     setSaving(true);
     setError("");
     const payload = {
       course: courseId, title: form.title.trim(),
       scheduledAt: new Date(form.scheduledAt).toISOString(),
+      scheduledEndAt: new Date(form.scheduledEndAt).toISOString(),
       link: form.link.trim(), notes: form.notes.trim(),
     };
     const res = editingId ? await adminUpdateLecture(editingId, payload) : await adminCreateLecture(payload);
@@ -117,11 +122,16 @@ export default function AdminLectures() {
               <div className="admin-form-grid">
                 <div className="field"><label>Title</label>
                   <input value={form.title} onChange={set("title")} placeholder="Week 3 — React Hooks" /></div>
-                <div className="field"><label>Date & time</label>
+                <div className="field"><label>Starts</label>
                   <input type="datetime-local" value={form.scheduledAt} onChange={set("scheduledAt")} /></div>
+                <div className="field"><label>Ends</label>
+                  <input type="datetime-local" value={form.scheduledEndAt} onChange={set("scheduledEndAt")} /></div>
                 <div className="field"><label>Google Meet link</label>
                   <input value={form.link} onChange={set("link")} placeholder="https://meet.google.com/..." /></div>
               </div>
+              <p className="form-note" style={{ margin: "-8px 0 16px" }}>
+                Students see the "Join live" button appear 10 minutes before Starts and disappear at Ends.
+              </p>
               <div className="field"><label>Notes (optional)</label>
                 <textarea rows="2" value={form.notes} onChange={set("notes")} placeholder="Shown to enrolled students" /></div>
               <div style={{ display: "flex", gap: 12 }}>
@@ -153,7 +163,9 @@ export default function AdminLectures() {
                       <div className="admin-row" key={l._id}>
                         <div className="admin-row-main">
                           <b>{l.title}</b>
-                          <span className="admin-row-meta">{new Date(l.scheduledAt).toLocaleString("en-IN")}</span>
+                          <span className="admin-row-meta">
+                            {new Date(l.scheduledAt).toLocaleString("en-IN")} – {new Date(l.scheduledEndAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                         </div>
                         <div className="admin-row-actions">
                           <button className="btn btn-ghost" onClick={() => startEdit(l)}>Edit</button>

@@ -25,14 +25,17 @@ router.get("/admin/lectures", requireAdmin, async (req, res, next) => {
 
 router.post("/admin/lectures", requireAdmin, async (req, res, next) => {
   try {
-    const { course, title, scheduledAt, link, notes } = req.body || {};
-    if (!course || !title || !scheduledAt || !link) {
-      return res.status(400).json({ ok: false, error: "course, title, scheduledAt and link are required" });
+    const { course, title, scheduledAt, scheduledEndAt, link, notes } = req.body || {};
+    if (!course || !title || !scheduledAt || !scheduledEndAt || !link) {
+      return res.status(400).json({ ok: false, error: "course, title, scheduledAt, scheduledEndAt and link are required" });
+    }
+    if (new Date(scheduledEndAt) <= new Date(scheduledAt)) {
+      return res.status(400).json({ ok: false, error: "End time must be after the start time" });
     }
     const courseDoc = await Course.findById(course);
     if (!courseDoc) return res.status(404).json({ ok: false, error: "Course not found" });
 
-    const lecture = await Lecture.create({ course, title, scheduledAt, link, notes: notes || "" });
+    const lecture = await Lecture.create({ course, title, scheduledAt, scheduledEndAt, link, notes: notes || "" });
     res.status(201).json({ ok: true, lecture });
   } catch (e) {
     next(e);
@@ -41,15 +44,26 @@ router.post("/admin/lectures", requireAdmin, async (req, res, next) => {
 
 router.put("/admin/lectures/:id", requireAdmin, async (req, res, next) => {
   try {
-    const { title, scheduledAt, link, notes } = req.body || {};
+    const existing = await Lecture.findById(req.params.id);
+    if (!existing) return res.status(404).json({ ok: false, error: "Lecture not found" });
+
+    const { title, scheduledAt, scheduledEndAt, link, notes } = req.body || {};
     const update = {};
     if (title !== undefined) update.title = title;
     if (scheduledAt !== undefined) update.scheduledAt = scheduledAt;
+    if (scheduledEndAt !== undefined) update.scheduledEndAt = scheduledEndAt;
     if (link !== undefined) update.link = link;
     if (notes !== undefined) update.notes = notes;
 
+    // Validate against the resulting start/end, not just whichever of the
+    // two the request happened to include.
+    const resultingStart = new Date(update.scheduledAt !== undefined ? update.scheduledAt : existing.scheduledAt);
+    const resultingEnd = new Date(update.scheduledEndAt !== undefined ? update.scheduledEndAt : existing.scheduledEndAt);
+    if (resultingEnd <= resultingStart) {
+      return res.status(400).json({ ok: false, error: "End time must be after the start time" });
+    }
+
     const lecture = await Lecture.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!lecture) return res.status(404).json({ ok: false, error: "Lecture not found" });
     res.json({ ok: true, lecture });
   } catch (e) {
     next(e);
@@ -82,8 +96,12 @@ router.get("/learn/:courseSlug", requireAuth, async (req, res, next) => {
       return res.status(403).json({ ok: false, error: "Your access to this course has expired" });
     }
 
+    // "Upcoming" means "hasn't ended yet" — not "hasn't started yet", so a
+    // class currently in progress still shows (with a live Join button) for
+    // a student who logs in a few minutes late. See Learn.jsx for the
+    // Join-button appear/disappear window built on scheduledAt/scheduledEndAt.
     const upcoming = await Lecture.find({
-      course: course._id, scheduledAt: { $gte: new Date() },
+      course: course._id, scheduledEndAt: { $gte: new Date() },
     }).sort({ scheduledAt: 1 });
 
     res.json({ ok: true, course, upcoming });

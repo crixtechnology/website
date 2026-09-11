@@ -12,6 +12,11 @@ const lectureSchema = new mongoose.Schema(
     course: { type: mongoose.Schema.Types.ObjectId, ref: "Course", required: true },
     title: { type: String, required: true, trim: true },
     scheduledAt: { type: Date, required: true },
+    // End time — routes/lectures.js enforces this is after scheduledAt on
+    // create/update. Drives when the student-facing "Join live" button
+    // disappears (Frontend/src/pages/student/Learn.jsx) and when a session
+    // stops counting as "upcoming" for GET /api/learn/:courseSlug.
+    scheduledEndAt: { type: Date, required: true },
     link: { type: String, required: true, trim: true }, // Google Meet link
     notes: { type: String, default: "" },
   },
