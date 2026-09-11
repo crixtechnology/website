@@ -22,7 +22,17 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
   if (application && application.user && application.course) {
     await Enrollment.findOneAndUpdate(
       { user: application.user, course: application.course },
-      { user: application.user, course: application.course, payment: payment._id, status: "active" },
+      {
+        user: application.user, course: application.course, payment: payment._id, status: "active",
+        // A confirmed real payment always grants full, unexpired access —
+        // this must override any prior admin-granted trial/subscription
+        // that had an endDate set (Backend/src/routes/enrollments.js).
+        // Mongoose treats this plain object as a $set of only these fields
+        // on an existing doc, so without this the old endDate would
+        // silently survive and could leave a paying student locked out via
+        // hasValidAccess() (utils/enrollmentAccess.js).
+        endDate: null,
+      },
       { upsert: true, new: true }
     );
   }

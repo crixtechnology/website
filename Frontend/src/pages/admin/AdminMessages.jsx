@@ -1,8 +1,9 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAdminToken, adminGetContacts, adminUpdateContact, adminDeleteContact } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 
 // Every /contact form submission, persisted server-side (routes/contact.js)
 // so it's readable here instead of only ever existing as an outgoing email.
@@ -26,14 +27,8 @@ export default function AdminMessages() {
     }
   };
 
-  useEffect(() => { load(); }, []);
-
-  // Debounced server-side search — small enough table that this is mostly
-  // about consistency with the other new admin sections.
-  useEffect(() => {
-    const t = setTimeout(() => load(q), 300);
-    return () => clearTimeout(t);
-  }, [q]);
+  // Fetches once on mount, then debounced as the search box changes.
+  useDebouncedLoad(load, q);
 
   const toggleRead = async (c) => {
     const res = await adminUpdateContact(c._id, { status: c.status === "new" ? "read" : "new" });

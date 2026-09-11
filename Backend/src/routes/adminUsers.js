@@ -4,7 +4,8 @@ const User = require("../models/User");
 const Enrollment = require("../models/Enrollment");
 const Application = require("../models/Application");
 const { requireAdmin } = require("../middleware/requireAdmin");
-const { isExpired } = require("../utils/enrollmentAccess");
+const { serializeEnrollment } = require("../utils/enrollmentAccess");
+const { searchRegex } = require("../utils/searchRegex");
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get("/admin/users", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
     const filter = q
-      ? { $or: [{ name: new RegExp(q, "i") }, { email: new RegExp(q, "i") }, { phone: new RegExp(q, "i") }] }
+      ? { $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }, { phone: searchRegex(q) }] }
       : {};
     const users = await User.find(filter).select(SAFE_FIELDS).sort({ createdAt: -1 });
     res.json({ ok: true, users });
@@ -46,7 +47,7 @@ router.get("/admin/users/:id", requireAdmin, async (req, res, next) => {
     res.json({
       ok: true,
       user,
-      enrollments: enrollments.map((e) => ({ ...e.toObject(), expired: isExpired(e) })),
+      enrollments: enrollments.map(serializeEnrollment),
       applications,
     });
   } catch (e) {
@@ -56,6 +57,9 @@ router.get("/admin/users/:id", requireAdmin, async (req, res, next) => {
 
 router.patch("/admin/users/:id", requireAdmin, async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ ok: false, error: "User not found" });
+    }
     const { name, phone, role } = req.body || {};
     const update = {};
 
@@ -87,6 +91,9 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res, next) => {
 
 router.delete("/admin/users/:id", requireAdmin, async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ ok: false, error: "User not found" });
+    }
     if (String(req.admin.sub) === String(req.params.id)) {
       return res.status(400).json({ ok: false, error: "You can't delete your own account." });
     }

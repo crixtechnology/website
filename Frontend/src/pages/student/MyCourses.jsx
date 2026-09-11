@@ -59,12 +59,21 @@ export default function MyCourses() {
             {enrollments.map((en) => (
               <div className="admin-row" key={en._id}>
                 <div className="admin-row-main">
-                  <b>{en.course?.title || "Course"}</b>
+                  <b>{en.course?.title || "Course"} {en.expired && <span className="admin-pill expired">expired</span>}</b>
                   <span className="admin-row-meta">Purchased {new Date(en.createdAt).toLocaleDateString("en-IN")}</span>
                 </div>
                 <div className="admin-row-actions">
-                  {en.course?.slug && (
-                    <Link className="btn btn-solid" to={`/learn/${en.course.slug}`}>Go to course →</Link>
+                  {en.expired ? (
+                    // The server 403s /learn/:slug once access has lapsed
+                    // (see requireEnrollment.js) — show that up front instead
+                    // of a "Go to course" link that would just dead-end.
+                    <span style={{ color: "var(--muted)", fontSize: ".85rem" }}>
+                      Access has expired — contact us to renew.
+                    </span>
+                  ) : (
+                    en.course?.slug && (
+                      <Link className="btn btn-solid" to={`/learn/${en.course.slug}`}>Go to course →</Link>
+                    )
                   )}
                 </div>
               </div>

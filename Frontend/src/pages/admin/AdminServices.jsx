@@ -1,10 +1,11 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getAdminToken, adminGetServices, adminCreateService, adminUpdateService, adminDeleteService,
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 
 const EMPTY_FORM = { title: "", tag: "", desc: "", points: "", order: "" };
 
@@ -42,11 +43,7 @@ export default function AdminServices() {
     }
   };
 
-  useEffect(() => { load(); }, []);
-  useEffect(() => {
-    const t = setTimeout(() => load(q), 300);
-    return () => clearTimeout(t);
-  }, [q]);
+  useDebouncedLoad(load, q);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const startEdit = (s) => { setEditingId(s._id); setForm(serviceToForm(s)); window.scrollTo({ top: 0, behavior: "smooth" }); };

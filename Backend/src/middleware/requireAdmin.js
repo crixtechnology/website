@@ -1,14 +1,24 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 // Requires a valid JWT AND role === "admin" (see routes/auth.js — the token
-// payload carries { sub, email, role }). Used on every /api/admin/* route.
-function requireAdmin(req, res, next) {
+// payload carries { sub, email, role }). The DB is the source of truth for
+// role, not just the JWT claim: routes/adminUsers.js can now demote or
+// delete an admin, and without re-checking here a demoted/deleted admin's
+// still-validly-signed token would keep working for up to its remaining
+// 7-day lifetime — same reasoning as the student-side session check in
+// requireAuth.js, just for role instead of device.
+async function requireAdmin(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ ok: false, error: "Missing token" });
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     if (payload.role !== "admin") {
+      return res.status(403).json({ ok: false, error: "Admin access required" });
+    }
+    const user = await User.findById(payload.sub).select("role");
+    if (!user || user.role !== "admin") {
       return res.status(403).json({ ok: false, error: "Admin access required" });
     }
     req.admin = payload;

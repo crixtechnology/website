@@ -1,6 +1,7 @@
 const express = require("express");
 const Service = require("../models/Service");
 const { requireAdmin } = require("../middleware/requireAdmin");
+const { searchRegex } = require("../utils/searchRegex");
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get("/admin/services", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
     const filter = q
-      ? { $or: [{ title: new RegExp(q, "i") }, { tag: new RegExp(q, "i") }, { desc: new RegExp(q, "i") }] }
+      ? { $or: [{ title: searchRegex(q) }, { tag: searchRegex(q) }, { desc: searchRegex(q) }] }
       : {};
     const services = await Service.find(filter).sort({ order: 1, createdAt: 1 });
     res.json({ ok: true, services });

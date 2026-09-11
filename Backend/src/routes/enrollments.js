@@ -5,7 +5,8 @@ const User = require("../models/User");
 const Course = require("../models/Course");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
-const { isExpired } = require("../utils/enrollmentAccess");
+const { serializeEnrollment } = require("../utils/enrollmentAccess");
+const { searchRegex } = require("../utils/searchRegex");
 
 const router = express.Router();
 
@@ -18,10 +19,7 @@ router.get("/me/enrollments", requireAuth, async (req, res, next) => {
     // `expired` is derived, not stored — see utils/enrollmentAccess.js. The
     // frontend uses it to grey out/label a course whose access has lapsed
     // rather than just hiding it, so the student still sees what they bought.
-    res.json({
-      ok: true,
-      enrollments: enrollments.map((e) => ({ ...e.toObject(), expired: isExpired(e) })),
-    });
+    res.json({ ok: true, enrollments: enrollments.map(serializeEnrollment) });
   } catch (e) {
     next(e);
   }
@@ -36,32 +34,32 @@ router.get("/me/enrollments", requireAuth, async (req, res, next) => {
 router.get("/admin/enrollments", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
-    let userIds = null;
+    // Enrollment itself has no searchable text (it's just refs + dates) —
+    // resolve matching users/courses first, then filter to enrollments
+    // whose EITHER side matches (a search for a student's name surfaces all
+    // of their courses; a search for a course title surfaces every student
+    // in it). `{ $in: [] }` already matches nothing in MongoDB, so there's
+    // no need for a separate empty-results short-circuit.
+    let matchFilter = {};
     if (q) {
-      // Enrollment itself has no searchable text (it's just refs + dates) —
-      // resolve matching users/courses first, then filter by either ref.
       const [users, courses] = await Promise.all([
-        User.find({ $or: [{ name: new RegExp(q, "i") }, { email: new RegExp(q, "i") }] }).select("_id"),
-        Course.find({ title: new RegExp(q, "i") }).select("_id"),
+        User.find({ $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }] }).select("_id"),
+        Course.find({ title: searchRegex(q) }).select("_id"),
       ]);
-      const userIdList = users.map((u) => u._id);
-      const courseIdList = courses.map((c) => c._id);
-      if (!userIdList.length && !courseIdList.length) {
-        return res.json({ ok: true, enrollments: [] });
-      }
-      userIds = { $or: [{ user: { $in: userIdList } }, { course: { $in: courseIdList } }] };
+      matchFilter = {
+        $or: [
+          { user: { $in: users.map((u) => u._id) } },
+          { course: { $in: courses.map((c) => c._id) } },
+        ],
+      };
     }
 
-    const filter = { status: "active", ...(userIds || {}) };
-    const enrollments = await Enrollment.find(filter)
+    const enrollments = await Enrollment.find({ status: "active", ...matchFilter })
       .populate("user", "name email phone")
       .populate("course", "title slug")
       .sort({ createdAt: -1 });
 
-    res.json({
-      ok: true,
-      enrollments: enrollments.map((e) => ({ ...e.toObject(), expired: isExpired(e) })),
-    });
+    res.json({ ok: true, enrollments: enrollments.map(serializeEnrollment) });
   } catch (e) {
     next(e);
   }
@@ -105,7 +103,7 @@ router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
     );
     await enrollment.populate([{ path: "user", select: "name email phone" }, { path: "course", select: "title slug" }]);
 
-    res.status(201).json({ ok: true, enrollment: { ...enrollment.toObject(), expired: isExpired(enrollment) } });
+    res.status(201).json({ ok: true, enrollment: serializeEnrollment(enrollment) });
   } catch (e) {
     next(e);
   }
@@ -114,9 +112,16 @@ router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
 // Edit a subscription's validity dates.
 router.patch("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ ok: false, error: "Subscription not found" });
+    }
     const { startDate, endDate } = req.body || {};
     const update = {};
-    if (startDate !== undefined) update.startDate = startDate ? new Date(startDate) : new Date();
+    // A falsy/empty startDate means "leave it alone" (same partial-update
+    // convention as every other field here) — it must NOT silently reset
+    // the drip schedule's day-1 to right now, which would relock videos a
+    // student had already unlocked.
+    if (startDate) update.startDate = new Date(startDate);
     if (endDate !== undefined) update.endDate = endDate ? new Date(endDate) : null; // null clears expiry -> lifetime
 
     const enrollment = await Enrollment.findByIdAndUpdate(req.params.id, update, { new: true })
@@ -124,7 +129,7 @@ router.patch("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
       .populate("course", "title slug");
     if (!enrollment) return res.status(404).json({ ok: false, error: "Subscription not found" });
 
-    res.json({ ok: true, enrollment: { ...enrollment.toObject(), expired: isExpired(enrollment) } });
+    res.json({ ok: true, enrollment: serializeEnrollment(enrollment) });
   } catch (e) {
     next(e);
   }
@@ -133,6 +138,9 @@ router.patch("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
 // Remove a subscription outright (revoke access immediately).
 router.delete("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ ok: false, error: "Subscription not found" });
+    }
     const enrollment = await Enrollment.findByIdAndDelete(req.params.id);
     if (!enrollment) return res.status(404).json({ ok: false, error: "Subscription not found" });
     res.json({ ok: true });

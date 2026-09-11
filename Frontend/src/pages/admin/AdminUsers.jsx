@@ -6,6 +6,7 @@ import {
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString("en-IN") : "—";
@@ -50,16 +51,18 @@ export default function AdminUsers() {
     }
   };
 
-  useEffect(() => { loadList(); adminGetCourses("course").then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
-  useEffect(() => {
-    const t = setTimeout(() => loadList(q), 300);
-    return () => clearTimeout(t);
-  }, [q]);
+  useEffect(() => { adminGetCourses("course").then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
+  useDebouncedLoad(loadList, q);
 
   const openDetail = async (id) => {
     setSelectedId(id);
     setDetailLoading(true);
     setDetailError("");
+    // Clear immediately, not just on failure: while this fetch is in flight
+    // (or if it fails) `detail`/`editForm` must never keep showing the
+    // PREVIOUSLY selected user's data next to the NEW selectedId — otherwise
+    // Save/Delete below would act on the new id with the old user's data.
+    setDetail(null);
     const res = await adminGetUser(id);
     setDetailLoading(false);
     if (res.ok) {

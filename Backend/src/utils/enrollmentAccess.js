@@ -7,8 +7,21 @@ function hasValidAccess(enrollment) {
   return new Date(enrollment.endDate).getTime() > Date.now();
 }
 
+// Derived from hasValidAccess rather than its own date comparison — an
+// active-but-expired enrollment is exactly the `false` case above, minus the
+// "no enrollment at all" / "not active" cases, which never show up here
+// since every caller only calls isExpired on an enrollment it already knows
+// is `status: "active"`.
 function isExpired(enrollment) {
-  return !!(enrollment && enrollment.endDate && new Date(enrollment.endDate).getTime() <= Date.now());
+  return !!(enrollment && enrollment.status === "active" && !hasValidAccess(enrollment));
 }
 
-module.exports = { hasValidAccess, isExpired };
+// Shape sent to the frontend everywhere an Enrollment is serialized (routes/
+// enrollments.js, routes/adminUsers.js) — plain fields plus the derived
+// `expired` flag, so every endpoint agrees on this shape instead of each
+// hand-rolling its own `{...e.toObject(), expired: isExpired(e)}`.
+function serializeEnrollment(enrollment) {
+  return { ...enrollment.toObject(), expired: isExpired(enrollment) };
+}
+
+module.exports = { hasValidAccess, isExpired, serializeEnrollment };

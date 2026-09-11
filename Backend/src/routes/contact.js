@@ -2,6 +2,7 @@ const express = require("express");
 const Contact = require("../models/Contact");
 const { sendContactEmail } = require("../utils/mailer");
 const { requireAdmin } = require("../middleware/requireAdmin");
+const { searchRegex } = require("../utils/searchRegex");
 
 const router = express.Router();
 
@@ -37,7 +38,7 @@ router.get("/admin/contacts", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
     const filter = q
-      ? { $or: [{ name: new RegExp(q, "i") }, { email: new RegExp(q, "i") }, { message: new RegExp(q, "i") }] }
+      ? { $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }, { message: searchRegex(q) }] }
       : {};
     if (req.query.status === "new" || req.query.status === "read") filter.status = req.query.status;
 

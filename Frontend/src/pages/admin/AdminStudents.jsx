@@ -6,6 +6,7 @@ import {
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString("en-IN") : "—";
@@ -46,11 +47,8 @@ export default function AdminStudents() {
     }
   };
 
-  useEffect(() => { load(); adminGetCourses("course").then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
-  useEffect(() => {
-    const t = setTimeout(() => load(q), 300);
-    return () => clearTimeout(t);
-  }, [q]);
+  useEffect(() => { adminGetCourses("course").then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
+  useDebouncedLoad(load, q);
 
   const grant = async (e) => {
     e.preventDefault();
