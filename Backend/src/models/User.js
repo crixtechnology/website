@@ -22,6 +22,14 @@ const userSchema = new mongoose.Schema(
     // password-only accounts.
     googleId: { type: String },
     role: { type: String, enum: ["admin", "student"], default: "student" },
+    // Single-device-login enforcement for students only (see
+    // middleware/requireAuth.js). Set to a fresh random id every time a
+    // student logs in (password, signup or Google); a token whose `sid`
+    // claim doesn't match this is treated as logged out — so logging in on
+    // a new device silently signs the student out everywhere else.
+    // Deliberately unused/ignored for admins, who may be logged in on
+    // multiple devices at once.
+    activeSessionId: { type: String, default: null },
   },
   { timestamps: true }
 );

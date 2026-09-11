@@ -261,6 +261,19 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .admin-row-actions .btn{padding:9px 16px;font-size:.82rem}
 .admin-danger{border-color:rgba(224,120,90,.4);color:#f0997b}
 .admin-danger:hover{border-color:#f0997b;color:#f0997b}
+.admin-search{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;color:var(--text);font-family:'Sora',sans-serif;font-size:.88rem;margin-bottom:20px}
+.admin-search:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(20,201,201,.22)}
+.admin-pill{font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:4px 10px;border:1px solid;white-space:nowrap}
+.admin-pill.new{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-pill.read{color:var(--muted);border-color:var(--line);background:transparent}
+.admin-pill.expired{color:#f0997b;border-color:rgba(224,120,90,.4);background:rgba(224,120,90,.1)}
+.admin-pill.lifetime{color:var(--teal);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-pill.admin-role{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-tabs{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.admin-tabs button{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:8px 16px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;transition:opacity .2s}
+.admin-tabs button.active{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-row-main.admin-row-message{flex:1 1 100%}
+.admin-row-message p{font-size:.85rem;color:var(--text);margin:4px 0 0;white-space:pre-wrap}
 
 /* ---------- recorded-lecture preview box (Drive / YouTube / Vimeo / video file) ---------- */
 .lecture-embed{position:relative;margin-top:10px;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--line)}

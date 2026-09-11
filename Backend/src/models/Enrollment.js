@@ -16,6 +16,12 @@ const enrollmentSchema = new mongoose.Schema(
     // i.e. payment confirmation. Existing rows are backfilled with their
     // createdAt by scripts/backfillEnrollmentStartDate.js.
     startDate: { type: Date, default: Date.now },
+    // Optional access expiry, admin-set (AdminSubscriptions.jsx) — null means
+    // lifetime access, same as before this field existed. Past this date the
+    // student loses access (live schedule + videos) same as a revoked
+    // enrollment, without an admin having to remember to remove it manually.
+    // See utils/enrollmentAccess.js for the single place this is checked.
+    endDate: { type: Date, default: null },
     status: { type: String, enum: ["active"], default: "active" },
   },
   { timestamps: true }

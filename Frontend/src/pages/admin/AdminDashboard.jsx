@@ -1,24 +1,31 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
 export default function AdminDashboard() {
   usePageMeta({ title: "Admin Dashboard | Crix Technology" });
   const { user, logout } = useContext(UserContext);
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ courses: 0, openCourses: 0, internships: 0, openInternships: 0, students: 0, enrollments: 0 });
+  const [stats, setStats] = useState({
+    courses: 0, openCourses: 0, internships: 0, openInternships: 0,
+    students: 0, enrollments: 0, users: 0, newMessages: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes] = await Promise.all([adminGetCourses(), adminGetEnrollments()]);
+      const [entriesRes, enrollRes, usersRes, contactsRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(),
+      ]);
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
       const courses = entries.filter((c) => c.type !== "internship");
       const internships = entries.filter((c) => c.type === "internship");
       const enrollments = enrollRes.ok ? enrollRes.enrollments || [] : [];
       const students = new Set(enrollments.map((e) => e.user?._id).filter(Boolean));
+      const users = usersRes.ok ? usersRes.users || [] : [];
+      const contacts = contactsRes.ok ? contactsRes.contacts || [] : [];
       setStats({
         courses: courses.length,
         // "Open" only counts as actually buyable when it also has a price —
@@ -30,6 +37,8 @@ export default function AdminDashboard() {
         openInternships: internships.filter((c) => c.status === "open").length,
         students: students.size,
         enrollments: enrollments.length,
+        users: users.length,
+        newMessages: contacts.filter((c) => c.status === "new").length,
       });
       setLoading(false);
     })();
@@ -38,10 +47,12 @@ export default function AdminDashboard() {
   const cards = [
     { label: "Courses", value: stats.courses, sub: `${stats.openCourses} open`, to: "/admin/courses" },
     { label: "Internships", value: stats.internships, sub: `${stats.openInternships} open`, to: "/admin/courses" },
-    { label: "Students", value: stats.students, sub: "registered & purchased", to: "/admin/students" },
-    { label: "Active enrollments", value: stats.enrollments, sub: "paid & granted", to: "/admin/students" },
+    { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },
+    { label: "Subscriptions", value: stats.enrollments, sub: "paid & granted", to: "/admin/students" },
     { label: "Live class schedule", value: "Manage", sub: "Google Meet sessions", to: "/admin/lectures" },
     { label: "Course videos", value: "Manage", sub: "recorded drip schedule", to: "/admin/videos" },
+    { label: "Services", value: "Manage", sub: "public /services page", to: "/admin/services" },
+    { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
   ];
 
   return (

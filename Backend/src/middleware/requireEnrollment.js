@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Enrollment = require("../models/Enrollment");
+const { hasValidAccess } = require("../utils/enrollmentAccess");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -25,6 +26,9 @@ async function requireEnrollment(req, res, next) {
     });
     if (!enrollment) {
       return res.status(403).json({ ok: false, error: "You aren't enrolled in this course" });
+    }
+    if (!hasValidAccess(enrollment)) {
+      return res.status(403).json({ ok: false, error: "Your access to this course has expired" });
     }
 
     const startMs = new Date(enrollment.startDate || enrollment.createdAt || Date.now()).getTime();

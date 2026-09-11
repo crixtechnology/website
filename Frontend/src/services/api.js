@@ -455,13 +455,177 @@ export async function adminDeleteLecture(id) {
   }
 }
 
-// ---------- Admin: students/enrollments (read-only) ----------
-export async function adminGetEnrollments() {
+// ---------- Admin: students/subscriptions (full CRUD) ----------
+// A "subscription" is an Enrollment — grant gives a user access to a course
+// with no payment involved (same record a real purchase creates), edit
+// changes its start/end (validity) dates, remove revokes access immediately.
+export async function adminGetEnrollments(q) {
   try {
-    const res = await authFetch("/admin/enrollments");
+    const res = await authFetch(`/admin/enrollments${q ? `?q=${encodeURIComponent(q)}` : ""}`);
     if (res.status === 401) adminLogout();
     return await res.json();
   } catch (e) {
-    return { ok: false, error: "Could not load enrollments" };
+    return { ok: false, error: "Could not load subscriptions" };
+  }
+}
+
+export async function adminGrantSubscription(payload) {
+  try {
+    const res = await authFetch("/admin/enrollments", { method: "POST", body: JSON.stringify(payload) });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not grant subscription" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not grant subscription" };
+  }
+}
+
+export async function adminUpdateSubscription(id, patch) {
+  try {
+    const res = await authFetch(`/admin/enrollments/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not update subscription" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not update subscription" };
+  }
+}
+
+export async function adminRemoveSubscription(id) {
+  try {
+    const res = await authFetch(`/admin/enrollments/${id}`, { method: "DELETE" });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not remove subscription" };
+  }
+}
+
+// ---------- Admin: users (search + full CRUD) ----------
+export async function adminGetUsers(q) {
+  try {
+    const res = await authFetch(`/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load users" };
+  }
+}
+
+export async function adminGetUser(id) {
+  try {
+    const res = await authFetch(`/admin/users/${id}`);
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load user" };
+  }
+}
+
+export async function adminUpdateUser(id, patch) {
+  try {
+    const res = await authFetch(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not update user" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not update user" };
+  }
+}
+
+export async function adminDeleteUser(id) {
+  try {
+    const res = await authFetch(`/admin/users/${id}`, { method: "DELETE" });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not delete user" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not delete user" };
+  }
+}
+
+// ---------- Admin: contact form inbox ----------
+export async function adminGetContacts(q) {
+  try {
+    const res = await authFetch(`/admin/contacts${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load messages" };
+  }
+}
+
+export async function adminUpdateContact(id, patch) {
+  try {
+    const res = await authFetch(`/admin/contacts/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not update message" };
+  }
+}
+
+export async function adminDeleteContact(id) {
+  try {
+    const res = await authFetch(`/admin/contacts/${id}`, { method: "DELETE" });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not delete message" };
+  }
+}
+
+// ---------- Services (public + admin CRUD) ----------
+export async function getServices() {
+  if (!API) return { ok: false, services: [] };
+  try {
+    const res = await fetch(`${API}/services`);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load services", services: [] };
+  }
+}
+
+export async function adminGetServices(q) {
+  try {
+    const res = await authFetch(`/admin/services${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load services" };
+  }
+}
+
+export async function adminCreateService(service) {
+  try {
+    const res = await authFetch("/admin/services", { method: "POST", body: JSON.stringify(service) });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not create service" };
+  }
+}
+
+export async function adminUpdateService(id, service) {
+  try {
+    const res = await authFetch(`/admin/services/${id}`, { method: "PUT", body: JSON.stringify(service) });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not update service" };
+  }
+}
+
+export async function adminDeleteService(id) {
+  try {
+    const res = await authFetch(`/admin/services/${id}`, { method: "DELETE" });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not delete service" };
   }
 }

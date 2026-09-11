@@ -11,6 +11,8 @@ const contactRoutes = require("./routes/contact");
 const lectureRoutes = require("./routes/lectures");
 const enrollmentRoutes = require("./routes/enrollments");
 const videoRoutes = require("./routes/videos");
+const adminUserRoutes = require("./routes/adminUsers");
+const serviceRoutes = require("./routes/services");
 
 const app = express();
 
@@ -42,6 +44,8 @@ app.use("/api", contactRoutes);
 app.use("/api", lectureRoutes);
 app.use("/api", enrollmentRoutes);
 app.use("/api", videoRoutes);
+app.use("/api", adminUserRoutes);
+app.use("/api", serviceRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

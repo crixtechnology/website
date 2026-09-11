@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
@@ -9,12 +10,24 @@ const { isDisposableEmail } = require("../utils/disposableEmail");
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
 
-function signToken(user) {
-  return jwt.sign(
-    { sub: user._id.toString(), email: user.email, role: user.role, name: user.name },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
+function signToken(user, sessionId) {
+  const payload = { sub: user._id.toString(), email: user.email, role: user.role, name: user.name };
+  if (sessionId) payload.sid = sessionId;
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
+}
+
+// Single-device-login enforcement is student-only (see requireAuth.js) — an
+// admin token is never given a `sid`, so it's never checked against
+// activeSessionId and admins can stay logged in on as many devices as they
+// like. For a student, every fresh login mints a new session id and writes
+// it onto the user doc, which invalidates any token issued to that account
+// on another device.
+async function startSession(user) {
+  if (user.role !== "student") return null;
+  const sessionId = crypto.randomBytes(24).toString("hex");
+  user.activeSessionId = sessionId;
+  await user.save();
+  return sessionId;
 }
 
 function publicUser(user) {
@@ -46,7 +59,8 @@ router.post("/signup", async (req, res, next) => {
     const user = await User.create({
       name: name.trim(), email: normalizedEmail, phone: phone || "", passwordHash, role: "student",
     });
-    const token = signToken(user);
+    const sessionId = await startSession(user);
+    const token = signToken(user, sessionId);
     res.status(201).json({ ok: true, token, user: publicUser(user) });
   } catch (e) {
     next(e);
@@ -69,7 +83,8 @@ router.post("/login", async (req, res, next) => {
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) return res.status(401).json({ ok: false, error: "Invalid credentials" });
 
-    const token = signToken(user);
+    const sessionId = await startSession(user);
+    const token = signToken(user, sessionId);
     res.json({ ok: true, token, user: publicUser(user) });
   } catch (e) {
     next(e);
@@ -114,7 +129,8 @@ router.post("/google", async (req, res, next) => {
       await user.save();
     }
 
-    const token = signToken(user);
+    const sessionId = await startSession(user);
+    const token = signToken(user, sessionId);
     res.json({ ok: true, token, user: publicUser(user) });
   } catch (e) {
     next(e);

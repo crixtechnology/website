@@ -10,6 +10,7 @@
     "seed:admin": "node src/scripts/seedAdmin.js",
     "reset:admin-password": "node src/scripts/resetAdminPassword.js",
     "seed:programs": "node src/scripts/seedPrograms.js",
+    "seed:services": "node src/scripts/seedServices.js",
     "migrate:enrollment-startdate": "node src/scripts/backfillEnrollmentStartDate.js",
     "migrate:drop-recorded-lectures": "node src/scripts/dropRecordedLectures.js",
     "videos:resequence": "node src/scripts/resequenceCourseVideos.js"

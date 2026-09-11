@@ -27,6 +27,7 @@ export default function AdminLectures() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     // Internships have no purchase/enrollment flow, so no lecture schedule —
@@ -137,11 +138,18 @@ export default function AdminLectures() {
             ) : (
               <>
                 <h3 style={{ margin: "40px 0 16px" }}>Scheduled sessions</h3>
+                <input
+                  className="admin-search"
+                  type="search"
+                  placeholder="Search sessions by title..."
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
                 {lectures.length === 0 ? (
                   <p style={{ color: "var(--muted)" }}>No live sessions scheduled for this course yet.</p>
                 ) : (
                   <div className="admin-list">
-                    {lectures.map((l) => (
+                    {lectures.filter((l) => l.title.toLowerCase().includes(q.trim().toLowerCase())).map((l) => (
                       <div className="admin-row" key={l._id}>
                         <div className="admin-row-main">
                           <b>{l.title}</b>

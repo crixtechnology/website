@@ -5,7 +5,10 @@ import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, 
 import MyCourses from "./pages/student/MyCourses.jsx";
 import Learn from "./pages/student/Learn.jsx";
 import Profile from "./pages/student/Profile.jsx";
-import { AdminDashboard, AdminCourses, AdminLectures, AdminVideos, AdminStudents, AdminGuard } from "./pages/admin/index.js";
+import {
+  AdminDashboard, AdminCourses, AdminLectures, AdminVideos, AdminStudents,
+  AdminUsers, AdminMessages, AdminServices, AdminGuard,
+} from "./pages/admin/index.js";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -50,6 +53,9 @@ export default function App() {
           <Route path="/admin/lectures" element={<AdminGuard><AdminLectures /></AdminGuard>} />
           <Route path="/admin/videos" element={<AdminGuard><AdminVideos /></AdminGuard>} />
           <Route path="/admin/students" element={<AdminGuard><AdminStudents /></AdminGuard>} />
+          <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
+          <Route path="/admin/messages" element={<AdminGuard><AdminMessages /></AdminGuard>} />
+          <Route path="/admin/services" element={<AdminGuard><AdminServices /></AdminGuard>} />
 
           <Route path="*" element={<Home />} />
         </Routes>

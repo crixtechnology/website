@@ -29,6 +29,7 @@ export default function AdminVideos() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ title: "", dayNumber: "" });
   const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     adminGetCourses("course").then((res) => {
@@ -103,6 +104,17 @@ export default function AdminVideos() {
 
         {error && <p className="form-note">{error}</p>}
 
+        {videos.length > 0 && (
+          <input
+            className="admin-search"
+            type="search"
+            style={{ marginTop: 20 }}
+            placeholder="Search videos by title..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        )}
+
         {loading ? (
           <p style={{ color: "var(--muted)", marginTop: 32 }}>Loading...</p>
         ) : videos.length === 0 ? (
@@ -111,7 +123,7 @@ export default function AdminVideos() {
           </p>
         ) : (
           <div className="admin-list" style={{ marginTop: 24 }}>
-            {videos.map((v) => (
+            {videos.filter((v) => v.title.toLowerCase().includes(q.trim().toLowerCase())).map((v) => (
               <div className="admin-row" key={v._id}>
                 {editingId === v._id ? (
                   <>

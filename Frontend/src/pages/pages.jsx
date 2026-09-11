@@ -8,7 +8,7 @@ import {
   site, hero, internships, services, courses, process, benefits, stats, about, testimonials, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company,
 } from "../data/content.js";
-import { submitContact, getCourses, getCourse } from "../services/api.js";
+import { submitContact, getCourses, getCourse, getServices } from "../services/api.js";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
 
@@ -352,6 +352,17 @@ export function Services() {
     title: "IT Services | Crix Technology",
     description: "Websites, web apps, AI assistants and automation — delivered virtual-first to clients pan-India and globally, by the same team that trains India's next engineers.",
   });
+  // Admin-managed now (AdminServices.jsx, /api/services) — the static
+  // `services` array from content.js stays only as the fallback for when
+  // the backend isn't configured or the DB has nothing seeded yet.
+  const [liveServices, setLiveServices] = useState(services);
+  useEffect(() => {
+    let alive = true;
+    getServices().then((res) => {
+      if (alive && res.ok && res.services && res.services.length) setLiveServices(res.services);
+    });
+    return () => { alive = false; };
+  }, []);
   return (
     <>
       <PageHead eyebrow="IT Services" title="Technology for growing businesses."
@@ -359,7 +370,7 @@ export function Services() {
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <div className="grid3 stagger" style={{ marginTop: 0 }}>
-            {services.map((it, i) => <InfoCard key={it.title} item={it} i={i} />)}
+            {liveServices.map((it, i) => <InfoCard key={it.title} item={it} i={i} />)}
           </div>
         </div>
       </section>

@@ -4,6 +4,7 @@ const Course = require("../models/Course");
 const Enrollment = require("../models/Enrollment");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
+const { hasValidAccess } = require("../utils/enrollmentAccess");
 
 const router = express.Router();
 
@@ -76,6 +77,9 @@ router.get("/learn/:courseSlug", requireAuth, async (req, res, next) => {
     });
     if (!enrollment) {
       return res.status(403).json({ ok: false, error: "You haven't purchased this course" });
+    }
+    if (!hasValidAccess(enrollment)) {
+      return res.status(403).json({ ok: false, error: "Your access to this course has expired" });
     }
 
     const upcoming = await Lecture.find({

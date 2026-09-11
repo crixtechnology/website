@@ -28,6 +28,7 @@ export default function AdminCourses() {
   const [editingId, setEditingId] = useState(null); // null = create mode
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState("");
 
   // AdminGuard (see App.jsx) already keeps this route from mounting unless
   // logged in as admin — this only has to handle the session expiring
@@ -88,8 +89,13 @@ export default function AdminCourses() {
     if (res.ok) load(); else setError(res.error || "Could not delete.");
   };
 
-  const courses = entries.filter((c) => c.type !== "internship");
-  const internships = entries.filter((c) => c.type === "internship");
+  const matches = (c) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return true;
+    return c.title.toLowerCase().includes(needle) || (c.tag || "").toLowerCase().includes(needle);
+  };
+  const courses = entries.filter((c) => c.type !== "internship" && matches(c));
+  const internships = entries.filter((c) => c.type === "internship" && matches(c));
 
   const renderRow = (c) => {
     const hasPrice = c.price != null;
@@ -178,20 +184,29 @@ export default function AdminCourses() {
           </div>
         </form>
 
+        <input
+          className="admin-search"
+          type="search"
+          style={{ marginTop: 40 }}
+          placeholder="Search courses & internships by title or tag..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+
         {loading ? (
           <p style={{ color: "var(--muted)", marginTop: 32 }}>Loading...</p>
         ) : (
           <>
             <h3 style={{ margin: "40px 0 16px" }}>Courses</h3>
             {courses.length === 0 ? (
-              <p style={{ color: "var(--muted)" }}>No courses yet — add one above.</p>
+              <p style={{ color: "var(--muted)" }}>{q ? "No courses match that search." : "No courses yet — add one above."}</p>
             ) : (
               <div className="admin-list">{courses.map(renderRow)}</div>
             )}
 
             <h3 style={{ margin: "40px 0 16px" }}>Internships</h3>
             {internships.length === 0 ? (
-              <p style={{ color: "var(--muted)" }}>No internships yet — add one above.</p>
+              <p style={{ color: "var(--muted)" }}>{q ? "No internships match that search." : "No internships yet — add one above."}</p>
             ) : (
               <div className="admin-list">{internships.map(renderRow)}</div>
             )}
