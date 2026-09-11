@@ -5,6 +5,7 @@ const Payment = require("../models/Payment");
 const Course = require("../models/Course");
 const Application = require("../models/Application");
 const Enrollment = require("../models/Enrollment");
+const { hasValidAccess, computeEndDate } = require("../utils/enrollmentAccess");
 
 const router = express.Router();
 
@@ -20,21 +21,30 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
   }
   const application = await Application.findById(payment.application);
   if (application && application.user && application.course) {
-    await Enrollment.findOneAndUpdate(
-      { user: application.user, course: application.course },
-      {
-        user: application.user, course: application.course, payment: payment._id, status: "active",
-        // A confirmed real payment always grants full, unexpired access —
-        // this must override any prior admin-granted trial/subscription
-        // that had an endDate set (Backend/src/routes/enrollments.js).
-        // Mongoose treats this plain object as a $set of only these fields
-        // on an existing doc, so without this the old endDate would
-        // silently survive and could leave a paying student locked out via
-        // hasValidAccess() (utils/enrollmentAccess.js).
-        endDate: null,
-      },
-      { upsert: true, new: true }
-    );
+    const existing = await Enrollment.findOne({ user: application.user, course: application.course });
+
+    if (hasValidAccess(existing)) {
+      // Already has valid access — this is /verify and the webhook both
+      // firing for the SAME purchase, a genuinely idempotent no-op. Just
+      // make sure payment/status are attached; don't touch startDate/
+      // endDate, so a harmless duplicate call can't relock an in-progress
+      // drip schedule or shift an already-running expiry window.
+      await Enrollment.updateOne({ _id: existing._id }, { $set: { payment: payment._id, status: "active" } });
+    } else {
+      // A brand-new enrollment, or a fresh/renewed purchase of one that had
+      // lapsed (expired, or manually revoked by an admin and re-bought) —
+      // either way this is a real, fresh grant: full access starting now,
+      // for as long as the course's own durationDays says (Backend/src/
+      // models/Course.js) — no durationDays set means lifetime access.
+      const course = await Course.findById(application.course).select("durationDays");
+      const startDate = new Date();
+      const endDate = computeEndDate(startDate, course && course.durationDays);
+      await Enrollment.findOneAndUpdate(
+        { user: application.user, course: application.course },
+        { user: application.user, course: application.course, payment: payment._id, status: "active", startDate, endDate },
+        { upsert: true, new: true }
+      );
+    }
   }
   return application;
 }

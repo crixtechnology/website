@@ -1,3 +1,15 @@
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// A course's `durationDays` (Backend/src/models/Course.js) is how long a
+// purchased/granted enrollment stays valid for, counted from `startDate` —
+// see routes/payments.js's grantAccessForPayment. No durationDays set on the
+// course means lifetime access (returns null, same as leaving endDate
+// unset).
+function computeEndDate(startDate, durationDays) {
+  if (!durationDays) return null;
+  return new Date(new Date(startDate).getTime() + durationDays * DAY_MS);
+}
+
 // Single place that decides whether an Enrollment still grants access, so
 // requireEnrollment.js (videos) and routes/lectures.js's /learn/:slug (live
 // schedule) can't drift out of sync on what "expired" means.
@@ -24,4 +36,4 @@ function serializeEnrollment(enrollment) {
   return { ...enrollment.toObject(), expired: isExpired(enrollment) };
 }
 
-module.exports = { hasValidAccess, isExpired, serializeEnrollment };
+module.exports = { hasValidAccess, isExpired, serializeEnrollment, computeEndDate };
