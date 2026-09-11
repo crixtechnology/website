@@ -84,29 +84,41 @@ nav.topbar.scrolled .logo img{height:27px}
 .foot-logo img{height:26px}
 .foot-logo .logo-top{font-size:.92rem}
 .nav-links{display:flex;gap:30px;list-style:none}
-.nav-links a{color:var(--muted);text-decoration:none;font-size:.86rem;transition:color .25s;position:relative;padding-bottom:4px}
-.nav-links a::after{content:"";position:absolute;left:0;bottom:0;height:1px;width:0;background:var(--cyan);transition:width .3s}
+/* Vertical padding turns the link into a real ~44px-tall tap target (was
+   just the text's own line-height, ~22px) without changing its font size
+   or the navbar's fixed height — the extra space is invisible on desktop,
+   just a more comfortable hover/click zone. */
+.nav-links a{display:inline-block;color:var(--muted);text-decoration:none;font-size:.86rem;transition:color .25s;position:relative;padding:12px 2px}
+.nav-links a::after{content:"";position:absolute;left:2px;bottom:6px;height:1px;width:0;background:var(--cyan);transition:width .3s}
 .nav-links a:hover,.nav-links a.active{color:var(--cyan)}
 .nav-links a:hover::after,.nav-links a.active::after{width:100%}
 a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
 .nav-cta{font-family:'Sora',sans-serif;font-size:.82rem;font-weight:500;color:var(--ink);text-decoration:none;background:linear-gradient(120deg,var(--teal),var(--cyan));padding:10px 20px;border-radius:100px;border:none;cursor:pointer;transition:transform .25s,box-shadow .25s;white-space:nowrap;display:inline-block}
 .nav-cta:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(20,201,201,.35)}
 .nav-account{display:flex;align-items:center;gap:12px}
-.nav-account .nav-logout{padding:9px 16px;font-size:.78rem}
+.nav-account .nav-logout,.nav-links-mobile-account .nav-logout{padding:9px 16px;font-size:.78rem}
 .nav-account-link{font-family:'Sora',sans-serif;font-size:.82rem;font-weight:500;color:var(--muted);text-decoration:none;white-space:nowrap;transition:color .2s}
 .nav-account-link:hover,.nav-account-link.active{color:var(--text)}
-.burger{display:none;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer}
+.burger{display:none;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;width:44px;height:44px;align-items:center;justify-content:center;margin-right:-10px}
 .nav-links-mobile-account{display:none}
 @media(max-width:860px){
-  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 68px);overflow-y:auto;background:var(--ink);flex-direction:column;padding:22px 28px 28px;gap:18px;border-bottom:1px solid var(--line);box-shadow:0 26px 44px rgba(0,0,0,.55)}
+  /* gap is smaller than desktop's list here on purpose — each link's own
+     padding (from .nav-links a above) already provides the ~44px tap
+     target, so a big extra gap on top of that would make the menu
+     needlessly long. */
+  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 68px);overflow-y:auto;background:var(--ink);flex-direction:column;padding:22px 28px 28px;gap:4px;border-bottom:1px solid var(--line);box-shadow:0 26px 44px rgba(0,0,0,.55)}
   .nav-links.open{display:flex}
-  .burger{display:block}
-  .nav-cta{display:none}
+  .nav-links a{padding:13px 2px}
+  .burger{display:flex}
+  /* Direct-child selector — the .nav-in > .nav-cta is the desktop-only
+     button; .nav-links-mobile-account also has a button.nav-cta (the mobile
+     "Log in" pill) that must stay visible here. */
+  .nav-in>.nav-cta{display:none}
   .nav-account{display:none}
   /* .nav-cta/.nav-account above are the desktop pill — this is the same
      login/account controls, shown inside the mobile dropdown instead. */
-  .nav-links-mobile-account{display:flex;flex-wrap:wrap;align-items:center;gap:16px 18px;padding-top:18px;margin-top:-2px;border-top:1px solid var(--line);width:100%}
-  .nav-links-mobile-account a,.nav-links-mobile-account .link-btn{font-size:.86rem}
+  .nav-links-mobile-account{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding-top:18px;margin-top:-2px;border-top:1px solid var(--line);width:100%}
+  .nav-links-mobile-account a,.nav-links-mobile-account .link-btn{font-size:.86rem;display:inline-block;padding:9px 2px}
 }
 
 .hero{min-height:100vh;display:flex;align-items:center;position:relative;overflow:hidden}
@@ -337,19 +349,19 @@ footer{border-top:1px solid var(--line);padding:44px 0 96px;margin-top:40px}
 .foot{display:flex;justify-content:space-between;gap:44px;flex-wrap:wrap;color:var(--muted);font-size:.8rem}
 .foot .mono{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.06em}
 .foot-links{display:flex;gap:20px;list-style:none;font-size:.8rem}
-.foot-links a{color:var(--muted);text-decoration:none}
+.foot-links a{display:inline-block;padding:5px 0;color:var(--muted);text-decoration:none}
 .foot-links a:hover{color:var(--cyan)}
 
 .foot-brand{max-width:320px;display:flex;flex-direction:column;gap:14px}
 .foot-desc{color:var(--muted);font-size:.8rem;line-height:1.75}
-.foot-contact{display:flex;flex-direction:column;gap:8px;font-size:.8rem}
-.foot-contact a{color:var(--cyan);text-decoration:none}
+.foot-contact{display:flex;flex-direction:column;gap:2px;font-size:.8rem}
+.foot-contact a{display:inline-block;padding:7px 0;color:var(--cyan);text-decoration:none}
 .foot-contact a:hover{color:var(--teal)}
 .foot-contact .wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;background:rgba(30,190,93,.12);padding:2px 8px;border-radius:20px}
 .foot-hours{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.66rem;letter-spacing:.06em}
 .foot-cols{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:28px;flex:1;min-width:280px;max-width:560px}
 .foot-cols h4{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
-.foot-cols .foot-links{flex-direction:column;gap:10px}
+.foot-cols .foot-links{flex-direction:column;gap:2px}
 .foot-base{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:36px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.72rem}
 .foot-base .mono{font-family:'JetBrains Mono',monospace;letter-spacing:.06em}
 @media(max-width:640px){.foot-cols{grid-template-columns:repeat(2,1fr);max-width:none}}

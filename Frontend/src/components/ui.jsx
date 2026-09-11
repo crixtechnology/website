@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { site, marquee } from "../data/content.js";
@@ -22,11 +22,28 @@ function useBodyScrollLock(active) {
 }
 
 /* ---------- Reveal (scroll-in animation wrapper) ---------- */
+// Content that's already in the viewport the moment this mounts (almost
+// always true for above-the-fold sections right after a page navigation —
+// ScrollToTop in App.jsx resets scroll to 0 on every route change) never
+// gets a meaningful "scroll into view" moment: animating it in from
+// opacity:0/blur(8px) over .9s is just a flash of blurred text, not a
+// reveal. That flash was real enough that legal pages were special-cased
+// with .section--plain to skip the effect entirely (see global.css)
+// instead of fixing it here. useLayoutEffect (synchronous, before the
+// browser paints) plus an immediate in-viewport check means already-visible
+// content gets the "in" class before its first paint — the browser never
+// draws the blurred frame, so no transition is visible — while content
+// that's genuinely below the fold still animates in on scroll as before.
 export function Reveal({ as: Tag = "div", variant = "reveal", className = "", children, style, ...rest }) {
   const ref = useRef(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.top < window.innerHeight && r.bottom > 0) {
+      el.classList.add("in");
+      return;
+    }
     const io = new IntersectionObserver(
       (es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
       { threshold: 0.15 }
@@ -569,10 +586,15 @@ export function Navbar() {
                 <NavLink to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
                   {isAdmin ? "Admin" : "My Courses"}
                 </NavLink>
-                <button className="link-btn" onClick={() => { logout(); setOpen(false); navigate("/"); }}>Log out</button>
+                <button className="btn btn-ghost nav-logout" onClick={() => { logout(); setOpen(false); navigate("/"); }}>Log out</button>
               </>
             ) : (
-              <button className="link-btn" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
+              // Same .nav-cta pill the desktop nav already uses for Log in —
+              // was a plain underlined text link here, which read as a third,
+              // unrelated button style sitting next to the hero's pill CTAs
+              // (still visible beneath this dropdown, since it pushes content
+              // down rather than covering it).
+              <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
             )}
           </li>
         </ul>
