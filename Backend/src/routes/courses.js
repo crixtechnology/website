@@ -66,10 +66,13 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     const course = await Course.create({
       type: entryType, title, slug, tag: tag || "", desc: desc || "",
       points: Array.isArray(points) ? points : [],
-      // Internships never carry a price, regardless of what's sent —
-      // there's no online purchase flow for them.
-      price: entryType === "course" ? price : null,
-      discountPercent: entryType === "course" ? discountPercent || 0 : 0,
+      // Internships are apply-only by default (price left null shows
+      // Apply, no online purchase) but MAY carry a real price too — some
+      // internship slots are sold, some are free/discounted promos decided
+      // case-by-case; whichever price (or lack of one) the admin sends is
+      // respected for either type, same as a course.
+      price: entryType === "course" ? price : (price ?? null),
+      discountPercent: discountPercent || 0,
       durationDays: durationDays || null,
       // Always starts closed, even with a price already set — saving a
       // price is not the same action as publishing it for sale. The admin
@@ -99,13 +102,13 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
     if (durationDays !== undefined) update.durationDays = durationDays || null;
     if (status !== undefined) update.status = status === "closed" ? "closed" : "open";
 
-    if (effectiveType === "internship") {
-      update.price = null;
-      update.discountPercent = 0;
-    } else {
-      if (price !== undefined) update.price = price;
-      if (discountPercent !== undefined) update.discountPercent = discountPercent;
-    }
+    // Price/discount are no longer forced to null for internships — an
+    // internship slot may genuinely be priced (Buy now, same as a course)
+    // or left apply-only (price null shows Apply instead), decided per
+    // entry rather than by type. Whatever the admin sends applies to
+    // either type identically.
+    if (price !== undefined) update.price = price;
+    if (discountPercent !== undefined) update.discountPercent = discountPercent;
 
     // The resolved price after this update — null means "no price set".
     const resultingPrice = update.price !== undefined ? update.price : existing.price;

@@ -99,14 +99,13 @@ export default function AdminApplications() {
                     <span className={`type-pill type-pill--${a.type}`} style={{ marginRight: 8 }}>
                       {a.type === "internship" ? "Internship" : "Course"}
                     </span>
-                    {a.type === "course" && a.course ? (
-                      // `course` only resolves when the applicant's browser sent a
-                      // courseSlug that matched a real Course doc at submit time
-                      // (see routes/applications.js) — internships never get one
-                      // (guest-only, no Course record to link to), and a course
-                      // application submitted while the site ran off the static
-                      // content.js fallback (no slug) also stays plain text.
-                      <Link className="admin-link" to={`/admin/courses?edit=${a.course}`} title="Open this course in Manage Courses">
+                    {a.course ? (
+                      // `course` resolves for either type now that an internship
+                      // may also be a real, priced Course doc (routes/
+                      // applications.js) — an application submitted while the
+                      // site ran off the static content.js fallback (no slug)
+                      // stays plain text either way.
+                      <Link className="admin-link" to={`/admin/courses?edit=${a.course}`} title="Open this entry in Manage Courses">
                         {a.refTitle}
                       </Link>
                     ) : (

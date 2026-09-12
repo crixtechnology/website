@@ -258,7 +258,11 @@ export function BuyModal({ item, user, onClose }) {
     setInfo("Setting up your enrollment...");
 
     const appRes = await submitApplication({
-      type: "course", refTitle: item.title, courseSlug: item.slug,
+      // item.type is always real here — Buy is only reachable for a live,
+      // API-sourced item (openForBuy requires a real price/status, which
+      // the static content.js fallback never has) — so it's never
+      // undefined in practice; "course" is just a defensive fallback.
+      type: item.type === "internship" ? "internship" : "course", refTitle: item.title, courseSlug: item.slug,
       name: form.name, email: form.email, phone: form.phone,
     });
     if (!appRes.ok || !appRes.application) {

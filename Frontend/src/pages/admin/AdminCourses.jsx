@@ -83,8 +83,10 @@ export default function AdminCourses() {
       tag: form.tag.trim(),
       desc: form.desc.trim(),
       points: form.points.split("\n").map((p) => p.trim()).filter(Boolean),
-      price: form.type === "course" ? Number(form.price) : null,
-      discountPercent: form.type === "course" ? Number(form.discountPercent) || 0 : 0,
+      // Price is optional for either type now — leave it blank for an
+      // apply-only internship (or course-in-progress), same field either way.
+      price: form.price.trim() ? Number(form.price) : null,
+      discountPercent: Number(form.discountPercent) || 0,
       durationDays: form.durationDays ? Number(form.durationDays) : null,
     };
     const res = editingId ? await adminUpdateCourse(editingId, payload) : await adminCreateCourse(payload);
@@ -122,25 +124,23 @@ export default function AdminCourses() {
         <div className="admin-row-main">
           <b>{c.title}</b>
           <span className="admin-row-meta">
-            {c.type === "internship"
-              ? c.tag
-              : <>₹{c.price ?? "—"} {c.discountPercent > 0 && `· ${c.discountPercent}% off`} · {c.tag}</>}
+            {hasPrice
+              ? <>₹{c.price} {c.discountPercent > 0 && `· ${c.discountPercent}% off`} · {c.tag}</>
+              : <>Apply-only · {c.tag}</>}
             {c.durationDays ? ` · ${c.durationDays} days` : ""}
           </span>
         </div>
         <div className="admin-row-actions">
-          {c.type === "course" && (
-            hasPrice ? (
-              <button className={`status-toggle ${c.status}`} onClick={() => toggleStatus(c)}
-                title={c.status === "open" ? "Buy now is live — click to take it off sale" : "Not for sale yet — click to enable Buy now"}>
-                {c.status === "open" ? "Open" : "Closed"}
-              </button>
-            ) : (
-              <span className="status-toggle closed" style={{ opacity: 0.5, cursor: "not-allowed" }}
-                title="Set a price above before this can go on sale">
-                No price yet
-              </span>
-            )
+          {hasPrice ? (
+            <button className={`status-toggle ${c.status}`} onClick={() => toggleStatus(c)}
+              title={c.status === "open" ? "Buy now is live — click to take it off sale" : "Not for sale yet — click to enable Buy now"}>
+              {c.status === "open" ? "Open" : "Closed"}
+            </button>
+          ) : (
+            <span className="status-toggle closed" style={{ opacity: 0.5, cursor: "not-allowed" }}
+              title={c.type === "internship" ? "Apply-only — set a price above to make this purchasable" : "Set a price above before this can go on sale"}>
+              {c.type === "internship" ? "Apply-only" : "No price yet"}
+            </span>
           )}
           <button className="btn btn-ghost" onClick={() => startEdit(c)}>Edit</button>
           <button className="btn btn-ghost admin-danger" onClick={() => remove(c)}>Delete</button>
@@ -165,30 +165,27 @@ export default function AdminCourses() {
           <div className="admin-form-grid">
             <div className="field"><label>Type</label>
               <select value={form.type} onChange={set("type")}>
-                <option value="course">Course (paid, online)</option>
-                <option value="internship">Internship (apply-only, no online price)</option>
+                <option value="course">Course</option>
+                <option value="internship">Internship</option>
               </select>
             </div>
             <div className="field"><label>Title</label>
               <input value={form.title} onChange={set("title")} placeholder="Full Stack (MERN) Development" /></div>
             <div className="field"><label>Tag</label>
               <input value={form.tag} onChange={set("tag")} placeholder="Beginner friendly" /></div>
-            {form.type === "course" && (
-              <>
-                <div className="field"><label>Price (₹)</label>
-                  <input type="number" min="0" value={form.price} onChange={set("price")} placeholder="4999" /></div>
-                <div className="field"><label>Discount (%)</label>
-                  <input type="number" min="0" max="100" value={form.discountPercent} onChange={set("discountPercent")} placeholder="0" /></div>
-              </>
-            )}
+            <div className="field"><label>Price (₹){form.type === "internship" ? " — optional" : ""}</label>
+              <input type="number" min="0" value={form.price} onChange={set("price")}
+                placeholder={form.type === "internship" ? "Leave blank for apply-only" : "4999"} /></div>
+            <div className="field"><label>Discount (%)</label>
+              <input type="number" min="0" max="100" value={form.discountPercent} onChange={set("discountPercent")} placeholder="0" /></div>
             <div className="field"><label>Duration (days)</label>
               <input type="number" min="1" value={form.durationDays} onChange={set("durationDays")} placeholder="30" /></div>
           </div>
-          {form.type === "course" && (
-            <p className="form-note" style={{ margin: "-8px 0 16px" }}>
-              Saving a price doesn't put it on sale yet — use the Open/Closed toggle next to it in the list below when you're ready for "Buy now" to go live.
-            </p>
-          )}
+          <p className="form-note" style={{ margin: "-8px 0 16px" }}>
+            {form.type === "internship"
+              ? "Leave price blank to keep this an apply-only internship (shows \"Apply\"). Set a price to make it purchasable — same two-step flow as a course: saving the price doesn't put it on sale yet, use the Open/Closed toggle below when you're ready for \"Buy now\" to go live."
+              : "Saving a price doesn't put it on sale yet — use the Open/Closed toggle next to it in the list below when you're ready for \"Buy now\" to go live."}
+          </p>
           <div className="field"><label>Description</label>
             <textarea rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
           <div className="field"><label>Points (one per line)</label>

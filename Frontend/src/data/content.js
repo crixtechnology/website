@@ -441,12 +441,12 @@ Certificates and Letters of Recommendation are issued only upon satisfactory com
 • Record or screen-capture video lectures without written permission`,
       },
       {
-        title: "6. Course Purchases, Payment & Cancellations",
-        content: `Course prices, along with any active discount, are as displayed on the course page at the time of purchase and are payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A course is available for online purchase only once Crix Technology has opened it for enrollment; courses shown without a listed price, or marked "Currently closed", are not available for purchase — you may use the "Inquire" option on that course's page to contact us directly about pricing or upcoming availability.
+        title: "6. Course & Internship Purchases, Payment & Cancellations",
+        content: `Most internship slots are apply-only, and applying never requires payment — but some internship slots, like courses, do carry a real price and are sold the same way. Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A course or internship is available for online purchase only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
 
-Access to a purchased course's live-class schedule and recorded lectures is granted upon confirmed payment and remains tied to your account. Crix Technology may reschedule live sessions, substitute mentors, or make reasonable changes to course content and delivery format, provided the overall quality and scope of the course is not materially reduced.
+Access to a purchased course or internship's live-class schedule and recorded lectures is granted upon confirmed payment and remains tied to your account. Crix Technology may reschedule live sessions, substitute mentors, or make reasonable changes to program content and delivery format, provided the overall quality and scope is not materially reduced.
 
-All course purchases are final. Crix Technology does not offer refunds or cancellations for courses once payment has been completed, regardless of whether course materials, recordings, or live sessions have been accessed. Please review the course details and use the "Request to enroll" option on a course's page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
+All course and internship purchases are final. Crix Technology does not offer refunds or cancellations once payment has been completed, regardless of whether materials, recordings, or live sessions have been accessed. Please review the program's details and use the "Apply" or "Request to enroll" option on its page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
       },
       {
         title: "7. User Conduct",
