@@ -19,4 +19,20 @@ if (looksUnset(keyId) || looksUnset(keySecret)) {
 
 const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
-module.exports = razorpay;
+// Safety guard: a "rzp_live_..." key can charge real money the moment an
+// order is created. Requiring a separate, explicit opt-in (rather than just
+// whatever happens to be in .env) means switching to live keys can't
+// silently start processing real payments — routes/payments.js checks this
+// flag and refuses to create an order while it's true.
+const isLiveKey = keyId.startsWith("rzp_live_");
+const liveGuardOk = process.env.ALLOW_LIVE_PAYMENTS === "true";
+const liveBlocked = isLiveKey && !liveGuardOk;
+if (liveBlocked) {
+  console.warn(
+    "🛑 LIVE Razorpay key detected (rzp_live_...) but ALLOW_LIVE_PAYMENTS is not set to \"true\" in Backend/.env — " +
+    "order creation will be refused (503) to prevent accidental real charges. Only set ALLOW_LIVE_PAYMENTS=true " +
+    "once you deliberately intend to process real payments."
+  );
+}
+
+module.exports = { razorpay, isLiveBlocked: liveBlocked };

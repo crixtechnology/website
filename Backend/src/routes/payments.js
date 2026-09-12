@@ -1,6 +1,6 @@
 const express = require("express");
 const crypto = require("crypto");
-const razorpay = require("../utils/razorpay");
+const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const Payment = require("../models/Payment");
 const Course = require("../models/Course");
 const Application = require("../models/Application");
@@ -52,6 +52,12 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
 // ---------- 1. create an order (called right after the applicant submits the form) ----------
 router.post("/create-order", async (req, res, next) => {
   try {
+    if (isLiveBlocked) {
+      return res.status(503).json({
+        ok: false,
+        error: "Live payments are disabled by a safety guard. Set ALLOW_LIVE_PAYMENTS=true in Backend/.env to enable real charges.",
+      });
+    }
     const { applicationId, courseSlug } = req.body || {};
     if (!applicationId || !courseSlug) {
       return res.status(400).json({ ok: false, error: "applicationId and courseSlug are required" });
