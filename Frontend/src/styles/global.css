@@ -249,7 +249,18 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .buy-btn{width:100%;text-align:center;font-size:.86rem;padding:12px 20px}
 .buy-btn:disabled{opacity:.5;cursor:not-allowed;transform:none !important;box-shadow:none !important}
 .card-btn-row{display:flex;gap:10px;margin-top:auto;padding-top:20px;flex-wrap:wrap}
-.card-btn-row .buy-btn,.card-btn-row .see-more-btn{flex:1;min-width:120px;margin-top:0}
+/* flex-basis:auto (not the 0% an unqualified `flex:1` implies) so each
+   button's own text sets its minimum width first — an equal 50/50 split
+   was clipping longer labels ("Request to enroll", "Inquire to enroll")
+   inside their own pill, since a same-size sibling ("See more →") forced
+   them below their content's natural width. Any row too narrow for both at
+   once now wraps to its own line (`.card-btn-row` already does) instead of
+   silently truncating. `.buy-btn`'s own `width:100%` (correct for its other
+   context — alone, full-width, inside BuyModal's form) becomes the used
+   flex-basis once basis is `auto` instead of `0`, which forced a wrap on
+   every card regardless of how short its label was; overriding it back to
+   `auto` here restores content-based sizing in this side-by-side context. */
+.card-btn-row .buy-btn,.card-btn-row .see-more-btn{flex:1 1 auto;min-width:120px;width:auto;margin-top:0}
 .see-more-btn{width:100%;text-align:center}
 
 .modal-backdrop{position:fixed;inset:0;z-index:100;background:rgba(6,11,26,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:12px;animation:fadeIn .25s ease}

@@ -55,7 +55,7 @@ export default function AdminDashboard() {
     { label: "Course videos", value: "Manage", sub: "recorded drip schedule", to: "/admin/videos" },
     { label: "Services", value: "Manage", sub: "public /services page", to: "/admin/services" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
-    { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Inquire submissions", to: "/admin/applications" },
+    { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },
   ];
 
   return (
