@@ -35,7 +35,12 @@ export default function AdminDashboard() {
         // let the dashboard claim it's live when "Buy now" wouldn't show.
         openCourses: courses.filter((c) => c.status === "open" && c.price != null).length,
         internships: internships.length,
-        openInternships: internships.filter((c) => c.status === "open").length,
+        // Same "open" = "actually buyable" rule as courses now that an
+        // internship may optionally carry a real price too (see
+        // Backend/src/routes/courses.js) — an apply-only (unpriced)
+        // internship has no meaningful open/closed toggle in the admin
+        // list, so it shouldn't count as "open" here either.
+        openInternships: internships.filter((c) => c.status === "open" && c.price != null).length,
         students: students.size,
         enrollments: enrollments.length,
         users: users.length,

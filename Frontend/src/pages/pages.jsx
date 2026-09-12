@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
@@ -13,6 +13,7 @@ import { usePageMeta } from "../hooks/usePageMeta.js";
 
 /* ================= HOME ================= */
 export function Home() {
+  const navigate = useNavigate();
   const heroRef = useRef(null);
   const [liveInternships, setLiveInternships] = useState(internships);
   const [inquireItem, setInquireItem] = useState(null);
@@ -85,7 +86,12 @@ export function Home() {
           <Reveal as="h2" variant="reveal-l">Real projects. Real experience. Real pay.</Reveal>
           <div className="grid3 stagger">
             {liveInternships.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem} />
+              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem}
+                // Home has no login/BuyModal plumbing of its own (unlike
+                // Programs/CourseDetail) — an internship priced+open enough
+                // to show "Buy now" here sends the click to its full detail
+                // page instead, where the real purchase flow lives.
+                onBuy={(item) => navigate(`/programs/${item.slug}`)} />
             ))}
           </div>
           <div className="hero-ctas">
@@ -194,7 +200,7 @@ export function Programs() {
           </Reveal>
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {liveInternships.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship"
+              <InfoCard key={it.title || it._id} item={it} i={i} onBuy={handleBuy} isProgram kind="internship"
                 onInquire={(item) => setInquire({ item, kind: "internship" })} />
             ))}
           </div>

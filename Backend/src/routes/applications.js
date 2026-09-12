@@ -8,14 +8,15 @@ const { sendApplicationEmail } = require("../utils/mailer");
 
 const router = express.Router();
 
-// Stores both internship applications and course enrollments — same shape,
-// distinguished by `type`. Used before payment (course/paid tracks attach
-// a Payment doc afterwards via /api/payments/create-order).
+// Stores both internship and course applications — same shape, distinguished
+// by `type`. Used before payment for whichever entries are actually priced
+// (attaches a Payment doc afterwards via /api/payments/create-order).
 //
-// Internship applications stay fully guest — no login required. Course
-// applications are expected to come from a logged-in student (the frontend
-// gates "Buy now" behind /login); when a valid token is present it's
-// attached here so the payment webhook can grant course access afterwards.
+// An apply-only entry (no price) of either type stays fully guest — no
+// login required (InquiryModal never requires one). A priced, open entry's
+// "Buy now" is gated behind login on the frontend regardless of type; when
+// a valid token is present it's attached here so the payment webhook can
+// grant access afterwards.
 router.post("/applications", attachUserIfPresent, async (req, res, next) => {
   try {
     const { type, refTitle, name, email, phone, college, track, courseSlug } = req.body || {};
@@ -26,8 +27,12 @@ router.post("/applications", attachUserIfPresent, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: "type must be 'internship' or 'course'" });
     }
 
+    // Resolved for either type now that an internship may also be a real,
+    // purchasable Course doc — InquiryModal already sends courseSlug
+    // regardless of kind, so a plain "Apply" (no purchase) on a priced
+    // internship still links its Application to the right Course too.
     let course = null;
-    if (type === "course" && courseSlug) {
+    if (courseSlug) {
       course = await Course.findOne({ slug: courseSlug });
     }
 
