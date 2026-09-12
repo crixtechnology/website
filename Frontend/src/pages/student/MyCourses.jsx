@@ -52,7 +52,7 @@ export default function MyCourses() {
           <p style={{ color: "var(--muted)" }}>Loading...</p>
         ) : enrollments.length === 0 ? (
           <p style={{ color: "var(--muted)" }}>
-            You haven't purchased a course yet. <Link to="/programs">Browse courses →</Link>
+            You haven't purchased a course yet. <Link to="/programs#courses">Browse courses →</Link>
           </p>
         ) : (
           <div className="admin-list">

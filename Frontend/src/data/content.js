@@ -68,6 +68,24 @@ export const techStack = [
   { group: "Infrastructure & Tools", items: ["Git", "AWS / GCP / Azure", "Docker", "CI/CD"] },
 ];
 
+// What each *type* of program issues — a fixed business rule (every
+// internship gets all three documents, every course gets a certificate
+// only), not a per-entry choice, so it lives here once instead of being
+// repeated on every internship/course object. Bug fix (2026-09-12): it used
+// to be copied onto each static entry's own `deliverables` field, but the
+// live `Course` Mongo schema (Backend/src/models/Course.js) has no such
+// field — any course/internship fetched from a real, connected backend
+// would have silently lost its deliverable chips. Deriving from `type`
+// instead (already a required field on the live model) means InfoCard and
+// CourseDetail get correct chips regardless of whether the data came from
+// this static fallback or the live API. See [[crix-saas-course-platform]].
+export const programDeliverables = {
+  internship: ["Offer letter on day one", "Completion certificate", "Letter of Recommendation"],
+  // Courses are training, not employment — a completion certificate only
+  // (no offer letter / LOR, those are internship-only, see above).
+  course: ["Certificate of completion"],
+};
+
 export const internships = [
   {
     tag: "Flagship",
@@ -187,13 +205,13 @@ export const courses = [
   },
   {
     tag: "Career",
-    title: "AI Agentic Systems Course",
+    title: "Building AI Agents & RAG Systems",
     desc: "The advanced track — build agents that use tools, retrieve knowledge, and work in teams.",
     points: ["LangChain & CrewAI", "RAG systems", "Multi-agent projects", "Certificate on completion"],
   },
   {
     tag: "Mobile",
-    title: "Android App Development",
+    title: "Kotlin & Java for Android",
     desc: "Beginner to pro — build native Android apps and publish a portfolio project.",
     points: ["Java & Kotlin foundations", "Jetpack & Material UI", "REST APIs & local storage", "Ship a real app"],
   },
@@ -221,18 +239,19 @@ export const process = [
   { n: "01", title: "Choose Your Domain", desc: "Pick from Web Dev, Android, AI/ML, Data Science, Cybersecurity, or Cloud Computing." },
   { n: "02", title: "Register & Pay", desc: "Fill in your details and complete the payment. Selection is open to all eligible students." },
   { n: "03", title: "Complete Tasks", desc: "Receive project tasks via email. Build real applications with mentor guidance." },
-  { n: "04", title: "Get Certified", desc: "Submit your work and receive a verified digital certificate + Letter of Recommendation." },
+  { n: "04", title: "Get Certified", desc: "Submit your work and receive your certificate — internships also include an offer letter and Letter of Recommendation." },
 ];
 
 export const benefits = [
   { icon: "gift", title: "Paid Internship Program", desc: "Affordable fee with real industry experience and mentorship." },
   { icon: "award", title: "Verified Certificate", desc: "Industry-recognized digital certificate on completion." },
   { icon: "home", title: "Work from Home", desc: "Fully virtual — join from anywhere, pan-India or globally." },
-  { icon: "document", title: "Letter of Recommendation", desc: "Official LOR from Crix Technology." },
+  { icon: "document", title: "Offer Letter + LOR", desc: "Official offer letter and Letter of Recommendation — issued to internship program graduates." },
   { icon: "linkedin", title: "LinkedIn Recognition", desc: "Official LinkedIn recommendation added to your profile." },
   { icon: "briefcase", title: "Resume Boost", desc: "Real project experience to impress top recruiters." },
   { icon: "mentor", title: "Mentor Support", desc: "Dedicated mentor guidance throughout the program." },
   { icon: "tasks", title: "Real Tasks", desc: "Industry-level project tasks — not just theory." },
+  { icon: "star", title: "Path to Internship", desc: "Outstanding performers in any course may be invited into our paid internship program." },
 ];
 
 export const stats = [

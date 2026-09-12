@@ -175,6 +175,41 @@ export async function submitApplication(payload) {
   }
 }
 
+// ---------- admin: the Apply / Inquire-to-enroll inbox ----------
+export async function adminGetApplications(q, type) {
+  try {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (type) params.set("type", type);
+    const qs = params.toString();
+    const res = await authFetch(`/admin/applications${qs ? `?${qs}` : ""}`);
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load applications" };
+  }
+}
+
+export async function adminUpdateApplication(id, patch) {
+  try {
+    const res = await authFetch(`/admin/applications/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not update application" };
+  }
+}
+
+export async function adminDeleteApplication(id) {
+  try {
+    const res = await authFetch(`/admin/applications/${id}`, { method: "DELETE" });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not delete application" };
+  }
+}
+
 // ---------- Razorpay ----------
 export async function createRazorpayOrder(applicationId, courseSlug) {
   if (!API) return { ok: false, error: "Backend not configured yet." };

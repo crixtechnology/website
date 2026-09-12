@@ -3,6 +3,12 @@
   --teal:#14C9C9; --cyan:#7FE8E0; --amber:#F2B44C;
   --text:#E8EEF7; --muted:#93A3BC;
   --line:rgba(127,232,224,.14); --radius:18px;
+  /* Internships vs Courses each get one fixed accent, reused everywhere
+     that needs to signal which category something belongs to (section
+     eyebrow, card type pill, card border-on-hover, deliverable chips) so
+     the grouping reads visually, not just from copy. */
+  --internship: var(--teal); --internship-rgb: 20,201,201;
+  --course: var(--amber); --course-rgb: 242,180,76;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth;overflow-x:hidden;width:100%}
@@ -16,6 +22,9 @@ a{color:inherit}
 h1,h2,h3{font-family:'Unbounded',sans-serif;font-weight:600;line-height:1.15}
 h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
 .section{padding:clamp(56px,10vw,110px) 0;position:relative;overflow-x:clip}
+/* Nav-link targets (/programs#internships, #courses) — offset so the fixed
+   68px navbar never covers the section heading when scrolled/jumped to. */
+.anchor-section{scroll-margin-top:88px}
 .page-head{padding:clamp(112px,22vw,160px) 0 clamp(28px,6vw,40px)}
 .page-head p{color:var(--muted);max-width:60ch}
 
@@ -182,6 +191,14 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:54px}
 @media(max-width:920px){.grid3{grid-template-columns:repeat(2,1fr);gap:20px}}
 @media(max-width:640px){.grid3{grid-template-columns:1fr}}
+/* A card list whose length isn't a clean multiple of the column count (e.g.
+   4 internships or 7 courses) otherwise leaves one lone card stranded at
+   the left of an empty final row. Center it instead, at each breakpoint
+   that still has more than one column. */
+@media(min-width:921px){.grid3>:nth-child(3n+1):last-child{grid-column:2}}
+@media(min-width:641px) and (max-width:920px){
+  .grid3>:nth-child(2n+1):last-child{grid-column:1/-1;max-width:calc(50% - 10px);margin:0 auto}
+}
 .card{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:clamp(24px,6vw,36px) clamp(20px,5vw,30px);position:relative;transform-style:preserve-3d;transition:border-color .3s;will-change:transform;display:flex;flex-direction:column;height:100%}
 .card::before{content:"";position:absolute;inset:0;border-radius:var(--radius);background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(127,232,224,.10),transparent 42%);pointer-events:none}
 .card:hover{border-color:rgba(127,232,224,.4)}
@@ -190,6 +207,36 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .card p{color:var(--muted);font-size:.92rem}
 .card-benefit{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:4.2em}
 .duration-chip{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:10px}
+.deliverable-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.deliverable-chip{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.04em;text-transform:uppercase;color:var(--teal);background:rgba(20,201,201,.10);border:1px solid rgba(20,201,201,.25);padding:3px 9px;border-radius:20px}
+.card-type-course .deliverable-chip{color:var(--course);background:rgba(var(--course-rgb),.10);border-color:rgba(var(--course-rgb),.25)}
+/* --course is aliased to the same --amber the topic `tag` already used
+   site-wide (see :root) — on a course card that put the vivid "Course"
+   type pill and the plain-text topic tag ("In demand", "Beginner
+   friendly"...) in the exact same color right next to each other,
+   undoing the "tag stays a secondary badge" hierarchy the pill exists to
+   create. Muting just the tag here (not the shared `.card .tag` rule,
+   which Services cards and internship cards still rely on unchanged)
+   fixes the one case where they actually collide. */
+.card-type-course .tag{color:var(--muted)}
+.section-lede{color:var(--muted);max-width:60ch;margin-top:10px}
+
+/* Card-top-left groups the new type pill with the existing topic tag so
+   card-top's space-between still only has two flex children (this group,
+   and the optional closed-badge on the far right). */
+.card-top-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.type-pill{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;line-height:1}
+.type-pill--internship{color:var(--internship);background:rgba(var(--internship-rgb),.14);border:1px solid rgba(var(--internship-rgb),.35)}
+.type-pill--course{color:var(--course);background:rgba(var(--course-rgb),.14);border:1px solid rgba(var(--course-rgb),.35)}
+.card-type-internship:hover{border-color:rgba(var(--internship-rgb),.4)}
+.card-type-course:hover{border-color:rgba(var(--course-rgb),.4)}
+
+/* Section-level accent so the Internships/Courses grouping on /programs
+   (and the matching Home sections) reads even before you get to a card. */
+.section--internships .eyebrow{color:var(--internship)}
+.section--internships .eyebrow::before{background:var(--internship)}
+.section--courses .eyebrow{color:var(--course)}
+.section--courses .eyebrow::before{background:var(--course)}
 .card ul{list-style:none;margin-top:20px}
 .card ul li{font-size:.85rem;color:var(--text);padding:7px 0;border-top:1px dashed rgba(147,163,188,.18)}
 .card ul li::before{content:"→";color:var(--teal);margin-right:10px}
@@ -281,6 +328,8 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .admin-pill.expired{color:#f0997b;border-color:rgba(224,120,90,.4);background:rgba(224,120,90,.1)}
 .admin-pill.lifetime{color:var(--teal);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
 .admin-pill.admin-role{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-link{color:var(--cyan);text-decoration:none;border-bottom:1px dashed rgba(127,232,224,.4)}
+.admin-link:hover{color:var(--text);border-bottom-color:var(--text)}
 .admin-tabs{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
 .admin-tabs button{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:8px 16px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;transition:opacity .2s}
 .admin-tabs button.active{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}

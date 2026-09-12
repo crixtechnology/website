@@ -36,4 +36,27 @@ async function sendContactEmail({ name, email, interest, message }) {
   return { sent: true };
 }
 
-module.exports = { sendContactEmail };
+// Sends a new internship/course application (Apply / Inquire to enroll /
+// Buy-now) to CONTACT_TO_EMAIL, same best-effort shape as sendContactEmail —
+// the row is already persisted by the time this runs, so a delivery failure
+// here just means a missed notification, not a lost inquiry.
+async function sendApplicationEmail({ type, refTitle, name, email, phone, college }) {
+  const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
+  const t = getTransporter();
+  const label = type === "internship" ? "Internship application" : "Course inquiry";
+  if (!t) {
+    console.log("[mailer] SMTP not configured — logging instead of sending:", { type, refTitle, name, email, phone, college });
+    return { sent: false };
+  }
+  await t.sendMail({
+    from: `"Crix Technology Website" <${process.env.SMTP_USER}>`,
+    to,
+    replyTo: email,
+    subject: `${label} — ${refTitle}`,
+    text: `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nCollege: ${college || "—"}\nFor: ${refTitle} (${type})`,
+    html: `<p><b>Name:</b> ${name}</p><p><b>Email:</b> ${email}</p><p><b>Phone:</b> ${phone}</p><p><b>College:</b> ${college || "—"}</p><p><b>For:</b> ${refTitle} (${type})</p>`,
+  });
+  return { sent: true };
+}
+
+module.exports = { sendContactEmail, sendApplicationEmail };

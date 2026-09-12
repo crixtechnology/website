@@ -1,7 +1,7 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import * as THREE from "three";
-import { site, marquee } from "../data/content.js";
+import { site, marquee, programDeliverables } from "../data/content.js";
 import { submitApplication, createRazorpayOrder, verifyPayment } from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 
@@ -55,7 +55,7 @@ export function Reveal({ as: Tag = "div", variant = "reveal", className = "", ch
 }
 
 /* ---------- TiltCard ---------- */
-export function TiltCard({ children, style }) {
+export function TiltCard({ children, style, className }) {
   const ref = useRef(null);
   const onMove = (e) => {
     if (REDUCED) return;
@@ -67,7 +67,7 @@ export function TiltCard({ children, style }) {
   };
   const onLeave = () => { if (ref.current) ref.current.style.transform = "perspective(900px)"; };
   return (
-    <article ref={ref} className="card" style={style} onPointerMove={onMove} onPointerLeave={onLeave}>
+    <article ref={ref} className={`card${className ? ` ${className}` : ""}`} style={style} onPointerMove={onMove} onPointerLeave={onLeave}>
       {children}
     </article>
   );
@@ -76,8 +76,10 @@ export function TiltCard({ children, style }) {
 // A course/internship not yet open for buying (no price set yet, or the
 // admin closed it) gets an "Inquire" button straight to WhatsApp instead of
 // a dead end — same number the site's floating WhatsApp button uses.
-export function whatsappInquiryLink(title) {
-  const text = encodeURIComponent(`Hi Crix Technology! I'm interested in "${title}". Could you share more details?`);
+// `verb` lets the message (and the button copy that builds it) say "apply
+// for" vs "enroll in" so the CTA itself signals internship vs course.
+export function whatsappInquiryLink(title, verb = "learning more about") {
+  const text = encodeURIComponent(`Hi Crix Technology! I'm interested in ${verb} "${title}". Could you share more details?`);
   return `https://wa.me/${site.whatsapp}?text=${text}`;
 }
 
@@ -87,22 +89,39 @@ export function whatsappInquiryLink(title) {
 // isProgram: true for course/internship cards (they always get a Buy now or
 // Inquire button) — false/omitted for plain content cards like Services,
 // which only ever show "See more".
-export function InfoCard({ item, i, onDetail, onBuy, isProgram }) {
+// kind: "internship" | "course" — drives the type pill, the card's accent
+// color, and the CTA verb, so the category reads even out of context (not
+// just from the section heading above the grid). Omit for Services cards.
+export function InfoCard({ item, i, onDetail, onBuy, onInquire, isProgram, kind }) {
   const variant = i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top";
   const hasPrice = item.price != null;
   const discounted = hasPrice ? Math.round(item.price * (1 - (item.discountPercent || 0) / 100)) : null;
   const closed = item.status === "closed";
   const openForBuy = hasPrice && !closed;
+  const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
+  // Derived from `kind`, not `item.deliverables` — every internship/course
+  // issues the same fixed set of documents for its type (see content.js's
+  // programDeliverables), so this works whether `item` came from the static
+  // fallback or the live API (whose Course schema has no such field).
+  const deliverables = kind ? programDeliverables[kind] : null;
   return (
     <Reveal as="div" variant={variant} style={{ "--i": i }}>
-      <TiltCard>
+      <TiltCard className={kind ? `card-type-${kind}` : undefined}>
         <div className="card-top">
-          <span className="tag">{item.tag}</span>
+          <div className="card-top-left">
+            {kindLabel && <span className={`type-pill type-pill--${kind}`}>{kindLabel}</span>}
+            <span className="tag">{item.tag}</span>
+          </div>
           {closed && <span className="closed-badge">Currently closed</span>}
         </div>
         <h3>{item.title}</h3>
         <p className="card-benefit">{item.desc}</p>
         {item.durationDays ? <span className="duration-chip">{item.durationDays} days</span> : null}
+        {deliverables?.length ? (
+          <div className="deliverable-row">
+            {deliverables.map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
+          </div>
+        ) : null}
         {openForBuy && (
           <div className="price-row">
             {item.discountPercent > 0 && <span className="price-old">₹{item.price.toLocaleString("en-IN")}</span>}
@@ -114,10 +133,14 @@ export function InfoCard({ item, i, onDetail, onBuy, isProgram }) {
           {isProgram && (
             openForBuy ? (
               <button className="btn btn-solid buy-btn" onClick={() => onBuy && onBuy(item)}>Buy now</button>
+            ) : kind === "internship" ? (
+              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Apply for this internship — no account needed">
+                Apply
+              </button>
             ) : (
-              <a className="btn btn-solid buy-btn" href={whatsappInquiryLink(item.title)} target="_blank" rel="noopener noreferrer">
-                Inquire
-              </a>
+              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Inquire to enroll in this course — no account needed">
+                Inquire to enroll
+              </button>
             )
           )}
           {item.slug ? (
@@ -153,6 +176,8 @@ export function BenefitIcon({ name }) {
       return (<svg {...p}><circle cx="12" cy="8" r="3.5" /><path d="M5 21c0-3.9 3.1-7 7-7 1 0 2 .2 2.8.6" /><path d="m15.5 17.5 1.5 1.5 3-3" /></svg>);
     case "tasks":
       return (<svg {...p}><rect x="5" y="4" width="14" height="17" rx="1.5" /><path d="M9 3.5h6v2H9z" /><path d="m8.5 12 1.5 1.5L13 10" /><path d="M8.5 17h7" /></svg>);
+    case "star":
+      return (<svg {...p}><path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3-4.8-4.3 6.4-.6z" /></svg>);
     default:
       return null;
   }
@@ -330,6 +355,117 @@ export function BuyModal({ item, user, onClose }) {
               )}
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Please wait..." : "Continue to payment"}
+              </button>
+              {status.text && (
+                <p className={status.kind === "error" ? "form-error" : "form-note"}
+                  role={status.kind === "error" ? "alert" : "status"} aria-live="polite">
+                  {status.text}
+                </p>
+              )}
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// InquiryModal: collects name/email/phone/college and creates an Application
+// (routes/applications.js) — this is what "Apply" (internships) and
+// "Inquire to enroll" (unpriced/closed courses) open now, replacing the old
+// wa.me/phone redirect so a submission is actually captured (and visible at
+// /admin/applications) instead of depending on the visitor having WhatsApp
+// and the admin catching the message there. No account needed either way.
+// `item` doubles as the "is this open" flag, same pattern as BuyModal.
+export function InquiryModal({ item, kind, onClose }) {
+  const [form, setForm] = useState({ name: "", email: "", phone: "", college: "" });
+  const [status, setStatus] = useState({ text: "", kind: "" });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  useBodyScrollLock(!!item);
+
+  useEffect(() => {
+    if (item) {
+      setForm({ name: "", email: "", phone: "", college: "" });
+      setStatus({ text: "", kind: "" });
+      setLoading(false);
+      setDone(false);
+    }
+  }, [item]);
+
+  useEffect(() => {
+    if (!item) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [item, onClose]);
+
+  if (!item) return null;
+
+  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus({ text: "", kind: "" }); };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    const missing = [
+      !form.name.trim() && "name",
+      !form.email.trim() && "email",
+      !form.phone.trim() && "phone number",
+    ].filter(Boolean);
+    if (missing.length) {
+      const list = missing.length === 1
+        ? missing[0]
+        : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
+      setStatus({ text: `Please add your ${list}.`, kind: "error" });
+      return;
+    }
+    setLoading(true);
+    setStatus({ text: "", kind: "" });
+    const res = await submitApplication({
+      type: kind, refTitle: item.title, courseSlug: item.slug,
+      name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), college: form.college.trim(),
+    });
+    setLoading(false);
+    if (!res.ok) {
+      setStatus({ text: res.error || "Could not submit right now. Please try again, or email us at " + site.email, kind: "error" });
+      return;
+    }
+    setDone(true);
+  };
+
+  const verb = kind === "internship" ? "apply for" : "enrol in";
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="inquiry-modal-title" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        <span className="eyebrow">{kind === "internship" ? "Apply" : "Inquire"}</span>
+        <h3 id="inquiry-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
+
+        {done ? (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".9rem", margin: "8px 0 20px" }}>
+              Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""} — we've got your details for
+              "{item.title}" and will reach out on {form.email} or {form.phone} within 2 working days.
+            </p>
+            <button className="btn btn-solid" onClick={onClose} style={{ width: "100%" }}>Done</button>
+          </>
+        ) : (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
+              Share your details and we'll help you {verb} "{item.title}" — no account needed.
+            </p>
+            <form onSubmit={onSubmit}>
+              <div className="field"><label htmlFor="inquiry-name">Full name</label>
+                <input id="inquiry-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Your name" /></div>
+              <div className="field"><label htmlFor="inquiry-email">Email</label>
+                <input id="inquiry-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
+              <div className="field"><label htmlFor="inquiry-phone">Phone</label>
+                <input id="inquiry-phone" autoComplete="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="98765 43210" /></div>
+              <div className="field"><label htmlFor="inquiry-college">College / University (optional)</label>
+                <input id="inquiry-college" autoComplete="organization" value={form.college} onChange={set("college")}
+                  placeholder={kind === "internship" ? "For your placement records" : "e.g. ABC Institute of Technology"} /></div>
+              <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
+                {loading ? "Sending..." : kind === "internship" ? "Submit application" : "Send inquiry"}
               </button>
               {status.text && (
                 <p className={status.kind === "error" ? "form-error" : "form-note"}
@@ -557,7 +693,8 @@ export function Navbar() {
   }, [open]);
 
   const links = [
-    ["/programs", "Internships & Courses"],
+    ["/programs#internships", "Internships"],
+    ["/programs#courses", "Courses"],
     ["/services", "IT Services"],
     ["/about", "About"],
     ["/contact", "Contact"],
@@ -567,12 +704,27 @@ export function Navbar() {
       <div className="wrap nav-in">
         <Link to="/" onClick={() => setOpen(false)}><Logo /></Link>
         <ul id="primary-nav" className={`nav-links ${open ? "open" : ""}`}>
-          {links.map(([to, label]) => (
-            <li key={to}>
-              <NavLink to={to} onClick={() => setOpen(false)}
-                className={({ isActive }) => (isActive ? "active" : "")}>{label}</NavLink>
-            </li>
-          ))}
+          {links.map(([to, label]) => {
+            // NavLink's own isActive matches on pathname only, so it can't
+            // tell "/programs#internships" and "/programs#courses" apart —
+            // both would light up together any time the pathname is
+            // "/programs", which is exactly the "can't tell them apart" bug
+            // this session has been fixing everywhere else. Compare the
+            // hash ourselves for a link that has one. Passing a *function*
+            // to className (rather than a string) is required here — with a
+            // string, NavLink always re-appends its own pathname-only
+            // "active" regardless of what string you give it, silently
+            // undoing this override.
+            const [toPath, toHash] = to.split("#");
+            const isActive = toHash
+              ? location.pathname === toPath && location.hash === `#${toHash}`
+              : location.pathname === toPath;
+            return (
+              <li key={to}>
+                <NavLink to={to} onClick={() => setOpen(false)} className={() => (isActive ? "active" : "")}>{label}</NavLink>
+              </li>
+            );
+          })}
           {/* .nav-cta/.nav-account (below) are desktop-only (hidden under the
               mobile breakpoint) — duplicate the same account links here so
               logging in/out and reaching My Courses is still reachable from
@@ -635,10 +787,10 @@ const FOOT_COLS = [
   {
     heading: "For Students",
     links: [
-      ["Virtual Internships", "/programs"],
-      ["Web Development Track", "/programs"],
-      ["Android Development", "/programs"],
-      ["Online Courses", "/programs"],
+      ["Virtual Internships", "/programs#internships"],
+      ["Web Development Track", "/programs#courses"],
+      ["Android Development", "/programs#internships"],
+      ["Online Courses", "/programs#courses"],
     ],
   },
   {

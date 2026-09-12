@@ -16,6 +16,12 @@ const applicationSchema = new mongoose.Schema(
     // so these stay null there.
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     course: { type: mongoose.Schema.Types.ObjectId, ref: "Course", default: null },
+    // Admin follow-up flag for guest inquiries (Apply / Inquire to enroll) —
+    // mirrors Contact's new/read status, surfaced in AdminApplications.jsx.
+    // Left false for the Buy-now flow's own Application rows (payment status
+    // already tracks those; this is specifically for "did someone call/email
+    // this person back yet").
+    contacted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
