@@ -47,7 +47,10 @@ export default function AdminStudents() {
     }
   };
 
-  useEffect(() => { adminGetCourses("course").then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
+  // Both types now — an internship can carry a real price and get a real
+  // Enrollment the same way a course does (Backend/src/routes/courses.js),
+  // so it needs to be grantable/revocable here too, not just courses.
+  useEffect(() => { adminGetCourses().then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
   useDebouncedLoad(load, q);
 
   const grant = async (e) => {
@@ -106,7 +109,7 @@ export default function AdminStudents() {
               <input type="email" value={grantForm.email} onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })} placeholder="student@example.com" /></div>
             <div className="field"><label>Course</label>
               <select value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
-                <option value="">Choose a course...</option>
+                <option value="">Choose a course or internship...</option>
                 {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
               </select>
             </div>

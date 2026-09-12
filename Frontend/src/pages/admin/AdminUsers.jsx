@@ -51,7 +51,9 @@ export default function AdminUsers() {
     }
   };
 
-  useEffect(() => { adminGetCourses("course").then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
+  // Both types now — an internship can carry a real price and get a real
+  // Enrollment the same way a course does, so it needs to be grantable here too.
+  useEffect(() => { adminGetCourses().then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
   useDebouncedLoad(loadList, q);
 
   const openDetail = async (id) => {
@@ -231,7 +233,7 @@ export default function AdminUsers() {
                     <div className="field" style={{ margin: 0, flex: "1 1 200px" }}>
                       <label>Grant access to</label>
                       <select value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
-                        <option value="">Choose a course...</option>
+                        <option value="">Choose a course or internship...</option>
                         {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
                       </select>
                     </div>

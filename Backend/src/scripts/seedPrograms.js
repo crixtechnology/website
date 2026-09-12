@@ -9,10 +9,12 @@
 // Safe to re-run — skips any title whose slug already exists.
 //   node src/scripts/seedPrograms.js
 //
-// Courses are seeded with price: null (no "Buy now" until an admin sets a
-// real price via the admin panel — matches current behavior exactly, since
-// the static fallback never had prices either). Internships never get a
-// price at all.
+// Both types are seeded with price: null (no "Buy now" until an admin sets
+// a real price via the admin panel — matches current behavior exactly,
+// since the static fallback never had prices either). Internships aren't
+// required to stay unpriced — an admin can set a real price on one
+// afterward, same two-step (set price, then open) flow as a course — this
+// script's starter data just doesn't presume to do that for you.
 //
 // DRIFT WARNING (learned the hard way 2026-09-12): this script only ever
 // INSERTS — "safe to re-run" means it skips a title whose slug already

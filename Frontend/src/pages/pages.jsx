@@ -90,8 +90,13 @@ export function Home() {
                 // Home has no login/BuyModal plumbing of its own (unlike
                 // Programs/CourseDetail) — an internship priced+open enough
                 // to show "Buy now" here sends the click to its full detail
-                // page instead, where the real purchase flow lives.
-                onBuy={(item) => navigate(`/programs/${item.slug}`)} />
+                // page instead, where the real purchase flow lives. ?buy=
+                // is CourseDetail's own existing "resume purchase" query
+                // param (also used by the post-profile-completion redirect
+                // below) — it opens BuyModal there immediately on arrival
+                // instead of landing the visitor on the page and making
+                // them find and click "Buy now" a second time.
+                onBuy={(item) => navigate(`/programs/${item.slug}?buy=${encodeURIComponent(item.slug)}`)} />
             ))}
           </div>
           <div className="hero-ctas">
