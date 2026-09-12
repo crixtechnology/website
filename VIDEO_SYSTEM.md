@@ -167,9 +167,24 @@ tracks what it has already uploaded, so give each course profile its own
 `STATE_FILE` if you keep several `.env`s around.
 
 ```bash
-node index.js            # one pass
-node index.js --loop     # keep polling every POLL_INTERVAL_SECONDS (default 300)
+node index.js                        # one pass, loads ./.env
+node index.js --loop                 # keep polling every POLL_INTERVAL_SECONDS (default 300)
+node index.js --env-file=.env.foo    # load a specific course's profile instead of ./.env
 ```
+
+**Courses launch on a rolling basis, not all at once** — when the next
+course's batch actually starts (its own Google Meet series now exists,
+recording into the same shared folder), onboard it without touching code:
+copy `.env.example` to a new file (e.g. `.env.ai-agentic`), fill in that
+course's `COURSE_ID` and a `FILE_NAME_INCLUDES` matching its Meet nickname,
+give it its own `STATE_FILE`, then run
+`node index.js --env-file=.env.ai-agentic --loop`. At the same time, make
+sure every *other* course's `.env` already has a real `FILE_NAME_INCLUDES`
+too — a blank one matches every file in the folder, so an existing course's
+sync would otherwise start silently pulling in the new course's recordings
+as soon as they appear. The startup log always prints which env file, state
+file and name filter a running instance is using, specifically so this is
+easy to double-check before leaving a `--loop` running unattended.
 
 `dayNumber` is auto-assigned as *(existing video count in that course + 1)*.
 Already-synced Drive file ids are recorded in `.sync-state.json`, so re-runs
