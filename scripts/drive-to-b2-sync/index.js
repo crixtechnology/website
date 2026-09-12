@@ -13,16 +13,27 @@
 //   3. records the Drive file id in a local JSON state file so re-runs skip it
 //
 // Modes:
-//   node index.js            one pass, then exit
-//   node index.js --loop     keep polling every POLL_INTERVAL_SECONDS
-//   node index.js --once     alias for the default single pass
+//   node index.js                        one pass, then exit
+//   node index.js --loop                 keep polling every POLL_INTERVAL_SECONDS
+//   node index.js --once                 alias for the default single pass
+//   node index.js --env-file=.env.foo    load a specific course's env profile
+//                                         instead of the default ./.env (see
+//                                         "Multiple courses, one shared Drive
+//                                         folder" in VIDEO_SYSTEM.md) — each
+//                                         course gets its own COURSE_ID,
+//                                         FILE_NAME_INCLUDES and STATE_FILE.
 //
 // Per-file errors are logged and skipped; the batch keeps going.
 // ============================================================================
 
-require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
+
+// --env-file must be resolved before dotenv loads anything, and BEFORE the
+// config destructure below reads process.env.
+const envFileArg = process.argv.find((a) => a.startsWith("--env-file="));
+require("dotenv").config(envFileArg ? { path: envFileArg.slice("--env-file=".length) } : undefined);
+
 const { google } = require("googleapis");
 const { S3Client } = require("@aws-sdk/client-s3");
 const { Upload } = require("@aws-sdk/lib-storage");
@@ -202,6 +213,12 @@ async function preflight() {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`preflight failed (${res.status}): ${data.error || "unknown"}`);
   console.log(`Target course: "${(data.course && data.course.title) || COURSE_ID}" (${COURSE_ID})`);
+  // Loud on purpose — running the wrong profile against a shared Drive
+  // folder silently steals another course's recordings (a blank
+  // FILE_NAME_INCLUDES matches everything in the folder).
+  console.log(`Env file: ${envFileArg ? envFileArg.slice("--env-file=".length) : "./.env (default)"}`);
+  console.log(`State file: ${STATE_FILE}`);
+  console.log(`Name filter: includes=[${FILE_NAME_INCLUDES || "(none — matches every file)"}] excludes=[${FILE_NAME_EXCLUDES || "(none)"}]`);
 }
 
 // The file is already in B2 by the time this runs, so retry a few times on a
