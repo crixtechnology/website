@@ -30,9 +30,10 @@ export default function AdminLectures() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    // Internships have no purchase/enrollment flow, so no lecture schedule —
-    // this picker only lists actual (purchasable) courses.
-    adminGetCourses("course").then((res) => {
+    // Both types — an internship can now carry a real price and get a real
+    // Enrollment the same way a course does (Backend/src/routes/courses.js),
+    // so it can have a live-class schedule too, not just courses.
+    adminGetCourses().then((res) => {
       if (res.ok) {
         setCourses(res.courses || []);
         if (res.courses?.length) setCourseId(res.courses[0]._id);

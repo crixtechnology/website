@@ -32,7 +32,10 @@ export default function AdminVideos() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    adminGetCourses("course").then((res) => {
+    // Both types — an internship can now carry a real price and get a real
+    // Enrollment the same way a course does, so it can have a drip video
+    // schedule too, not just courses.
+    adminGetCourses().then((res) => {
       if (res.ok) {
         setCourses(res.courses || []);
         if (res.courses?.length) setCourseId(res.courses[0]._id);
