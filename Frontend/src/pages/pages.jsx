@@ -369,8 +369,8 @@ export function CourseDetail() {
                   Apply
                 </button>
               ) : (
-                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Inquire to enroll in this course — no account needed">
-                  Inquire to enroll
+                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to enroll in this course — no account needed">
+                  Request to enroll
                 </button>
               )}
             </div>

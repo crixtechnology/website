@@ -138,8 +138,8 @@ export function InfoCard({ item, i, onDetail, onBuy, onInquire, isProgram, kind 
                 Apply
               </button>
             ) : (
-              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Inquire to enroll in this course — no account needed">
-                Inquire to enroll
+              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Request to enroll in this course — no account needed">
+                Request to enroll
               </button>
             )
           )}
@@ -372,7 +372,7 @@ export function BuyModal({ item, user, onClose }) {
 
 // InquiryModal: collects name/email/phone/college and creates an Application
 // (routes/applications.js) — this is what "Apply" (internships) and
-// "Inquire to enroll" (unpriced/closed courses) open now, replacing the old
+// "Request to enroll" (unpriced/closed courses) open now, replacing the old
 // wa.me/phone redirect so a submission is actually captured (and visible at
 // /admin/applications) instead of depending on the visitor having WhatsApp
 // and the admin catching the message there. No account needed either way.
@@ -438,7 +438,7 @@ export function InquiryModal({ item, kind, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="inquiry-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
-        <span className="eyebrow">{kind === "internship" ? "Apply" : "Inquire"}</span>
+        <span className="eyebrow">{kind === "internship" ? "Apply" : "Request"}</span>
         <h3 id="inquiry-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
 
         {done ? (
@@ -465,7 +465,7 @@ export function InquiryModal({ item, kind, onClose }) {
                 <input id="inquiry-college" autoComplete="organization" value={form.college} onChange={set("college")}
                   placeholder={kind === "internship" ? "For your placement records" : "e.g. ABC Institute of Technology"} /></div>
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
-                {loading ? "Sending..." : kind === "internship" ? "Submit application" : "Send inquiry"}
+                {loading ? "Sending..." : kind === "internship" ? "Submit application" : "Send request"}
               </button>
               {status.text && (
                 <p className={status.kind === "error" ? "form-error" : "form-note"}

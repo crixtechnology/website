@@ -446,7 +446,7 @@ Certificates and Letters of Recommendation are issued only upon satisfactory com
 
 Access to a purchased course's live-class schedule and recorded lectures is granted upon confirmed payment and remains tied to your account. Crix Technology may reschedule live sessions, substitute mentors, or make reasonable changes to course content and delivery format, provided the overall quality and scope of the course is not materially reduced.
 
-All course purchases are final. Crix Technology does not offer refunds or cancellations for courses once payment has been completed, regardless of whether course materials, recordings, or live sessions have been accessed. Please review the course details and use the "Inquire" option on a course's page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
+All course purchases are final. Crix Technology does not offer refunds or cancellations for courses once payment has been completed, regardless of whether course materials, recordings, or live sessions have been accessed. Please review the course details and use the "Request to enroll" option on a course's page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
       },
       {
         title: "7. User Conduct",

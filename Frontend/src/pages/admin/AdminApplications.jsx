@@ -5,7 +5,7 @@ import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 
-// Every "Apply" (internship) / "Inquire to enroll" (course) submission from
+// Every "Apply" (internship) / "Request to enroll" (course) submission from
 // InquiryModal, persisted server-side (routes/applications.js) — this is
 // what replaced the old wa.me/phone redirect, so it needs somewhere to
 // actually surface instead of only existing as a best-effort email.
@@ -54,7 +54,7 @@ export default function AdminApplications() {
             <span className="eyebrow">Admin</span>
             <h2 style={{ margin: "14px 0 0" }}>Applications &amp; inquiries</h2>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
-              "Apply" and "Inquire to enroll" submissions from the public site — no account required to submit.
+              "Apply" and "Request to enroll" submissions from the public site — no account required to submit.
             </p>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
