@@ -13,6 +13,17 @@
 // real price via the admin panel — matches current behavior exactly, since
 // the static fallback never had prices either). Internships never get a
 // price at all.
+//
+// DRIFT WARNING (learned the hard way 2026-09-12): this script only ever
+// INSERTS — "safe to re-run" means it skips a title whose slug already
+// exists, it never updates one. Once a title/tag/desc/points below has been
+// seeded into a real DB, editing content.js's copy does nothing to that DB
+// row; it now only affects the static fallback shown when the backend isn't
+// configured. Two course titles here drifted from content.js this way after
+// a rename (both fixed by hand in the DB — see git history around
+// 2026-09-12) before this file was updated to match. If you rename a title
+// here again, also fix it directly in the DB (Course.updateOne by old
+// title) or via /admin/courses — this file alone won't touch existing rows.
 require("dotenv").config();
 const { connectDB } = require("../db");
 const Course = require("../models/Course");
@@ -64,13 +75,13 @@ const courses = [
   },
   {
     tag: "Career",
-    title: "AI Agentic Systems Course",
+    title: "Building AI Agents & RAG Systems",
     desc: "The advanced track — build agents that use tools, retrieve knowledge, and work in teams.",
     points: ["LangChain & CrewAI", "RAG systems", "Multi-agent projects", "Certificate on completion"],
   },
   {
     tag: "Mobile",
-    title: "Android App Development",
+    title: "Kotlin & Java for Android",
     desc: "Beginner to pro — build native Android apps and publish a portfolio project.",
     points: ["Java & Kotlin foundations", "Jetpack & Material UI", "REST APIs & local storage", "Ship a real app"],
   },

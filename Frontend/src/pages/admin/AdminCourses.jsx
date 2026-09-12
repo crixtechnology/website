@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   getAdminToken, adminGetCourses, adminCreateCourse, adminUpdateCourse, adminDeleteCourse,
 } from "../../services/api.js";
@@ -29,6 +29,7 @@ export default function AdminCourses() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
+  const [params, setParams] = useSearchParams();
 
   // AdminGuard (see App.jsx) already keeps this route from mounting unless
   // logged in as admin — this only has to handle the session expiring
@@ -52,6 +53,23 @@ export default function AdminCourses() {
 
   const startEdit = (c) => { setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const cancelEdit = () => { setEditingId(null); setForm(EMPTY_FORM); };
+
+  // Landed here as ?edit=<id> — from AdminApplications.jsx linking a course
+  // application's title straight to its entry here. Same deep-link pattern
+  // as Programs' own ?buy=<slug> (pages.jsx): open edit mode for the match
+  // once `entries` has loaded, then drop the param so a refresh doesn't
+  // re-trigger it.
+  useEffect(() => {
+    const id = params.get("edit");
+    if (!id) return;
+    const match = entries.find((c) => c._id === id);
+    if (match) {
+      startEdit(match);
+      const nextParams = new URLSearchParams(params);
+      nextParams.delete("edit");
+      setParams(nextParams, { replace: true });
+    }
+  }, [params, entries, setParams]);
 
   const onSubmit = async (e) => {
     e.preventDefault();

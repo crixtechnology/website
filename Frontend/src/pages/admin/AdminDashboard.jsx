@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
 export default function AdminDashboard() {
@@ -10,14 +10,14 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     courses: 0, openCourses: 0, internships: 0, openInternships: 0,
-    students: 0, enrollments: 0, users: 0, newMessages: 0,
+    students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes] = await Promise.all([
-        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(),
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(),
       ]);
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
       const courses = entries.filter((c) => c.type !== "internship");
@@ -26,6 +26,7 @@ export default function AdminDashboard() {
       const students = new Set(enrollments.map((e) => e.user?._id).filter(Boolean));
       const users = usersRes.ok ? usersRes.users || [] : [];
       const contacts = contactsRes.ok ? contactsRes.contacts || [] : [];
+      const applications = applicationsRes.ok ? applicationsRes.applications || [] : [];
       setStats({
         courses: courses.length,
         // "Open" only counts as actually buyable when it also has a price —
@@ -39,6 +40,7 @@ export default function AdminDashboard() {
         enrollments: enrollments.length,
         users: users.length,
         newMessages: contacts.filter((c) => c.status === "new").length,
+        newApplications: applications.filter((a) => !a.contacted).length,
       });
       setLoading(false);
     })();
@@ -53,6 +55,7 @@ export default function AdminDashboard() {
     { label: "Course videos", value: "Manage", sub: "recorded drip schedule", to: "/admin/videos" },
     { label: "Services", value: "Manage", sub: "public /services page", to: "/admin/services" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
+    { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Inquire submissions", to: "/admin/applications" },
   ];
 
   return (

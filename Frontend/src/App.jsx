@@ -7,12 +7,24 @@ import Learn from "./pages/student/Learn.jsx";
 import Profile from "./pages/student/Profile.jsx";
 import {
   AdminDashboard, AdminCourses, AdminLectures, AdminVideos, AdminStudents,
-  AdminUsers, AdminMessages, AdminServices, AdminGuard,
+  AdminUsers, AdminMessages, AdminApplications, AdminServices, AdminGuard,
 } from "./pages/admin/index.js";
 
 function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    if (!hash) { window.scrollTo(0, 0); return; }
+    // Nav links to /programs#internships / #courses land here — the target
+    // section exists as soon as Programs mounts, but give it a tick so the
+    // route has actually rendered before we look it up.
+    const id = hash.slice(1);
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "auto", block: "start" });
+      else window.scrollTo(0, 0);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pathname, hash]);
   return null;
 }
 
@@ -28,9 +40,10 @@ export default function App() {
           <Route path="/programs" element={<Programs />} />
           <Route path="/programs/:slug" element={<CourseDetail />} />
           {/* Internships and Courses used to be separate pages — keep the
-              old URLs working by sending them to the merged page. */}
-          <Route path="/internships" element={<Navigate to="/programs" replace />} />
-          <Route path="/courses" element={<Navigate to="/programs" replace />} />
+              old URLs working by sending them to the merged page, straight
+              to the section a bookmark of that old URL actually meant. */}
+          <Route path="/internships" element={<Navigate to="/programs#internships" replace />} />
+          <Route path="/courses" element={<Navigate to="/programs#courses" replace />} />
           <Route path="/services" element={<Services />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
@@ -55,6 +68,7 @@ export default function App() {
           <Route path="/admin/students" element={<AdminGuard><AdminStudents /></AdminGuard>} />
           <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
           <Route path="/admin/messages" element={<AdminGuard><AdminMessages /></AdminGuard>} />
+          <Route path="/admin/applications" element={<AdminGuard><AdminApplications /></AdminGuard>} />
           <Route path="/admin/services" element={<AdminGuard><AdminServices /></AdminGuard>} />
 
           <Route path="*" element={<Home />} />

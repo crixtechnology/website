@@ -5,5 +5,6 @@ export { default as AdminVideos } from "./AdminVideos.jsx";
 export { default as AdminStudents } from "./AdminStudents.jsx";
 export { default as AdminUsers } from "./AdminUsers.jsx";
 export { default as AdminMessages } from "./AdminMessages.jsx";
+export { default as AdminApplications } from "./AdminApplications.jsx";
 export { default as AdminServices } from "./AdminServices.jsx";
 export { default as AdminGuard } from "./AdminGuard.jsx";

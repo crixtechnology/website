@@ -3,6 +3,12 @@
   --teal:#14C9C9; --cyan:#7FE8E0; --amber:#F2B44C;
   --text:#E8EEF7; --muted:#93A3BC;
   --line:rgba(127,232,224,.14); --radius:18px;
+  /* Internships vs Courses each get one fixed accent, reused everywhere
+     that needs to signal which category something belongs to (section
+     eyebrow, card type pill, card border-on-hover, deliverable chips) so
+     the grouping reads visually, not just from copy. */
+  --internship: var(--teal); --internship-rgb: 20,201,201;
+  --course: var(--amber); --course-rgb: 242,180,76;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth;overflow-x:hidden;width:100%}
@@ -16,6 +22,9 @@ a{color:inherit}
 h1,h2,h3{font-family:'Unbounded',sans-serif;font-weight:600;line-height:1.15}
 h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
 .section{padding:clamp(56px,10vw,110px) 0;position:relative;overflow-x:clip}
+/* Nav-link targets (/programs#internships, #courses) — offset so the fixed
+   68px navbar never covers the section heading when scrolled/jumped to. */
+.anchor-section{scroll-margin-top:88px}
 .page-head{padding:clamp(112px,22vw,160px) 0 clamp(28px,6vw,40px)}
 .page-head p{color:var(--muted);max-width:60ch}
 
@@ -84,29 +93,41 @@ nav.topbar.scrolled .logo img{height:27px}
 .foot-logo img{height:26px}
 .foot-logo .logo-top{font-size:.92rem}
 .nav-links{display:flex;gap:30px;list-style:none}
-.nav-links a{color:var(--muted);text-decoration:none;font-size:.86rem;transition:color .25s;position:relative;padding-bottom:4px}
-.nav-links a::after{content:"";position:absolute;left:0;bottom:0;height:1px;width:0;background:var(--cyan);transition:width .3s}
+/* Vertical padding turns the link into a real ~44px-tall tap target (was
+   just the text's own line-height, ~22px) without changing its font size
+   or the navbar's fixed height — the extra space is invisible on desktop,
+   just a more comfortable hover/click zone. */
+.nav-links a{display:inline-block;color:var(--muted);text-decoration:none;font-size:.86rem;transition:color .25s;position:relative;padding:12px 2px}
+.nav-links a::after{content:"";position:absolute;left:2px;bottom:6px;height:1px;width:0;background:var(--cyan);transition:width .3s}
 .nav-links a:hover,.nav-links a.active{color:var(--cyan)}
 .nav-links a:hover::after,.nav-links a.active::after{width:100%}
 a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
 .nav-cta{font-family:'Sora',sans-serif;font-size:.82rem;font-weight:500;color:var(--ink);text-decoration:none;background:linear-gradient(120deg,var(--teal),var(--cyan));padding:10px 20px;border-radius:100px;border:none;cursor:pointer;transition:transform .25s,box-shadow .25s;white-space:nowrap;display:inline-block}
 .nav-cta:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(20,201,201,.35)}
 .nav-account{display:flex;align-items:center;gap:12px}
-.nav-account .nav-logout{padding:9px 16px;font-size:.78rem}
+.nav-account .nav-logout,.nav-links-mobile-account .nav-logout{padding:9px 16px;font-size:.78rem}
 .nav-account-link{font-family:'Sora',sans-serif;font-size:.82rem;font-weight:500;color:var(--muted);text-decoration:none;white-space:nowrap;transition:color .2s}
 .nav-account-link:hover,.nav-account-link.active{color:var(--text)}
-.burger{display:none;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer}
+.burger{display:none;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;width:44px;height:44px;align-items:center;justify-content:center;margin-right:-10px}
 .nav-links-mobile-account{display:none}
 @media(max-width:860px){
-  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 68px);overflow-y:auto;background:var(--ink);flex-direction:column;padding:22px 28px 28px;gap:18px;border-bottom:1px solid var(--line);box-shadow:0 26px 44px rgba(0,0,0,.55)}
+  /* gap is smaller than desktop's list here on purpose — each link's own
+     padding (from .nav-links a above) already provides the ~44px tap
+     target, so a big extra gap on top of that would make the menu
+     needlessly long. */
+  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 68px);overflow-y:auto;background:var(--ink);flex-direction:column;padding:22px 28px 28px;gap:4px;border-bottom:1px solid var(--line);box-shadow:0 26px 44px rgba(0,0,0,.55)}
   .nav-links.open{display:flex}
-  .burger{display:block}
-  .nav-cta{display:none}
+  .nav-links a{padding:13px 2px}
+  .burger{display:flex}
+  /* Direct-child selector — the .nav-in > .nav-cta is the desktop-only
+     button; .nav-links-mobile-account also has a button.nav-cta (the mobile
+     "Log in" pill) that must stay visible here. */
+  .nav-in>.nav-cta{display:none}
   .nav-account{display:none}
   /* .nav-cta/.nav-account above are the desktop pill — this is the same
      login/account controls, shown inside the mobile dropdown instead. */
-  .nav-links-mobile-account{display:flex;flex-wrap:wrap;align-items:center;gap:16px 18px;padding-top:18px;margin-top:-2px;border-top:1px solid var(--line);width:100%}
-  .nav-links-mobile-account a,.nav-links-mobile-account .link-btn{font-size:.86rem}
+  .nav-links-mobile-account{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding-top:18px;margin-top:-2px;border-top:1px solid var(--line);width:100%}
+  .nav-links-mobile-account a,.nav-links-mobile-account .link-btn{font-size:.86rem;display:inline-block;padding:9px 2px}
 }
 
 .hero{min-height:100vh;display:flex;align-items:center;position:relative;overflow:hidden}
@@ -170,6 +191,14 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:54px}
 @media(max-width:920px){.grid3{grid-template-columns:repeat(2,1fr);gap:20px}}
 @media(max-width:640px){.grid3{grid-template-columns:1fr}}
+/* A card list whose length isn't a clean multiple of the column count (e.g.
+   4 internships or 7 courses) otherwise leaves one lone card stranded at
+   the left of an empty final row. Center it instead, at each breakpoint
+   that still has more than one column. */
+@media(min-width:921px){.grid3>:nth-child(3n+1):last-child{grid-column:2}}
+@media(min-width:641px) and (max-width:920px){
+  .grid3>:nth-child(2n+1):last-child{grid-column:1/-1;max-width:calc(50% - 10px);margin:0 auto}
+}
 .card{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:clamp(24px,6vw,36px) clamp(20px,5vw,30px);position:relative;transform-style:preserve-3d;transition:border-color .3s;will-change:transform;display:flex;flex-direction:column;height:100%}
 .card::before{content:"";position:absolute;inset:0;border-radius:var(--radius);background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(127,232,224,.10),transparent 42%);pointer-events:none}
 .card:hover{border-color:rgba(127,232,224,.4)}
@@ -178,6 +207,36 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .card p{color:var(--muted);font-size:.92rem}
 .card-benefit{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:4.2em}
 .duration-chip{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:10px}
+.deliverable-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.deliverable-chip{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.04em;text-transform:uppercase;color:var(--teal);background:rgba(20,201,201,.10);border:1px solid rgba(20,201,201,.25);padding:3px 9px;border-radius:20px}
+.card-type-course .deliverable-chip{color:var(--course);background:rgba(var(--course-rgb),.10);border-color:rgba(var(--course-rgb),.25)}
+/* --course is aliased to the same --amber the topic `tag` already used
+   site-wide (see :root) — on a course card that put the vivid "Course"
+   type pill and the plain-text topic tag ("In demand", "Beginner
+   friendly"...) in the exact same color right next to each other,
+   undoing the "tag stays a secondary badge" hierarchy the pill exists to
+   create. Muting just the tag here (not the shared `.card .tag` rule,
+   which Services cards and internship cards still rely on unchanged)
+   fixes the one case where they actually collide. */
+.card-type-course .tag{color:var(--muted)}
+.section-lede{color:var(--muted);max-width:60ch;margin-top:10px}
+
+/* Card-top-left groups the new type pill with the existing topic tag so
+   card-top's space-between still only has two flex children (this group,
+   and the optional closed-badge on the far right). */
+.card-top-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.type-pill{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;line-height:1}
+.type-pill--internship{color:var(--internship);background:rgba(var(--internship-rgb),.14);border:1px solid rgba(var(--internship-rgb),.35)}
+.type-pill--course{color:var(--course);background:rgba(var(--course-rgb),.14);border:1px solid rgba(var(--course-rgb),.35)}
+.card-type-internship:hover{border-color:rgba(var(--internship-rgb),.4)}
+.card-type-course:hover{border-color:rgba(var(--course-rgb),.4)}
+
+/* Section-level accent so the Internships/Courses grouping on /programs
+   (and the matching Home sections) reads even before you get to a card. */
+.section--internships .eyebrow{color:var(--internship)}
+.section--internships .eyebrow::before{background:var(--internship)}
+.section--courses .eyebrow{color:var(--course)}
+.section--courses .eyebrow::before{background:var(--course)}
 .card ul{list-style:none;margin-top:20px}
 .card ul li{font-size:.85rem;color:var(--text);padding:7px 0;border-top:1px dashed rgba(147,163,188,.18)}
 .card ul li::before{content:"→";color:var(--teal);margin-right:10px}
@@ -269,6 +328,8 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .admin-pill.expired{color:#f0997b;border-color:rgba(224,120,90,.4);background:rgba(224,120,90,.1)}
 .admin-pill.lifetime{color:var(--teal);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
 .admin-pill.admin-role{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-link{color:var(--cyan);text-decoration:none;border-bottom:1px dashed rgba(127,232,224,.4)}
+.admin-link:hover{color:var(--text);border-bottom-color:var(--text)}
 .admin-tabs{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
 .admin-tabs button{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:8px 16px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;transition:opacity .2s}
 .admin-tabs button.active{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
@@ -337,19 +398,19 @@ footer{border-top:1px solid var(--line);padding:44px 0 96px;margin-top:40px}
 .foot{display:flex;justify-content:space-between;gap:44px;flex-wrap:wrap;color:var(--muted);font-size:.8rem}
 .foot .mono{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.06em}
 .foot-links{display:flex;gap:20px;list-style:none;font-size:.8rem}
-.foot-links a{color:var(--muted);text-decoration:none}
+.foot-links a{display:inline-block;padding:5px 0;color:var(--muted);text-decoration:none}
 .foot-links a:hover{color:var(--cyan)}
 
 .foot-brand{max-width:320px;display:flex;flex-direction:column;gap:14px}
 .foot-desc{color:var(--muted);font-size:.8rem;line-height:1.75}
-.foot-contact{display:flex;flex-direction:column;gap:8px;font-size:.8rem}
-.foot-contact a{color:var(--cyan);text-decoration:none}
+.foot-contact{display:flex;flex-direction:column;gap:2px;font-size:.8rem}
+.foot-contact a{display:inline-block;padding:7px 0;color:var(--cyan);text-decoration:none}
 .foot-contact a:hover{color:var(--teal)}
 .foot-contact .wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;background:rgba(30,190,93,.12);padding:2px 8px;border-radius:20px}
 .foot-hours{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.66rem;letter-spacing:.06em}
 .foot-cols{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:28px;flex:1;min-width:280px;max-width:560px}
 .foot-cols h4{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
-.foot-cols .foot-links{flex-direction:column;gap:10px}
+.foot-cols .foot-links{flex-direction:column;gap:2px}
 .foot-base{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:36px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.72rem}
 .foot-base .mono{font-family:'JetBrains Mono',monospace;letter-spacing:.06em}
 @media(max-width:640px){.foot-cols{grid-template-columns:repeat(2,1fr);max-width:none}}

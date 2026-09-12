@@ -1,12 +1,11 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
-  Reveal, InfoCard, BenefitIcon, BuyModal, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
-  whatsappInquiryLink,
+  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, testimonials, legal,
-  techStack, clientProcess, engagementModels, expertise, whyCrix, company,
+  techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables,
 } from "../data/content.js";
 import { submitContact, getCourses, getCourse, getServices } from "../services/api.js";
 import { UserContext } from "../context/UserContext.jsx";
@@ -16,6 +15,7 @@ import { usePageMeta } from "../hooks/usePageMeta.js";
 export function Home() {
   const heroRef = useRef(null);
   const [liveInternships, setLiveInternships] = useState(internships);
+  const [inquireItem, setInquireItem] = useState(null);
   usePageMeta({
     title: "Crix Technology | Virtual Internships, IT Services & Online Courses — Ahmedabad",
     description: "Crix Technology — India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses. Structured, hands-on programs in MERN stack and AI Agentic Systems. Based in Ahmedabad, serving all of India.",
@@ -56,7 +56,7 @@ export function Home() {
           </h1>
           <p>{hero.subtitle}</p>
           <div className="hero-ctas">
-            <Link className="btn btn-solid" to="/programs">Explore internships</Link>
+            <Link className="btn btn-solid" to="/programs#internships">Explore internships</Link>
             <Link className="btn btn-ghost" to="/services">Our IT services</Link>
           </div>
           <div className="hero-meta">
@@ -78,19 +78,22 @@ export function Home() {
         </div>
       </section>
 
-      <section className="section">
+      <section className="section section--internships">
         <div className="orb orb-1"></div>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Internships</Reveal>
-          <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
+          <Reveal as="h2" variant="reveal-l">Real projects. Real experience. Real pay.</Reveal>
           <div className="grid3 stagger">
-            {liveInternships.map((it, i) => <InfoCard key={it.title || it._id} item={it} i={i} isProgram />)}
+            {liveInternships.map((it, i) => (
+              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem} />
+            ))}
           </div>
           <div className="hero-ctas">
-            <Link className="btn btn-ghost" to="/programs">View internship details →</Link>
+            <Link className="btn btn-ghost" to="/programs#internships">View internship details →</Link>
           </div>
         </div>
       </section>
+      <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
 
       <section className="section" style={{ paddingTop: 0, paddingBottom: 20 }}>
         <div className="wrap">
@@ -108,14 +111,14 @@ export function Home() {
       <section className="section" style={{ paddingTop: 70 }}>
         <div className="orb orb-2"></div>
         <div className="wrap">
-          <Reveal as="span" variant="reveal-r" className="eyebrow">IT Services &amp; Courses</Reveal>
+          <Reveal as="span" variant="reveal-r" className="eyebrow">IT Services</Reveal>
           <Reveal as="h2" variant="reveal-r">We don't just teach it. We build it.</Reveal>
           <div className="grid3 stagger">
             {services.slice(0, 3).map((it, i) => <InfoCard key={it.title} item={it} i={i} />)}
           </div>
           <div className="hero-ctas">
             <Link className="btn btn-ghost" to="/services">All services →</Link>
-            <Link className="btn btn-ghost" to="/programs">Browse courses →</Link>
+            <Link className="btn btn-ghost" to="/programs#courses">Browse courses →</Link>
           </div>
         </div>
       </section>
@@ -134,6 +137,7 @@ export function Programs() {
   const [liveInternships, setLiveInternships] = useState(internships);
   const [liveCourses, setLiveCourses] = useState(courses);
   const [buyItem, setBuyItem] = useState(null);
+  const [inquire, setInquire] = useState(null); // { item, kind } | null
   const [params, setParams] = useSearchParams();
   const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
   usePageMeta({
@@ -179,27 +183,41 @@ export function Programs() {
     <>
       <PageHead eyebrow="Programs" title="Industry-ready courses, delivered pan-India and globally."
         text="Fully virtual — join from anywhere, pan-India or globally. Pick a track, pay securely, and start building; every course ships with mentor support and a certificate." />
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="internships" className="section section--internships anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Internships</Reveal>
           <Reveal as="h2" variant="reveal-l">Paid virtual internships.</Reveal>
-          <div className="grid3 stagger" style={{ marginTop: 0 }}>
-            {liveInternships.map((it, i) => <InfoCard key={it.title || it._id} item={it} i={i} isProgram />)}
+          <Reveal as="p" variant="reveal-l" className="section-lede">
+            A paid, mentor-led work experience: you get an offer letter on day one, then a completion
+            certificate and Letter of Recommendation at the end — ready to submit for your college's
+            final-year internship requirement.
+          </Reveal>
+          <div className="grid3 stagger" style={{ marginTop: 24 }}>
+            {liveInternships.map((it, i) => (
+              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship"
+                onInquire={(item) => setInquire({ item, kind: "internship" })} />
+            ))}
           </div>
         </div>
       </section>
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="courses" className="section section--courses anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Courses</Reveal>
           <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
-          <div className="grid3 stagger" style={{ marginTop: 0 }}>
+          <Reveal as="p" variant="reveal-l" className="section-lede">
+            Self-paced training with mentor support — you get a certificate of completion, and
+            outstanding performers get considered for our paid internship program.
+          </Reveal>
+          <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {liveCourses.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} onBuy={handleBuy} isProgram />
+              <InfoCard key={it.title || it._id} item={it} i={i} onBuy={handleBuy} isProgram kind="course"
+                onInquire={(item) => setInquire({ item, kind: "course" })} />
             ))}
           </div>
         </div>
       </section>
       <BuyModal item={buyItem} user={user} onClose={() => setBuyItem(null)} />
+      <InquiryModal item={inquire?.item} kind={inquire?.kind} onClose={() => setInquire(null)} />
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
@@ -241,6 +259,7 @@ export function CourseDetail() {
   const [params, setParams] = useSearchParams();
   const [course, setCourse] = useState(undefined); // undefined = loading, null = not found
   const [buyItem, setBuyItem] = useState(null);
+  const [inquireOpen, setInquireOpen] = useState(false);
   const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
 
   const handleBuy = () => {
@@ -300,10 +319,17 @@ export function CourseDetail() {
     <>
       <section className="section" style={{ paddingTop: 140 }}>
         <div className="wrap" style={{ maxWidth: 720 }}>
-          <Reveal as={Link} variant="reveal" to="/programs" className="back-link">← All programs</Reveal>
-          <Reveal variant="reveal">
+          <Reveal as={Link} variant="reveal" to={course.type ? `/programs#${course.type}s` : "/programs"} className="back-link">← All programs</Reveal>
+          <Reveal variant="reveal" className={course.type ? `card-type-${course.type}` : undefined}>
             <div className="card-top" style={{ marginTop: 24 }}>
-              <span className="tag">{course.tag}</span>
+              <div className="card-top-left">
+                {course.type && (
+                  <span className={`type-pill type-pill--${course.type}`}>
+                    {course.type === "internship" ? "Internship" : "Course"}
+                  </span>
+                )}
+                <span className="tag">{course.tag}</span>
+              </div>
               {closed && <span className="closed-badge">Currently closed</span>}
             </div>
             <h1 style={{ fontFamily: "'Unbounded',sans-serif", fontSize: "clamp(1.8rem,4vw,2.6rem)", lineHeight: 1.15, margin: "14px 0 16px" }}>
@@ -314,6 +340,12 @@ export function CourseDetail() {
             {course.durationDays ? (
               <div className="detail-fact" style={{ maxWidth: 260, marginTop: 24 }}>
                 <span>Duration</span><b>{course.durationDays} days</b>
+              </div>
+            ) : null}
+
+            {programDeliverables[course.type]?.length ? (
+              <div className="deliverable-row" style={{ marginTop: 20 }}>
+                {programDeliverables[course.type].map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
               </div>
             ) : null}
 
@@ -332,16 +364,21 @@ export function CourseDetail() {
             <div style={{ maxWidth: 280, marginTop: 24 }}>
               {openForBuy ? (
                 <button className="btn btn-solid buy-btn" onClick={handleBuy}>Buy now</button>
+              ) : course.type === "internship" ? (
+                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Apply for this internship — no account needed">
+                  Apply
+                </button>
               ) : (
-                <a className="btn btn-solid buy-btn" href={whatsappInquiryLink(course.title)} target="_blank" rel="noopener noreferrer">
-                  Inquire
-                </a>
+                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Inquire to enroll in this course — no account needed">
+                  Inquire to enroll
+                </button>
               )}
             </div>
           </Reveal>
         </div>
       </section>
       <BuyModal item={buyItem} user={user} onClose={() => setBuyItem(null)} />
+      <InquiryModal item={inquireOpen ? course : null} kind={course.type} onClose={() => setInquireOpen(false)} />
     </>
   );
 }
