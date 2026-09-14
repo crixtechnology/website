@@ -199,6 +199,21 @@ export function BenefitIcon({ name }) {
   }
 }
 
+/* ---------- Alert: the one shared success/error/info banner every form on
+   the site renders its post-submit message through (Contact, BuyModal,
+   InquiryModal, ServiceInquiryModal, AuthModal) — a colored, iconed box
+   instead of each form's own plain, easy-to-miss line of text. ---------- */
+export function Alert({ kind = "info", children }) {
+  if (!children) return null;
+  const icon = kind === "error" ? "!" : kind === "success" ? "✓" : "ⓘ";
+  return (
+    <div className={`alert alert-${kind}`} role={kind === "error" ? "alert" : "status"} aria-live="polite">
+      <span className="alert-icon" aria-hidden="true">{icon}</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 /* ---------- BuyModal: confirms the logged-in account then opens Razorpay Checkout ----------
    Buying is gated behind login (see pages.jsx) — `user` is the account the
    purchase will be made under. Falls back to a guest form if it's ever
@@ -377,12 +392,7 @@ export function BuyModal({ item, user, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Please wait..." : "Continue to payment"}
               </button>
-              {status.text && (
-                <p className={status.kind === "error" ? "form-error" : "form-note"}
-                  role={status.kind === "error" ? "alert" : "status"} aria-live="polite">
-                  {status.text}
-                </p>
-              )}
+              <Alert kind={status.kind || "info"}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -465,11 +475,11 @@ export function InquiryModal({ item, kind, onClose }) {
 
         {done ? (
           <>
-            <p style={{ color: "var(--muted)", fontSize: ".9rem", margin: "8px 0 20px" }}>
+            <Alert kind="success">
               Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""} — we've got your details for
               "{item.title}" and will reach out on {form.email} or {form.phone} within 2 working days.
-            </p>
-            <button className="btn btn-solid" onClick={onClose} style={{ width: "100%" }}>Done</button>
+            </Alert>
+            <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
           </>
         ) : (
           <>
@@ -489,12 +499,7 @@ export function InquiryModal({ item, kind, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending..." : kind === "internship" ? "Submit application" : "Send request"}
               </button>
-              {status.text && (
-                <p className={status.kind === "error" ? "form-error" : "form-note"}
-                  role={status.kind === "error" ? "alert" : "status"} aria-live="polite">
-                  {status.text}
-                </p>
-              )}
+              <Alert kind={status.kind || "error"}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -673,11 +678,11 @@ export function ServiceInquiryModal({ item, onClose }) {
 
         {done ? (
           <>
-            <p style={{ color: "var(--muted)", fontSize: ".9rem", margin: "8px 0 20px" }}>
+            <Alert kind="success">
               Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""} — we've got your details for
               "{item.title}" and will get back to you within two working days.
-            </p>
-            <button className="btn btn-solid" onClick={onClose} style={{ width: "100%" }}>Done</button>
+            </Alert>
+            <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
           </>
         ) : (
           <>
@@ -699,12 +704,7 @@ export function ServiceInquiryModal({ item, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending..." : "Send inquiry"}
               </button>
-              {status.text && (
-                <p className={status.kind === "error" ? "form-error" : "form-note"}
-                  role={status.kind === "error" ? "alert" : "status"} aria-live="polite">
-                  {status.text}
-                </p>
-              )}
+              <Alert kind={status.kind || "error"}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -837,9 +837,7 @@ export function AuthModal() {
         <span className="eyebrow">{mode === "login" ? "Welcome back" : "Get started"}</span>
         <h3 id="auth-modal-title" style={{ margin: "10px 0 14px" }}>{mode === "login" ? "Log in to your account" : "Create your account"}</h3>
         {sessionExpired && (
-          <p className="form-note" role="status" style={{ marginTop: 0, marginBottom: 14 }}>
-            You were signed out after 15 minutes of inactivity. Please log in again.
-          </p>
+          <Alert kind="info">You were signed out after 15 minutes of inactivity. Please log in again.</Alert>
         )}
         {GOOGLE_CLIENT_ID && (
           <>
@@ -862,10 +860,10 @@ export function AuthModal() {
             <input id="auth-password" type="password" value={form.password} onChange={set("password")}
               placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
               autoComplete={mode === "login" ? "current-password" : "new-password"} disabled={loading} /></div>
-          {status && <p className="form-error" role="alert">{status}</p>}
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
             {loading ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}
           </button>
+          <Alert kind="error">{status}</Alert>
         </form>
         <p className="form-note" style={{ marginTop: 14 }}>
           {mode === "login" ? (
