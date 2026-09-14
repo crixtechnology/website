@@ -943,6 +943,22 @@ export function Navbar() {
   ];
   return (
     <nav ref={navRef} className={`topbar ${scrolled ? "scrolled" : ""}`}>
+      {/* The dropdown itself only ever grows to fit its own content, not
+          the full screen, so without this the page just continues right
+          below it with nothing separating the two. Same dimmed/blurred
+          treatment as every modal's own backdrop, so an open mobile menu
+          reads as "owning" the screen the same way a modal does.
+          Portaled to <body> rather than rendered in place: nav.topbar has
+          its own backdrop-filter (for its glassy scroll effect), and per
+          the CSS spec a backdrop-filter on an ancestor makes THAT element
+          the containing block for a position:fixed descendant instead of
+          the viewport — nav.topbar is only 68px tall, so top:68px/bottom:0
+          resolved to a height of 0 there. Same fix as Alert's own portal,
+          for the same underlying reason. */}
+      {open && createPortal(
+        <div className="nav-backdrop open" onClick={() => setOpen(false)} aria-hidden="true" />,
+        document.body
+      )}
       <div className="wrap nav-in">
         <Link to="/" onClick={() => setOpen(false)}><Logo /></Link>
         <ul id="primary-nav" className={`nav-links ${open ? "open" : ""}`}>

@@ -115,8 +115,18 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
      padding (from .nav-links a above) already provides the ~44px tap
      target, so a big extra gap on top of that would make the menu
      needlessly long. */
-  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 68px);overflow-y:auto;background:var(--ink);flex-direction:column;padding:22px 28px 28px;gap:4px;border-bottom:1px solid var(--line);box-shadow:0 26px 44px rgba(0,0,0,.55)}
+  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 68px);overflow-y:auto;background:var(--ink);flex-direction:column;padding:22px 28px 28px;gap:4px;border-bottom:1px solid var(--line);box-shadow:0 26px 44px rgba(0,0,0,.55);z-index:1}
   .nav-links.open{display:flex}
+  /* The dropdown's own height only ever fits its content (5 links + the
+     account row), never the full screen — without this, whatever the page
+     happens to be scrolled to underneath just continues right below the
+     menu with nothing separating the two, reading as a cut-off/broken
+     panel rather than an open menu. Mirrors the same dimmed, blurred
+     .modal-backdrop treatment used everywhere else in the app an overlay
+     needs to visually "own" the rest of the screen. Portaled to <body>
+     (see Navbar in ui.jsx) so top:68px/bottom:0 resolve against the real
+     viewport, not nav.topbar's own 68px-tall box. */
+  .nav-backdrop{position:fixed;top:68px;left:0;right:0;bottom:0;background:rgba(6,11,26,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:fadeIn .25s ease;z-index:49}
   .nav-links a{padding:13px 2px}
   .burger{display:flex}
   /* Direct-child selector — the .nav-in > .nav-cta is the desktop-only
