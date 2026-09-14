@@ -37,12 +37,15 @@ router.post("/contact", async (req, res, next) => {
     });
 
     // Best-effort notification email; a delivery failure here shouldn't turn
-    // a successfully-saved message into a 500 for the visitor.
-    try {
-      await sendContactEmail({ interest });
-    } catch (mailErr) {
+    // a successfully-saved message into a 500 for the visitor. Not awaited:
+    // the response below doesn't depend on whether this succeeds, so it
+    // shouldn't wait on a third-party round trip either — the 10s timeout
+    // inside sendContactEmail bounds this to a background task, not
+    // something that can delay (or, if that timeout were ever removed
+    // again, hang) the visitor's own request.
+    sendContactEmail({ interest }).catch((mailErr) => {
       console.error("[contact] notification email failed:", mailErr.message);
-    }
+    });
 
     res.json({ ok: true });
   } catch (e) {

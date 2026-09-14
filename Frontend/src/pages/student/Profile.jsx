@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { UserContext, isProfileComplete } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { Alert } from "../../components/ui.jsx";
 
 export default function Profile() {
   usePageMeta({ title: "Your Profile | Crix Technology", description: "Manage your Crix Technology account details." });
@@ -61,7 +62,7 @@ export default function Profile() {
       navigate(next, { replace: true });
       return;
     }
-    setStatus({ text: "Profile saved.", kind: "info" });
+    setStatus({ text: "Profile saved.", kind: "success" });
   };
 
   return (
@@ -107,12 +108,7 @@ export default function Profile() {
             {saving ? "Saving..." : next ? "Save and continue" : "Save changes"}
           </button>
 
-          {status.text && (
-            <p className={status.kind === "error" ? "form-error" : "form-note"}
-              role={status.kind === "error" ? "alert" : "status"} aria-live="polite">
-              {status.text}
-            </p>
-          )}
+          <Alert kind={status.kind}>{status.text}</Alert>
         </form>
       </div>
     </section>
