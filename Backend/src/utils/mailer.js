@@ -1,28 +1,40 @@
-// Sends notification emails via Brevo's transactional-email HTTP API rather
-// than raw SMTP. This isn't a style preference — SMTP genuinely does not
-// work from this backend's Render plan: outbound TCP on non-HTTP(S) ports
-// (587/465) gets silently dropped rather than rejected, which is why every
-// SMTP provider tried (Gmail, then Brevo's own SMTP relay) hung for the
-// full connection timeout regardless of credentials. A plain HTTPS POST to
-// Brevo's API is indistinguishable, network-wise, from any other outbound
-// API call this backend already makes successfully (Razorpay, Google), so
-// it isn't subject to that restriction.
-const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+// Sends notification emails via formsubmit.co's AJAX endpoint rather than
+// SMTP or a transactional-email API. This is the third approach tried for
+// this: raw SMTP (Gmail, then Brevo's own SMTP relay) hung on every attempt
+// because this backend's Render plan silently drops outbound TCP on
+// non-HTTP(S) ports; Brevo's HTTP API connected fine but the sender
+// (a plain @gmail.com address, not a domain Brevo can add DKIM/DMARC
+// records for) got flagged by Google/Yahoo/Microsoft's sender-authentication
+// requirements and the notification never arrived. formsubmit.co needs no
+// API key or sender verification — it forwards to CONTACT_TO_EMAIL directly
+// — at the cost of being a third-party relay with no delivery dashboard.
+//
+// One-time setup: the first real submission after CONTACT_TO_EMAIL is set
+// makes formsubmit.co send *that inbox* a confirmation link, which must be
+// clicked before it will forward any submission (including this one) —
+// this isn't something the code can do for you.
+const FORMSUBMIT_URL = (to) => `https://formsubmit.co/ajax/${encodeURIComponent(to)}`;
 
-// Both notification functions below interpolate a caller-supplied string
-// (interest / refTitle) into the HTML body. Both POST /contact and
-// POST /applications are public, unauthenticated endpoints that accept any
-// string for these fields — nothing upstream constrains them to the
-// frontend's own dropdown/fixed values — so this escape is the only thing
-// standing between a crafted submission and markup/script running in
-// whatever mail client renders the admin's notification.
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+// Both notification functions below build a subject/body that never
+// includes name/email/phone/company/message/college — see the two
+// functions themselves — so there's nothing here that needs HTML-escaping
+// the way the Brevo/SMTP versions did.
+async function sendViaFormSubmit({ subject, text }) {
+  const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
+  const res = await fetch(FORMSUBMIT_URL(to), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      _subject: subject,
+      _template: "box",
+      Notification: text,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !(data.success === "true" || data.success === true)) {
+    throw new Error(`formsubmit.co error: ${JSON.stringify(data).slice(0, 300)}`);
+  }
+  return { sent: true };
 }
 
 // Points the "check the admin panel" link at the actual site instead of a
@@ -35,47 +47,15 @@ function adminLink(path) {
   return base && base !== "*" ? `${base}${path}` : path;
 }
 
-// Returns { sent: boolean } instead of throwing when BREVO_API_KEY isn't
-// configured yet, so the form still "works" (logs to console) during
-// local/test setup before real credentials are added — same shape the old
-// SMTP-based version had.
-async function sendViaBrevo({ subject, text, html }) {
-  const apiKey = process.env.BREVO_API_KEY;
-  const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
-  if (!apiKey) {
-    console.log("[mailer] BREVO_API_KEY not configured — logging instead of sending:", subject);
-    return { sent: false };
-  }
-  const res = await fetch(BREVO_API_URL, {
-    method: "POST",
-    headers: { "api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      // Must be a verified sender in Brevo's dashboard (Senders, Domains &
-      // Dedicated IPs → Senders) or the API rejects the send outright.
-      sender: { name: "Crix Technology Website", email: process.env.BREVO_SENDER_EMAIL || "crixtechnology@gmail.com" },
-      to: [{ email: to }],
-      subject,
-      textContent: text,
-      htmlContent: html,
-    }),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Brevo API error ${res.status}: ${body.slice(0, 300)}`);
-  }
-  return { sent: true };
-}
-
 // Deliberately a bare "something came in" ping, not the submission itself —
 // name/email/phone/company/message/college never leave the server by email.
 // The admin panel (already the source of truth for every submission) is
 // where the actual content gets read.
 async function sendContactEmail({ interest }) {
   const link = adminLink("/admin/messages");
-  return sendViaBrevo({
+  return sendViaFormSubmit({
     subject: `New contact form message${interest ? ` — ${interest}` : ""}`,
-    text: `A new contact form message was received${interest ? ` (interested in: ${interest})` : ""}.\n\nLog in to the admin panel to view it: ${link}`,
-    html: `<p>A new contact form message was received${interest ? ` (interested in: <b>${escapeHtml(interest)}</b>)` : ""}.</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
+    text: `A new contact form message was received${interest ? ` (interested in: ${interest})` : ""}. Log in to the admin panel to view it: ${link}`,
   });
 }
 
@@ -87,10 +67,9 @@ async function sendContactEmail({ interest }) {
 async function sendApplicationEmail({ type, refTitle }) {
   const label = type === "internship" ? "Internship application" : "Course inquiry";
   const link = adminLink("/admin/applications");
-  return sendViaBrevo({
+  return sendViaFormSubmit({
     subject: `New ${label} — ${refTitle}`,
-    text: `A new ${label} was received for "${refTitle}".\n\nLog in to the admin panel to view it: ${link}`,
-    html: `<p>A new ${label} was received for "<b>${escapeHtml(refTitle)}</b>".</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
+    text: `A new ${label} was received for "${refTitle}". Log in to the admin panel to view it: ${link}`,
   });
 }
 
