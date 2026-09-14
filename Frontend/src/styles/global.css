@@ -389,14 +389,25 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .field input:disabled,.field textarea:disabled,.field select:disabled{opacity:.55;cursor:not-allowed}
 .form-note{font-size:.8rem;color:var(--muted);margin-top:14px}
 .form-error{font-size:.8rem;color:#f0997b;margin:0 0 12px;line-height:1.4}
-.alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;font-size:.85rem;line-height:1.5;margin-top:14px}
+/* Floats top-center over the whole page (above modals too — see z-index)
+   instead of sitting inline after whichever button triggered it, so it
+   reads as one consistent "here's what just happened" surface no matter
+   which of the site's many forms produced it. */
+.alert{position:fixed;top:84px;left:50%;transform:translateX(-50%);z-index:150;
+  display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:12px;
+  font-size:.85rem;line-height:1.5;max-width:min(92vw,480px);width:max-content;
+  background:var(--panel);box-shadow:0 16px 40px rgba(0,0,0,.5);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  animation:alertIn .3s ease}
+@keyframes alertIn{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
 .alert-icon{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;line-height:1}
-.alert-success{background:rgba(20,201,201,.12);border:1px solid rgba(20,201,201,.35)}
+.alert-success{background:rgba(20,201,201,.22);border:1px solid rgba(20,201,201,.45)}
 .alert-success .alert-icon{background:var(--teal);color:var(--ink)}
-.alert-error{background:rgba(240,153,123,.12);border:1px solid rgba(240,153,123,.4)}
+.alert-error{background:rgba(240,153,123,.22);border:1px solid rgba(240,153,123,.5)}
 .alert-error .alert-icon{background:#f0997b;color:var(--ink)}
-.alert-info{background:rgba(127,232,224,.10);border:1px solid rgba(127,232,224,.3)}
+.alert-info{background:rgba(127,232,224,.18);border:1px solid rgba(127,232,224,.4)}
 .alert-info .alert-icon{background:var(--cyan);color:var(--ink)}
+@media(max-width:640px){.alert{top:74px}}
 .link-btn{background:none;border:none;padding:0;margin:0;font:inherit;color:var(--cyan);cursor:pointer;text-decoration:underline}
 .link-btn:hover{color:var(--teal)}
 .google-btn-wrap{display:flex;justify-content:center;min-height:44px;max-width:100%;border-radius:999px;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease}
