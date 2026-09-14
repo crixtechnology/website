@@ -27,6 +27,18 @@ function getTransporter() {
     port: Number(SMTP_PORT) || 587,
     secure: Number(SMTP_PORT) === 465,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    // Without these, a bad host/port/credential doesn't fail — it hangs.
+    // Node's default TCP connect timeout can run well past a minute, and a
+    // stuck SMTP handshake holds the whole POST /contact (or /applications)
+    // request open the entire time, since sendContactEmail is awaited
+    // before the response goes out. Both callers already treat a failed
+    // send as best-effort (the submission is saved beforehand either way),
+    // so failing fast here costs nothing and turns "visitor's form spins
+    // for two minutes" into "visitor gets their success response on time,
+    // admin just doesn't get an email this once."
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 10_000,
   });
   return transporter;
 }
