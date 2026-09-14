@@ -1,4 +1,5 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { site, marquee, programDeliverables } from "../data/content.js";
@@ -206,11 +207,21 @@ export function BenefitIcon({ name }) {
 export function Alert({ kind = "info", children }) {
   if (!children) return null;
   const icon = kind === "error" ? "!" : kind === "success" ? "✓" : "ⓘ";
-  return (
+  // Portaled straight to <body> rather than rendered in place: `.alert`'s
+  // CSS is `position:fixed` so it floats top-center over the whole page,
+  // but nearly every form on the site lives inside a Reveal-animated
+  // wrapper (transform + will-change:transform for the slide-in effect) —
+  // and a `transform` on ANY ancestor turns `position:fixed` into
+  // "fixed relative to that ancestor" instead of the viewport, per the
+  // CSS spec. Portaling is the standard fix every toast library uses for
+  // exactly this reason, so the floating position holds regardless of how
+  // deep in the DOM (a modal, a Reveal, both at once) the call site is.
+  return createPortal(
     <div className={`alert alert-${kind}`} role={kind === "error" ? "alert" : "status"} aria-live="polite">
       <span className="alert-icon" aria-hidden="true">{icon}</span>
       <span>{children}</span>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -860,7 +871,7 @@ export function AuthModal() {
             <input id="auth-password" type="password" value={form.password} onChange={set("password")}
               placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
               autoComplete={mode === "login" ? "current-password" : "new-password"} disabled={loading} /></div>
-          {status && <div style={{ marginBottom: 14 }}><Alert kind="error">{status}</Alert></div>}
+          <Alert kind="error">{status}</Alert>
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
             {loading ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}
           </button>
