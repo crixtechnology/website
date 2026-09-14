@@ -55,7 +55,7 @@ export default function AdminMessages() {
         <input
           className="admin-search"
           type="search"
-          placeholder="Search by name, email or message..."
+          placeholder="Search by name, email, phone, company or message..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -71,11 +71,14 @@ export default function AdminMessages() {
             {contacts.map((c) => (
               <div className="admin-row" key={c._id}>
                 <div className="admin-row-main">
-                  <b>{c.name} <span className={`admin-pill ${c.status}`}>{c.status}</span></b>
-                  <span className="admin-row-meta">{c.email} {c.interest ? `· ${c.interest}` : ""} · {new Date(c.createdAt).toLocaleString("en-IN")}</span>
+                  <b>{c.name}{c.company ? ` (${c.company})` : ""} <span className={`admin-pill ${c.status}`}>{c.status}</span></b>
+                  <span className="admin-row-meta">
+                    {[c.email, c.phone].filter(Boolean).join(" · ") || "no contact info"}
+                    {c.interest ? ` · ${c.interest}` : ""} · {new Date(c.createdAt).toLocaleString("en-IN")}
+                  </span>
                 </div>
                 <div className="admin-row-main admin-row-message">
-                  <p>{c.message}</p>
+                  <p>{c.message || <span style={{ color: "var(--muted)" }}>(no message)</span>}</p>
                 </div>
                 <div className="admin-row-actions">
                   <button className="btn btn-ghost" onClick={() => toggleRead(c)}>

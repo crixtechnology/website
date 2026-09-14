@@ -267,6 +267,11 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .modal-box{position:relative;max-width:420px;width:100%;background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:26px 30px;max-height:96vh;overflow-y:auto;overflow-x:hidden}
 .modal-box .field{margin-bottom:12px}
+/* DetailModal (InfoCard's "See more") carries a full description + points
+   list, sometimes deliverable chips and a price row too — noticeably more
+   content than the compact Buy/Auth/Inquire modals sharing .modal-box, so
+   it gets a bit more width instead of everything else being cramped. */
+.detail-modal-box{max-width:540px}
 .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;padding:4px}
 .modal-close:hover{color:var(--text)}
 .modal-box--video{max-width:880px}
@@ -392,8 +397,10 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .auth-divider{display:flex;align-items:center;gap:14px;margin:12px 0;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em}
 .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--line)}
 .info-row{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px dashed rgba(147,163,188,.18)}
-.info-row .ic{color:var(--teal);font-size:1.1rem}
+.info-row .ic{width:40px;height:40px;border-radius:11px;background:rgba(20,201,201,.12);color:var(--teal);font-size:1.05rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .info-row a{color:var(--cyan);text-decoration:none}
+.info-row .info-label{display:block;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.info-row .contact-line{display:flex;align-items:center;flex-wrap:wrap}
 
 .orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(60px);z-index:-1;will-change:transform}
 .orb-1{width:380px;height:380px;background:rgba(20,201,201,.10);top:8%;left:-140px}
@@ -417,7 +424,7 @@ footer{border-top:1px solid var(--line);padding:44px 0 96px;margin-top:40px}
 .foot-contact{display:flex;flex-direction:column;gap:2px;font-size:.8rem}
 .foot-contact a{display:inline-block;padding:7px 0;color:var(--cyan);text-decoration:none}
 .foot-contact a:hover{color:var(--teal)}
-.foot-contact .wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;background:rgba(30,190,93,.12);padding:2px 8px;border-radius:20px}
+.wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;background:rgba(30,190,93,.12);padding:2px 8px;border-radius:20px;text-decoration:none;display:inline-block}
 .foot-hours{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.66rem;letter-spacing:.06em}
 .foot-cols{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:28px;flex:1;min-width:280px;max-width:560px}
 .foot-cols h4{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}

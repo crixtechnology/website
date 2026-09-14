@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
+  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, testimonials, legal,
@@ -17,6 +17,8 @@ export function Home() {
   const heroRef = useRef(null);
   const [liveInternships, setLiveInternships] = useState(internships);
   const [inquireItem, setInquireItem] = useState(null);
+  const [detailData, setDetailData] = useState(null);
+  const [serviceInquiryItem, setServiceInquiryItem] = useState(null);
   usePageMeta({
     title: "Crix Technology | Virtual Internships, IT Services & Online Courses — Ahmedabad",
     description: "Crix Technology — India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses. Structured, hands-on programs in MERN stack and AI Agentic Systems. Based in Ahmedabad, serving all of India.",
@@ -86,10 +88,11 @@ export function Home() {
           <Reveal as="h2" variant="reveal-l">Real projects. Real experience. Real pay.</Reveal>
           <div className="grid3 stagger">
             {liveInternships.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem}
+              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem} onDetail={setDetailData}
                 // Home has no login/BuyModal plumbing of its own (unlike
                 // Programs/CourseDetail) — an internship priced+open enough
-                // to show "Buy now" here sends the click to its full detail
+                // to show "Buy now" here (from the card or from the "See
+                // more" popup below) sends the click to its full detail
                 // page instead, where the real purchase flow lives. ?buy=
                 // is CourseDetail's own existing "resume purchase" query
                 // param (also used by the post-profile-completion redirect
@@ -105,6 +108,9 @@ export function Home() {
         </div>
       </section>
       <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
+      <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} onServiceInquire={setServiceInquiryItem}
+        onBuy={(item) => navigate(`/programs/${item.slug}?buy=${encodeURIComponent(item.slug)}`)} />
+      <ServiceInquiryModal item={serviceInquiryItem} onClose={() => setServiceInquiryItem(null)} />
 
       <section className="section" style={{ paddingTop: 0, paddingBottom: 20 }}>
         <div className="wrap">
@@ -125,7 +131,9 @@ export function Home() {
           <Reveal as="span" variant="reveal-r" className="eyebrow">IT Services</Reveal>
           <Reveal as="h2" variant="reveal-r">We don't just teach it. We build it.</Reveal>
           <div className="grid3 stagger">
-            {services.slice(0, 3).map((it, i) => <InfoCard key={it.title} item={it} i={i} />)}
+            {services.slice(0, 3).map((it, i) => (
+              <InfoCard key={it.title} item={it} i={i} onDetail={setDetailData} onServiceInquire={setServiceInquiryItem} />
+            ))}
           </div>
           <div className="hero-ctas">
             <Link className="btn btn-ghost" to="/services">All services →</Link>
@@ -149,6 +157,7 @@ export function Programs() {
   const [liveCourses, setLiveCourses] = useState(courses);
   const [buyItem, setBuyItem] = useState(null);
   const [inquire, setInquire] = useState(null); // { item, kind } | null
+  const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
   const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
   usePageMeta({
@@ -206,7 +215,7 @@ export function Programs() {
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {liveInternships.map((it, i) => (
               <InfoCard key={it.title || it._id} item={it} i={i} onBuy={handleBuy} isProgram kind="internship"
-                onInquire={(item) => setInquire({ item, kind: "internship" })} />
+                onInquire={(item) => setInquire({ item, kind: "internship" })} onDetail={setDetailData} />
             ))}
           </div>
         </div>
@@ -222,13 +231,15 @@ export function Programs() {
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {liveCourses.map((it, i) => (
               <InfoCard key={it.title || it._id} item={it} i={i} onBuy={handleBuy} isProgram kind="course"
-                onInquire={(item) => setInquire({ item, kind: "course" })} />
+                onInquire={(item) => setInquire({ item, kind: "course" })} onDetail={setDetailData} />
             ))}
           </div>
         </div>
       </section>
       <BuyModal item={buyItem} user={user} onClose={() => setBuyItem(null)} />
       <InquiryModal item={inquire?.item} kind={inquire?.kind} onClose={() => setInquire(null)} />
+      <DetailModal data={detailData} onClose={() => setDetailData(null)} onBuy={handleBuy}
+        onInquire={(item) => setInquire({ item, kind: detailData?.kind })} />
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
@@ -376,8 +387,8 @@ export function CourseDetail() {
               {openForBuy ? (
                 <button className="btn btn-solid buy-btn" onClick={handleBuy}>Buy now</button>
               ) : course.type === "internship" ? (
-                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Apply for this internship — no account needed">
-                  Apply
+                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to apply for this internship — no account needed">
+                  Request to apply
                 </button>
               ) : (
                 <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to enroll in this course — no account needed">
@@ -404,6 +415,8 @@ export function Services() {
   // `services` array from content.js stays only as the fallback for when
   // the backend isn't configured or the DB has nothing seeded yet.
   const [liveServices, setLiveServices] = useState(services);
+  const [detailData, setDetailData] = useState(null);
+  const [serviceInquiryItem, setServiceInquiryItem] = useState(null);
   useEffect(() => {
     let alive = true;
     getServices().then((res) => {
@@ -418,10 +431,14 @@ export function Services() {
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <div className="grid3 stagger" style={{ marginTop: 0 }}>
-            {liveServices.map((it, i) => <InfoCard key={it.title} item={it} i={i} />)}
+            {liveServices.map((it, i) => (
+              <InfoCard key={it.title} item={it} i={i} onDetail={setDetailData} onServiceInquire={setServiceInquiryItem} />
+            ))}
           </div>
         </div>
       </section>
+      <DetailModal data={detailData} onClose={() => setDetailData(null)} onServiceInquire={setServiceInquiryItem} />
+      <ServiceInquiryModal item={serviceInquiryItem} onClose={() => setServiceInquiryItem(null)} />
 
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
@@ -609,8 +626,11 @@ export function Contact() {
   const [status, setStatus] = useState("");
   const [isError, setIsError] = useState(false);
 
+  const [sending, setSending] = useState(false);
+
   const onSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (sending) return; // already in flight — ignore a repeat click/Enter
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
       setIsError(true);
       setStatus("Please fill in your name, email and message.");
@@ -618,7 +638,9 @@ export function Contact() {
     }
     setIsError(false);
     setStatus("Sending...");
+    setSending(true);
     const res = await submitContact(form);
+    setSending(false);
     setIsError(!res.ok);
     setStatus(res.ok ? "Message sent. We'll reply within two working days." : res.error);
   };
@@ -628,7 +650,7 @@ export function Contact() {
   return (
     <>
       <PageHead eyebrow="Contact" title="Ready to build with us?"
-        text="Students: tell us your college, semester and track. Businesses: tell us about your project." />
+        text="Students: tell us your college, semester and track. Businesses: tell us about your project. We reply within two working days." />
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap contact-grid">
           <Reveal as="form" variant="reveal-l" onSubmit={onSubmit} noValidate>
@@ -642,18 +664,21 @@ export function Contact() {
               </select></div>
             <div className="field"><label htmlFor="c-message">Message</label>
               <textarea id="c-message" name="message" rows="4" value={form.message} onChange={set("message")} placeholder="College & semester, or your project details..." /></div>
-            <button className="btn btn-solid" type="submit">Send message</button>
+            <button className="btn btn-solid" type="submit" disabled={sending}>{sending ? "Sending…" : "Send message"}</button>
             {status && <p className={isError ? "form-error" : "form-note"} role="status" aria-live="polite" style={{ marginTop: 14 }}>{status}</p>}
           </Reveal>
           <Reveal variant="reveal-r">
-            <div className="info-row"><span className="ic">✉</span><div>Email<br /><a href={`mailto:${site.email}`}>{site.email}</a></div></div>
-            <div className="info-row"><span className="ic">✆</span><div>Phone<br />
-              <a href={`tel:${site.phone.replace(/\s/g, "")}`}>{site.phone}</a>
-              {site.phoneAlt && <> · <a href={`tel:${site.phoneAlt.replace(/\s/g, "")}`}>{site.phoneAlt}</a></>}
+            <div className="info-row"><span className="ic">✉</span><div><span className="info-label">Email</span><a href={`mailto:${site.email}`}>{site.email}</a></div></div>
+            <div className="info-row"><span className="ic">✆</span><div><span className="info-label">Phone</span>
+              <div className="contact-line"><a href={`tel:${site.phone.replace(/\s/g, "")}`}>{site.phone}</a>
+                <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
+              {site.phoneAlt && (
+                <div className="contact-line"><a href={`tel:${site.phoneAlt.replace(/\s/g, "")}`}>{site.phoneAlt}</a>
+                  <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
+              )}
             </div></div>
-            <div className="info-row"><span className="ic">⌥</span><div>WhatsApp<br /><a href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer">Chat with us</a></div></div>
-            {site.hours && <div className="info-row"><span className="ic">◔</span><div>Working hours<br />{site.hours}</div></div>}
-            <div className="info-row"><span className="ic">◎</span><div>Location<br />{site.city}</div></div>
+            {site.hours && <div className="info-row"><span className="ic">◔</span><div><span className="info-label">Working hours</span>{site.hours}</div></div>}
+            <div className="info-row"><span className="ic">◎</span><div><span className="info-label">Location</span>{site.city}</div></div>
           </Reveal>
         </div>
       </section>

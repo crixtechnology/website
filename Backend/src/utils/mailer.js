@@ -15,46 +15,60 @@ function getTransporter() {
   return transporter;
 }
 
-// Sends the contact form to CONTACT_TO_EMAIL. Returns { sent: boolean } instead
-// of throwing when SMTP isn't configured yet, so the form still "works" (logs
+// Points the "check the admin panel" link at the actual site instead of a
+// bare path — CLIENT_ORIGIN already holds the deployed frontend URL(s) for
+// CORS (see index.js), so it doubles as the base here. Falls back to a
+// relative path (still useful pasted into a browser that's already on the
+// site) if it's unset.
+function adminLink(path) {
+  const base = (process.env.CLIENT_ORIGIN || "").split(",")[0].trim();
+  return base && base !== "*" ? `${base}${path}` : path;
+}
+
+// Deliberately a bare "something came in" ping, not the submission itself —
+// name/email/phone/company/message/college never leave the server by email.
+// The admin panel (already the source of truth for every submission) is
+// where the actual content gets read. Returns { sent: boolean } instead of
+// throwing when SMTP isn't configured yet, so the form still "works" (logs
 // to console) during local/test setup before real SMTP creds are added.
-async function sendContactEmail({ name, email, interest, message }) {
+async function sendContactEmail({ interest }) {
   const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
   const t = getTransporter();
+  const link = adminLink("/admin/messages");
   if (!t) {
-    console.log("[mailer] SMTP not configured — logging instead of sending:", { name, email, interest, message });
+    console.log("[mailer] SMTP not configured — logging instead of sending: new contact message", interest ? `(interested in: ${interest})` : "");
     return { sent: false };
   }
   await t.sendMail({
     from: `"Crix Technology Website" <${process.env.SMTP_USER}>`,
     to,
-    replyTo: email,
-    subject: `New contact form message — ${interest || "General"}`,
-    text: `Name: ${name}\nEmail: ${email}\nInterested in: ${interest}\n\n${message}`,
-    html: `<p><b>Name:</b> ${name}</p><p><b>Email:</b> ${email}</p><p><b>Interested in:</b> ${interest}</p><p>${String(message).replace(/\n/g, "<br/>")}</p>`,
+    subject: `New contact form message${interest ? ` — ${interest}` : ""}`,
+    text: `A new contact form message was received${interest ? ` (interested in: ${interest})` : ""}.\n\nLog in to the admin panel to view it: ${link}`,
+    html: `<p>A new contact form message was received${interest ? ` (interested in: <b>${interest}</b>)` : ""}.</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
   });
   return { sent: true };
 }
 
-// Sends a new internship/course application (Apply / Inquire to enroll /
-// Buy-now) to CONTACT_TO_EMAIL, same best-effort shape as sendContactEmail —
-// the row is already persisted by the time this runs, so a delivery failure
-// here just means a missed notification, not a lost inquiry.
-async function sendApplicationEmail({ type, refTitle, name, email, phone, college }) {
+// Same bare-ping shape as sendContactEmail, for a new internship/course
+// application (Apply / Inquire to enroll / Buy-now) — the row is already
+// persisted by the time this runs, so a delivery failure here just means a
+// missed notification, not a lost inquiry. refTitle/type name the program,
+// not the applicant, so they're fine to include.
+async function sendApplicationEmail({ type, refTitle }) {
   const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
   const t = getTransporter();
   const label = type === "internship" ? "Internship application" : "Course inquiry";
+  const link = adminLink("/admin/applications");
   if (!t) {
-    console.log("[mailer] SMTP not configured — logging instead of sending:", { type, refTitle, name, email, phone, college });
+    console.log("[mailer] SMTP not configured — logging instead of sending:", `new ${label} for ${refTitle}`);
     return { sent: false };
   }
   await t.sendMail({
     from: `"Crix Technology Website" <${process.env.SMTP_USER}>`,
     to,
-    replyTo: email,
-    subject: `${label} — ${refTitle}`,
-    text: `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\nCollege: ${college || "—"}\nFor: ${refTitle} (${type})`,
-    html: `<p><b>Name:</b> ${name}</p><p><b>Email:</b> ${email}</p><p><b>Phone:</b> ${phone}</p><p><b>College:</b> ${college || "—"}</p><p><b>For:</b> ${refTitle} (${type})</p>`,
+    subject: `New ${label} — ${refTitle}`,
+    text: `A new ${label} was received for "${refTitle}".\n\nLog in to the admin panel to view it: ${link}`,
+    html: `<p>A new ${label} was received for "<b>${refTitle}</b>".</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
   });
   return { sent: true };
 }

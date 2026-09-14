@@ -2,7 +2,7 @@ import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { site, marquee, programDeliverables } from "../data/content.js";
-import { submitApplication, createRazorpayOrder, verifyPayment } from "../services/api.js";
+import { submitApplication, createRazorpayOrder, verifyPayment, submitContact } from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 
 export const REDUCED =
@@ -92,7 +92,7 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
 // kind: "internship" | "course" — drives the type pill, the card's accent
 // color, and the CTA verb, so the category reads even out of context (not
 // just from the section heading above the grid). Omit for Services cards.
-export function InfoCard({ item, i, onDetail, onBuy, onInquire, isProgram, kind }) {
+export function InfoCard({ item, i, onDetail, onBuy, onInquire, onServiceInquire, isProgram, kind }) {
   const variant = i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top";
   const hasPrice = item.price != null;
   const discounted = hasPrice ? Math.round(item.price * (1 - (item.discountPercent || 0) / 100)) : null;
@@ -134,8 +134,8 @@ export function InfoCard({ item, i, onDetail, onBuy, onInquire, isProgram, kind 
             openForBuy ? (
               <button className="btn btn-solid buy-btn" onClick={() => onBuy && onBuy(item)}>Buy now</button>
             ) : kind === "internship" ? (
-              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Apply for this internship — no account needed">
-                Apply
+              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Request to apply for this internship — no account needed">
+                Request to apply
               </button>
             ) : (
               <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Request to enroll in this course — no account needed">
@@ -143,13 +143,14 @@ export function InfoCard({ item, i, onDetail, onBuy, onInquire, isProgram, kind 
               </button>
             )
           )}
-          {item.slug ? (
-            <Link className="btn btn-ghost see-more-btn" to={`/programs/${item.slug}`}>See more →</Link>
-          ) : (
-            <button className="btn btn-ghost see-more-btn" onClick={() => onDetail && onDetail(item)}>
-              See more →
+          {!isProgram && onServiceInquire && (
+            <button className="btn btn-solid buy-btn" onClick={() => onServiceInquire(item)} title="Send an inquiry about this service — no account needed">
+              Inquiry
             </button>
           )}
+          <button className="btn btn-ghost see-more-btn" onClick={() => onDetail && onDetail({ item, kind, isProgram })}>
+            See more →
+          </button>
         </div>
       </TiltCard>
     </Reveal>
@@ -375,9 +376,9 @@ export function BuyModal({ item, user, onClose }) {
 }
 
 // InquiryModal: collects name/email/phone/college and creates an Application
-// (routes/applications.js) — this is what "Apply" (internships) and
-// "Request to enroll" (unpriced/closed courses) open now, replacing the old
-// wa.me/phone redirect so a submission is actually captured (and visible at
+// (routes/applications.js) — this is what "Request to apply" (internships)
+// and "Request to enroll" (unpriced/closed courses) open now, replacing the
+// old wa.me/phone redirect so a submission is actually captured (and visible at
 // /admin/applications) instead of depending on the visitor having WhatsApp
 // and the admin catching the message there. No account needed either way.
 // `item` doubles as the "is this open" flag, same pattern as BuyModal.
@@ -470,6 +471,215 @@ export function InquiryModal({ item, kind, onClose }) {
                   placeholder={kind === "internship" ? "For your placement records" : "e.g. ABC Institute of Technology"} /></div>
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending..." : kind === "internship" ? "Submit application" : "Send request"}
+              </button>
+              {status.text && (
+                <p className={status.kind === "error" ? "form-error" : "form-note"}
+                  role={status.kind === "error" ? "alert" : "status"} aria-live="polite">
+                  {status.text}
+                </p>
+              )}
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// DetailModal: the "See more" popup for any InfoCard (internship, course, or
+// service) — a quick-look at full description + points, without leaving the
+// current page/scroll position, replacing what used to be a Link to the
+// standalone /programs/:slug page for cards that had a slug (that route and
+// CourseDetail itself still exist and still work — just no longer linked
+// from a card's "See more").
+// `data` is `{ item, kind, isProgram }` or null. `kind` drives the type
+// pill + deliverable chips (services pass neither); `isProgram` decides
+// whether a Buy/Apply/Request-to-enroll action shows at the bottom, versus
+// opening ServiceInquiryModal for services (which are quoted, not sold
+// online). Closing this and opening onBuy/onInquire/onServiceInquire happens
+// in the same click handler so React batches both state updates into one
+// re-render — no flash of both modals at once.
+export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire }) {
+  useBodyScrollLock(!!data);
+
+  useEffect(() => {
+    if (!data) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [data, onClose]);
+
+  if (!data) return null;
+  const { item, kind, isProgram } = data;
+
+  const hasPrice = item.price != null;
+  const discounted = hasPrice ? Math.round(item.price * (1 - (item.discountPercent || 0) / 100)) : null;
+  const closed = item.status === "closed";
+  const openForBuy = hasPrice && !closed;
+  const deliverables = kind ? programDeliverables[kind] : null;
+  const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
+
+  const act = (fn) => () => { onClose(); fn && fn(item); };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-box detail-modal-box" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="card-top">
+          <div className="card-top-left">
+            {kindLabel && <span className={`type-pill type-pill--${kind}`}>{kindLabel}</span>}
+            <span className="tag">{item.tag}</span>
+          </div>
+          {closed && <span className="closed-badge">Currently closed</span>}
+        </div>
+        <h3 id="detail-modal-title" style={{ margin: "12px 0 10px" }}>{item.title}</h3>
+        <p style={{ color: "var(--muted)", fontSize: ".92rem", lineHeight: 1.7 }}>{item.desc}</p>
+
+        {item.durationDays ? (
+          <div className="detail-fact" style={{ maxWidth: 220 }}>
+            <span>Duration</span><b>{item.durationDays} days</b>
+          </div>
+        ) : null}
+
+        {deliverables?.length ? (
+          <div className="deliverable-row" style={{ marginTop: item.durationDays ? 0 : 16 }}>
+            {deliverables.map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
+          </div>
+        ) : null}
+
+        {item.points?.length ? (
+          <ul className="detail-points">
+            {item.points.map((p) => <li key={p}>{p}</li>)}
+          </ul>
+        ) : null}
+
+        {openForBuy && (
+          <div className="price-row" style={{ marginTop: 20 }}>
+            {item.discountPercent > 0 && <span className="price-old">₹{item.price.toLocaleString("en-IN")}</span>}
+            <span className="price-now">₹{discounted.toLocaleString("en-IN")}</span>
+            {item.discountPercent > 0 && <span className="price-off">{item.discountPercent}% off</span>}
+          </div>
+        )}
+
+        <div style={{ marginTop: 24 }}>
+          {isProgram ? (
+            openForBuy ? (
+              <button className="btn btn-solid buy-btn" onClick={act(onBuy)}>Buy now</button>
+            ) : kind === "internship" ? (
+              <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to apply</button>
+            ) : (
+              <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to enroll</button>
+            )
+          ) : onServiceInquire ? (
+            <button className="btn btn-solid buy-btn" onClick={act(onServiceInquire)}>Inquiry</button>
+          ) : (
+            <a className="btn btn-solid buy-btn" href={whatsappInquiryLink(item.title, "learning more about")} target="_blank" rel="noopener noreferrer">
+              Get in touch
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ServiceInquiryModal: the IT Services card's "Inquiry" button (and its
+// DetailModal "See more" popup's own Inquiry action) — a lead-capture form
+// posted through the existing /contact pipeline (submitContact ->
+// routes/contact.js -> Contact model, visible in AdminMessages.jsx)
+// alongside the plain Contact Us page, rather than a new endpoint/model/
+// admin page for what's fundamentally the same "someone wants to talk to
+// us" record. `interest` is set to the specific service's title so the
+// admin can tell which service a lead came in for.
+export function ServiceInquiryModal({ item, onClose }) {
+  const [form, setForm] = useState({ company: "", name: "", phone: "", email: "", message: "" });
+  const [status, setStatus] = useState({ text: "", kind: "" });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  useBodyScrollLock(!!item);
+
+  useEffect(() => {
+    if (item) {
+      setForm({ company: "", name: "", phone: "", email: "", message: "" });
+      setStatus({ text: "", kind: "" });
+      setLoading(false);
+      setDone(false);
+    }
+  }, [item]);
+
+  useEffect(() => {
+    if (!item) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [item, onClose]);
+
+  if (!item) return null;
+
+  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus({ text: "", kind: "" }); };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    const missing = [
+      !form.company.trim() && "business/company name",
+      !form.name.trim() && "your name",
+      !form.phone.trim() && "a contact number",
+    ].filter(Boolean);
+    if (missing.length) {
+      const list = missing.length === 1
+        ? missing[0]
+        : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
+      setStatus({ text: `Please add ${list}.`, kind: "error" });
+      return;
+    }
+    setLoading(true);
+    setStatus({ text: "", kind: "" });
+    const res = await submitContact({
+      name: form.name.trim(), company: form.company.trim(), phone: form.phone.trim(),
+      email: form.email.trim(), interest: item.title, message: form.message.trim(),
+    });
+    setLoading(false);
+    if (!res.ok) {
+      setStatus({ text: res.error || "Could not submit right now. Please try again, or email us at " + site.email, kind: "error" });
+      return;
+    }
+    setDone(true);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="service-inquiry-title" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        <span className="eyebrow">Inquiry</span>
+        <h3 id="service-inquiry-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
+
+        {done ? (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".9rem", margin: "8px 0 20px" }}>
+              Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""} — we've got your details for
+              "{item.title}" and will get back to you within two working days.
+            </p>
+            <button className="btn btn-solid" onClick={onClose} style={{ width: "100%" }}>Done</button>
+          </>
+        ) : (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
+              Tell us about your business and we'll get back to you about "{item.title}" within two
+              working days.
+            </p>
+            <form onSubmit={onSubmit}>
+              <div className="field"><label htmlFor="svc-company">Business / Company name</label>
+                <input id="svc-company" autoComplete="organization" value={form.company} onChange={set("company")} placeholder="Your company" /></div>
+              <div className="field"><label htmlFor="svc-name">Your name</label>
+                <input id="svc-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Full name" /></div>
+              <div className="field"><label htmlFor="svc-phone">Contact number</label>
+                <input id="svc-phone" autoComplete="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="98765 43210" /></div>
+              <div className="field"><label htmlFor="svc-email">Email (optional)</label>
+                <input id="svc-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
+              <div className="field"><label htmlFor="svc-message">Details about your business (optional)</label>
+                <textarea id="svc-message" rows="3" value={form.message} onChange={set("message")} placeholder="What are you looking to build or fix?" /></div>
+              <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
+                {loading ? "Sending..." : "Send inquiry"}
               </button>
               {status.text && (
                 <p className={status.kind === "error" ? "form-error" : "form-note"}

@@ -21,7 +21,7 @@ async function requireAuth(req, res, next) {
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ ok: false, error: "Missing token" });
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
     if (!(await isSessionValid(payload))) {
       return res.status(401).json({ ok: false, error: "Logged out — this account was signed in on another device" });
     }
@@ -38,7 +38,7 @@ async function attachUserIfPresent(req, res, next) {
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (token) {
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
       if (await isSessionValid(payload)) req.user = payload;
     } catch (e) {
       // ignore — request proceeds as a guest
