@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { connectDB } = require("./db");
+const { allowedOrigins: getAllowedOrigins } = require("./utils/clientOrigin");
 
 const authRoutes = require("./routes/auth");
 const courseRoutes = require("./routes/courses");
@@ -27,9 +28,7 @@ const app = express();
 // exactly the nearest hop, not an attacker-supplied chain of proxies.
 app.set("trust proxy", 1);
 
-// CLIENT_ORIGIN can be a comma-separated list — e.g. localhost for the PC
-// plus the machine's LAN IP so phones on the same WiFi can reach the API too.
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "*").split(",").map((o) => o.trim());
+const allowedOrigins = getAllowedOrigins();
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {

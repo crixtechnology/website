@@ -43,12 +43,11 @@ router.post("/applications", attachUserIfPresent, async (req, res, next) => {
     });
 
     // Best-effort notification email; a delivery failure here shouldn't turn
-    // a successfully-saved application into a 500 for the applicant.
-    try {
-      await sendApplicationEmail({ type, refTitle });
-    } catch (mailErr) {
+    // a successfully-saved application into a 500 for the applicant. Not
+    // awaited — same reasoning as routes/contact.js's own notification call.
+    sendApplicationEmail({ type, refTitle }).catch((mailErr) => {
       console.error("[applications] notification email failed:", mailErr.message);
-    }
+    });
 
     res.status(201).json({ ok: true, application });
   } catch (e) {

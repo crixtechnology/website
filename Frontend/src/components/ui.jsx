@@ -392,7 +392,7 @@ export function BuyModal({ item, user, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Please wait..." : "Continue to payment"}
               </button>
-              <Alert kind={status.kind || "info"}>{status.text}</Alert>
+              <Alert kind={status.kind}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -499,7 +499,7 @@ export function InquiryModal({ item, kind, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending..." : kind === "internship" ? "Submit application" : "Send request"}
               </button>
-              <Alert kind={status.kind || "error"}>{status.text}</Alert>
+              <Alert kind={status.kind}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -704,7 +704,7 @@ export function ServiceInquiryModal({ item, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending..." : "Send inquiry"}
               </button>
-              <Alert kind={status.kind || "error"}>{status.text}</Alert>
+              <Alert kind={status.kind}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -860,10 +860,10 @@ export function AuthModal() {
             <input id="auth-password" type="password" value={form.password} onChange={set("password")}
               placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
               autoComplete={mode === "login" ? "current-password" : "new-password"} disabled={loading} /></div>
+          {status && <div style={{ marginBottom: 14 }}><Alert kind="error">{status}</Alert></div>}
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
             {loading ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}
           </button>
-          <Alert kind="error">{status}</Alert>
         </form>
         <p className="form-note" style={{ marginTop: 14 }}>
           {mode === "login" ? (
