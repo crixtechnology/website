@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
+  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, testimonials, legal,
@@ -624,7 +624,7 @@ export function Contact() {
   });
   const [form, setForm] = useState({ name: "", email: "", interest: "Internship", message: "" });
   const [status, setStatus] = useState("");
-  const [isError, setIsError] = useState(false);
+  const [kind, setKind] = useState(""); // "error" | "success" | "info"
 
   const [sending, setSending] = useState(false);
 
@@ -632,20 +632,20 @@ export function Contact() {
     if (e && e.preventDefault) e.preventDefault();
     if (sending) return; // already in flight — ignore a repeat click/Enter
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
-      setIsError(true);
+      setKind("error");
       setStatus("Please fill in your name, email and message.");
       return;
     }
-    setIsError(false);
+    setKind("info");
     setStatus("Sending...");
     setSending(true);
     const res = await submitContact(form);
     setSending(false);
-    setIsError(!res.ok);
+    setKind(res.ok ? "success" : "error");
     setStatus(res.ok ? "Message sent. We'll reply within two working days." : res.error);
   };
 
-  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus(""); setIsError(false); };
+  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus(""); setKind(""); };
 
   return (
     <>
@@ -665,7 +665,7 @@ export function Contact() {
             <div className="field"><label htmlFor="c-message">Message</label>
               <textarea id="c-message" name="message" rows="4" value={form.message} onChange={set("message")} placeholder="College & semester, or your project details..." /></div>
             <button className="btn btn-solid" type="submit" disabled={sending}>{sending ? "Sending…" : "Send message"}</button>
-            {status && <p className={isError ? "form-error" : "form-note"} role="status" aria-live="polite" style={{ marginTop: 14 }}>{status}</p>}
+            <Alert kind={kind || "info"}>{status}</Alert>
           </Reveal>
           <Reveal variant="reveal-r">
             <div className="info-row"><span className="ic">✉</span><div><span className="info-label">Email</span><a href={`mailto:${site.email}`}>{site.email}</a></div></div>
