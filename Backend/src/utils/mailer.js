@@ -15,6 +15,16 @@
 // this isn't something the code can do for you.
 const FORMSUBMIT_URL = (to) => `https://formsubmit.co/ajax/${encodeURIComponent(to)}`;
 
+// CLIENT_ORIGIN already holds the deployed frontend URL(s) for CORS (see
+// index.js); reused here both for the admin-panel link below and as the
+// Referer header formsubmit.co requires (see sendViaFormSubmit) — falls
+// back to the real production URL if it's ever unset, since formsubmit.co
+// specifically needs *some* real http(s) URL, not a relative path.
+function siteOrigin() {
+  const base = (process.env.CLIENT_ORIGIN || "").split(",")[0].trim();
+  return base && base !== "*" ? base : "https://crixtechnology.in";
+}
+
 // Both notification functions below build a subject/body that never
 // includes name/email/phone/company/message/college — see the two
 // functions themselves — so there's nothing here that needs HTML-escaping
@@ -23,28 +33,41 @@ async function sendViaFormSubmit({ subject, text }) {
   const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
   const res = await fetch(FORMSUBMIT_URL(to), {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      // formsubmit.co rejects any request with no Referer at all as "opened
+      // as an HTML file" — it's built to be called from a browser on a real
+      // page, not server-to-server, so this fakes that with our own site's
+      // actual origin (a request genuinely made on that site's behalf).
+      Referer: `${siteOrigin()}/contact`,
+    },
     body: JSON.stringify({
       _subject: subject,
       _template: "box",
       Notification: text,
     }),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !(data.success === "true" || data.success === true)) {
-    throw new Error(`formsubmit.co error: ${JSON.stringify(data).slice(0, 300)}`);
+  const bodyText = await res.text();
+  let data;
+  try {
+    data = JSON.parse(bodyText);
+  } catch {
+    data = null;
+  }
+  if (!res.ok || !data || !(data.success === "true" || data.success === true)) {
+    // Surfaces formsubmit.co's own message (e.g. "This form needs
+    // Activation...") in the server log instead of an opaque "{}" — that
+    // message is the actionable part while the form is still unconfirmed.
+    throw new Error(`formsubmit.co error (status ${res.status}): ${(data && data.message) || bodyText.slice(0, 300)}`);
   }
   return { sent: true };
 }
 
 // Points the "check the admin panel" link at the actual site instead of a
-// bare path — CLIENT_ORIGIN already holds the deployed frontend URL(s) for
-// CORS (see index.js), so it doubles as the base here. Falls back to a
-// relative path (still useful pasted into a browser that's already on the
-// site) if it's unset.
+// bare path.
 function adminLink(path) {
-  const base = (process.env.CLIENT_ORIGIN || "").split(",")[0].trim();
-  return base && base !== "*" ? `${base}${path}` : path;
+  return `${siteOrigin()}${path}`;
 }
 
 // Deliberately a bare "something came in" ping, not the submission itself —
