@@ -1,7 +1,16 @@
-const nodemailer = require("nodemailer");
+// Sends notification emails via Brevo's transactional-email HTTP API rather
+// than raw SMTP. This isn't a style preference — SMTP genuinely does not
+// work from this backend's Render plan: outbound TCP on non-HTTP(S) ports
+// (587/465) gets silently dropped rather than rejected, which is why every
+// SMTP provider tried (Gmail, then Brevo's own SMTP relay) hung for the
+// full connection timeout regardless of credentials. A plain HTTPS POST to
+// Brevo's API is indistinguishable, network-wise, from any other outbound
+// API call this backend already makes successfully (Razorpay, Google), so
+// it isn't subject to that restriction.
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
 // Both notification functions below interpolate a caller-supplied string
-// (interest / refTitle) into an HTML email body. Both POST /contact and
+// (interest / refTitle) into the HTML body. Both POST /contact and
 // POST /applications are public, unauthenticated endpoints that accept any
 // string for these fields — nothing upstream constrains them to the
 // frontend's own dropdown/fixed values — so this escape is the only thing
@@ -16,33 +25,6 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-let transporter = null;
-
-function getTransporter() {
-  if (transporter) return transporter;
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
-  transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT) || 587,
-    secure: Number(SMTP_PORT) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    // Without these, a bad host/port/credential doesn't fail — it hangs.
-    // Node's default TCP connect timeout can run well past a minute, and a
-    // stuck SMTP handshake holds the whole POST /contact (or /applications)
-    // request open the entire time, since sendContactEmail is awaited
-    // before the response goes out. Both callers already treat a failed
-    // send as best-effort (the submission is saved beforehand either way),
-    // so failing fast here costs nothing and turns "visitor's form spins
-    // for two minutes" into "visitor gets their success response on time,
-    // admin just doesn't get an email this once."
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 10_000,
-  });
-  return transporter;
-}
-
 // Points the "check the admin panel" link at the actual site instead of a
 // bare path — CLIENT_ORIGIN already holds the deployed frontend URL(s) for
 // CORS (see index.js), so it doubles as the base here. Falls back to a
@@ -53,28 +35,48 @@ function adminLink(path) {
   return base && base !== "*" ? `${base}${path}` : path;
 }
 
+// Returns { sent: boolean } instead of throwing when BREVO_API_KEY isn't
+// configured yet, so the form still "works" (logs to console) during
+// local/test setup before real credentials are added — same shape the old
+// SMTP-based version had.
+async function sendViaBrevo({ subject, text, html }) {
+  const apiKey = process.env.BREVO_API_KEY;
+  const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
+  if (!apiKey) {
+    console.log("[mailer] BREVO_API_KEY not configured — logging instead of sending:", subject);
+    return { sent: false };
+  }
+  const res = await fetch(BREVO_API_URL, {
+    method: "POST",
+    headers: { "api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      // Must be a verified sender in Brevo's dashboard (Senders, Domains &
+      // Dedicated IPs → Senders) or the API rejects the send outright.
+      sender: { name: "Crix Technology Website", email: process.env.BREVO_SENDER_EMAIL || "crixtechnology@gmail.com" },
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Brevo API error ${res.status}: ${body.slice(0, 300)}`);
+  }
+  return { sent: true };
+}
+
 // Deliberately a bare "something came in" ping, not the submission itself —
 // name/email/phone/company/message/college never leave the server by email.
 // The admin panel (already the source of truth for every submission) is
-// where the actual content gets read. Returns { sent: boolean } instead of
-// throwing when SMTP isn't configured yet, so the form still "works" (logs
-// to console) during local/test setup before real SMTP creds are added.
+// where the actual content gets read.
 async function sendContactEmail({ interest }) {
-  const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
-  const t = getTransporter();
   const link = adminLink("/admin/messages");
-  if (!t) {
-    console.log("[mailer] SMTP not configured — logging instead of sending: new contact message", interest ? `(interested in: ${interest})` : "");
-    return { sent: false };
-  }
-  await t.sendMail({
-    from: `"Crix Technology Website" <${process.env.SMTP_USER}>`,
-    to,
+  return sendViaBrevo({
     subject: `New contact form message${interest ? ` — ${interest}` : ""}`,
     text: `A new contact form message was received${interest ? ` (interested in: ${interest})` : ""}.\n\nLog in to the admin panel to view it: ${link}`,
     html: `<p>A new contact form message was received${interest ? ` (interested in: <b>${escapeHtml(interest)}</b>)` : ""}.</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
   });
-  return { sent: true };
 }
 
 // Same bare-ping shape as sendContactEmail, for a new internship/course
@@ -83,22 +85,13 @@ async function sendContactEmail({ interest }) {
 // missed notification, not a lost inquiry. refTitle/type name the program,
 // not the applicant, so they're fine to include.
 async function sendApplicationEmail({ type, refTitle }) {
-  const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
-  const t = getTransporter();
   const label = type === "internship" ? "Internship application" : "Course inquiry";
   const link = adminLink("/admin/applications");
-  if (!t) {
-    console.log("[mailer] SMTP not configured — logging instead of sending:", `new ${label} for ${refTitle}`);
-    return { sent: false };
-  }
-  await t.sendMail({
-    from: `"Crix Technology Website" <${process.env.SMTP_USER}>`,
-    to,
+  return sendViaBrevo({
     subject: `New ${label} — ${refTitle}`,
     text: `A new ${label} was received for "${refTitle}".\n\nLog in to the admin panel to view it: ${link}`,
     html: `<p>A new ${label} was received for "<b>${escapeHtml(refTitle)}</b>".</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
   });
-  return { sent: true };
 }
 
 module.exports = { sendContactEmail, sendApplicationEmail };
