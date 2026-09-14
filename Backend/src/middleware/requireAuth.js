@@ -1,5 +1,5 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { verifyToken } = require("../utils/jwt");
 
 // Single-device-login check: student tokens carry a `sid` claim minted at
 // login time (see routes/auth.js's startSession) that must still match the
@@ -21,7 +21,7 @@ async function requireAuth(req, res, next) {
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ ok: false, error: "Missing token" });
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = verifyToken(token);
     if (!(await isSessionValid(payload))) {
       return res.status(401).json({ ok: false, error: "Logged out — this account was signed in on another device" });
     }
@@ -38,7 +38,7 @@ async function attachUserIfPresent(req, res, next) {
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (token) {
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      const payload = verifyToken(token);
       if (await isSessionValid(payload)) req.user = payload;
     } catch (e) {
       // ignore — request proceeds as a guest

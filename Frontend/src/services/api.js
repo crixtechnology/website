@@ -124,7 +124,8 @@ export async function submitContact(form) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error("Server error");
+      const data = await res.json();
+      if (!res.ok) return { ok: false, error: data.error || "Could not send right now." };
       return { ok: true };
     }
     const text = encodeURIComponent(

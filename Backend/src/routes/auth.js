@@ -1,19 +1,38 @@
 const express = require("express");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const rateLimit = require("express-rate-limit");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const { requireAuth } = require("../middleware/requireAuth");
 const { isDisposableEmail } = require("../utils/disposableEmail");
+const { isValidEmail, isValidPhone } = require("../utils/validators");
+const { signToken: signJwt } = require("../utils/jwt");
 
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
 
+// Throttles the credential-guessing surface — /login (password brute-force),
+// /signup (mass account creation) and /google (token-verification spam) all
+// cost a bcrypt hash or a network round-trip per attempt, so a stuck client
+// or a script hammering any of them is worth capping well before it becomes
+// abuse. Keyed by IP (the default), which is what actually limits a single
+// attacker's guess rate; a shared office/NAT IP just gets a generous budget,
+// not blocked outright. 429's body deliberately says nothing about *why* a
+// given request was the one that tipped the limit — same "don't help an
+// attacker calibrate" reasoning as the generic "Invalid credentials" below.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "Too many attempts. Please try again in a few minutes." },
+});
+
 function signToken(user, sessionId) {
   const payload = { sub: user._id.toString(), email: user.email, role: user.role, name: user.name };
   if (sessionId) payload.sid = sessionId;
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
+  return signJwt(payload, { expiresIn: "7d" });
 }
 
 // Single-device-login enforcement is student-only (see requireAuth.js) — an
@@ -36,16 +55,27 @@ function publicUser(user) {
 
 // ---------- student self-signup (role is always "student" — admin accounts
 // are only ever created by scripts/seedAdmin.js) ----------
-router.post("/signup", async (req, res, next) => {
+router.post("/signup", authLimiter, async (req, res, next) => {
   try {
     const { name, email, phone, password } = req.body || {};
     if (!name || !email || !password) {
       return res.status(400).json({ ok: false, error: "name, email and password are required" });
     }
-    if (String(password).length < 6) {
-      return res.status(400).json({ ok: false, error: "Password must be at least 6 characters" });
-    }
     const normalizedEmail = String(email).toLowerCase().trim();
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid email address." });
+    }
+    // Lower bound matches modern guidance (length over complexity rules —
+    // NIST SP 800-63B); upper bound isn't a strength rule, it's a hard cap
+    // matching bcrypt's own 72-byte input limit, so a very long password
+    // fails loudly here instead of hashing to the same value as its first
+    // 72 bytes (bcryptjs silently truncates beyond that).
+    if (String(password).length < 8) {
+      return res.status(400).json({ ok: false, error: "Password must be at least 8 characters" });
+    }
+    if (String(password).length > 72) {
+      return res.status(400).json({ ok: false, error: "Password must be at most 72 characters" });
+    }
     if (isDisposableEmail(normalizedEmail)) {
       return res.status(400).json({
         ok: false,
@@ -68,12 +98,19 @@ router.post("/signup", async (req, res, next) => {
 });
 
 // ---------- unified login — works for both students and admins ----------
-router.post("/login", async (req, res, next) => {
+router.post("/login", authLimiter, async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) {
       return res.status(400).json({ ok: false, error: "Email and password are required" });
     }
+    // Deliberately NOT rejecting long passwords here the way signup does —
+    // the 72-char cap above is a going-forward rule for accounts created
+    // after it existed. Signup had no upper bound before this change, so an
+    // account from before it could have a real, correct password longer
+    // than 72 characters; bcryptjs truncates consistently on both hash and
+    // compare, so bcrypt.compare below still resolves it correctly. Rate
+    // limiting (authLimiter above) is what actually bounds abuse here.
     const user = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (!user) return res.status(401).json({ ok: false, error: "Invalid credentials" });
     if (!user.passwordHash) {
@@ -95,7 +132,7 @@ router.post("/login", async (req, res, next) => {
 // Body is { credential }: the ID token Google's Identity Services button
 // hands back client-side. Verified server-side against GOOGLE_CLIENT_ID —
 // the client is never trusted for who the user actually is.
-router.post("/google", async (req, res, next) => {
+router.post("/google", authLimiter, async (req, res, next) => {
   try {
     if (!googleClient) {
       return res.status(503).json({ ok: false, error: "Google Sign-In isn't configured yet." });
@@ -168,11 +205,8 @@ router.patch("/me", requireAuth, async (req, res, next) => {
 
     if (phone !== undefined) {
       const p = String(phone).trim();
-      if (p) {
-        const digits = p.replace(/\D/g, "");
-        if (digits.length < 8 || digits.length > 15) {
-          return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
-        }
+      if (p && !isValidPhone(p)) {
+        return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
       }
       user.phone = p;
     }

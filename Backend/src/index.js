@@ -16,6 +16,17 @@ const serviceRoutes = require("./routes/services");
 
 const app = express();
 
+// Render (and most PaaS hosts) put the app behind one reverse-proxy hop, so
+// req.ip / X-Forwarded-For only reflects the real client IP once Express is
+// told to trust that hop. Without this, two things silently break in
+// production: every IP-keyed rate limiter (routes/auth.js) sees the proxy's
+// own IP for every request (one shared bucket for all visitors) — and worse,
+// express-rate-limit v7 actively refuses to run at all when it detects an
+// X-Forwarded-For header arriving while trust proxy is still at its default
+// `false`, throwing on every request through a limited route. `1` trusts
+// exactly the nearest hop, not an attacker-supplied chain of proxies.
+app.set("trust proxy", 1);
+
 // CLIENT_ORIGIN can be a comma-separated list — e.g. localhost for the PC
 // plus the machine's LAN IP so phones on the same WiFi can reach the API too.
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "*").split(",").map((o) => o.trim());

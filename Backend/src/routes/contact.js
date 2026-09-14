@@ -3,26 +3,43 @@ const Contact = require("../models/Contact");
 const { sendContactEmail } = require("../utils/mailer");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { searchRegex } = require("../utils/searchRegex");
+const { isValidEmail, isValidPhone } = require("../utils/validators");
 
 const router = express.Router();
 
 // Matches src/services/api.js's existing fetch(`${API}/contact`, ...) call —
-// no frontend change needed once REACT_APP_API_URL points here.
+// no frontend change needed once REACT_APP_API_URL points here. Also what
+// the IT Services "Inquiry" form (ServiceInquiryModal) posts to, with
+// company/phone set and email/message possibly blank — see models/Contact.js.
 router.post("/contact", async (req, res, next) => {
   try {
-    const { name, email, interest, message } = req.body || {};
-    if (!name || !email || !message) {
-      return res.status(400).json({ ok: false, error: "name, email and message are required" });
+    const { name, email, phone, company, interest, message } = req.body || {};
+    if (!name || (!email && !phone)) {
+      return res.status(400).json({ ok: false, error: "name and either an email or phone number are required" });
+    }
+    // Both were an always-required, browser-validated `type="email"` field
+    // before email became optional here — a light server-side format check
+    // replaces what that HTML5 validation used to guarantee for free.
+    // Shared with routes/auth.js's own email/phone validation (utils/validators.js)
+    // so "a valid email"/"a valid phone number" means the same thing everywhere.
+    if (email && !isValidEmail(email)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid email address." });
+    }
+    if (phone && !isValidPhone(phone)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
     }
 
     // Persist first — this is now the admin panel's inbox (AdminMessages.jsx)
     // and must not be lost even if the notification email below hiccups.
-    await Contact.create({ name, email: String(email).toLowerCase().trim(), interest: interest || "", message });
+    await Contact.create({
+      name, email: email ? String(email).toLowerCase().trim() : "", phone: phone || "", company: company || "",
+      interest: interest || "", message: message || "",
+    });
 
     // Best-effort notification email; a delivery failure here shouldn't turn
     // a successfully-saved message into a 500 for the visitor.
     try {
-      await sendContactEmail({ name, email, interest, message });
+      await sendContactEmail({ interest });
     } catch (mailErr) {
       console.error("[contact] notification email failed:", mailErr.message);
     }
@@ -38,7 +55,7 @@ router.get("/admin/contacts", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
     const filter = q
-      ? { $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }, { message: searchRegex(q) }] }
+      ? { $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }, { phone: searchRegex(q) }, { company: searchRegex(q) }, { message: searchRegex(q) }] }
       : {};
     if (req.query.status === "new" || req.query.status === "read") filter.status = req.query.status;
 
