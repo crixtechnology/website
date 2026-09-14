@@ -3,6 +3,7 @@ const Contact = require("../models/Contact");
 const { sendContactEmail } = require("../utils/mailer");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { searchRegex } = require("../utils/searchRegex");
+const { isValidEmail, isValidPhone } = require("../utils/validators");
 
 const router = express.Router();
 
@@ -19,16 +20,13 @@ router.post("/contact", async (req, res, next) => {
     // Both were an always-required, browser-validated `type="email"` field
     // before email became optional here — a light server-side format check
     // replaces what that HTML5 validation used to guarantee for free.
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+    // Shared with routes/auth.js's own email/phone validation (utils/validators.js)
+    // so "a valid email"/"a valid phone number" means the same thing everywhere.
+    if (email && !isValidEmail(email)) {
       return res.status(400).json({ ok: false, error: "Enter a valid email address." });
     }
-    // Same digit-count rule as routes/auth.js's own phone validation
-    // (PATCH /me), so "a valid phone number" means the same thing everywhere.
-    if (phone) {
-      const digits = String(phone).replace(/\D/g, "");
-      if (digits.length < 8 || digits.length > 15) {
-        return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
-      }
+    if (phone && !isValidPhone(phone)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
     }
 
     // Persist first — this is now the admin panel's inbox (AdminMessages.jsx)
@@ -41,7 +39,7 @@ router.post("/contact", async (req, res, next) => {
     // Best-effort notification email; a delivery failure here shouldn't turn
     // a successfully-saved message into a 500 for the visitor.
     try {
-      await sendContactEmail({ name, email, phone, company, interest, message });
+      await sendContactEmail({ interest });
     } catch (mailErr) {
       console.error("[contact] notification email failed:", mailErr.message);
     }

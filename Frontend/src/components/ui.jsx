@@ -148,9 +148,24 @@ export function InfoCard({ item, i, onDetail, onBuy, onInquire, onServiceInquire
               Inquiry
             </button>
           )}
-          <button className="btn btn-ghost see-more-btn" onClick={() => onDetail && onDetail({ item, kind, isProgram })}>
-            See more →
-          </button>
+          {item.slug ? (
+            // A real anchor to /programs/:slug (CourseDetail still exists as a
+            // route) so ctrl/cmd-click "open in new tab", right-click "copy
+            // link address", and crawler discovery all keep working — a plain
+            // click still opens the popup, same as the button-only path below.
+            <a className="btn btn-ghost see-more-btn" href={`/programs/${item.slug}`}
+              onClick={(e) => {
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+                onDetail && onDetail({ item, kind, isProgram });
+              }}>
+              See more →
+            </a>
+          ) : (
+            <button className="btn btn-ghost see-more-btn" onClick={() => onDetail && onDetail({ item, kind, isProgram })}>
+              See more →
+            </button>
+          )}
         </div>
       </TiltCard>
     </Reveal>
@@ -243,6 +258,7 @@ export function BuyModal({ item, user, onClose }) {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return; // already in flight — avoid double-submitting a payment order
     const missing = [
       !form.name.trim() && "name",
       !form.email.trim() && "email",
@@ -411,6 +427,7 @@ export function InquiryModal({ item, kind, onClose }) {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return; // already in flight — avoid a duplicate Application record
     const missing = [
       !form.name.trim() && "name",
       !form.email.trim() && "email",
@@ -620,6 +637,7 @@ export function ServiceInquiryModal({ item, onClose }) {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return; // already in flight — same guard Contact() uses for this exact race
     const missing = [
       !form.company.trim() && "business/company name",
       !form.name.trim() && "your name",
@@ -796,13 +814,14 @@ export function AuthModal() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return; // already in flight — avoid a duplicate login/signup request
     if (mode === "login") {
       if (!form.email.trim() || !form.password.trim()) { setStatus("Enter your email and password."); return; }
     } else {
       if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.password.trim()) {
         setStatus("Please fill in every field."); return;
       }
-      if (form.password.length < 6) { setStatus("Password must be at least 6 characters."); return; }
+      if (form.password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
     }
     setLoading(true);
     setStatus("");
@@ -841,7 +860,7 @@ export function AuthModal() {
           )}
           <div className="field"><label htmlFor="auth-password">Password</label>
             <input id="auth-password" type="password" value={form.password} onChange={set("password")}
-              placeholder={mode === "login" ? "••••••••" : "At least 6 characters"}
+              placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
               autoComplete={mode === "login" ? "current-password" : "new-password"} disabled={loading} /></div>
           {status && <p className="form-error" role="alert">{status}</p>}
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>

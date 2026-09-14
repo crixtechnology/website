@@ -1,5 +1,21 @@
 const nodemailer = require("nodemailer");
 
+// Both notification functions below interpolate a caller-supplied string
+// (interest / refTitle) into an HTML email body. Both POST /contact and
+// POST /applications are public, unauthenticated endpoints that accept any
+// string for these fields — nothing upstream constrains them to the
+// frontend's own dropdown/fixed values — so this escape is the only thing
+// standing between a crafted submission and markup/script running in
+// whatever mail client renders the admin's notification.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 let transporter = null;
 
 function getTransporter() {
@@ -44,7 +60,7 @@ async function sendContactEmail({ interest }) {
     to,
     subject: `New contact form message${interest ? ` — ${interest}` : ""}`,
     text: `A new contact form message was received${interest ? ` (interested in: ${interest})` : ""}.\n\nLog in to the admin panel to view it: ${link}`,
-    html: `<p>A new contact form message was received${interest ? ` (interested in: <b>${interest}</b>)` : ""}.</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
+    html: `<p>A new contact form message was received${interest ? ` (interested in: <b>${escapeHtml(interest)}</b>)` : ""}.</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
   });
   return { sent: true };
 }
@@ -68,7 +84,7 @@ async function sendApplicationEmail({ type, refTitle }) {
     to,
     subject: `New ${label} — ${refTitle}`,
     text: `A new ${label} was received for "${refTitle}".\n\nLog in to the admin panel to view it: ${link}`,
-    html: `<p>A new ${label} was received for "<b>${refTitle}</b>".</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
+    html: `<p>A new ${label} was received for "<b>${escapeHtml(refTitle)}</b>".</p><p><a href="${link}">Log in to the admin panel to view it</a></p>`,
   });
   return { sent: true };
 }

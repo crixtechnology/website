@@ -1,5 +1,5 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { verifyToken } = require("../utils/jwt");
 
 // Requires a valid JWT AND role === "admin" (see routes/auth.js — the token
 // payload carries { sub, email, role }). The DB is the source of truth for
@@ -13,7 +13,7 @@ async function requireAdmin(req, res, next) {
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ ok: false, error: "Missing token" });
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+    const payload = verifyToken(token);
     if (payload.role !== "admin") {
       return res.status(403).json({ ok: false, error: "Admin access required" });
     }

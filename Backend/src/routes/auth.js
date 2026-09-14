@@ -1,17 +1,16 @@
 const express = require("express");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const { requireAuth } = require("../middleware/requireAuth");
 const { isDisposableEmail } = require("../utils/disposableEmail");
+const { isValidEmail, isValidPhone } = require("../utils/validators");
+const { signToken: signJwt } = require("../utils/jwt");
 
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Throttles the credential-guessing surface — /login (password brute-force),
 // /signup (mass account creation) and /google (token-verification spam) all
@@ -33,7 +32,7 @@ const authLimiter = rateLimit({
 function signToken(user, sessionId) {
   const payload = { sub: user._id.toString(), email: user.email, role: user.role, name: user.name };
   if (sessionId) payload.sid = sessionId;
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d", algorithm: "HS256" });
+  return signJwt(payload, { expiresIn: "7d" });
 }
 
 // Single-device-login enforcement is student-only (see requireAuth.js) — an
@@ -63,7 +62,7 @@ router.post("/signup", authLimiter, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: "name, email and password are required" });
     }
     const normalizedEmail = String(email).toLowerCase().trim();
-    if (!EMAIL_RE.test(normalizedEmail)) {
+    if (!isValidEmail(normalizedEmail)) {
       return res.status(400).json({ ok: false, error: "Enter a valid email address." });
     }
     // Lower bound matches modern guidance (length over complexity rules —
@@ -105,13 +104,13 @@ router.post("/login", authLimiter, async (req, res, next) => {
     if (!email || !password) {
       return res.status(400).json({ ok: false, error: "Email and password are required" });
     }
-    // Never worth a bcrypt.compare — no real passwordHash was ever hashed
-    // from a >72-byte input (see the signup cap above), so this can only be
-    // a wrong guess or abuse; short-circuit generically rather than let
-    // bcrypt spend CPU compressing a huge string for a foregone conclusion.
-    if (String(password).length > 72) {
-      return res.status(401).json({ ok: false, error: "Invalid credentials" });
-    }
+    // Deliberately NOT rejecting long passwords here the way signup does —
+    // the 72-char cap above is a going-forward rule for accounts created
+    // after it existed. Signup had no upper bound before this change, so an
+    // account from before it could have a real, correct password longer
+    // than 72 characters; bcryptjs truncates consistently on both hash and
+    // compare, so bcrypt.compare below still resolves it correctly. Rate
+    // limiting (authLimiter above) is what actually bounds abuse here.
     const user = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (!user) return res.status(401).json({ ok: false, error: "Invalid credentials" });
     if (!user.passwordHash) {
@@ -206,11 +205,8 @@ router.patch("/me", requireAuth, async (req, res, next) => {
 
     if (phone !== undefined) {
       const p = String(phone).trim();
-      if (p) {
-        const digits = p.replace(/\D/g, "");
-        if (digits.length < 8 || digits.length > 15) {
-          return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
-        }
+      if (p && !isValidPhone(p)) {
+        return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
       }
       user.phone = p;
     }

@@ -45,7 +45,7 @@ router.post("/applications", attachUserIfPresent, async (req, res, next) => {
     // Best-effort notification email; a delivery failure here shouldn't turn
     // a successfully-saved application into a 500 for the applicant.
     try {
-      await sendApplicationEmail({ type, refTitle, name, email, phone, college });
+      await sendApplicationEmail({ type, refTitle });
     } catch (mailErr) {
       console.error("[applications] notification email failed:", mailErr.message);
     }
