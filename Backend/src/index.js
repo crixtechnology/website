@@ -14,6 +14,7 @@ const enrollmentRoutes = require("./routes/enrollments");
 const videoRoutes = require("./routes/videos");
 const adminUserRoutes = require("./routes/adminUsers");
 const serviceRoutes = require("./routes/services");
+const receiptRoutes = require("./routes/receipts");
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/api", enrollmentRoutes);
 app.use("/api", videoRoutes);
 app.use("/api", adminUserRoutes);
 app.use("/api", serviceRoutes);
+app.use("/api", receiptRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

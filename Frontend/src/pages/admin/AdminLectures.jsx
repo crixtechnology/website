@@ -71,6 +71,10 @@ export default function AdminLectures() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    // A disabled submit button doesn't stop the browser's native form
+    // submit on Enter inside a text field — without this guard, pressing
+    // Enter twice quickly (or a slow network) fires two concurrent saves.
+    if (saving) return;
     if (!form.title.trim() || !form.link.trim()) { setError("Title and Google Meet link are required."); return; }
     if (!form.scheduledAt || !form.scheduledEndAt) { setError("Start and end time are both required."); return; }
     if (new Date(form.scheduledEndAt) <= new Date(form.scheduledAt)) { setError("End time must be after the start time."); return; }

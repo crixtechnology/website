@@ -63,23 +63,38 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     while (await Course.findOne({ slug })) {
       slug = `${slugify(title)}-${suffix++}`;
     }
-    const course = await Course.create({
-      type: entryType, title, slug, tag: tag || "", desc: desc || "",
-      points: Array.isArray(points) ? points : [],
-      // Internships are apply-only by default (price left null shows
-      // Apply, no online purchase) but MAY carry a real price too — some
-      // internship slots are sold, some are free/discounted promos decided
-      // case-by-case; whichever price (or lack of one) the admin sends is
-      // respected for either type, same as a course.
-      price: entryType === "course" ? price : (price ?? null),
-      discountPercent: discountPercent || 0,
-      durationDays: durationDays || null,
-      // Always starts closed, even with a price already set — saving a
-      // price is not the same action as publishing it for sale. The admin
-      // list's separate Open/Closed toggle is the actual trigger; opening
-      // it requires that explicit second step (enforced below too).
-      status: status === "open" && price != null ? "open" : "closed",
-    });
+    let course;
+    try {
+      course = await Course.create({
+        type: entryType, title, slug, tag: tag || "", desc: desc || "",
+        points: Array.isArray(points) ? points : [],
+        // Internships are apply-only by default (price left null shows
+        // Apply, no online purchase) but MAY carry a real price too — some
+        // internship slots are sold, some are free/discounted promos decided
+        // case-by-case; whichever price (or lack of one) the admin sends is
+        // respected for either type, same as a course.
+        price: entryType === "course" ? price : (price ?? null),
+        discountPercent: discountPercent || 0,
+        durationDays: durationDays || null,
+        // Always starts closed, even with a price already set — saving a
+        // price is not the same action as publishing it for sale. The admin
+        // list's separate Open/Closed toggle is the actual trigger; opening
+        // it requires that explicit second step (enforced below too).
+        status: status === "open" && price != null ? "open" : "closed",
+      });
+    } catch (createErr) {
+      // The while-loop's uniqueness check above isn't atomic with this
+      // create() — two concurrent POSTs for the same title (e.g. an admin
+      // double-clicking "Create" on a slow connection) can both compute the
+      // same free slug and both reach here; Course.slug's unique index
+      // (models/Course.js) then lets only one create() actually succeed.
+      // Same class of race as auth.js's signup, same fix: a clean, specific
+      // error instead of a raw 500 leaking the Mongo error string.
+      if (createErr && createErr.code === 11000) {
+        return res.status(409).json({ ok: false, error: "A course/internship with that title already exists — try again." });
+      }
+      throw createErr;
+    }
     res.status(201).json({ ok: true, course });
   } catch (e) {
     next(e);
@@ -122,8 +137,24 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
 
     // Can't be "open" without a price, however that was attempted — via
     // the toggle on an unpriced entry, or a status sent alongside no price.
-    if (update.status === "open" && resultingPrice == null) {
-      return res.status(400).json({ ok: false, error: "Set a price before opening this for purchase." });
+    // Checked against the RESULTING status (falls back to existing.status
+    // when this request doesn't touch status at all — e.g. an admin
+    // clearing an already-open course's price with a plain { price: null }
+    // request), not just `update.status`: that field is only ever set when
+    // the request body itself includes `status`, so a price-only edit on an
+    // already-open course used to skip this guard entirely and leave the
+    // course persisted as open with no price.
+    const resultingStatus = update.status !== undefined ? update.status : existing.status;
+    if (resultingStatus === "open" && resultingPrice == null) {
+      if (update.status === "open") {
+        // Attempted specifically via the toggle — clear, actionable error.
+        return res.status(400).json({ ok: false, error: "Set a price before opening this for purchase." });
+      }
+      // Attempted via a price-only edit that would silently leave an
+      // already-open course priceless — close it instead of erroring, same
+      // as the settingPriceFirstTime branch above chooses to close rather
+      // than reject.
+      update.status = "closed";
     }
 
     const course = await Course.findByIdAndUpdate(req.params.id, update, { new: true });

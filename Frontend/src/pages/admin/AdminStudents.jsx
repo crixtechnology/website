@@ -55,6 +55,10 @@ export default function AdminStudents() {
 
   const grant = async (e) => {
     e.preventDefault();
+    // A disabled submit button doesn't stop the browser's native form
+    // submit on Enter inside a text field — without this guard, pressing
+    // Enter twice quickly fires two concurrent grant requests.
+    if (granting) return;
     if (!grantForm.email.trim() || !grantForm.courseId) {
       setGrantError("Email and course are both required.");
       return;

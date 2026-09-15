@@ -14,6 +14,7 @@
     "migrate:enrollment-startdate": "node src/scripts/backfillEnrollmentStartDate.js",
     "migrate:lecture-endtime": "node src/scripts/backfillLectureEndTime.js",
     "migrate:drop-recorded-lectures": "node src/scripts/dropRecordedLectures.js",
+    "migrate:payment-receipts": "node src/scripts/backfillPaymentReceipts.js",
     "videos:resequence": "node src/scripts/resequenceCourseVideos.js"
   },
   "dependencies": {
@@ -25,6 +26,8 @@
     "express-rate-limit": "^7.5.1",
     "google-auth-library": "^11.0.2",
     "jsonwebtoken": "^9.0.2",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "mongoose": "^8.5.1",
     "razorpay": "^2.9.4"
   },

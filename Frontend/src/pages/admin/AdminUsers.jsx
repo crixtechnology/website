@@ -79,6 +79,10 @@ export default function AdminUsers() {
 
   const saveUser = async (e) => {
     e.preventDefault();
+    // A disabled submit button doesn't stop the browser's native form
+    // submit on Enter inside a text field — without this guard, pressing
+    // Enter twice quickly fires two concurrent saves.
+    if (savingUser) return;
     setSavingUser(true);
     const res = await adminUpdateUser(selectedId, editForm);
     setSavingUser(false);
@@ -95,6 +99,10 @@ export default function AdminUsers() {
 
   const grantAccess = async (e) => {
     e.preventDefault();
+    // A disabled submit button doesn't stop the browser's native form
+    // submit on Enter inside a text field — without this guard, pressing
+    // Enter twice quickly fires two concurrent grant requests.
+    if (granting) return;
     if (!grantForm.courseId) { setDetailError("Pick a course first."); return; }
     setGranting(true);
     const res = await adminGrantSubscription({

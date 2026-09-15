@@ -51,6 +51,10 @@ export default function AdminServices() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    // A disabled submit button doesn't stop the browser's native form
+    // submit on Enter inside a text field — without this guard, pressing
+    // Enter twice quickly (or a slow network) fires two concurrent saves.
+    if (saving) return;
     if (!form.title.trim()) { setError("Title is required."); return; }
     setSaving(true);
     setError("");
