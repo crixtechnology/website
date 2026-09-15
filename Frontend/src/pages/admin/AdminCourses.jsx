@@ -73,6 +73,11 @@ export default function AdminCourses() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    // A disabled submit button doesn't stop the browser's native form
+    // submit on Enter inside a text field — without this guard, pressing
+    // Enter twice quickly (or a slow network) fires two concurrent saves,
+    // e.g. creating the same course/internship twice.
+    if (saving) return;
     if (!form.title.trim()) { setError("Title is required."); return; }
     if (form.type === "course" && !form.price.trim()) { setError("Price is required for a course."); return; }
     setSaving(true);

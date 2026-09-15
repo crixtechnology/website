@@ -6,6 +6,10 @@ const Course = require("../models/Course");
 const Application = require("../models/Application");
 const Enrollment = require("../models/Enrollment");
 const { hasValidAccess, computeEndDate } = require("../utils/enrollmentAccess");
+const { nextSequence } = require("../models/Counter");
+const { round2 } = require("../utils/money");
+const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
+const { sendReceiptEmail } = require("../utils/mailer");
 
 const router = express.Router();
 
@@ -45,8 +49,98 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
         { upsert: true, new: true }
       );
     }
+
+    await attachReceipt(payment, application);
   }
   return application;
+}
+
+// Stamps a receipt snapshot onto the Payment the first time it's granted
+// access. /verify and the webhook can both reach this for the SAME payment
+// within milliseconds of each other in production — a plain "check
+// payment.receipt.number, then mutate, then save()" is a real race there
+// (two concurrent callers can both pass the check before either has saved),
+// so the actual "did I win the right to mint this receipt" decision is a
+// single atomic findOneAndUpdate matched on receipt.number still being
+// null: only the caller whose update actually matches a document proceeds
+// to build the PDF and send the email — the loser (if any) returns having
+// changed nothing, no second number minted, no second email sent.
+async function attachReceipt(payment, application) {
+  if (payment.receipt && payment.receipt.number) return;
+
+  const course = await Course.findById(application.course).select("title type price discountPercent");
+  if (!course) return;
+
+  // Prefer the price/discount as they were when the order was created
+  // (payment.orderSnapshot, see its doc comment in models/Payment.js) over
+  // the course's current values — those can have moved since if an admin
+  // edited pricing while this payment was in flight. Older payments from
+  // before orderSnapshot existed fall back to the live course, same as
+  // this code always did.
+  const snap = payment.orderSnapshot || {};
+  const basePrice = round2(snap.basePrice != null ? snap.basePrice : course.price || 0);
+  const discountPercent = snap.discountPercent != null ? snap.discountPercent : course.discountPercent || 0;
+  const discountAmount = round2((basePrice * discountPercent) / 100);
+  const totalPaid = round2((payment.amount || 0) / 100); // paise -> rupees, what was actually charged
+
+  const seq = await nextSequence("receipt");
+  const year = new Date().getFullYear();
+
+  const receiptNumber = `CRX-${year}-${String(seq).padStart(5, "0")}`;
+  const issuedAt = new Date();
+  const receipt = {
+    number: receiptNumber,
+    issuedAt,
+    buyerName: application.name || "",
+    buyerEmail: application.email || "",
+    buyerPhone: application.phone || "",
+    itemType: course.type,
+    itemTitle: course.title,
+    basePrice,
+    discountPercent,
+    discountAmount,
+    totalPaid,
+    paymentMode: "Razorpay (Online)",
+  };
+
+  const won = await Payment.findOneAndUpdate(
+    { _id: payment._id, "receipt.number": null },
+    { $set: { user: application.user, course: application.course, receipt } },
+    { new: true }
+  );
+  if (!won) return; // the other concurrent caller (verify vs webhook) got there first
+  payment.user = won.user;
+  payment.course = won.course;
+  payment.receipt = won.receipt;
+
+  // Best-effort — a failed/unconfigured email must never undo the receipt
+  // that was just saved, or break the payment flow that led here (this runs
+  // inside grantAccessForPayment, called from both /verify and the
+  // webhook). The in-app "Download Receipt" button on /dashboard is the
+  // reliable fallback if this doesn't go through.
+  try {
+    const pdfBuffer = buildReceiptPdfBuffer({
+      receiptNumber,
+      issuedAt,
+      buyerName: payment.receipt.buyerName,
+      buyerEmail: payment.receipt.buyerEmail,
+      buyerPhone: payment.receipt.buyerPhone,
+      itemType: course.type,
+      itemTitle: course.title,
+      basePrice,
+      discountPercent,
+      discountAmount,
+      totalPaid,
+      paymentMode: payment.receipt.paymentMode,
+      razorpay_payment_id: payment.razorpay_payment_id,
+    });
+    await sendReceiptEmail({
+      receipt: { receiptNumber, buyerName: payment.receipt.buyerName, buyerEmail: payment.receipt.buyerEmail, itemTitle: course.title, itemType: course.type, totalPaid },
+      pdfBuffer,
+    });
+  } catch (mailErr) {
+    console.error("[payments] receipt email failed:", mailErr.message);
+  }
 }
 
 // ---------- 1. create an order (called right after the applicant submits the form) ----------
@@ -70,6 +164,30 @@ router.post("/create-order", async (req, res, next) => {
     if (course.status === "closed") {
       return res.status(400).json({ ok: false, error: "This course is currently closed for enrollment" });
     }
+    // Server-side mirror of the frontend's own "Buy now only shows when
+    // openForBuy" gating (price set AND status open) — the frontend button
+    // is not the only way to reach this endpoint. Without this, an
+    // apply-only internship/course (price left null on purpose, meant to
+    // only ever show "Request to apply"/"Request to enroll") would fall
+    // through to `null * (1 - .../100)` below, silently coercing to a ₹0
+    // Razorpay order instead of a clear rejection.
+    if (course.price == null) {
+      return res.status(400).json({ ok: false, error: "This course is not available for online purchase." });
+    }
+
+    // Don't let an already-enrolled, still-valid student pay again for the
+    // same course — nothing before this point checks that, so a double
+    // "Buy now" click, two open tabs, or someone re-running an old checkout
+    // link could otherwise charge them a second time for access they
+    // already have. Enrollment access itself is unaffected either way
+    // (grantAccessForPayment already no-ops the enrollment side of a
+    // genuine duplicate), this only stops the needless second charge.
+    if (application.user) {
+      const existingEnrollment = await Enrollment.findOne({ user: application.user, course: course._id });
+      if (hasValidAccess(existingEnrollment)) {
+        return res.status(400).json({ ok: false, error: "You already have access to this course." });
+      }
+    }
 
     const discounted = course.price * (1 - (course.discountPercent || 0) / 100);
     const amountPaise = Math.round(discounted * 100); // Razorpay wants the smallest currency unit
@@ -86,6 +204,9 @@ router.post("/create-order", async (req, res, next) => {
       amount: amountPaise,
       status: "created",
       application: application._id,
+      // Snapshotted now, not re-read from Course at grant time — see the
+      // field's own doc comment in models/Payment.js for why.
+      orderSnapshot: { basePrice: course.price, discountPercent: course.discountPercent || 0 },
     });
     application.payment = payment._id;
     // Defense in depth: /applications already resolves+stores this when the
@@ -205,4 +326,7 @@ router.post("/webhook", async (req, res, next) => {
   }
 });
 
-module.exports = router;
+// Exported for scripts/backfillPaymentReceipts.js, which reuses this exact
+// logic to mint receipts for payments that were granted access before the
+// receipt feature existed.
+module.exports = Object.assign(router, { attachReceipt });

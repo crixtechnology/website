@@ -86,9 +86,25 @@ router.post("/signup", authLimiter, async (req, res, next) => {
     if (existing) return res.status(409).json({ ok: false, error: "An account with this email already exists" });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      name: name.trim(), email: normalizedEmail, phone: phone || "", passwordHash, role: "student",
-    });
+    let user;
+    try {
+      user = await User.create({
+        name: name.trim(), email: normalizedEmail, phone: phone || "", passwordHash, role: "student",
+      });
+    } catch (createErr) {
+      // The findOne check above isn't atomic with this create — two
+      // concurrent signups for the same email (double-submit, a slow
+      // connection retried, or a scripted burst) can both pass it and both
+      // reach here; User.email's unique index (models/User.js) then lets
+      // only one create() actually succeed. Without this catch the loser
+      // fell through to the generic error handler as a raw 500 with the
+      // Mongo error string verbatim (exposing db/collection/index names) —
+      // this turns that into the same clean 409 the upfront check gives.
+      if (createErr && createErr.code === 11000) {
+        return res.status(409).json({ ok: false, error: "An account with this email already exists" });
+      }
+      throw createErr;
+    }
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);
     res.status(201).json({ ok: true, token, user: publicUser(user) });

@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import { submitApplication, createRazorpayOrder, verifyPayment, submitContact } from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
+import { useTheme } from "../context/ThemeContext.jsx";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -238,12 +239,23 @@ export function BuyModal({ item, user, onClose }) {
   const [loading, setLoading] = useState(false);
   useBodyScrollLock(!!item);
 
+  // This one BuyModal instance stays mounted across different items (the
+  // parent just swaps its `item` prop) — closing it mid-flight and opening
+  // it again for a different item does NOT cancel onSubmit's still-running
+  // async chain below. Without this, that stale chain's later setStatus/
+  // setLoading calls land on whichever item is open NOW, e.g. showing a
+  // leftover error from item A's failed order while item B's modal is open.
+  // Bumped every time a fresh item opens; onSubmit snapshots it at the
+  // start and checks it after every await before touching state.
+  const genRef = useRef(0);
+
   const setInfo = (text) => setStatus({ text, kind: "info" });
   const setError = (text) => setStatus({ text, kind: "error" });
   const clearStatus = () => setStatus({ text: "", kind: "" });
 
   useEffect(() => {
     if (item) {
+      genRef.current += 1;
       setForm(user ? { name: user.name || "", email: user.email || "", phone: user.phone || "" } : { name: "", email: "", phone: "" });
       setStatus({ text: "", kind: "" });
       setLoading(false);
@@ -300,6 +312,10 @@ export function BuyModal({ item, user, onClose }) {
     setLoading(true);
     setInfo("Setting up your enrollment...");
 
+    // Snapshot which "open" this is — see genRef's own comment above.
+    const myGen = genRef.current;
+    const stale = () => genRef.current !== myGen;
+
     const appRes = await submitApplication({
       // item.type is always real here — Buy is only reachable for a live,
       // API-sourced item (openForBuy requires a real price/status, which
@@ -308,6 +324,7 @@ export function BuyModal({ item, user, onClose }) {
       type: item.type === "internship" ? "internship" : "course", refTitle: item.title, courseSlug: item.slug,
       name: form.name, email: form.email, phone: form.phone,
     });
+    if (stale()) return;
     if (!appRes.ok || !appRes.application) {
       setLoading(false);
       setError(appRes.error || "Could not start right now. Please try again.");
@@ -315,6 +332,7 @@ export function BuyModal({ item, user, onClose }) {
     }
 
     const orderRes = await createRazorpayOrder(appRes.application._id, item.slug);
+    if (stale()) return;
     if (!orderRes.ok) {
       setLoading(false);
       setError(orderRes.error || "Could not start payment right now.");
@@ -322,6 +340,7 @@ export function BuyModal({ item, user, onClose }) {
     }
 
     const scriptOk = await loadRazorpayScript();
+    if (stale()) return;
     setLoading(false);
     if (!scriptOk || !window.Razorpay) {
       setError("Could not load the payment gateway. Check your connection and try again.");
@@ -340,6 +359,7 @@ export function BuyModal({ item, user, onClose }) {
       handler: async (resp) => {
         setInfo("Confirming your payment...");
         const v = await verifyPayment(resp);
+        if (stale()) return;
         if (v.ok && v.enrolled) {
           setInfo("Payment confirmed — opening your course...");
           setTimeout(() => {
@@ -902,6 +922,37 @@ export function Logo({ className = "" }) {
 }
 
 /* ---------- Navbar ---------- */
+/* Sun/moon toggle — shows the icon for the theme you'd SWITCH TO (a sun
+   while dark, inviting you toward light) rather than the current one,
+   matching the usual convention for this kind of control. Sits outside
+   both .nav-account and .nav-links-mobile-account so it stays visible at
+   every breakpoint without needing to be duplicated into the mobile
+   dropdown the way the login/account controls are. */
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+  return (
+    <button
+      type="button"
+      className="theme-toggle"
+      onClick={toggleTheme}
+      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+    >
+      {isDark ? (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="4.5" />
+          <path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -1023,6 +1074,7 @@ export function Navbar() {
         ) : (
           <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
         )}
+        <ThemeToggle />
         <button className="burger" aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open} aria-controls="primary-nav"
           onClick={() => setOpen(!open)}>{open ? "✕" : "☰"}</button>

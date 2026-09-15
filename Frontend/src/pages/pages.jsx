@@ -178,18 +178,23 @@ export function Programs() {
 
   // Landed here as ?buy=<slug> — the user just finished their profile and is
   // being brought back to the purchase they started. Re-open the buy modal
-  // for that course, then drop the param so a refresh doesn't reopen it.
+  // for that item, then drop the param so a refresh doesn't reopen it.
+  // Internships can be bought here too (Round 8 — some slots are priced),
+  // so the match has to check both grids, not just courses: BuyModal's
+  // goCompleteProfile() builds this ?buy= param from whichever item was
+  // being purchased when the profile-completion redirect fired, and on
+  // this page that's just as often an internship.
   useEffect(() => {
     const slug = params.get("buy");
     if (!slug) return;
-    const match = liveCourses.find((c) => c.slug === slug);
+    const match = liveCourses.find((c) => c.slug === slug) || liveInternships.find((c) => c.slug === slug);
     if (match) {
       setBuyItem(match);
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
       setParams(nextParams, { replace: true });
     }
-  }, [params, liveCourses, setParams]);
+  }, [params, liveCourses, liveInternships, setParams]);
 
   // Buying requires an account — browsing/prices stay open to everyone.
   // Not logged in: pop the login/signup modal, then open the buy modal the
@@ -732,7 +737,7 @@ function LegalPage({ eyebrow, title, doc }) {
         <div className="wrap" style={{ maxWidth: 780 }}>
           <p style={{
             color: "var(--text)", lineHeight: 1.8, marginBottom: 40, padding: "18px 22px",
-            background: "rgba(20,201,201,.08)", borderLeft: "3px solid var(--teal)", borderRadius: 12,
+            background: "rgba(var(--teal-rgb),.08)", borderLeft: "3px solid var(--teal)", borderRadius: 12,
           }}>{doc.intro}</p>
           {doc.sections.map((s) => (
             <div key={s.title} style={{ marginBottom: 32 }}>

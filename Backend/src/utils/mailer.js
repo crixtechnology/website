@@ -134,4 +134,86 @@ async function sendApplicationEmail({ type, refTitle }) {
   });
 }
 
-module.exports = { sendContactEmail, sendApplicationEmail };
+// ---------- Receipt email (transactional — goes to the customer) ----------
+// formsubmit.co above is a "notify the site owner" relay: it needs the
+// RECEIVING address to click a one-time confirmation link before anything
+// will ever land in its inbox, which makes it fundamentally unusable for a
+// receipt that has to reach a different customer's inbox every time (they'd
+// never have confirmed anything). This uses Resend's HTTP API instead — a
+// real transactional sender, with a domain-verified From address so it
+// doesn't get spam-flagged the way the earlier bare-gmail.com Brevo sender
+// did (see the big comment at the top of this file for that history).
+const RESEND_API_URL = "https://api.resend.com/emails";
+const resendApiKey = process.env.RESEND_API_KEY || "";
+const resendLooksUnset = !resendApiKey || /placeholder|changeme|xxxx|your_key/i.test(resendApiKey);
+if (resendLooksUnset) {
+  console.warn(
+    "⚠ RESEND_API_KEY is missing or a placeholder in Backend/.env — receipt emails will be skipped " +
+    "(the in-app \"Download Receipt\" button still works either way). Set it once you have a Resend " +
+    "account with crixtechnology.in verified as a sending domain."
+  );
+}
+const RECEIPT_FROM = process.env.RECEIPT_FROM_EMAIL || "Crix Technology <receipts@crixtechnology.in>";
+
+function fmtRupees(n) {
+  return `Rs. ${(Number(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Best-effort, like the two notification senders above — a delivery failure
+// (or RESEND_API_KEY simply not being set yet) must never break the payment
+// flow that calls this. Caller (routes/payments.js's attachReceipt) already
+// wraps this in try/catch and only logs.
+async function sendReceiptEmail({ receipt, pdfBuffer }) {
+  if (resendLooksUnset) return { sent: false, reason: "RESEND_API_KEY not configured" };
+  if (!receipt.buyerEmail) return { sent: false, reason: "No buyer email on this receipt" };
+
+  const safeName = escapeHtml(receipt.buyerName || "there");
+  const safeTitle = escapeHtml(receipt.itemTitle || "your purchase");
+  const kindLabel = receipt.itemType === "internship" ? "internship" : "course";
+  const html = `
+    <div style="font-family:Helvetica,Arial,sans-serif;color:#1e293b;max-width:520px;margin:0 auto">
+      <h2 style="color:#0f1f3d;margin-bottom:4px">Thanks for your purchase, ${safeName}!</h2>
+      <p>Your payment for <strong>${safeTitle}</strong> (${kindLabel}) has been confirmed.</p>
+      <p>Receipt No: <strong>${escapeHtml(receipt.receiptNumber)}</strong><br/>
+      Amount Paid: <strong>${fmtRupees(receipt.totalPaid)}</strong></p>
+      <p>Your receipt is attached to this email as a PDF — you can also download it any time from
+      "My Courses" on your account.</p>
+      <p style="color:#64748b;font-size:13px">Crix Technology Private Limited</p>
+    </div>
+  `;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: RECEIPT_FROM,
+        to: receipt.buyerEmail,
+        subject: `Your Crix Technology receipt — ${receipt.receiptNumber}`,
+        html,
+        attachments: [
+          {
+            filename: `Receipt-${receipt.receiptNumber}.pdf`,
+            content: pdfBuffer.toString("base64"),
+          },
+        ],
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(`Resend error (status ${res.status}): ${(data && data.message) || "no error message in response"}`);
+  }
+  return { sent: true, id: data && data.id };
+}
+
+module.exports = { sendContactEmail, sendApplicationEmail, sendReceiptEmail };

@@ -46,6 +46,10 @@ export default function Profile() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    // A disabled submit button doesn't stop the browser's native form
+    // submit on Enter inside a text field — without this guard, pressing
+    // Enter twice quickly (or a slow network) fires two concurrent saves.
+    if (saving) return;
     if (!form.name.trim()) { setStatus({ text: "Name can't be empty.", kind: "error" }); return; }
     if (!form.phone.trim()) { setStatus({ text: "Please add a phone number.", kind: "error" }); return; }
 
@@ -77,7 +81,7 @@ export default function Profile() {
         {sentToComplete && missing.length > 0 && (
           <p className="form-note" role="status" style={{
             marginTop: 0, marginBottom: 24, padding: "14px 16px",
-            background: "rgba(20,201,201,.08)", borderLeft: "3px solid var(--teal)", borderRadius: 10,
+            background: "rgba(var(--teal-rgb),.08)", borderLeft: "3px solid var(--teal)", borderRadius: 10,
           }}>
             Add your {missing.join(", ").replace(/, ([^,]*)$/, " and $1")} to continue to payment.
           </p>

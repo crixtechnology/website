@@ -491,6 +491,29 @@ export async function adminDeleteLecture(id) {
   }
 }
 
+// ---------- Student: receipts (auto-generated on purchase) ----------
+export async function getMyReceipts() {
+  try {
+    const res = await authFetch("/me/receipts");
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load your receipts" };
+  }
+}
+
+export async function getReceipt(paymentId) {
+  try {
+    const res = await authFetch(`/receipts/${paymentId}`);
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not load this receipt" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not load this receipt" };
+  }
+}
+
 // ---------- Admin: students/subscriptions (full CRUD) ----------
 // A "subscription" is an Enrollment — grant gives a user access to a course
 // with no payment involved (same record a real purchase creates), edit

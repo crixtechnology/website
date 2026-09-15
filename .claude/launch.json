@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "crix-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "Backend"],
+      "port": 5000
+    },
+    {
+      "name": "crix-tech-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start", "--prefix", "Frontend"],
+      "port": 3000
+    }
+  ]
+}

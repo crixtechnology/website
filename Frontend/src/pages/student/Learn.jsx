@@ -36,25 +36,39 @@ export default function Learn() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
+    // Guards against an out-of-order response: this effect re-runs on every
+    // slug change without the component unmounting (same route, just a
+    // different :slug param), so navigating from /learn/A to /learn/B before
+    // A's request resolves could otherwise let A's late response overwrite
+    // B's already-loaded data — same pattern already used in Home/Programs/
+    // CourseDetail/Services/CourseVideos for the same reason.
+    let alive = true;
     setData(undefined);
     setError("");
     getLearnData(slug).then((res) => {
+      if (!alive) return;
       if (res.ok) setData(res);
       else { setData(null); setError(res.error || "Could not load this course."); }
     });
+    return () => { alive = false; };
   }, [slug, isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
+    // Same staleness concern as the load effect above: clearInterval on
+    // cleanup stops future ticks, but a refetch already in flight the
+    // instant the slug changes can still resolve afterward and overwrite
+    // the new slug's data with the old one's.
+    let alive = true;
     const tick = () => setNow(Date.now());
     // A live clock tick (for the Join button) plus an occasional full
     // refetch (so a class the admin just added/removed shows up without a
     // manual reload) — separate intervals since they serve different jobs.
     const clockId = setInterval(tick, 30 * 1000);
     const refetchId = setInterval(() => {
-      getLearnData(slug).then((res) => { if (res.ok) setData(res); });
+      getLearnData(slug).then((res) => { if (alive && res.ok) setData(res); });
     }, 2 * 60 * 1000);
-    return () => { clearInterval(clockId); clearInterval(refetchId); };
+    return () => { alive = false; clearInterval(clockId); clearInterval(refetchId); };
   }, [slug, isLoggedIn]);
 
   // No dedicated /login page — log in from right here via the popup.
