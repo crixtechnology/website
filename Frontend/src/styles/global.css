@@ -320,6 +320,16 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .modal-box{position:relative;max-width:420px;width:100%;background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:26px 30px;max-height:96vh;overflow-y:auto;overflow-x:hidden}
 .modal-box .field{margin-bottom:12px}
+/* ServiceInquiryModal — the one form here with 5 fields (every other modal
+   has 4 or fewer) — was tall enough to need .modal-box's own scroll
+   fallback on an ordinary ~650-700px browser viewport (common once you
+   subtract real browser chrome from a laptop screen, not just an edge
+   case). Scoped here rather than tightening .field/.field label globally,
+   which every other modal's spacing also depends on and already fits fine
+   as-is. */
+.compact-form .field{margin-bottom:8px}
+.compact-form .field label{margin-bottom:4px;font-size:.64rem}
+.compact-form .field input,.compact-form .field textarea{padding:10px 14px}
 /* DetailModal (InfoCard's "See more") carries a full description + points
    list, sometimes deliverable chips and a price row too — noticeably more
    content than the compact Buy/Auth/Inquire modals sharing .modal-box, so
