@@ -15,7 +15,12 @@
     "migrate:lecture-endtime": "node src/scripts/backfillLectureEndTime.js",
     "migrate:drop-recorded-lectures": "node src/scripts/dropRecordedLectures.js",
     "migrate:payment-receipts": "node src/scripts/backfillPaymentReceipts.js",
-    "videos:resequence": "node src/scripts/resequenceCourseVideos.js"
+    "videos:resequence": "node src/scripts/resequenceCourseVideos.js",
+    "test": "jest --runInBand"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 20000
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -32,6 +37,8 @@
     "razorpay": "^2.9.4"
   },
   "devDependencies": {
-    "mongodb-memory-server": "^10.0.0"
+    "jest": "^30.5.1",
+    "mongodb-memory-server": "^10.0.0",
+    "supertest": "^7.2.2"
   }
 }

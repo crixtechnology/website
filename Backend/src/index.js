@@ -1,68 +1,8 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
+// Actual process entry point — connects to the real database and starts
+// listening. Kept separate from app.js (the configured Express app itself)
+// so tests can import that directly without either side effect.
+const app = require("./app");
 const { connectDB } = require("./db");
-const { allowedOrigins: getAllowedOrigins } = require("./utils/clientOrigin");
-
-const authRoutes = require("./routes/auth");
-const courseRoutes = require("./routes/courses");
-const applicationRoutes = require("./routes/applications");
-const paymentRoutes = require("./routes/payments");
-const contactRoutes = require("./routes/contact");
-const lectureRoutes = require("./routes/lectures");
-const enrollmentRoutes = require("./routes/enrollments");
-const videoRoutes = require("./routes/videos");
-const adminUserRoutes = require("./routes/adminUsers");
-const serviceRoutes = require("./routes/services");
-const receiptRoutes = require("./routes/receipts");
-
-const app = express();
-
-// Render (and most PaaS hosts) put the app behind one reverse-proxy hop, so
-// req.ip / X-Forwarded-For only reflects the real client IP once Express is
-// told to trust that hop. Without this, two things silently break in
-// production: every IP-keyed rate limiter (routes/auth.js) sees the proxy's
-// own IP for every request (one shared bucket for all visitors) — and worse,
-// express-rate-limit v7 actively refuses to run at all when it detects an
-// X-Forwarded-For header arriving while trust proxy is still at its default
-// `false`, throwing on every request through a limited route. `1` trusts
-// exactly the nearest hop, not an attacker-supplied chain of proxies.
-app.set("trust proxy", 1);
-
-const allowedOrigins = getAllowedOrigins();
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS: " + origin));
-    }
-  },
-}));
-
-// Razorpay webhook needs the raw body to verify the signature, so it gets
-// its own raw-body parser BEFORE the global json() middleware below.
-app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
-app.use(express.json());
-
-app.get("/api/health", (req, res) => res.json({ ok: true }));
-
-app.use("/api/auth", authRoutes);
-app.use("/api", courseRoutes);
-app.use("/api", applicationRoutes);
-app.use("/api/payments", paymentRoutes);
-app.use("/api", contactRoutes);
-app.use("/api", lectureRoutes);
-app.use("/api", enrollmentRoutes);
-app.use("/api", videoRoutes);
-app.use("/api", adminUserRoutes);
-app.use("/api", serviceRoutes);
-app.use("/api", receiptRoutes);
-
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(err.status || 500).json({ ok: false, error: err.message || "Server error" });
-});
 
 const PORT = process.env.PORT || 5000;
 
@@ -84,5 +24,3 @@ connectDB()
     console.error("Failed to connect to MongoDB:", err.message);
     process.exit(1);
   });
-
-module.exports = app;

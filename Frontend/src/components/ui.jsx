@@ -6,6 +6,7 @@ import { site, marquee, programDeliverables } from "../data/content.js";
 import { submitApplication, createRazorpayOrder, verifyPayment, submitContact } from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
+import { trackEvent } from "../utils/analytics.js";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -339,6 +340,11 @@ export function BuyModal({ item, user, onClose }) {
       return;
     }
 
+    trackEvent("begin_checkout", {
+      currency: orderRes.currency, value: (orderRes.amount || 0) / 100,
+      items: [{ item_id: item.slug, item_name: item.title, item_category: item.type }],
+    });
+
     const scriptOk = await loadRazorpayScript();
     if (stale()) return;
     setLoading(false);
@@ -360,6 +366,12 @@ export function BuyModal({ item, user, onClose }) {
         setInfo("Confirming your payment...");
         const v = await verifyPayment(resp);
         if (stale()) return;
+        if (v.ok) {
+          trackEvent("purchase", {
+            transaction_id: resp.razorpay_payment_id, currency: orderRes.currency, value: (orderRes.amount || 0) / 100,
+            items: [{ item_id: item.slug, item_name: item.title, item_category: item.type }],
+          });
+        }
         if (v.ok && v.enrolled) {
           setInfo("Payment confirmed — opening your course...");
           setTimeout(() => {
@@ -492,6 +504,7 @@ export function InquiryModal({ item, kind, onClose }) {
       setStatus({ text: res.error || "Could not submit right now. Please try again, or email us at " + site.email, kind: "error" });
       return;
     }
+    trackEvent("generate_lead", { lead_type: kind, item_id: item.slug, item_name: item.title });
     setDone(true);
   };
 
@@ -697,6 +710,7 @@ export function ServiceInquiryModal({ item, onClose }) {
       setStatus({ text: res.error || "Could not submit right now. Please try again, or email us at " + site.email, kind: "error" });
       return;
     }
+    trackEvent("generate_lead", { lead_type: "service_inquiry", item_name: item.title });
     setDone(true);
   };
 
@@ -731,7 +745,14 @@ export function ServiceInquiryModal({ item, onClose }) {
               <div className="field"><label htmlFor="svc-email">Email (optional)</label>
                 <input id="svc-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
               <div className="field"><label htmlFor="svc-message">Details about your business (optional)</label>
-                <textarea id="svc-message" rows="3" value={form.message} onChange={set("message")} placeholder="What are you looking to build or fix?" /></div>
+                {/* rows=3 pushed this modal past .modal-box's 96vh cap on an
+                    ordinary desktop window (verified: needed ~725px against
+                    a 691px cap) — every other field here is a single-line
+                    input, this was the one thing forcing the popup itself
+                    to scroll. 2 rows still fits a couple of sentences; the
+                    textarea itself scrolls internally for anything longer,
+                    which is the normal/expected behavior for a textarea. */}
+                <textarea id="svc-message" rows="2" value={form.message} onChange={set("message")} placeholder="What are you looking to build or fix?" /></div>
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending..." : "Send inquiry"}
               </button>
@@ -1245,11 +1266,26 @@ export function Counter({ value, suffix = "" }) {
 }
 
 /* ---------- Hero3D: neural constellation background ---------- */
+// Colors/opacities tuned separately per theme — this is a raw WebGL canvas
+// (Three.js material colors), not DOM/CSS, so the CSS custom-property
+// theme system (global.css's [data-theme="light"] block) can't reach it at
+// all. The dark-mode values below (pale cyan/teal at low opacity) were
+// tuned to pop against the near-black --ink background; over the light
+// theme's near-white background the same pale, low-opacity colors read as
+// washed out almost to invisible, so light gets its own deeper, more
+// opaque set instead of just reusing dark's.
+const HERO3D_PALETTE = {
+  dark: { points: 0x7fe8e0, pointsOpacity: 0.85, line: 0x14c9c9, lineOpacity: 0.16, globe: [0x14c9c9, 0x7fe8e0, 0xf2b44c], globeOpacity: [0.35, 0.18, 0.2] },
+  light: { points: 0x0891b2, pointsOpacity: 0.9, line: 0x0d8c86, lineOpacity: 0.3, globe: [0x0d8c86, 0x0891b2, 0xb45309], globeOpacity: [0.55, 0.32, 0.34] },
+};
+
 export function Hero3D() {
   const mountRef = useRef(null);
+  const { theme } = useTheme();
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
+    const palette = HERO3D_PALETTE[theme] || HERO3D_PALETTE.dark;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 100);
@@ -1270,19 +1306,19 @@ export function Hero3D() {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x7fe8e0, size: 0.07, transparent: true, opacity: 0.85 })));
+    scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: palette.points, size: 0.07, transparent: true, opacity: palette.pointsOpacity })));
 
     const MAXL = 260;
     const linePos = new Float32Array(MAXL * 6);
     const lineGeo = new THREE.BufferGeometry();
     lineGeo.setAttribute("position", new THREE.BufferAttribute(linePos, 3));
-    scene.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0x14c9c9, transparent: true, opacity: 0.16 })));
+    scene.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: palette.line, transparent: true, opacity: palette.lineOpacity })));
 
     const cluster = new THREE.Group();
     const mats = [
-      new THREE.MeshBasicMaterial({ color: 0x14c9c9, wireframe: true, transparent: true, opacity: 0.35 }),
-      new THREE.MeshBasicMaterial({ color: 0x7fe8e0, wireframe: true, transparent: true, opacity: 0.18 }),
-      new THREE.MeshBasicMaterial({ color: 0xf2b44c, wireframe: true, transparent: true, opacity: 0.2 }),
+      new THREE.MeshBasicMaterial({ color: palette.globe[0], wireframe: true, transparent: true, opacity: palette.globeOpacity[0] }),
+      new THREE.MeshBasicMaterial({ color: palette.globe[1], wireframe: true, transparent: true, opacity: palette.globeOpacity[1] }),
+      new THREE.MeshBasicMaterial({ color: palette.globe[2], wireframe: true, transparent: true, opacity: palette.globeOpacity[2] }),
     ];
     [[2.6, 0, 0, 0], [1.1, 4.4, 1.6, -1.5], [0.8, -4.8, -2.0, 1.0]].forEach((c, i) => {
       const m = new THREE.Mesh(new THREE.IcosahedronGeometry(c[0], 1), mats[i]);
@@ -1380,10 +1416,19 @@ export function Hero3D() {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("touchstart", requestMotion);
       window.removeEventListener("deviceorientation", onOrientation);
+      // Disposes GPU-side geometry/material buffers, not just the renderer
+      // — this effect now re-runs on every theme toggle (not just once per
+      // page load, since `theme` is a dependency below), so without this a
+      // few toggles back and forth would leak WebGL resources instead of
+      // freeing the previous scene's before building the next one.
+      geo.dispose();
+      lineGeo.dispose();
+      mats.forEach((m) => m.dispose());
+      cluster.children.forEach((m) => m.geometry.dispose());
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
-  }, []);
+  }, [theme]);
   return <div className="bg3d" ref={mountRef}></div>;
 }
 
