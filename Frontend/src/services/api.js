@@ -514,6 +514,31 @@ export async function getReceipt(paymentId) {
   }
 }
 
+// ---------- Admin: revenue (summary + paginated transaction list) ----------
+export async function adminGetRevenueSummary() {
+  try {
+    const res = await authFetch("/admin/payments/summary");
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load revenue summary" };
+  }
+}
+
+export async function adminGetPayments(q, page = 1, limit = 20) {
+  try {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    params.set("page", page);
+    params.set("limit", limit);
+    const res = await authFetch(`/admin/payments?${params.toString()}`);
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load transactions" };
+  }
+}
+
 // ---------- Admin: students/subscriptions (full CRUD) ----------
 // A "subscription" is an Enrollment — grant gives a user access to a course
 // with no payment involved (same record a real purchase creates), edit

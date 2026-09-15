@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetRevenueSummary } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
 export default function AdminDashboard() {
@@ -11,13 +11,14 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     courses: 0, openCourses: 0, internships: 0, openInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
+    totalRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes] = await Promise.all([
-        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(),
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, revenueRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetRevenueSummary(),
       ]);
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
       const courses = entries.filter((c) => c.type !== "internship");
@@ -46,12 +47,17 @@ export default function AdminDashboard() {
         users: users.length,
         newMessages: contacts.filter((c) => c.status === "new").length,
         newApplications: applications.filter((a) => !a.contacted).length,
+        totalRevenue: revenueRes.ok ? revenueRes.summary.totalRevenue : 0,
       });
       setLoading(false);
     })();
   }, []);
 
   const cards = [
+    {
+      label: "Revenue", value: `₹${stats.totalRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+      sub: "total, all-time", to: "/admin/revenue",
+    },
     { label: "Courses", value: stats.courses, sub: `${stats.openCourses} open`, to: "/admin/courses" },
     { label: "Internships", value: stats.internships, sub: `${stats.openInternships} open`, to: "/admin/courses" },
     { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },

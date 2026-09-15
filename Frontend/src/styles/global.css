@@ -32,7 +32,7 @@
    shifted enough to stay legible on white. */
 :root[data-theme="light"]{
   --ink:#F5F7FB; --ink-rgb:245,247,251; --panel:#FFFFFF; --panel-2:#F0F3F9;
-  --teal:#0D8C86; --teal-rgb:13,140,134; --cyan:#0891B2; --amber:#B45309;
+  --teal:#0D8C86; --teal-rgb:13,140,134; --cyan:#0E7490; --amber:#B45309;
   --text:#101B33; --muted:#55627A;
   --line:rgba(16,27,51,.12);
   --danger:#C0392B; --danger-rgb:192,57,43;

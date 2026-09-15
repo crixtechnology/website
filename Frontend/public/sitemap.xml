@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static sitemap — covers the pages that exist regardless of what's in the
+  database (marketing + legal pages). Deliberately does NOT list individual
+  /programs/:slug course/internship pages: those come from live Course data
+  and this is a static file shipped with the Frontend build, not generated
+  from the database, so it can't stay in sync with courses an admin adds or
+  removes later without a separate build step. Not a blocker for search
+  engines finding them either way — they're all linked from /programs,
+  which crawlers follow normally; a sitemap is a hint, not the only
+  discovery path. Revisit with a backend-generated sitemap endpoint if/when
+  individual course-page SEO ranking actually matters.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://crixtechnology.in/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://crixtechnology.in/programs</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://crixtechnology.in/services</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://crixtechnology.in/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://crixtechnology.in/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://crixtechnology.in/privacy-policy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://crixtechnology.in/terms-of-service</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://crixtechnology.in/client-terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>
