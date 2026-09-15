@@ -731,11 +731,21 @@ export function ServiceInquiryModal({ item, onClose }) {
           </>
         ) : (
           <>
-            <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
+            <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 12 }}>
               Tell us about your business and we'll get back to you about "{item.title}" within two
               working days.
             </p>
-            <form onSubmit={onSubmit}>
+            {/* This is the one modal with 5 fields (every other modal here has
+                4 or fewer) — tighter spacing scoped to just this form via
+                .compact-form (global.css) rather than shrinking the shared
+                .field/.modal-box rules every other modal also relies on.
+                Still not enough on its own for a genuinely short window,
+                which is exactly what .modal-box's own overflow-y:auto
+                fallback is for — this just pushes the height needed low
+                enough that a normal ~650-700px browser viewport (common on
+                real laptops once you subtract browser chrome) doesn't need
+                it, where it did before. */}
+            <form onSubmit={onSubmit} className="compact-form">
               <div className="field"><label htmlFor="svc-company">Business / Company name</label>
                 <input id="svc-company" autoComplete="organization" value={form.company} onChange={set("company")} placeholder="Your company" /></div>
               <div className="field"><label htmlFor="svc-name">Your name</label>
