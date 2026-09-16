@@ -1,7 +1,7 @@
-# Recorded video delivery (drip schedule)
+# Recorded video delivery
 
-Paid, logged-in students get one recorded lecture unlocked per day, counting
-from their own enrollment date. Videos are recorded on Google Meet (which
+Paid, logged-in students can watch every recorded lecture for a course any
+time, as soon as they're enrolled. Videos are recorded on Google Meet (which
 auto-saves to a Google Drive folder), synced into a **private** Backblaze B2
 bucket, and streamed to the browser through a Cloudflare Worker that is the
 only thing allowed to read the bucket.
@@ -19,7 +19,7 @@ Google Meet ──auto──► Google Drive folder
                            ▲
                            │  GET /videos/<b2Key>?exp=&token=   (HMAC, 6h)
    Frontend <video>  ◄──── Backend  GET /api/courses/:id/videos/:vid/play-url
-                                    (re-checks auth + enrollment + unlock day)
+                                    (re-checks auth + enrollment)
 ```
 
 Nothing here transcodes. Playback is plain HTTP Range on the original file.
@@ -30,10 +30,9 @@ Nothing here transcodes. Playback is plain HTTP Range on the original file.
 
 | Path | What it is | Deploys |
 |---|---|---|
-| `Backend/src/models/Video.js`, `routes/videos.js`, `middleware/requireEnrollment.js`, `middleware/requireInternalToken.js`, `utils/signedVideoUrl.js` | API: list videos w/ lock state, mint signed play URLs, internal register endpoint | with the main API |
-| `Backend/src/models/Enrollment.js` (`startDate`) | per-student day 1 | with the main API |
+| `Backend/src/models/Video.js`, `routes/videos.js`, `middleware/requireEnrollment.js`, `middleware/requireInternalToken.js`, `utils/signedVideoUrl.js` | API: list videos, mint signed play URLs, internal register endpoint | with the main API |
 | `Frontend/src/components/CourseVideos.jsx` | student list + `<video>` player with token-refresh/resume | with the site |
-| `Frontend/src/pages/admin/AdminVideos.jsx` | admin: retitle / reorder unlock day / delete | with the site |
+| `Frontend/src/pages/admin/AdminVideos.jsx` | admin: retitle / reorder day label / delete | with the site |
 | `cloudflare-worker/` | the B2 read gateway | `wrangler deploy` (separate) |
 | `scripts/drive-to-b2-sync/` | Drive → B2 importer + registrar | run on a box/cron (separate) |
 | `scripts/test-tools/` | `upload-test-video.js`, `generate-signed-link.js` | local only |
@@ -217,13 +216,7 @@ Unchanged from before — `grantAccessForPayment()` in
 payment, status: "active" }` the moment Razorpay confirms the payment
 (browser `/verify` call or the webhook, whichever lands first).
 
-New: `Enrollment.startDate` now defaults to that moment and is the student's
-drip **day 1**. To start someone's schedule on a different date, edit
-`startDate` on their Enrollment document directly (there's no admin control
-for it yet). `middleware/requireEnrollment.js` computes:
-
-```
-unlockedThroughDay = floor((now - startDate) / 1 day) + 1
-```
-
-and a video is playable when `video.dayNumber <= unlockedThroughDay`.
+`middleware/requireEnrollment.js` just checks that Enrollment exists and
+hasn't expired (see `utils/enrollmentAccess.js`'s `startDate`/`endDate`
+window) — once it passes, every video for that course is playable, no
+per-video unlock check.

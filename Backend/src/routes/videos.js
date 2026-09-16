@@ -13,31 +13,22 @@ const router = express.Router();
 // Long enough to cover a full ~3h lecture plus pauses. The React player
 // re-fetches a fresh URL and resumes if playback ever errors on expiry.
 const PLAY_URL_TTL_SECONDS = 6 * 60 * 60;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
-// ---------- student: list a course's videos with lock state ----------
-// requireEnrollment has already loaded req.enrollment + req.unlockedThroughDay.
+// ---------- student: list a course's videos ----------
+// requireEnrollment has already confirmed the student has active access.
+// Every recorded video is playable any time once a student is enrolled —
+// there's no drip schedule.
 router.get("/courses/:courseId/videos", requireAuth, requireEnrollment, async (req, res, next) => {
   try {
     const videos = await Video.find({ course: req.params.courseId }).sort({ dayNumber: 1, createdAt: 1 });
-    const startMs = new Date(req.enrollment.startDate || req.enrollment.createdAt || Date.now()).getTime();
-    const start = Number.isFinite(startMs) ? startMs : Date.now();
-
     res.json({
       ok: true,
-      unlockedThroughDay: req.unlockedThroughDay,
-      videos: videos.map((v) => {
-        const unlocked = v.dayNumber <= req.unlockedThroughDay;
-        return {
-          _id: v._id,
-          title: v.title,
-          dayNumber: v.dayNumber,
-          durationSeconds: v.durationSeconds,
-          unlocked,
-          // When a locked video becomes available, for the "unlocks on …" hint.
-          unlocksOn: unlocked ? null : new Date(start + (v.dayNumber - 1) * DAY_MS).toISOString(),
-        };
-      }),
+      videos: videos.map((v) => ({
+        _id: v._id,
+        title: v.title,
+        dayNumber: v.dayNumber,
+        durationSeconds: v.durationSeconds,
+      })),
     });
   } catch (e) {
     next(e);
@@ -57,10 +48,6 @@ router.get("/courses/:courseId/videos/:videoId/play-url", requireAuth, requireEn
     }
     const video = await Video.findOne({ _id: req.params.videoId, course: req.params.courseId });
     if (!video) return res.status(404).json({ ok: false, error: "Video not found" });
-
-    if (video.dayNumber > req.unlockedThroughDay) {
-      return res.status(403).json({ ok: false, error: "This video hasn't unlocked yet" });
-    }
 
     const url = buildSignedUrl(gateway, video.b2Key, PLAY_URL_TTL_SECONDS);
     res.json({
