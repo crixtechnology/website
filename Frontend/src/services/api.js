@@ -348,7 +348,7 @@ export async function getLearnData(slug) {
   }
 }
 
-// ---------- Student: drip recorded videos ----------
+// ---------- Student: recorded videos ----------
 // courseId is the Course _id (Learn.jsx has it from getLearnData().course._id).
 export async function getCourseVideos(courseId) {
   try {
@@ -376,7 +376,7 @@ export async function getVideoPlayUrl(courseId, videoId) {
   }
 }
 
-// ---------- Admin: drip video schedule ----------
+// ---------- Admin: course videos ----------
 export async function adminGetVideos(courseId) {
   try {
     const qs = courseId ? `?courseId=${courseId}` : "";

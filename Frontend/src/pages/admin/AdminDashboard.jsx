@@ -63,7 +63,7 @@ export default function AdminDashboard() {
     { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },
     { label: "Subscriptions", value: stats.enrollments, sub: "paid & granted", to: "/admin/students" },
     { label: "Live class schedule", value: "Manage", sub: "Google Meet sessions", to: "/admin/lectures" },
-    { label: "Course videos", value: "Manage", sub: "recorded drip schedule", to: "/admin/videos" },
+    { label: "Course videos", value: "Manage", sub: "recorded lectures", to: "/admin/videos" },
     { label: "Services", value: "Manage", sub: "public /services page", to: "/admin/services" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
     { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },

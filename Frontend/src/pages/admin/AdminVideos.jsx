@@ -5,10 +5,11 @@ import {
 } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
-// Read/curate view over the drip video schedule. Videos are created by the
-// drive-to-b2-sync script (which streams each Google Meet recording into B2
-// and registers it here) — this page is for fixing titles and reordering the
-// unlock day, or removing a bad row. It does not upload.
+// Read/curate view over a course's recorded videos. Videos are created by
+// the drive-to-b2-sync script (which streams each Google Meet recording into
+// B2 and registers it here) — this page is for fixing titles and reordering
+// the day number (just a label, all videos are playable any time), or
+// removing a bad row. It does not upload.
 
 function fmtDuration(seconds) {
   if (!seconds || seconds < 1) return "—";
@@ -33,8 +34,8 @@ export default function AdminVideos() {
 
   useEffect(() => {
     // Both types — an internship can now carry a real price and get a real
-    // Enrollment the same way a course does, so it can have a drip video
-    // schedule too, not just courses.
+    // Enrollment the same way a course does, so it can have recorded videos
+    // too, not just courses.
     adminGetCourses().then((res) => {
       if (res.ok) {
         setCourses(res.courses || []);
@@ -89,9 +90,9 @@ export default function AdminVideos() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h2 style={{ margin: "14px 0 0" }}>Course videos (drip schedule)</h2>
+            <h2 style={{ margin: "14px 0 0" }}>Course videos</h2>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
-              One video unlocks per day from each student's enrollment date. New recordings are added automatically by the sync script.
+              All recorded videos are playable any time once a student is enrolled. New recordings are added automatically by the sync script.
             </p>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>

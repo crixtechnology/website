@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCourseVideos, getVideoPlayUrl } from "../services/api.js";
 
-// The student-facing recorded-lecture list for one course. Videos unlock one
-// per day from the student's enrollment start date; locked ones stay visible
-// but disabled. Playback streams from the Cloudflare Worker gateway via a
-// short-lived signed URL that this component fetches right before play (and
-// re-fetches, resuming in place, if it expires mid-lecture).
+// The student-facing recorded-lecture list for one course. Every video is
+// playable any time once a student is enrolled. Playback streams from the
+// Cloudflare Worker gateway via a short-lived signed URL that this component
+// fetches right before play (and re-fetches, resuming in place, if it
+// expires mid-lecture).
 
 function fmtDuration(seconds) {
   if (!seconds || seconds < 1) return null;
@@ -13,10 +13,6 @@ function fmtDuration(seconds) {
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   return h ? `${h}h ${m}m` : `${m}m`;
-}
-
-function fmtDate(iso) {
-  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function CourseVideos({ courseId }) {
@@ -49,15 +45,10 @@ export default function CourseVideos({ courseId }) {
                 <span className="admin-row-meta">
                   Day {v.dayNumber}
                   {dur ? ` · ${dur}` : ""}
-                  {!v.unlocked && v.unlocksOn ? ` · unlocks ${fmtDate(v.unlocksOn)}` : ""}
                 </span>
               </div>
               <div className="admin-row-actions">
-                {v.unlocked ? (
-                  <button className="btn btn-solid" onClick={() => setPlaying(v)}>Watch →</button>
-                ) : (
-                  <button className="btn btn-ghost" disabled aria-disabled="true">Locked</button>
-                )}
+                <button className="btn btn-solid" onClick={() => setPlaying(v)}>Watch →</button>
               </div>
             </div>
           );

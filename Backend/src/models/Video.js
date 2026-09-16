@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
 
-// One recorded lecture in a course's drip schedule. The actual video file
-// lives in a private Backblaze B2 bucket (never public) and is only ever
-// served through the Cloudflare Worker gateway using a short-lived signed
-// URL minted by routes/videos.js — this row just holds the metadata.
+// One recorded lecture for a course. The actual video file lives in a
+// private Backblaze B2 bucket (never public) and is only ever served
+// through the Cloudflare Worker gateway using a short-lived signed URL
+// minted by routes/videos.js — this row just holds the metadata.
 //
 // Rows are created by scripts/drive-to-b2-sync (which uploads the file from
 // the Google Meet -> Drive recording folder into B2 and then calls
@@ -19,8 +19,8 @@ const videoSchema = new mongoose.Schema(
     // and an admin trace a video back to its source recording. Null for a
     // video added by hand.
     sourceDriveFileId: { type: String, default: null, trim: true },
-    // Which day of the student's personal drip schedule unlocks this video
-    // (day 1 = their enrollment startDate). Auto-assigned as "existing video
+    // Display/ordering label only (e.g. "Day 3") — every video is playable
+    // any time once a student is enrolled. Auto-assigned as "existing video
     // count in this course + 1" when the sync script doesn't pass one.
     dayNumber: { type: Number, required: true, min: 1 },
     durationSeconds: { type: Number, default: null, min: 0 },
