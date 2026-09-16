@@ -276,25 +276,6 @@ export const about = {
   ],
 };
 
-export const testimonials = [
-  {
-    quote: "Crix Technology gave me real project experience that no classroom could. The certificate helped me land my first job!",
-    name: "Rahul Sharma", college: "GTU, Ahmedabad", track: "Web Development", initials: "RS", color: "blue",
-  },
-  {
-    quote: "The task-based learning was incredible. I built 3 production-level projects in just one month!",
-    name: "Priya Mehta", college: "PDPU, Gandhinagar", track: "AI/ML Intern", initials: "PM", color: "purple",
-  },
-  {
-    quote: "Supportive mentors, clear tasks, and a certificate recognized by top recruiters. Highly recommended!",
-    name: "Arjun Patel", college: "SVIT, Vasad", track: "Android Dev", initials: "AP", color: "teal",
-  },
-  {
-    quote: "I went from zero Python knowledge to building ML models. The curriculum is perfectly structured.",
-    name: "Sneha Joshi", college: "CHARUSAT", track: "Data Science", initials: "SJ", color: "amber",
-  },
-];
-
 // ============================================================
 // LEGAL — Privacy Policy & Terms of Service. Rendered verbatim
 // on /privacy-policy and /terms-of-service.
