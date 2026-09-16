@@ -371,19 +371,6 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .benefit h3{font-size:.95rem;margin:0 0 8px}
 .benefit p{color:var(--muted);font-size:.82rem;line-height:1.55}
 
-.testimonial-card{display:flex;flex-direction:column;gap:12px;min-height:100%}
-.stars{color:var(--amber);letter-spacing:2px;font-size:.9rem}
-.testimonial-quote{color:var(--text);font-style:italic;font-size:.9rem;line-height:1.6;flex:1}
-.testimonial-who{display:flex;align-items:center;gap:12px;margin-top:2px}
-.testimonial-who b{display:block;font-size:.9rem;color:var(--text)}
-.testimonial-meta{font-size:.74rem;color:var(--muted)}
-.testimonial-track{font-size:.74rem;color:var(--cyan)}
-.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Unbounded',sans-serif;font-weight:700;font-size:.74rem;flex:none}
-.avatar-blue{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
-.avatar-purple{background:linear-gradient(135deg,#8b5cf6,#6d28d9)}
-.avatar-teal{background:linear-gradient(135deg,#14c9c9,#0d7a7a)}
-.avatar-amber{background:linear-gradient(135deg,#f2b44c,#c9791f)}
-
 /* ---------- Admin panel (course management) ---------- */
 .admin-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:32px}
 .admin-form{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:28px}
@@ -506,7 +493,10 @@ footer{border-top:1px solid var(--line);padding:44px 0 96px;margin-top:40px}
 .foot-contact{display:flex;flex-direction:column;gap:2px;font-size:.8rem}
 .foot-contact a{display:inline-block;padding:7px 0;color:var(--cyan);text-decoration:none}
 .foot-contact a:hover{color:var(--teal)}
-.wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;background:rgba(30,190,93,.12);padding:2px 8px;border-radius:20px;text-decoration:none;display:inline-block}
+.foot-contact span:has(.wa-pill){display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.64rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(30,190,93,.12);border:1px solid rgba(30,190,93,.28);padding:4px 11px;border-radius:20px;text-decoration:none;display:inline-flex;align-items:center;transition:background .2s ease,color .2s ease,border-color .2s ease,transform .15s ease}
+a.wa-pill:hover,a.wa-pill:focus-visible{background:#1EBE5D;color:#04170c;border-color:#1EBE5D;transform:translateY(-1px)}
+a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 .foot-hours{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.66rem;letter-spacing:.06em}
 .foot-cols{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:28px;flex:1;min-width:280px;max-width:560px}
 .foot-cols h4{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}

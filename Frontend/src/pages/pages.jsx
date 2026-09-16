@@ -4,7 +4,7 @@ import {
   Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
 import {
-  site, hero, internships, services, courses, process, benefits, stats, about, testimonials, legal,
+  site, hero, internships, services, courses, process, benefits, stats, about, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables,
 } from "../data/content.js";
 import { submitContact, getCourses, getCourse, getServices } from "../services/api.js";
@@ -592,30 +592,6 @@ export function About() {
         </div>
       </section>
 
-      <section className="section" style={{ paddingTop: 20 }}>
-        <div className="wrap">
-          <Reveal as="span" variant="reveal-l" className="eyebrow">Intern Stories</Reveal>
-          <Reveal as="h2" variant="reveal-l">What our interns say.</Reveal>
-          <div className="grid4 stagger">
-            {testimonials.map((t, i) => (
-              <Reveal key={t.name} variant="reveal" style={{ "--i": i }}>
-                <article className="card testimonial-card">
-                  <div className="stars" aria-label="5 out of 5 stars">★★★★★</div>
-                  <p className="testimonial-quote">"{t.quote}"</p>
-                  <div className="testimonial-who">
-                    <span className={`avatar avatar-${t.color}`}>{t.initials}</span>
-                    <div>
-                      <b>{t.name}</b>
-                      <div className="testimonial-meta">{t.college}</div>
-                      <div className="testimonial-track">{t.track}</div>
-                    </div>
-                  </div>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
       <CtaBand />
     </>
   );
