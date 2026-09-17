@@ -28,7 +28,7 @@ export const site = {
 export const company = {
   legalName: "Crix Technology Private Limited",
   entityType: "Private Limited Company",
-  incorporated: "2026 · Registrar of Companies, Ahmedabad, Gujarat",
+  incorporated: "Registrar of Companies, Ahmedabad, Gujarat",
   authority: "Incorporated under the Companies Act, 2013 (Ministry of Corporate Affairs)",
   cin: "U63122GJ2026PTC179737",
   registeredOffice: "G-403, Jalaram Vatika, Nr. Sadguru Bunglows, New Maninagar, Ramol, Daskroi, Ahmedabad – 382449, Gujarat, India",
