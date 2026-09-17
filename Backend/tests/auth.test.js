@@ -2,8 +2,12 @@ const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 
 let app;
+let User;
 
-beforeAll(async () => { app = await setupTestDb(); }, 60000);
+beforeAll(async () => {
+  app = await setupTestDb();
+  User = require("../src/models/User");
+}, 60000);
 afterAll(async () => { await teardownTestDb(); });
 
 // Covers the duplicate-signup fix from this session: routes/auth.js used to
@@ -49,6 +53,11 @@ describe("POST /api/auth/login", () => {
 
   beforeAll(async () => {
     await request(app).post("/api/auth/signup").send({ name: "Login Test", email, phone: "9876543211", password });
+    // Signup itself starts a live session (a freshly-signed-up user is
+    // immediately logged in) — clear it so the login test below exercises
+    // /login in isolation instead of tripping the single-device-login block
+    // this same session would otherwise trigger against itself.
+    await User.updateOne({ email }, { $set: { activeSessionId: null, activeSessionLastSeenAt: null } });
   });
 
   it("logs in with the correct password", async () => {
@@ -62,5 +71,57 @@ describe("POST /api/auth/login", () => {
     const res = await request(app).post("/api/auth/login").send({ email, password: "wrong-password" });
     expect(res.status).toBe(401);
     expect(res.body.ok).toBe(false);
+  });
+});
+
+describe("single-device-login enforcement", () => {
+  const email = "single-device-test@example.com";
+  const password = "a-real-password";
+
+  beforeAll(async () => {
+    await request(app).post("/api/auth/signup").send({ name: "Single Device", email, phone: "9876543212", password });
+  });
+
+  // Each test starts from a clean slot regardless of what a previous test in
+  // this block left behind — signup itself also starts a live session, same
+  // as a real login does.
+  beforeEach(async () => {
+    await User.updateOne({ email }, { $set: { activeSessionId: null, activeSessionLastSeenAt: null } });
+  });
+
+  it("blocks a second login while the first session is still live", async () => {
+    const first = await request(app).post("/api/auth/login").send({ email, password });
+    expect(first.status).toBe(200);
+
+    const second = await request(app).post("/api/auth/login").send({ email, password });
+    expect(second.status).toBe(409);
+    expect(second.body.ok).toBe(false);
+    expect(second.body.error).toMatch(/already logged in on another device/i);
+  });
+
+  it("lets a second login through once the first session has gone idle, and invalidates the first device's token", async () => {
+    const firstLogin = await request(app).post("/api/auth/login").send({ email, password });
+    expect(firstLogin.status).toBe(200);
+    const firstToken = firstLogin.body.token;
+
+    // Simulate the first session having gone idle past IDLE_TIMEOUT_MS.
+    await User.updateOne({ email }, { $set: { activeSessionLastSeenAt: new Date(Date.now() - 31 * 60 * 1000) } });
+
+    const secondLogin = await request(app).post("/api/auth/login").send({ email, password });
+    expect(secondLogin.status).toBe(200);
+
+    const firstDeviceReq = await request(app).get("/api/auth/me").set("Authorization", `Bearer ${firstToken}`);
+    expect(firstDeviceReq.status).toBe(401);
+  });
+
+  it("lets a fresh login through immediately after an explicit logout", async () => {
+    const login1 = await request(app).post("/api/auth/login").send({ email, password });
+    expect(login1.status).toBe(200);
+
+    const logoutRes = await request(app).post("/api/auth/logout").set("Authorization", `Bearer ${login1.body.token}`);
+    expect(logoutRes.status).toBe(200);
+
+    const login2 = await request(app).post("/api/auth/login").send({ email, password });
+    expect(login2.status).toBe(200);
   });
 });
