@@ -299,6 +299,21 @@ export async function googleAuth(credential) {
   }
 }
 
+// Tells the server to free up this account's single-device-login slot
+// immediately, instead of leaving it to expire on its own after 30 minutes
+// idle (Backend/src/utils/sessionPolicy.js). Best-effort: called right
+// before the local session is torn down either way (see UserContext's
+// logout), so a network hiccup here never blocks logging out on this
+// device — it just means the slot takes the usual idle timeout to free up
+// instead of freeing immediately.
+export async function logoutSession() {
+  try {
+    await authFetch("/auth/logout", { method: "POST" });
+  } catch (e) {
+    /* best-effort — local logout proceeds regardless */
+  }
+}
+
 export async function fetchMe() {
   try {
     const res = await authFetch("/auth/me");

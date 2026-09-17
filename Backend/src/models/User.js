@@ -30,6 +30,14 @@ const userSchema = new mongoose.Schema(
     // Deliberately unused/ignored for admins, who may be logged in on
     // multiple devices at once.
     activeSessionId: { type: String, default: null },
+    // Bumped (throttled) on every authenticated request the active session
+    // makes — see middleware/requireAuth.js — so a login attempt elsewhere
+    // (routes/auth.js) can tell an actually-idle session from a live one,
+    // and requireAuth can expire a session server-side once it's been idle
+    // past the same threshold, even if the idle device's own client-side
+    // timer never got the chance to log it out itself (tab closed, app
+    // killed, etc).
+    activeSessionLastSeenAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

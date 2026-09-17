@@ -8,6 +8,7 @@ const { requireAuth } = require("../middleware/requireAuth");
 const { isDisposableEmail } = require("../utils/disposableEmail");
 const { isValidEmail, isValidPhone } = require("../utils/validators");
 const { signToken: signJwt } = require("../utils/jwt");
+const { hasLiveSession } = require("../utils/sessionPolicy");
 
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -38,15 +39,30 @@ function signToken(user, sessionId) {
 // Single-device-login enforcement is student-only (see requireAuth.js) — an
 // admin token is never given a `sid`, so it's never checked against
 // activeSessionId and admins can stay logged in on as many devices as they
-// like. For a student, every fresh login mints a new session id and writes
-// it onto the user doc, which invalidates any token issued to that account
-// on another device.
+// like. A student who's already logged in on a still-live (not idle)
+// session elsewhere is blocked below, before this ever runs — this only
+// runs once that check has cleared, so it's safe to always overwrite here:
+// either there was no session, or the previous one had already gone idle
+// and is being replaced.
 async function startSession(user) {
   if (user.role !== "student") return null;
   const sessionId = crypto.randomBytes(24).toString("hex");
   user.activeSessionId = sessionId;
+  user.activeSessionLastSeenAt = new Date();
   await user.save();
   return sessionId;
+}
+
+// Called by /login and /google (not /signup — a brand-new account can't
+// already have a session) right before startSession. A student already
+// live on another device gets a plain 409 here instead of the silent
+// takeover startSession used to do — no override, no way around it from
+// this endpoint; that device has to go idle (IDLE_TIMEOUT_MS) or log itself
+// out (POST /auth/logout, which clears activeSessionId immediately) first.
+function rejectIfAlreadyLoggedInElsewhere(res, user) {
+  if (!hasLiveSession(user)) return false;
+  res.status(409).json({ ok: false, error: "This account is already logged in on another device." });
+  return true;
 }
 
 function publicUser(user) {
@@ -136,6 +152,8 @@ router.post("/login", authLimiter, async (req, res, next) => {
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) return res.status(401).json({ ok: false, error: "Invalid credentials" });
 
+    if (rejectIfAlreadyLoggedInElsewhere(res, user)) return;
+
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);
     res.json({ ok: true, token, user: publicUser(user) });
@@ -182,9 +200,30 @@ router.post("/google", authLimiter, async (req, res, next) => {
       await user.save();
     }
 
+    if (rejectIfAlreadyLoggedInElsewhere(res, user)) return;
+
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);
     res.json({ ok: true, token, user: publicUser(user) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------- logout — frees this account's device slot immediately instead
+// of waiting for it to go idle (see IDLE_TIMEOUT_MS) ----------
+router.post("/logout", requireAuth, async (req, res, next) => {
+  try {
+    if (req.user.role === "student" && req.user.sid) {
+      // Only clears the slot if it's still THIS session's — a token from a
+      // device that's already been superseded elsewhere can't accidentally
+      // free up a newer, different session.
+      await User.updateOne(
+        { _id: req.user.sub, activeSessionId: req.user.sid },
+        { $set: { activeSessionId: null, activeSessionLastSeenAt: null } }
+      );
+    }
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  getAdminToken, getStoredUser, adminLogout, setLastActivity, AUTH_CLEARED_EVENT,
+  getAdminToken, getStoredUser, adminLogout, logoutSession, setLastActivity, AUTH_CLEARED_EVENT,
   login as loginRequest, signup as signupRequest, googleAuth as googleAuthRequest,
   fetchMe, updateMe,
 } from "../services/api.js";
@@ -65,6 +65,12 @@ export function UserProvider({ children }) {
   }, []);
 
   const logout = useCallback((opts) => {
+    // Best-effort, and deliberately fired before adminLogout() clears the
+    // token below — frees this account's single-device-login slot
+    // immediately (see Backend's sessionPolicy) instead of leaving it to
+    // expire on its own after 30 minutes idle. Not awaited: logging out
+    // locally must never wait on the network.
+    logoutSession();
     adminLogout();
     setUser(null);
     setToken(null);
@@ -96,10 +102,16 @@ export function UserProvider({ children }) {
     fetchMe().then((res) => { if (res.ok && res.user) setUser(res.user); });
   }, []);
 
-  // Sign out after 15 minutes with no interaction anywhere on the site.
+  // Sign out after 30 minutes with no interaction anywhere on the site —
+  // matches Backend's sessionPolicy.IDLE_TIMEOUT_MS, which is what actually
+  // frees this account's single-device-login slot server-side; keeping
+  // both at the same duration means this client-side timer is normally what
+  // the user sees kick in, with the server-side one purely a backstop for
+  // when this device's own JS never got the chance to run.
   useIdleLogout({
     active: !!user && !!token,
     onIdle: () => logout({ expired: true }),
+    timeoutMs: 30 * 60 * 1000,
   });
 
   const openAuthModal = useCallback((mode = "login", onSuccess) => {
