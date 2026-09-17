@@ -8,7 +8,14 @@ const mongoose = require("mongoose");
 // the course is later renamed/repriced or the user edits their profile.
 const receiptSchema = new mongoose.Schema(
   {
-    number: { type: String, default: null }, // e.g. "CRX-2026-00001"
+    // No `default: null` here on purpose — the unique+sparse index below on
+    // "receipt.number" only excludes documents where the field is genuinely
+    // *absent*, not ones explicitly set to null. A default would make every
+    // not-yet-paid Payment (created at checkout, before attachReceipt ever
+    // runs) write an explicit null, and since a unique index can't hold two
+    // of those, the second such Payment anywhere would fail to insert with
+    // E11000. Same bug class as User.googleId, see that field's own comment.
+    number: { type: String }, // e.g. "CRX-2026-00001"
     issuedAt: { type: Date, default: null },
     buyerName: { type: String, default: "" },
     buyerEmail: { type: String, default: "" },

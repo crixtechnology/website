@@ -15,6 +15,7 @@
     "migrate:lecture-endtime": "node src/scripts/backfillLectureEndTime.js",
     "migrate:drop-recorded-lectures": "node src/scripts/dropRecordedLectures.js",
     "migrate:payment-receipts": "node src/scripts/backfillPaymentReceipts.js",
+    "migrate:fix-stale-receipt-nulls": "node src/scripts/fixStalePaymentReceiptNulls.js",
     "videos:resequence": "node src/scripts/resequenceCourseVideos.js",
     "test": "jest --runInBand"
   },
