@@ -13,14 +13,44 @@ export const REDUCED =
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Locks the page from scrolling behind a modal while it's open (used by
-// BuyModal and AuthModal) — restores whatever overflow value was there
-// before, so nesting/closing never leaves the page stuck unscrollable.
-function useBodyScrollLock(active) {
+// every .modal-backdrop popup). A plain `body{overflow:hidden}` is NOT
+// enough on real mobile browsers — iOS Safari and many Android browsers
+// don't reliably block *touch-driven* scrolling just from that (a
+// long-standing, widely-documented gap), so the page kept scrolling behind
+// an open popup: background content (including the footer) would slide up
+// underneath it, and on some mobile GPUs a position:fixed + backdrop-filter
+// element can visibly glitch against content scrolling under it, briefly
+// showing that content on top. Pinning body itself with position:fixed at
+// the saved scroll offset (the standard robust technique for this) blocks
+// touch scrolling outright instead of just hiding a scrollbar, so there's
+// nothing left to scroll behind the popup in the first place. Restores the
+// exact scroll position on close.
+export function useBodyScrollLock(active) {
   useEffect(() => {
     if (!active) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    const scrollY = window.scrollY;
+    const body = document.body.style;
+    const prev = { position: body.position, top: body.top, left: body.left, right: body.right, width: body.width };
+    body.position = "fixed";
+    body.top = `-${scrollY}px`;
+    body.left = "0";
+    body.right = "0";
+    body.width = "100%";
+    return () => {
+      body.position = prev.position;
+      body.top = prev.top;
+      body.left = prev.left;
+      body.right = prev.right;
+      body.width = prev.width;
+      // html{scroll-behavior:smooth} (global.css) would otherwise turn this
+      // restore into a slow animated scroll instead of landing instantly
+      // back where the user was.
+      const htmlStyle = document.documentElement.style;
+      const prevBehavior = htmlStyle.scrollBehavior;
+      htmlStyle.scrollBehavior = "auto";
+      window.scrollTo(0, scrollY);
+      htmlStyle.scrollBehavior = prevBehavior;
+    };
   }, [active]);
 }
 

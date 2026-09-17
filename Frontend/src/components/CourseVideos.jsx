@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getCourseVideos, getVideoPlayUrl } from "../services/api.js";
+import { useBodyScrollLock } from "./ui.jsx";
 
 // The student-facing recorded-lecture list for one course. Every video is
 // playable any time once a student is enrolled. Playback streams from the
@@ -93,12 +94,12 @@ function VideoPlayerModal({ courseId, video, onClose }) {
 
   useEffect(() => () => clearTimeout(retryTimerRef.current), []);
 
+  useBodyScrollLock(true);
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+    return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   const onTimeUpdate = () => {
