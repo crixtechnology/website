@@ -319,6 +319,15 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .modal-backdrop{position:fixed;inset:0;z-index:100;background:rgba(6,11,26,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:12px;animation:fadeIn .25s ease}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .modal-box{position:relative;max-width:420px;width:100%;background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:26px 30px;max-height:96vh;overflow-y:auto;overflow-x:hidden}
+/* 96vh is measured against the LARGEST possible viewport (as if a mobile
+   browser's address bar were already hidden), so a modal sized/centered off
+   it can claim more room than is actually visible right now — leaving a
+   blank band above the box and pushing its bottom off-screen until the
+   user scrolls and the chrome collapses to reveal the rest. Same bug class
+   .hero already hit and fixed with svh (see its own comment above) — 96svh
+   is measured against the smallest/guaranteed-visible viewport instead, so
+   the box always fits what's actually on screen from the first paint. */
+@supports (max-height:96svh){.modal-box{max-height:96svh}}
 .modal-box .field{margin-bottom:12px}
 /* ServiceInquiryModal — the one form here with 5 fields (every other modal
    has 4 or fewer) — was tall enough to need .modal-box's own scroll
