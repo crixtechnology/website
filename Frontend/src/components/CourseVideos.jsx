@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { getCourseVideos, getVideoPlayUrl } from "../services/api.js";
 
 // The student-facing recorded-lecture list for one course. Every video is
@@ -131,7 +132,15 @@ function VideoPlayerModal({ courseId, video, onClose }) {
     retryTimerRef.current = setTimeout(fetchUrl, 400 * retriesRef.current);
   };
 
-  return (
+  // Portaled to <body> — this modal is opened from deep inside a course's
+  // page content (Learn.jsx's section/wrap), and position:fixed's viewport
+  // pinning isn't reliable from an arbitrarily nested call site on every
+  // mobile browser (same reasoning as Alert's and the mobile nav dropdown's
+  // own portals elsewhere in this file). Unportaled, this showed up as the
+  // popup needing a scroll to fully appear and the page footer scrolling up
+  // over it — both symptoms of the backdrop not actually staying fixed to
+  // the real viewport.
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal-box modal-box--video"
@@ -163,6 +172,7 @@ function VideoPlayerModal({ courseId, video, onClose }) {
         </div>
         {src && status && <p className="form-note">{status}</p>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
