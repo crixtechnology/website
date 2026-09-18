@@ -7,6 +7,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const { allowedOrigins: getAllowedOrigins } = require("./utils/clientOrigin");
 
 const authRoutes = require("./routes/auth");
@@ -23,6 +24,17 @@ const receiptRoutes = require("./routes/receipts");
 const adminPaymentRoutes = require("./routes/adminPayments");
 
 const app = express();
+
+// Baseline security headers (HSTS, X-Content-Type-Options, X-Frame-Options,
+// etc.) for every response. CSP is off — this app serves only JSON, never
+// HTML, so a content policy has nothing to constrain. CORP is relaxed to
+// "cross-origin" — the actual origin allowlist is enforced by the CORS
+// middleware below; helmet's default same-origin CORP would otherwise block
+// the Frontend (a different origin) from reading these JSON responses.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
 // Render (and most PaaS hosts) put the app behind one reverse-proxy hop, so
 // req.ip / X-Forwarded-For only reflects the real client IP once Express is
@@ -68,7 +80,14 @@ app.use("/api", adminPaymentRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(err.status || 500).json({ ok: false, error: err.message || "Server error" });
+  // Routes handle their own known error cases directly (res.status(400)...)
+  // — anything reaching this generic handler is an unexpected failure, so
+  // its raw message (which can carry library/DB internals, file paths, even
+  // a connection string in some driver errors) only goes to the client in
+  // dev, where it's a debugging aid. Production gets a message that reveals
+  // nothing; the real detail is still in the server log above.
+  const exposeDetail = process.env.NODE_ENV !== "production";
+  res.status(err.status || 500).json({ ok: false, error: exposeDetail ? (err.message || "Server error") : "Server error" });
 });
 
 module.exports = app;

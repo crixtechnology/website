@@ -7,6 +7,7 @@ const { nextSequence } = require("../utils/counter");
 const { round2 } = require("../utils/money");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
+const { publicWriteLimiter } = require("../utils/rateLimit");
 
 const router = express.Router();
 
@@ -170,7 +171,7 @@ async function attachReceipt(payment, application) {
 }
 
 // ---------- 1. create an order (called right after the applicant submits the form) ----------
-router.post("/create-order", async (req, res, next) => {
+router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
   try {
     if (isLiveBlocked) {
       return res.status(503).json({

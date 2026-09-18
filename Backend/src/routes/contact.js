@@ -4,6 +4,7 @@ const { sendContactEmail } = require("../utils/mailer");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("../utils/validators");
 const { serialize } = require("../utils/serialize");
+const { publicWriteLimiter } = require("../utils/rateLimit");
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ const router = express.Router();
 // no frontend change needed once REACT_APP_API_URL points here. Also what
 // the IT Services "Inquiry" form (ServiceInquiryModal) posts to, with
 // company/phone set and email/message possibly blank — see prisma/schema.prisma's Contact model.
-router.post("/contact", async (req, res, next) => {
+router.post("/contact", publicWriteLimiter, async (req, res, next) => {
   try {
     const { name, email, phone, company, interest, message } = req.body || {};
     if (!name || (!email && !phone)) {

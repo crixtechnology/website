@@ -5,6 +5,7 @@ const { requireAdmin } = require("../middleware/requireAdmin");
 const { sendApplicationEmail } = require("../utils/mailer");
 const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("../utils/validators");
 const { serialize } = require("../utils/serialize");
+const { publicWriteLimiter } = require("../utils/rateLimit");
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ const router = express.Router();
 // "Buy now" is gated behind login on the frontend regardless of type; when
 // a valid token is present it's attached here so the payment webhook can
 // grant access afterwards.
-router.post("/applications", attachUserIfPresent, async (req, res, next) => {
+router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req, res, next) => {
   try {
     const { type, refTitle, name, email, phone, college, track, courseSlug } = req.body || {};
     if (!type || !refTitle || !name || !email || !phone) {
