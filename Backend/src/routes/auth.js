@@ -127,6 +127,15 @@ router.post("/signup", authLimiter, async (req, res, next) => {
         message: "If this email already has an account, we've sent a reminder to that inbox — check it to log in.",
       });
 
+    // Hashed unconditionally, before checking whether the email is taken —
+    // same reasoning as DUMMY_PASSWORD_HASH above (used by /login further down): bcrypt.hash()
+    // is deliberately slow (~250-300ms). If it only ran on the "genuinely new
+    // email" branch, the response-time gap alone would re-open exactly the
+    // leak respondAmbiguously() above is meant to close — a taken email would
+    // return in ~20ms (no hash), a new one in ~300ms+, distinguishable by
+    // timing even with an identical response body.
+    const passwordHash = await bcrypt.hash(password, 10);
+
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       sendAccountExistsEmail({ to: existing.email, name: existing.name }).catch((mailErr) => {
@@ -135,7 +144,6 @@ router.post("/signup", authLimiter, async (req, res, next) => {
       return respondAmbiguously();
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
     let user;
     try {
       user = await prisma.user.create({

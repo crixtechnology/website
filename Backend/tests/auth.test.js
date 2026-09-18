@@ -40,6 +40,27 @@ describe("POST /api/auth/signup", () => {
     expect(count).toBe(1);
   });
 
+  // The response-shape fix above isn't enough on its own — bcrypt.hash() is
+  // deliberately slow (~250-300ms), so if it only ran on the "genuinely new
+  // email" branch, response TIME alone would still distinguish a taken email
+  // (fast, no hash) from a new one (slow), even with an identical body. Caught
+  // exactly this regression once already during development (24ms vs 396ms)
+  // before routes/auth.js was fixed to hash unconditionally, before checking
+  // whether the email is taken. 150ms margin is generous against normal
+  // per-request jitter while still well under bcrypt's own cost, so this
+  // reliably fails if that ordering ever regresses.
+  it("takes about the same time for a duplicate email as for a genuinely new one (no bcrypt.hash timing gap)", async () => {
+    const t0 = Date.now();
+    await request(app).post("/api/auth/signup").send(validSignup); // duplicate — email var reused from above
+    const duplicateMs = Date.now() - t0;
+
+    const t1 = Date.now();
+    await request(app).post("/api/auth/signup").send({ ...validSignup, email: "timing-check-new@example.com" });
+    const newAccountMs = Date.now() - t1;
+
+    expect(Math.abs(newAccountMs - duplicateMs)).toBeLessThan(150);
+  });
+
   it("rejects a password shorter than 8 characters", async () => {
     const res = await request(app).post("/api/auth/signup").send({ ...validSignup, email: "short-pw@example.com", password: "short" });
     expect(res.status).toBe(400);
