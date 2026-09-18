@@ -14,6 +14,15 @@ const { sendAccountExistsEmail } = require("../utils/mailer");
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
 
+// Precomputed once at startup — /login compares against this whenever there's
+// no real passwordHash to check (no such user, or a Google-only account), so
+// a failed login always pays the same bcrypt cost no matter *why* it failed.
+// Without this, "no such user"/"Google-only account" return near-instantly
+// while a real wrong-password check takes ~250-300ms (bcrypt is deliberately
+// slow) — an attacker can tell a valid password-based email from everything
+// else purely by response time, even with an identical response body.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("not-a-real-account-timing-safety-only", 10);
+
 // Throttles the credential-guessing surface — /login (password brute-force),
 // /signup (mass account creation) and /google (token-verification spam) all
 // cost a bcrypt hash or a network round-trip per attempt, so a stuck client
@@ -171,13 +180,16 @@ router.post("/login", authLimiter, async (req, res, next) => {
     // compare, so bcrypt.compare below still resolves it correctly. Rate
     // limiting (authLimiter above) is what actually bounds abuse here.
     const user = await prisma.user.findUnique({ where: { email: String(email).toLowerCase().trim() } });
-    if (!user) return res.status(401).json({ ok: false, error: "Invalid credentials" });
-    if (!user.passwordHash) {
-      return res.status(401).json({ ok: false, error: "This account uses Google Sign-In. Continue with Google instead." });
+    // Always runs, against DUMMY_PASSWORD_HASH when there's no real one to
+    // check (no such user, or a Google-only account) — see that constant's
+    // own comment. Every failure path below (no user, Google-only, wrong
+    // password) now takes the same time and returns the exact same message;
+    // the old distinct "This account uses Google Sign-In..." text was itself
+    // a second leak (confirmed both that the email existed AND its type).
+    const match = await bcrypt.compare(password, (user && user.passwordHash) || DUMMY_PASSWORD_HASH);
+    if (!user || !user.passwordHash || !match) {
+      return res.status(401).json({ ok: false, error: "Invalid credentials" });
     }
-
-    const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) return res.status(401).json({ ok: false, error: "Invalid credentials" });
 
     if (rejectIfAlreadyLoggedInElsewhere(res, user)) return;
 

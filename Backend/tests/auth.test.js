@@ -77,6 +77,29 @@ describe("POST /api/auth/login", () => {
     expect(res.status).toBe(401);
     expect(res.body.ok).toBe(false);
   });
+
+  // Anti-enumeration: a nonexistent email, a wrong password on a real
+  // account, and a password attempt on a Google-only account must all be
+  // indistinguishable from the outside — same status, same exact message.
+  // (Timing is the other half of this leak — see routes/auth.js's
+  // DUMMY_PASSWORD_HASH — but response time isn't something worth asserting
+  // on in a test; it's covered by always calling bcrypt.compare() in the
+  // same code path regardless of branch.)
+  it("returns the identical response for a nonexistent email, a wrong password, and a Google-only account", async () => {
+    const googleEmail = "google-only-login-test@example.com";
+    await prisma.user.create({ data: { name: "Google Only", email: googleEmail, googleId: "fake-google-sub-123", role: "student" } });
+
+    const [noSuchUser, wrongPassword, googleOnly] = await Promise.all([
+      request(app).post("/api/auth/login").send({ email: "nobody-here@example.com", password: "whatever123" }),
+      request(app).post("/api/auth/login").send({ email, password: "wrong-password" }),
+      request(app).post("/api/auth/login").send({ email: googleEmail, password: "whatever123" }),
+    ]);
+
+    for (const res of [noSuchUser, wrongPassword, googleOnly]) {
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ ok: false, error: "Invalid credentials" });
+    }
+  });
 });
 
 describe("single-device-login enforcement", () => {
