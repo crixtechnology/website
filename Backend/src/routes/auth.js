@@ -23,6 +23,30 @@ const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env
 // else purely by response time, even with an identical response body.
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync("not-a-real-account-timing-safety-only", 10);
 
+// A floor under how fast /signup and /login can ever respond once past
+// input-format validation — comfortably above the real cost of every branch
+// each one can take (bcrypt hashing/comparing, plus up to two DB writes on
+// a successful signup — create() then startSession()'s own update()), so
+// total response TIME can't distinguish branches no matter how many more
+// operations one gains over the other as this code evolves. Matching each
+// operation-count mismatch individually turned out to be whack-a-mole (this
+// file's own git history has two rounds of exactly that) — padding every
+// branch to the same floor closes the whole class of leak at once, instead
+// of needing to be re-verified by hand every time either handler changes.
+const MIN_AUTH_RESPONSE_MS = 600;
+
+// `startedAt` should be Date.now() from right where the real, potentially
+// branch-dependent work begins — i.e. AFTER input-format validation (empty
+// fields, bad email shape, password length), which fails identically no
+// matter whether the target email exists and isn't part of what this pads.
+async function respondNoEarlierThan(startedAt, send) {
+  const elapsed = Date.now() - startedAt;
+  if (elapsed < MIN_AUTH_RESPONSE_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_AUTH_RESPONSE_MS - elapsed));
+  }
+  send();
+}
+
 // Throttles the credential-guessing surface — /login (password brute-force),
 // /signup (mass account creation) and /google (token-verification spam) all
 // cost a bcrypt hash or a network round-trip per attempt, so a stuck client
@@ -119,13 +143,7 @@ router.post("/signup", authLimiter, async (req, res, next) => {
     // one who actually finds out, via email, the same way a "forgot
     // password" flow never confirms account existence in its own response
     // either.
-    const respondAmbiguously = () =>
-      res.status(201).json({
-        ok: true,
-        token: null,
-        user: null,
-        message: "If this email already has an account, we've sent a reminder to that inbox — check it to log in.",
-      });
+    const workStartedAt = Date.now();
 
     // Hashed unconditionally — bcrypt.hash() is deliberately slow (~250-
     // 300ms; see DUMMY_PASSWORD_HASH above, same reasoning for /login), and
@@ -133,14 +151,10 @@ router.post("/signup", authLimiter, async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     // No upfront findUnique() check — going straight to create() and
-    // catching the unique-constraint violation isn't just simpler, it's the
-    // other half of closing the timing leak: a prior version of this code
-    // did check first, so a taken email did one query (SELECT) and a new one
-    // did two (SELECT + INSERT) — an extra network round trip to the DB that
-    // was itself measurably slower over a real network (caught in production
-    // testing: ~300-500ms slower for new emails even after the bcrypt fix
-    // above, despite it not showing up against a local low-latency DB).
-    // Every signup attempt now costs exactly one write attempt either way.
+    // catching the unique-constraint violation instead means a taken email
+    // still costs one write attempt, not zero, tightening the timing gap
+    // this whole thing is about — though the real close is
+    // respondNoEarlierThan below, padding out whatever's left over.
     let user;
     try {
       user = await prisma.user.create({
@@ -148,16 +162,33 @@ router.post("/signup", authLimiter, async (req, res, next) => {
       });
     } catch (createErr) {
       if (createErr && createErr.code === "P2002") {
+        // Deliberately ambiguous: telling the caller outright that this
+        // email already has an account (the old 409 "An account with this
+        // email already exists") is an email-enumeration leak — anyone can
+        // probe arbitrary addresses and learn which ones are registered.
+        // This returns the exact same shape as a real signup below — same
+        // status code, same fields, no signal either way, response time
+        // included (respondNoEarlierThan) — and the real account owner (not
+        // whoever's asking) is the one who actually finds out, via email,
+        // the same way a "forgot password" flow never confirms account
+        // existence in its own response either.
         sendAccountExistsEmail({ to: normalizedEmail }).catch((mailErr) => {
           console.error("[auth] account-exists notification failed:", mailErr.message);
         });
-        return respondAmbiguously();
+        return respondNoEarlierThan(workStartedAt, () =>
+          res.status(201).json({
+            ok: true,
+            token: null,
+            user: null,
+            message: "If this email already has an account, we've sent a reminder to that inbox — check it to log in.",
+          })
+        );
       }
       throw createErr;
     }
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);
-    res.status(201).json({ ok: true, token, user: publicUser(user) });
+    respondNoEarlierThan(workStartedAt, () => res.status(201).json({ ok: true, token, user: publicUser(user) }));
   } catch (e) {
     next(e);
   }
@@ -177,6 +208,7 @@ router.post("/login", authLimiter, async (req, res, next) => {
     // than 72 characters; bcryptjs truncates consistently on both hash and
     // compare, so bcrypt.compare below still resolves it correctly. Rate
     // limiting (authLimiter above) is what actually bounds abuse here.
+    const workStartedAt = Date.now();
     const user = await prisma.user.findUnique({ where: { email: String(email).toLowerCase().trim() } });
     // Always runs, against DUMMY_PASSWORD_HASH when there's no real one to
     // check (no such user, or a Google-only account) — see that constant's
@@ -186,14 +218,14 @@ router.post("/login", authLimiter, async (req, res, next) => {
     // a second leak (confirmed both that the email existed AND its type).
     const match = await bcrypt.compare(password, (user && user.passwordHash) || DUMMY_PASSWORD_HASH);
     if (!user || !user.passwordHash || !match) {
-      return res.status(401).json({ ok: false, error: "Invalid credentials" });
+      return respondNoEarlierThan(workStartedAt, () => res.status(401).json({ ok: false, error: "Invalid credentials" }));
     }
 
     if (rejectIfAlreadyLoggedInElsewhere(res, user)) return;
 
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);
-    res.json({ ok: true, token, user: publicUser(user) });
+    respondNoEarlierThan(workStartedAt, () => res.json({ ok: true, token, user: publicUser(user) }));
   } catch (e) {
     next(e);
   }
