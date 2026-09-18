@@ -5,7 +5,7 @@ const { attachUserIfPresent } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { searchRegex } = require("../utils/searchRegex");
 const { sendApplicationEmail } = require("../utils/mailer");
-const { isValidEmail, isValidPhone } = require("../utils/validators");
+const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("../utils/validators");
 
 const router = express.Router();
 
@@ -30,8 +30,16 @@ router.post("/applications", attachUserIfPresent, async (req, res, next) => {
     // Same format rules as routes/contact.js and routes/auth.js (utils/validators.js)
     // — InquiryModal's own client-side checks mirror these, this is the
     // server-side backstop for a request that skips or tampers with them.
+    if (!isValidName(name)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid name." });
+    }
     if (!isValidEmail(email)) {
       return res.status(400).json({ ok: false, error: "Enter a valid email address." });
+    }
+    // A disposable inbox won't be reachable by the time an admin follows up
+    // on the application — same list InquiryModal already checks client-side.
+    if (isDisposableEmail(email)) {
+      return res.status(400).json({ ok: false, error: "Please use a permanent email address (not a temporary/disposable one)." });
     }
     if (!isValidPhone(phone)) {
       return res.status(400).json({ ok: false, error: "Enter a valid phone number." });

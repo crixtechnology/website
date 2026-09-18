@@ -3,7 +3,7 @@ const Contact = require("../models/Contact");
 const { sendContactEmail } = require("../utils/mailer");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { searchRegex } = require("../utils/searchRegex");
-const { isValidEmail, isValidPhone } = require("../utils/validators");
+const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("../utils/validators");
 
 const router = express.Router();
 
@@ -17,6 +17,9 @@ router.post("/contact", async (req, res, next) => {
     if (!name || (!email && !phone)) {
       return res.status(400).json({ ok: false, error: "name and either an email or phone number are required" });
     }
+    if (!isValidName(name)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid name." });
+    }
     // Both were an always-required, browser-validated `type="email"` field
     // before email became optional here — a light server-side format check
     // replaces what that HTML5 validation used to guarantee for free.
@@ -24,6 +27,12 @@ router.post("/contact", async (req, res, next) => {
     // so "a valid email"/"a valid phone number" means the same thing everywhere.
     if (email && !isValidEmail(email)) {
       return res.status(400).json({ ok: false, error: "Enter a valid email address." });
+    }
+    // A disposable inbox is typically dead within days/hours, so "we'll
+    // reply within two working days" would go nowhere — same list InquiryModal
+    // and ServiceInquiryModal already check client-side.
+    if (email && isDisposableEmail(email)) {
+      return res.status(400).json({ ok: false, error: "Please use a permanent email address (not a temporary/disposable one)." });
     }
     if (phone && !isValidPhone(phone)) {
       return res.status(400).json({ ok: false, error: "Enter a valid phone number." });

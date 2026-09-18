@@ -7,7 +7,7 @@ import { submitApplication, createRazorpayOrder, verifyPayment, submitContact } 
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { trackEvent } from "../utils/analytics.js";
-import { isValidEmail, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
+import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -518,8 +518,8 @@ export function InquiryModal({ item, kind, onClose }) {
     if (loading) return; // already in flight — avoid a duplicate Application record
     const phoneDigits = form.phone.trim();
     const missing = [
-      !form.name.trim() && "your name",
-      !form.email.trim() ? "your email" : !isValidEmail(form.email) && "a valid email address",
+      !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
+      !form.email.trim() ? "your email" : emailFormatError(form.email),
       !phoneDigits ? "your phone number" : phoneLengthError(form.countryCode, phoneDigits),
     ].filter(Boolean);
     if (missing.length) {
@@ -734,10 +734,10 @@ export function ServiceInquiryModal({ item, onClose }) {
     if (loading) return; // already in flight — same guard Contact() uses for this exact race
     const phoneDigits = form.phone.trim();
     const missing = [
-      !form.company.trim() && "business/company name",
-      !form.name.trim() && "your name",
+      !form.company.trim() ? "business/company name" : form.company.trim().length < 2 && "a valid business/company name",
+      !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
       !phoneDigits ? "a contact number" : phoneLengthError(form.countryCode, phoneDigits),
-      form.email.trim() && !isValidEmail(form.email) && "a valid email address",
+      form.email.trim() && emailFormatError(form.email),
     ].filter(Boolean);
     if (missing.length) {
       const list = missing.length === 1

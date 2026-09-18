@@ -10,7 +10,7 @@ import {
 import { submitContact, getCourses, getCourse, getServices } from "../services/api.js";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
-import { isValidEmail, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
+import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
 
 /* ================= HOME ================= */
 export function Home() {
@@ -615,8 +615,8 @@ export function Contact() {
     if (sending) return; // already in flight — ignore a repeat click/Enter
     const phoneDigits = form.phone.trim();
     const problems = [
-      !form.name.trim() && "your name",
-      !form.email.trim() ? "your email" : !isValidEmail(form.email) && "a valid email address",
+      !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
+      !form.email.trim() ? "your email" : emailFormatError(form.email),
       !form.message.trim() && "a message",
       phoneDigits && phoneLengthError(form.countryCode, phoneDigits),
     ].filter(Boolean);
