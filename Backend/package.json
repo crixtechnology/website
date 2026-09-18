@@ -6,17 +6,15 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "dev:memory": "node src/scripts/devWithMemoryServer.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
     "reset:admin-password": "node src/scripts/resetAdminPassword.js",
     "seed:programs": "node src/scripts/seedPrograms.js",
     "seed:services": "node src/scripts/seedServices.js",
-    "migrate:enrollment-startdate": "node src/scripts/backfillEnrollmentStartDate.js",
-    "migrate:lecture-endtime": "node src/scripts/backfillLectureEndTime.js",
-    "migrate:drop-recorded-lectures": "node src/scripts/dropRecordedLectures.js",
-    "migrate:payment-receipts": "node src/scripts/backfillPaymentReceipts.js",
-    "migrate:fix-stale-receipt-nulls": "node src/scripts/fixStalePaymentReceiptNulls.js",
     "videos:resequence": "node src/scripts/resequenceCourseVideos.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "render-build": "prisma generate && prisma migrate deploy",
     "test": "jest --runInBand"
   },
   "jest": {
@@ -24,6 +22,7 @@
     "testTimeout": 20000
   },
   "dependencies": {
+    "@prisma/client": "^6.1.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "disposable-email-domains": "^1.0.62",
@@ -34,12 +33,17 @@
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
-    "mongoose": "^8.5.1",
+    "mysql2": "^3.11.5",
+    "prisma": "^6.1.0",
     "razorpay": "^2.9.4"
   },
   "devDependencies": {
     "jest": "^30.5.1",
-    "mongodb-memory-server": "^10.0.0",
     "supertest": "^7.2.2"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "prisma@6.19.3": true
   }
 }

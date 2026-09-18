@@ -1,10 +1,15 @@
-const mongoose = require("mongoose");
+const { PrismaClient } = require("@prisma/client");
+
+// Single shared Prisma client for the whole process — Prisma manages its own
+// connection pool internally, so there's no separate connect()/listen()
+// ordering to get right the way there was with mongoose.connect(). connectDB()
+// is kept as a thin async wrapper (does a cheap query) purely so index.js's
+// existing "fail fast if the DB is unreachable at boot" behavior is preserved.
+const prisma = new PrismaClient();
 
 async function connectDB() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error("MONGODB_URI is not set in .env");
-  await mongoose.connect(uri);
-  console.log("MongoDB connected");
+  await prisma.$queryRaw`SELECT 1`;
+  console.log("MySQL connected");
 }
 
-module.exports = { connectDB };
+module.exports = { prisma, connectDB };

@@ -1,0 +1,260 @@
+// Prisma schema for the Crix Technology backend (migrated from MongoDB/Mongoose).
+//
+// Every model uses a cuid() string primary key — not an auto-increment int —
+// specifically so `id` keeps behaving like Mongo's opaque ObjectId string
+// end-to-end (the API serializer re-exposes it as `_id`; the Frontend does
+// `_id === _id` comparisons and stores ids in component state/`<select>`
+// values, so a numeric id could silently break those via type mismatch).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  student
+}
+
+model User {
+  id                       String    @id @default(cuid())
+  name                     String
+  email                    String    @unique
+  phone                    String    @default("")
+  passwordHash             String?
+  googleId                 String?   @unique
+  role                     Role      @default(student)
+  activeSessionId          String?
+  activeSessionLastSeenAt  DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  enrollments  Enrollment[]
+  applications Application[]
+  payments     Payment[]
+
+  @@map("users")
+}
+
+enum CourseType {
+  course
+  internship
+}
+
+enum CourseStatus {
+  open
+  closed
+}
+
+model Course {
+  id              String       @id @default(cuid())
+  type            CourseType   @default(course)
+  title           String
+  slug            String       @unique
+  tag             String       @default("")
+  // MySQL forbids a DEFAULT on TEXT columns — the app always passes `desc ||
+  // ""` on create (routes/courses.js), so no DB-level default is needed.
+  desc            String       @db.Text
+  points          Json         @default("[]")
+  price           Float?
+  discountPercent Int          @default(0)
+  durationDays    Int?
+  status          CourseStatus @default(open)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  lectures     Lecture[]
+  videos       Video[]
+  enrollments  Enrollment[]
+  applications Application[]
+  payments     Payment[]
+
+  @@map("courses")
+}
+
+model Lecture {
+  id              String   @id @default(cuid())
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id])
+  title           String
+  scheduledAt     DateTime
+  scheduledEndAt  DateTime
+  link            String
+  notes           String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([courseId, scheduledAt])
+  @@map("lectures")
+}
+
+model Video {
+  id                String   @id @default(cuid())
+  courseId          String
+  course            Course   @relation(fields: [courseId], references: [id])
+  title             String
+  b2Key             String   @unique
+  sourceDriveFileId String?
+  dayNumber         Int
+  durationSeconds   Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([courseId, dayNumber])
+  @@map("videos")
+}
+
+enum EnrollmentStatus {
+  active
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  courseId  String
+  course    Course           @relation(fields: [courseId], references: [id])
+  paymentId String?
+  payment   Payment?         @relation(fields: [paymentId], references: [id])
+  startDate DateTime         @default(now())
+  endDate   DateTime?
+  status    EnrollmentStatus @default(active)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+enum ApplicationType {
+  internship
+  course
+}
+
+model Application {
+  id        String          @id @default(cuid())
+  type      ApplicationType
+  refTitle  String
+  name      String
+  email     String
+  phone     String
+  college   String          @default("")
+  track     String          @default("")
+  paymentId String?
+  payment   Payment?        @relation("ApplicationCurrentPayment", fields: [paymentId], references: [id])
+  userId    String?
+  user      User?           @relation(fields: [userId], references: [id])
+  courseId  String?
+  course    Course?         @relation(fields: [courseId], references: [id])
+  contacted Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  paymentsFor Payment[] @relation("PaymentApplication")
+
+  @@map("applications")
+}
+
+enum PaymentStatus {
+  created
+  paid
+  failed
+}
+
+model Payment {
+  id                            String        @id @default(cuid())
+  razorpayOrderId               String
+  razorpayPaymentId             String?
+  razorpaySignature             String?
+  amount                        Int
+  currency                      String        @default("INR")
+  status                        PaymentStatus @default(created)
+  applicationId                 String?
+  application                   Application?  @relation("PaymentApplication", fields: [applicationId], references: [id])
+  userId                        String?
+  user                          User?         @relation(fields: [userId], references: [id])
+  courseId                      String?
+  course                        Course?       @relation(fields: [courseId], references: [id])
+  orderSnapshotBasePrice        Float?
+  orderSnapshotDiscountPercent  Float?
+  // --- flattened `receipt` subdocument (see the model comment in the old
+  // Mongoose Payment.js) — reassembled into a nested `receipt: {...}` object
+  // by src/utils/serialize.js so the API response shape is unchanged. ---
+  receiptNumber                 String?       @unique
+  receiptIssuedAt               DateTime?
+  receiptBuyerName              String        @default("")
+  receiptBuyerEmail             String        @default("")
+  receiptBuyerPhone             String        @default("")
+  receiptItemType                String?
+  receiptItemTitle              String        @default("")
+  receiptBasePrice              Float         @default(0)
+  receiptDiscountPercent        Float         @default(0)
+  receiptDiscountAmount         Float         @default(0)
+  receiptTotalPaid              Float         @default(0)
+  receiptPaymentMode            String        @default("Razorpay (Online)")
+  createdAt                     DateTime      @default(now())
+  updatedAt                     DateTime      @updatedAt
+
+  applicationsUsingThis Application[] @relation("ApplicationCurrentPayment")
+  enrollments           Enrollment[]
+
+  @@map("payments")
+}
+
+enum ContactStatus {
+  new
+  read
+}
+
+model Contact {
+  id        String        @id @default(cuid())
+  name      String
+  email     String        @default("")
+  phone     String        @default("")
+  company   String        @default("")
+  interest  String        @default("")
+  // MySQL forbids a DEFAULT on TEXT columns — the app always passes
+  // `message || ""` on create (routes/contact.js), so no DB-level default.
+  message   String        @db.Text
+  status    ContactStatus @default(new)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("contacts")
+}
+
+enum ServiceStatus {
+  active
+  inactive
+}
+
+model Service {
+  id        String        @id @default(cuid())
+  tag       String        @default("")
+  title     String
+  // MySQL forbids a DEFAULT on TEXT columns — the app always passes
+  // `desc || ""` on create (routes/services.js), so no DB-level default.
+  desc      String        @db.Text
+  points    Json          @default("[]")
+  order     Int           @default(0)
+  status    ServiceStatus @default(active)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("services")
+}
+
+// Generic atomic named counter (one row per sequence) — used to mint
+// gap-free, race-safe sequential receipt numbers. See utils/counter.js's
+// nextSequence(), which does the atomic increment via a single `UPDATE
+// counters SET seq = seq + 1 ...` (Prisma's `{ increment: 1 }`).
+model Counter {
+  name String @id
+  seq  Int    @default(0)
+
+  @@map("counters")
+}

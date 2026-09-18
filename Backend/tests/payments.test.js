@@ -11,20 +11,16 @@ jest.mock("../src/utils/receiptPdf", () => ({
 }));
 const { buildReceiptPdfBuffer } = require("../src/utils/receiptPdf");
 
-let app, User, Course, Application, Payment, Enrollment, attachReceipt;
+let app, prisma, attachReceipt;
 let adminToken;
 
 beforeAll(async () => {
   app = await setupTestDb();
-  User = require("../src/models/User");
-  Course = require("../src/models/Course");
-  Application = require("../src/models/Application");
-  Payment = require("../src/models/Payment");
-  Enrollment = require("../src/models/Enrollment");
+  ({ prisma } = require("../src/db"));
   ({ attachReceipt } = require("../src/routes/payments"));
 
-  const admin = await User.create({ name: "Admin", email: "admin@test.com", passwordHash: "x", role: "admin" });
-  adminToken = signToken({ sub: admin._id.toString(), role: "admin", email: admin.email }, { expiresIn: "1h" });
+  const admin = await prisma.user.create({ data: { name: "Admin", email: "admin@test.com", passwordHash: "x", role: "admin" } });
+  adminToken = signToken({ sub: admin.id, role: "admin", email: admin.email }, { expiresIn: "1h" });
 }, 60000);
 afterAll(async () => { await teardownTestDb(); });
 
@@ -63,7 +59,7 @@ describe("POST /api/payments/create-order — server-side guards", () => {
     // (see Backend/src/scripts/seedPrograms.js's own history). Simulating
     // that directly here is what actually exercises this guard, since
     // going through the admin API can't reach it.
-    const course = await Course.create({ type: "internship", title: `Unpriced ${Date.now()}`, slug: `unpriced-${Date.now()}`, price: null, status: "open" });
+    const course = await prisma.course.create({ data: { type: "internship", title: `Unpriced ${Date.now()}`, slug: `unpriced-${Date.now()}`, desc: "", price: null, status: "open" } });
     const { token } = await createStudent("unpriced-buyer@example.com");
     const appRes = await authed(request(app).post("/api/applications"), token).send({
       type: "internship", refTitle: course.title, courseSlug: course.slug,
@@ -83,7 +79,7 @@ describe("POST /api/payments/create-order — server-side guards", () => {
     // real Razorpay round-trip, which needs live network access) — this is
     // exactly the state grantAccessForPayment leaves behind after a real
     // payment succeeds.
-    await Enrollment.create({ user: user.id, course: course._id, status: "active" });
+    await prisma.enrollment.create({ data: { userId: user.id, courseId: course._id, status: "active" } });
 
     const appRes = await authed(request(app).post("/api/applications"), token).send({
       type: "course", refTitle: course.title, courseSlug: course.slug,
@@ -108,20 +104,22 @@ describe("attachReceipt — concurrent /verify + webhook race", () => {
   it("only the winning call proceeds to build/send the receipt — the loser is a true no-op", async () => {
     const course = await createPricedCourse();
     const { user } = await createStudent("race-buyer@example.com");
-    const application = await Application.create({
-      type: "course", refTitle: course.title, name: "Race Buyer", email: "race-buyer@example.com",
-      phone: "9876500000", user: user.id, course: course._id,
+    const application = await prisma.application.create({
+      data: {
+        type: "course", refTitle: course.title, name: "Race Buyer", email: "race-buyer@example.com",
+        phone: "9876500000", userId: user.id, courseId: course._id,
+      },
     });
-    const payment = await Payment.create({
-      razorpay_order_id: `order_test_${Date.now()}`, amount: 500000, status: "paid", application: application._id,
+    const payment = await prisma.payment.create({
+      data: { razorpayOrderId: `order_test_${Date.now()}`, amount: 500000, status: "paid", applicationId: application.id },
     });
 
-    // Two independent Document instances pointing at the same DB record —
-    // exactly what /verify and the webhook each produce with their own
-    // separate Payment.findOne() call.
+    // Two independent row fetches pointing at the same DB record — exactly
+    // what /verify and the webhook each produce with their own separate
+    // Payment lookup.
     const [paymentA, paymentB] = await Promise.all([
-      Payment.findById(payment._id),
-      Payment.findById(payment._id),
+      prisma.payment.findUnique({ where: { id: payment.id } }),
+      prisma.payment.findUnique({ where: { id: payment.id } }),
     ]);
 
     buildReceiptPdfBuffer.mockClear();
@@ -133,8 +131,8 @@ describe("attachReceipt — concurrent /verify + webhook race", () => {
     // actually won the race to mint the receipt.
     expect(results.every((r) => r.status === "fulfilled")).toBe(true);
 
-    const final = await Payment.findById(payment._id);
-    expect(final.receipt.number).toEqual(expect.any(String));
+    const final = await prisma.payment.findUnique({ where: { id: payment.id } });
+    expect(final.receiptNumber).toEqual(expect.any(String));
 
     // The real invariant the atomic guard protects: only the caller whose
     // findOneAndUpdate actually matched should ever reach the build/send

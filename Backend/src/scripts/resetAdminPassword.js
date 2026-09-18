@@ -4,9 +4,7 @@
 // the password. Safe to re-run.
 require("dotenv").config();
 const bcrypt = require("bcryptjs");
-const mongoose = require("mongoose");
-const { connectDB } = require("../db");
-const User = require("../models/User");
+const { prisma } = require("../db");
 
 async function run() {
   const email = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
@@ -16,17 +14,15 @@ async function run() {
     process.exit(1);
   }
 
-  await connectDB();
-
   const passwordHash = await bcrypt.hash(password, 10);
-  const res = await User.findOneAndUpdate(
-    { email },
-    { $set: { passwordHash, role: "admin" }, $setOnInsert: { name: "Admin", email } },
-    { new: true, upsert: true }
-  );
+  const res = await prisma.user.upsert({
+    where: { email },
+    update: { passwordHash, role: "admin" },
+    create: { name: "Admin", email, passwordHash, role: "admin" },
+  });
   console.log(`Password reset for ${res.email} (role: ${res.role}).`);
 
-  await mongoose.disconnect();
+  await prisma.$disconnect();
   process.exit(0);
 }
 

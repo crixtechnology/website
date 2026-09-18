@@ -1,7 +1,7 @@
 // One-time migration: the internships and courses currently hardcoded in
 // Frontend/src/data/content.js (as `internships` / `courses`) were never
 // admin-managed — the live site was just showing static content, and with
-// no Course docs in the DB, nothing was actually purchasable. This inserts
+// no Course rows in the DB, nothing was actually purchasable. This inserts
 // the exact same titles/descriptions/points as real, admin-editable
 // entries, so the site keeps showing the same content but it's now
 // controlled from /admin/courses instead of hardcoded.
@@ -16,20 +16,15 @@
 // afterward, same two-step (set price, then open) flow as a course — this
 // script's starter data just doesn't presume to do that for you.
 //
-// DRIFT WARNING (learned the hard way 2026-09-12): this script only ever
-// INSERTS — "safe to re-run" means it skips a title whose slug already
-// exists, it never updates one. Once a title/tag/desc/points below has been
-// seeded into a real DB, editing content.js's copy does nothing to that DB
-// row; it now only affects the static fallback shown when the backend isn't
-// configured. Two course titles here drifted from content.js this way after
-// a rename (both fixed by hand in the DB — see git history around
-// 2026-09-12) before this file was updated to match. If you rename a title
-// here again, also fix it directly in the DB (Course.updateOne by old
-// title) or via /admin/courses — this file alone won't touch existing rows.
+// DRIFT WARNING: this script only ever INSERTS — "safe to re-run" means it
+// skips a title whose slug already exists, it never updates one. Once a
+// title/tag/desc/points below has been seeded into a real DB, editing
+// content.js's copy does nothing to that DB row; it now only affects the
+// static fallback shown when the backend isn't configured. If you rename a
+// title here again, also fix it directly via /admin/courses — this file
+// alone won't touch existing rows.
 require("dotenv").config();
-const { connectDB } = require("../db");
-const Course = require("../models/Course");
-const mongoose = require("mongoose");
+const { prisma } = require("../db");
 
 function slugify(title) {
   return String(title).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -111,11 +106,10 @@ async function seed(list, type) {
   let created = 0, skipped = 0;
   for (const entry of list) {
     const slug = slugify(entry.title);
-    const existing = await Course.findOne({ slug });
+    const existing = await prisma.course.findUnique({ where: { slug } });
     if (existing) { skipped++; continue; }
-    await Course.create({
-      type, title: entry.title, slug, tag: entry.tag, desc: entry.desc, points: entry.points,
-      price: null, status: "open",
+    await prisma.course.create({
+      data: { type, title: entry.title, slug, tag: entry.tag, desc: entry.desc, points: entry.points, price: null, status: "open" },
     });
     created++;
   }
@@ -123,10 +117,9 @@ async function seed(list, type) {
 }
 
 async function run() {
-  await connectDB();
   await seed(internships, "internship");
   await seed(courses, "course");
-  await mongoose.disconnect();
+  await prisma.$disconnect();
   process.exit(0);
 }
 

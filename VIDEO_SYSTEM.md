@@ -154,7 +154,7 @@ cp .env.example .env      # then fill it in
 Key vars: `DRIVE_FOLDER_ID`, `SHARED_DRIVE_ID` (optional),
 `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` (path to the JSON), all the `B2_*`,
 `COURSE_API_URL`, `COURSE_API_INTERNAL_TOKEN`, `COURSE_ID`
-(the Mongo `_id` of the Course these recordings belong to — copy it from the
+(the Course's `_id` these recordings belong to — copy it from the
 admin panel URL or the DB).
 
 Google Meet drops every course's recordings into one folder, so

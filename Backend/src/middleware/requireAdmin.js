@@ -1,4 +1,4 @@
-const User = require("../models/User");
+const { prisma } = require("../db");
 const { verifyToken } = require("../utils/jwt");
 
 // Requires a valid JWT AND role === "admin" (see routes/auth.js — the token
@@ -17,7 +17,7 @@ async function requireAdmin(req, res, next) {
     if (payload.role !== "admin") {
       return res.status(403).json({ ok: false, error: "Admin access required" });
     }
-    const user = await User.findById(payload.sub).select("role");
+    const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { role: true } });
     if (!user || user.role !== "admin") {
       return res.status(403).json({ ok: false, error: "Admin access required" });
     }

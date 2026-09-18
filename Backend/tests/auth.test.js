@@ -2,18 +2,17 @@ const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 
 let app;
-let User;
+let prisma;
 
 beforeAll(async () => {
   app = await setupTestDb();
-  User = require("../src/models/User");
+  ({ prisma } = require("../src/db"));
 }, 60000);
 afterAll(async () => { await teardownTestDb(); });
 
-// Covers the duplicate-signup fix from this session: routes/auth.js used to
-// let a duplicate-email create() throw an uncaught E11000, which fell
-// through to the generic error handler as a raw 500 with the Mongo error
-// string (exposing db/collection/index names) instead of a clean 409.
+// Covers the duplicate-signup fix: routes/auth.js catches the unique-email
+// race (two concurrent signups for the same address) and turns it into a
+// clean 409 instead of leaking the raw SQL/Prisma error string.
 describe("POST /api/auth/signup", () => {
   const email = "duplicate-test@example.com";
   const validSignup = { name: "Test User", email, phone: "9876543210", password: "a-real-password" };
@@ -30,9 +29,9 @@ describe("POST /api/auth/signup", () => {
     const res = await request(app).post("/api/auth/signup").send(validSignup);
     expect(res.status).toBe(409);
     expect(res.body.ok).toBe(false);
-    // The bug this guards against specifically leaked the Mongo error
-    // string (mentions "E11000"/"duplicate key") into the response body.
-    expect(JSON.stringify(res.body)).not.toMatch(/E11000|duplicate key|MongoServerError/i);
+    // The bug this guards against specifically leaked the raw DB error
+    // string (mentions the constraint/error code) into the response body.
+    expect(JSON.stringify(res.body)).not.toMatch(/P2002|Unique constraint|PrismaClientKnownRequestError/i);
   });
 
   it("rejects a password shorter than 8 characters", async () => {
@@ -57,7 +56,7 @@ describe("POST /api/auth/login", () => {
     // immediately logged in) — clear it so the login test below exercises
     // /login in isolation instead of tripping the single-device-login block
     // this same session would otherwise trigger against itself.
-    await User.updateOne({ email }, { $set: { activeSessionId: null, activeSessionLastSeenAt: null } });
+    await prisma.user.updateMany({ where: { email }, data: { activeSessionId: null, activeSessionLastSeenAt: null } });
   });
 
   it("logs in with the correct password", async () => {
@@ -86,7 +85,7 @@ describe("single-device-login enforcement", () => {
   // this block left behind — signup itself also starts a live session, same
   // as a real login does.
   beforeEach(async () => {
-    await User.updateOne({ email }, { $set: { activeSessionId: null, activeSessionLastSeenAt: null } });
+    await prisma.user.updateMany({ where: { email }, data: { activeSessionId: null, activeSessionLastSeenAt: null } });
   });
 
   it("blocks a second login while the first session is still live", async () => {
@@ -105,7 +104,7 @@ describe("single-device-login enforcement", () => {
     const firstToken = firstLogin.body.token;
 
     // Simulate the first session having gone idle past IDLE_TIMEOUT_MS.
-    await User.updateOne({ email }, { $set: { activeSessionLastSeenAt: new Date(Date.now() - 31 * 60 * 1000) } });
+    await prisma.user.updateMany({ where: { email }, data: { activeSessionLastSeenAt: new Date(Date.now() - 31 * 60 * 1000) } });
 
     const secondLogin = await request(app).post("/api/auth/login").send({ email, password });
     expect(secondLogin.status).toBe(200);

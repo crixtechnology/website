@@ -2,13 +2,13 @@ const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 const { signToken } = require("../src/utils/jwt");
 
-let app, User, adminToken;
+let app, prisma, adminToken;
 
 beforeAll(async () => {
   app = await setupTestDb();
-  User = require("../src/models/User");
-  const admin = await User.create({ name: "Admin", email: "admin@test.com", passwordHash: "x", role: "admin" });
-  adminToken = signToken({ sub: admin._id.toString(), role: "admin", email: admin.email }, { expiresIn: "1h" });
+  ({ prisma } = require("../src/db"));
+  const admin = await prisma.user.create({ data: { name: "Admin", email: "admin@test.com", passwordHash: "x", role: "admin" } });
+  adminToken = signToken({ sub: admin.id, role: "admin", email: admin.email }, { expiresIn: "1h" });
 }, 60000);
 afterAll(async () => { await teardownTestDb(); });
 

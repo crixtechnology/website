@@ -4,9 +4,7 @@
 // email is already registered.
 require("dotenv").config();
 const bcrypt = require("bcryptjs");
-const { connectDB } = require("../db");
-const User = require("../models/User");
-const mongoose = require("mongoose");
+const { prisma } = require("../db");
 
 async function run() {
   const email = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
@@ -16,24 +14,21 @@ async function run() {
     process.exit(1);
   }
 
-  await connectDB();
-
-  const existing = await User.findOne({ email });
+  const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     if (existing.role === "admin") {
       console.log(`Admin ${email} already exists — nothing to do.`);
     } else {
-      existing.role = "admin";
-      await existing.save();
+      await prisma.user.update({ where: { id: existing.id }, data: { role: "admin" } });
       console.log(`Promoted existing account ${email} to admin.`);
     }
   } else {
     const passwordHash = await bcrypt.hash(password, 10);
-    await User.create({ name: "Admin", email, passwordHash, role: "admin" });
+    await prisma.user.create({ data: { name: "Admin", email, passwordHash, role: "admin" } });
     console.log(`Admin ${email} created.`);
   }
 
-  await mongoose.disconnect();
+  await prisma.$disconnect();
   process.exit(0);
 }
 

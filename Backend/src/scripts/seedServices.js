@@ -1,16 +1,14 @@
 // One-time migration, same idea as seedPrograms.js: the IT services list
 // currently hardcoded in Frontend/src/data/content.js (`services`) was never
 // admin-managed. This inserts the same titles/descriptions/points as real,
-// admin-editable Service docs (routes/services.js, /admin/services) so the
+// admin-editable Service rows (routes/services.js, /admin/services) so the
 // public /services page keeps showing the same content but it's now
 // controlled from the admin panel instead of hardcoded.
 //
 // Safe to re-run — skips any title that already exists.
 //   node src/scripts/seedServices.js
 require("dotenv").config();
-const { connectDB } = require("../db");
-const Service = require("../models/Service");
-const mongoose = require("mongoose");
+const { prisma } = require("../db");
 
 const services = [
   {
@@ -58,17 +56,16 @@ const services = [
 ];
 
 async function run() {
-  await connectDB();
   let created = 0, skipped = 0;
   for (let i = 0; i < services.length; i++) {
     const entry = services[i];
-    const existing = await Service.findOne({ title: entry.title });
+    const existing = await prisma.service.findFirst({ where: { title: entry.title } });
     if (existing) { skipped++; continue; }
-    await Service.create({ ...entry, order: i + 1, status: "active" });
+    await prisma.service.create({ data: { ...entry, order: i + 1, status: "active" } });
     created++;
   }
   console.log(`services: ${created} created, ${skipped} already existed (skipped)`);
-  await mongoose.disconnect();
+  await prisma.$disconnect();
   process.exit(0);
 }
 

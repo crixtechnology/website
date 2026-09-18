@@ -1,11 +1,10 @@
 const express = require("express");
-const Application = require("../models/Application");
-const Course = require("../models/Course");
+const { prisma } = require("../db");
 const { attachUserIfPresent } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
-const { searchRegex } = require("../utils/searchRegex");
 const { sendApplicationEmail } = require("../utils/mailer");
 const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("../utils/validators");
+const { serialize } = require("../utils/serialize");
 
 const router = express.Router();
 
@@ -51,13 +50,21 @@ router.post("/applications", attachUserIfPresent, async (req, res, next) => {
     // internship still links its Application to the right Course too.
     let course = null;
     if (courseSlug) {
-      course = await Course.findOne({ slug: courseSlug });
+      course = await prisma.course.findUnique({ where: { slug: courseSlug } });
     }
 
-    const application = await Application.create({
-      type, refTitle, name, email, phone, college: college || "", track: track || "",
-      user: req.user ? req.user.sub : null,
-      course: course ? course._id : null,
+    const application = await prisma.application.create({
+      data: {
+        type,
+        refTitle,
+        name,
+        email,
+        phone,
+        college: college || "",
+        track: track || "",
+        userId: req.user ? req.user.sub : null,
+        courseId: course ? course.id : null,
+      },
     });
 
     // Best-effort notification email; a delivery failure here shouldn't turn
@@ -67,7 +74,7 @@ router.post("/applications", attachUserIfPresent, async (req, res, next) => {
       console.error("[applications] notification email failed:", mailErr.message);
     });
 
-    res.status(201).json({ ok: true, application });
+    res.status(201).json({ ok: true, application: serialize(application, "application") });
   } catch (e) {
     next(e);
   }
@@ -76,17 +83,24 @@ router.post("/applications", attachUserIfPresent, async (req, res, next) => {
 // ---------- admin: internship/course inquiries inbox ----------
 // Lists every Application row — guest Apply/Inquire submissions and the
 // Application docs the Buy-now flow creates on its way to payment alike —
-// so a submission is never only visible by querying Mongo directly.
+// so a submission is never only visible by querying the database directly.
 router.get("/admin/applications", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
-    const filter = q
-      ? { $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }, { refTitle: searchRegex(q) }, { college: searchRegex(q) }] }
+    const where = q
+      ? {
+          OR: [
+            { name: { contains: q } },
+            { email: { contains: q } },
+            { refTitle: { contains: q } },
+            { college: { contains: q } },
+          ],
+        }
       : {};
-    if (req.query.type === "internship" || req.query.type === "course") filter.type = req.query.type;
+    if (req.query.type === "internship" || req.query.type === "course") where.type = req.query.type;
 
-    const applications = await Application.find(filter).sort({ createdAt: -1 });
-    res.json({ ok: true, applications });
+    const applications = await prisma.application.findMany({ where, orderBy: { createdAt: "desc" } });
+    res.json({ ok: true, applications: serialize(applications, "application") });
   } catch (e) {
     next(e);
   }
@@ -98,9 +112,9 @@ router.patch("/admin/applications/:id", requireAdmin, async (req, res, next) => 
     if (typeof contacted !== "boolean") {
       return res.status(400).json({ ok: false, error: "contacted must be a boolean" });
     }
-    const application = await Application.findByIdAndUpdate(req.params.id, { contacted }, { new: true });
+    const application = await prisma.application.update({ where: { id: req.params.id }, data: { contacted } }).catch(() => null);
     if (!application) return res.status(404).json({ ok: false, error: "Application not found" });
-    res.json({ ok: true, application });
+    res.json({ ok: true, application: serialize(application, "application") });
   } catch (e) {
     next(e);
   }
@@ -108,7 +122,7 @@ router.patch("/admin/applications/:id", requireAdmin, async (req, res, next) => 
 
 router.delete("/admin/applications/:id", requireAdmin, async (req, res, next) => {
   try {
-    const application = await Application.findByIdAndDelete(req.params.id);
+    const application = await prisma.application.delete({ where: { id: req.params.id } }).catch(() => null);
     if (!application) return res.status(404).json({ ok: false, error: "Application not found" });
     res.json({ ok: true });
   } catch (e) {

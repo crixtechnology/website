@@ -1,6 +1,7 @@
 const express = require("express");
-const Course = require("../models/Course");
+const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
+const { serialize } = require("../utils/serialize");
 
 const router = express.Router();
 
@@ -21,8 +22,8 @@ function typeFilter(req) {
 // ?type=course or ?type=internship filters; omit for everything.
 router.get("/courses", async (req, res, next) => {
   try {
-    const courses = await Course.find(typeFilter(req)).sort({ createdAt: 1 });
-    res.json({ ok: true, courses });
+    const courses = await prisma.course.findMany({ where: typeFilter(req), orderBy: { createdAt: "asc" } });
+    res.json({ ok: true, courses: serialize(courses) });
   } catch (e) {
     next(e);
   }
@@ -30,9 +31,9 @@ router.get("/courses", async (req, res, next) => {
 
 router.get("/courses/:slug", async (req, res, next) => {
   try {
-    const course = await Course.findOne({ slug: req.params.slug });
+    const course = await prisma.course.findUnique({ where: { slug: req.params.slug } });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
-    res.json({ ok: true, course });
+    res.json({ ok: true, course: serialize(course) });
   } catch (e) {
     next(e);
   }
@@ -41,8 +42,8 @@ router.get("/courses/:slug", async (req, res, next) => {
 // ---------- admin ----------
 router.get("/admin/courses", requireAdmin, async (req, res, next) => {
   try {
-    const courses = await Course.find(typeFilter(req)).sort({ createdAt: 1 });
-    res.json({ ok: true, courses });
+    const courses = await prisma.course.findMany({ where: typeFilter(req), orderBy: { createdAt: "asc" } });
+    res.json({ ok: true, courses: serialize(courses) });
   } catch (e) {
     next(e);
   }
@@ -60,42 +61,48 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     }
     let slug = slugify(title);
     let suffix = 1;
-    while (await Course.findOne({ slug })) {
+    while (await prisma.course.findUnique({ where: { slug } })) {
       slug = `${slugify(title)}-${suffix++}`;
     }
     let course;
     try {
-      course = await Course.create({
-        type: entryType, title, slug, tag: tag || "", desc: desc || "",
-        points: Array.isArray(points) ? points : [],
-        // Internships are apply-only by default (price left null shows
-        // Apply, no online purchase) but MAY carry a real price too — some
-        // internship slots are sold, some are free/discounted promos decided
-        // case-by-case; whichever price (or lack of one) the admin sends is
-        // respected for either type, same as a course.
-        price: entryType === "course" ? price : (price ?? null),
-        discountPercent: discountPercent || 0,
-        durationDays: durationDays || null,
-        // Always starts closed, even with a price already set — saving a
-        // price is not the same action as publishing it for sale. The admin
-        // list's separate Open/Closed toggle is the actual trigger; opening
-        // it requires that explicit second step (enforced below too).
-        status: status === "open" && price != null ? "open" : "closed",
+      course = await prisma.course.create({
+        data: {
+          type: entryType,
+          title,
+          slug,
+          tag: tag || "",
+          desc: desc || "",
+          points: Array.isArray(points) ? points : [],
+          // Internships are apply-only by default (price left null shows
+          // Apply, no online purchase) but MAY carry a real price too — some
+          // internship slots are sold, some are free/discounted promos decided
+          // case-by-case; whichever price (or lack of one) the admin sends is
+          // respected for either type, same as a course.
+          price: entryType === "course" ? price : (price ?? null),
+          discountPercent: discountPercent || 0,
+          durationDays: durationDays || null,
+          // Always starts closed, even with a price already set — saving a
+          // price is not the same action as publishing it for sale. The admin
+          // list's separate Open/Closed toggle is the actual trigger; opening
+          // it requires that explicit second step (enforced below too).
+          status: status === "open" && price != null ? "open" : "closed",
+        },
       });
     } catch (createErr) {
       // The while-loop's uniqueness check above isn't atomic with this
       // create() — two concurrent POSTs for the same title (e.g. an admin
       // double-clicking "Create" on a slow connection) can both compute the
       // same free slug and both reach here; Course.slug's unique index
-      // (models/Course.js) then lets only one create() actually succeed.
+      // (prisma/schema.prisma) then lets only one create() actually succeed.
       // Same class of race as auth.js's signup, same fix: a clean, specific
-      // error instead of a raw 500 leaking the Mongo error string.
-      if (createErr && createErr.code === 11000) {
+      // error instead of a raw 500 leaking the SQL error string.
+      if (createErr && createErr.code === "P2002") {
         return res.status(409).json({ ok: false, error: "A course/internship with that title already exists — try again." });
       }
       throw createErr;
     }
-    res.status(201).json({ ok: true, course });
+    res.status(201).json({ ok: true, course: serialize(course) });
   } catch (e) {
     next(e);
   }
@@ -103,7 +110,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
 
 router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
   try {
-    const existing = await Course.findById(req.params.id);
+    const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ ok: false, error: "Course not found" });
 
     const { type, title, tag, desc, points, price, discountPercent, durationDays, status } = req.body || {};
@@ -157,8 +164,8 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
       update.status = "closed";
     }
 
-    const course = await Course.findByIdAndUpdate(req.params.id, update, { new: true });
-    res.json({ ok: true, course });
+    const course = await prisma.course.update({ where: { id: req.params.id }, data: update });
+    res.json({ ok: true, course: serialize(course) });
   } catch (e) {
     next(e);
   }
@@ -166,7 +173,7 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
 
 router.delete("/admin/courses/:id", requireAdmin, async (req, res, next) => {
   try {
-    const course = await Course.findByIdAndDelete(req.params.id);
+    const course = await prisma.course.delete({ where: { id: req.params.id } }).catch(() => null);
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
     res.json({ ok: true });
   } catch (e) {

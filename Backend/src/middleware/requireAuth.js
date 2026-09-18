@@ -1,4 +1,4 @@
-const User = require("../models/User");
+const { prisma } = require("../db");
 const { verifyToken } = require("../utils/jwt");
 const { IDLE_TIMEOUT_MS, ACTIVITY_WRITE_THROTTLE_MS } = require("../utils/sessionPolicy");
 
@@ -20,7 +20,10 @@ const { IDLE_TIMEOUT_MS, ACTIVITY_WRITE_THROTTLE_MS } = require("../utils/sessio
 // from another device.
 async function isSessionValid(payload) {
   if (payload.role !== "student" || !payload.sid) return true;
-  const user = await User.findById(payload.sub).select("activeSessionId activeSessionLastSeenAt");
+  const user = await prisma.user.findUnique({
+    where: { id: payload.sub },
+    select: { activeSessionId: true, activeSessionLastSeenAt: true },
+  });
   if (!user || user.activeSessionId !== payload.sid) return false;
 
   const now = Date.now();
@@ -30,10 +33,12 @@ async function isSessionValid(payload) {
   if (now - lastSeen > ACTIVITY_WRITE_THROTTLE_MS) {
     // Fire-and-forget: this request shouldn't wait on it, and a lost write
     // just means the next request tries again.
-    User.updateOne(
-      { _id: payload.sub, activeSessionId: payload.sid },
-      { $set: { activeSessionLastSeenAt: new Date(now) } }
-    ).catch(() => {});
+    prisma.user
+      .updateMany({
+        where: { id: payload.sub, activeSessionId: payload.sid },
+        data: { activeSessionLastSeenAt: new Date(now) },
+      })
+      .catch(() => {});
   }
   return true;
 }

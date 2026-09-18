@@ -1,12 +1,11 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const Course = require("../models/Course");
-const Video = require("../models/Video");
+const { prisma } = require("../db");
 const { requireAuth } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireEnrollment } = require("../middleware/requireEnrollment");
 const { requireInternalToken } = require("../middleware/requireInternalToken");
 const { buildSignedUrl } = require("../utils/signedVideoUrl");
+const { serialize } = require("../utils/serialize");
 
 const router = express.Router();
 
@@ -20,11 +19,14 @@ const PLAY_URL_TTL_SECONDS = 6 * 60 * 60;
 // there's no drip schedule.
 router.get("/courses/:courseId/videos", requireAuth, requireEnrollment, async (req, res, next) => {
   try {
-    const videos = await Video.find({ course: req.params.courseId }).sort({ dayNumber: 1, createdAt: 1 });
+    const videos = await prisma.video.findMany({
+      where: { courseId: req.params.courseId },
+      orderBy: [{ dayNumber: "asc" }, { createdAt: "asc" }],
+    });
     res.json({
       ok: true,
       videos: videos.map((v) => ({
-        _id: v._id,
+        _id: v.id,
         title: v.title,
         dayNumber: v.dayNumber,
         durationSeconds: v.durationSeconds,
@@ -43,10 +45,7 @@ router.get("/courses/:courseId/videos/:videoId/play-url", requireAuth, requireEn
       return res.status(503).json({ ok: false, error: "Video delivery is not configured yet" });
     }
 
-    if (!mongoose.isValidObjectId(req.params.videoId)) {
-      return res.status(404).json({ ok: false, error: "Video not found" });
-    }
-    const video = await Video.findOne({ _id: req.params.videoId, course: req.params.courseId });
+    const video = await prisma.video.findFirst({ where: { id: req.params.videoId, courseId: req.params.courseId } });
     if (!video) return res.status(404).json({ ok: false, error: "Video not found" });
 
     const url = buildSignedUrl(gateway, video.b2Key, PLAY_URL_TTL_SECONDS);
@@ -67,12 +66,12 @@ router.get("/courses/:courseId/videos/:videoId/play-url", requireAuth, requireEn
 router.get("/internal/preflight", requireInternalToken, async (req, res, next) => {
   try {
     const { courseId } = req.query;
-    if (!mongoose.isValidObjectId(courseId)) {
+    if (!courseId) {
       return res.status(400).json({ ok: false, error: "courseId is missing or not a valid id" });
     }
-    const course = await Course.findById(courseId).select("title");
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, title: true } });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
-    res.json({ ok: true, course: { _id: course._id, title: course.title } });
+    res.json({ ok: true, course: { _id: course.id, title: course.title } });
   } catch (e) {
     next(e);
   }
@@ -88,41 +87,45 @@ router.post("/internal/videos", requireInternalToken, async (req, res, next) => 
     if (!courseRef || !title || !b2Key) {
       return res.status(400).json({ ok: false, error: "course, title and b2Key are required" });
     }
-    if (!mongoose.isValidObjectId(courseRef)) {
-      return res.status(400).json({ ok: false, error: "course is not a valid id" });
-    }
 
-    const courseDoc = await Course.findById(courseRef);
+    const courseDoc = await prisma.course.findUnique({ where: { id: courseRef } });
     if (!courseDoc) return res.status(404).json({ ok: false, error: "Course not found" });
 
-    const existing = await Video.findOne({ b2Key });
+    const existing = await prisma.video.findUnique({ where: { b2Key } });
     if (existing) {
       // Idempotent: the sync script's state file should prevent this, but if
       // it re-registers the same object, hand back the existing row.
-      return res.status(200).json({ ok: true, video: existing, alreadyRegistered: true });
+      return res.status(200).json({ ok: true, video: serialize(existing, "video"), alreadyRegistered: true });
     }
 
     let day = Number(dayNumber);
     if (!Number.isInteger(day) || day < 1) {
       // One past the current highest day for this course — never collides with
       // an existing dayNumber the way a plain count would after a deletion.
-      const last = await Video.findOne({ course: courseRef }).sort({ dayNumber: -1 }).select("dayNumber");
+      const last = await prisma.video.findFirst({ where: { courseId: courseRef }, orderBy: { dayNumber: "desc" } });
       day = (last ? last.dayNumber : 0) + 1;
     }
 
-    const video = await Video.create({
-      course: courseRef,
-      title,
-      b2Key,
-      sourceDriveFileId: sourceDriveFileId || null,
-      dayNumber: day,
-      durationSeconds: Number.isFinite(Number(durationSeconds)) ? Number(durationSeconds) : null,
-    });
-    res.status(201).json({ ok: true, video });
-  } catch (e) {
-    if (e && e.code === 11000) {
-      return res.status(409).json({ ok: false, error: "A video with this b2Key already exists" });
+    let video;
+    try {
+      video = await prisma.video.create({
+        data: {
+          courseId: courseRef,
+          title,
+          b2Key,
+          sourceDriveFileId: sourceDriveFileId || null,
+          dayNumber: day,
+          durationSeconds: Number.isFinite(Number(durationSeconds)) ? Number(durationSeconds) : null,
+        },
+      });
+    } catch (createErr) {
+      if (createErr && createErr.code === "P2002") {
+        return res.status(409).json({ ok: false, error: "A video with this b2Key already exists" });
+      }
+      throw createErr;
     }
+    res.status(201).json({ ok: true, video: serialize(video, "video") });
+  } catch (e) {
     next(e);
   }
 });
@@ -130,10 +133,13 @@ router.post("/internal/videos", requireInternalToken, async (req, res, next) => 
 // ---------- admin: manage the drip schedule ----------
 router.get("/admin/videos", requireAdmin, async (req, res, next) => {
   try {
-    const filter = {};
-    if (req.query.courseId) filter.course = req.query.courseId;
-    const videos = await Video.find(filter).sort({ course: 1, dayNumber: 1, createdAt: 1 });
-    res.json({ ok: true, videos });
+    const where = {};
+    if (req.query.courseId) where.courseId = req.query.courseId;
+    const videos = await prisma.video.findMany({
+      where,
+      orderBy: [{ courseId: "asc" }, { dayNumber: "asc" }, { createdAt: "asc" }],
+    });
+    res.json({ ok: true, videos: serialize(videos, "video") });
   } catch (e) {
     next(e);
   }
@@ -142,21 +148,21 @@ router.get("/admin/videos", requireAdmin, async (req, res, next) => {
 router.put("/admin/videos/:id", requireAdmin, async (req, res, next) => {
   try {
     const { title, dayNumber } = req.body || {};
-    const update = {};
+    const data = {};
     if (title !== undefined) {
       if (!String(title).trim()) return res.status(400).json({ ok: false, error: "Title can't be empty" });
-      update.title = String(title).trim();
+      data.title = String(title).trim();
     }
     if (dayNumber !== undefined) {
       const day = Number(dayNumber);
       if (!Number.isInteger(day) || day < 1) {
         return res.status(400).json({ ok: false, error: "dayNumber must be a positive whole number" });
       }
-      update.dayNumber = day;
+      data.dayNumber = day;
     }
-    const video = await Video.findByIdAndUpdate(req.params.id, update, { new: true });
+    const video = await prisma.video.update({ where: { id: req.params.id }, data }).catch(() => null);
     if (!video) return res.status(404).json({ ok: false, error: "Video not found" });
-    res.json({ ok: true, video });
+    res.json({ ok: true, video: serialize(video, "video") });
   } catch (e) {
     next(e);
   }
@@ -166,7 +172,7 @@ router.delete("/admin/videos/:id", requireAdmin, async (req, res, next) => {
   try {
     // Only removes the metadata row — the object stays in B2 (delete it there
     // separately if you really want it gone).
-    const video = await Video.findByIdAndDelete(req.params.id);
+    const video = await prisma.video.delete({ where: { id: req.params.id } }).catch(() => null);
     if (!video) return res.status(404).json({ ok: false, error: "Video not found" });
     res.json({ ok: true });
   } catch (e) {

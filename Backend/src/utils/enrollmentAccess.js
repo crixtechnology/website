@@ -1,6 +1,8 @@
+const { serialize } = require("./serialize");
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// A course's `durationDays` (Backend/src/models/Course.js) is how long a
+// A course's `durationDays` (Backend/prisma/schema.prisma's Course model) is how long a
 // purchased/granted enrollment stays valid for, counted from `startDate` —
 // see routes/payments.js's grantAccessForPayment. No durationDays set on the
 // course means lifetime access (returns null, same as leaving endDate
@@ -33,7 +35,7 @@ function isExpired(enrollment) {
 // `expired` flag, so every endpoint agrees on this shape instead of each
 // hand-rolling its own `{...e.toObject(), expired: isExpired(e)}`.
 function serializeEnrollment(enrollment) {
-  return { ...enrollment.toObject(), expired: isExpired(enrollment) };
+  return { ...serialize(enrollment, "enrollment"), expired: isExpired(enrollment) };
 }
 
 module.exports = { hasValidAccess, isExpired, serializeEnrollment, computeEndDate };

@@ -1,25 +1,26 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const Enrollment = require("../models/Enrollment");
-const User = require("../models/User");
-const Course = require("../models/Course");
+const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
 const { serializeEnrollment } = require("../utils/enrollmentAccess");
-const { searchRegex } = require("../utils/searchRegex");
 
 const router = express.Router();
+
+const USER_SUMMARY = { id: true, name: true, email: true, phone: true };
+const COURSE_SUMMARY = { id: true, title: true, slug: true };
 
 // ---------- student: "My Courses" ----------
 router.get("/me/enrollments", requireAuth, async (req, res, next) => {
   try {
-    const enrollments = await Enrollment.find({ user: req.user.sub, status: "active" })
-      .populate("course")
-      .sort({ createdAt: -1 });
+    const enrollments = await prisma.enrollment.findMany({
+      where: { userId: req.user.sub, status: "active" },
+      include: { course: true },
+      orderBy: { createdAt: "desc" },
+    });
     // `expired` is derived, not stored — see utils/enrollmentAccess.js. The
     // frontend uses it to grey out/label a course whose access has lapsed
     // rather than just hiding it, so the student still sees what they bought.
-    res.json({ ok: true, enrollments: enrollments.map(serializeEnrollment) });
+    res.json({ ok: true, enrollments: enrollments.map((e) => serializeEnrollment(e)) });
   } catch (e) {
     next(e);
   }
@@ -35,31 +36,29 @@ router.get("/admin/enrollments", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
     // Enrollment itself has no searchable text (it's just refs + dates) —
-    // resolve matching users/courses first, then filter to enrollments
-    // whose EITHER side matches (a search for a student's name surfaces all
-    // of their courses; a search for a course title surfaces every student
-    // in it). `{ $in: [] }` already matches nothing in MongoDB, so there's
-    // no need for a separate empty-results short-circuit.
-    let matchFilter = {};
-    if (q) {
-      const [users, courses] = await Promise.all([
-        User.find({ $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }] }).select("_id"),
-        Course.find({ title: searchRegex(q) }).select("_id"),
-      ]);
-      matchFilter = {
-        $or: [
-          { user: { $in: users.map((u) => u._id) } },
-          { course: { $in: courses.map((c) => c._id) } },
-        ],
-      };
-    }
+    // matched here via nested relation filters on the joined user/course
+    // instead of Mongo's old two-step "resolve refs first, then $in" dance;
+    // a search for a student's name surfaces all of their courses, a search
+    // for a course title surfaces every student in it.
+    const where = {
+      status: "active",
+      ...(q
+        ? {
+            OR: [
+              { user: { OR: [{ name: { contains: q } }, { email: { contains: q } }] } },
+              { course: { title: { contains: q } } },
+            ],
+          }
+        : {}),
+    };
 
-    const enrollments = await Enrollment.find({ status: "active", ...matchFilter })
-      .populate("user", "name email phone")
-      .populate("course", "title slug")
-      .sort({ createdAt: -1 });
+    const enrollments = await prisma.enrollment.findMany({
+      where,
+      include: { user: { select: USER_SUMMARY }, course: { select: COURSE_SUMMARY } },
+      orderBy: { createdAt: "desc" },
+    });
 
-    res.json({ ok: true, enrollments: enrollments.map(serializeEnrollment) });
+    res.json({ ok: true, enrollments: enrollments.map((e) => serializeEnrollment(e)) });
   } catch (e) {
     next(e);
   }
@@ -71,7 +70,7 @@ router.get("/admin/enrollments", requireAdmin, async (req, res, next) => {
 router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
   try {
     const { userId, email, courseId, startDate, endDate } = req.body || {};
-    if (!courseId || !mongoose.isValidObjectId(courseId)) {
+    if (!courseId) {
       return res.status(400).json({ ok: false, error: "A valid courseId is required" });
     }
     if (!userId && !email) {
@@ -80,28 +79,27 @@ router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
 
     let user = null;
     if (userId) {
-      if (!mongoose.isValidObjectId(userId)) return res.status(400).json({ ok: false, error: "Invalid userId" });
-      user = await User.findById(userId);
+      user = await prisma.user.findUnique({ where: { id: userId } });
     } else {
-      user = await User.findOne({ email: String(email).toLowerCase().trim() });
+      user = await prisma.user.findUnique({ where: { email: String(email).toLowerCase().trim() } });
     }
     if (!user) {
       return res.status(404).json({ ok: false, error: "No account with that email — they need to sign up first." });
     }
 
-    const course = await Course.findById(courseId);
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
 
-    const set = { status: "active" };
-    if (startDate) set.startDate = new Date(startDate);
-    if (endDate !== undefined) set.endDate = endDate ? new Date(endDate) : null;
+    const dateFields = {};
+    if (startDate) dateFields.startDate = new Date(startDate);
+    if (endDate !== undefined) dateFields.endDate = endDate ? new Date(endDate) : null;
 
-    const enrollment = await Enrollment.findOneAndUpdate(
-      { user: user._id, course: course._id },
-      { $set: set, $setOnInsert: { user: user._id, course: course._id } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    await enrollment.populate([{ path: "user", select: "name email phone" }, { path: "course", select: "title slug" }]);
+    const enrollment = await prisma.enrollment.upsert({
+      where: { userId_courseId: { userId: user.id, courseId: course.id } },
+      create: { userId: user.id, courseId: course.id, status: "active", ...dateFields },
+      update: { status: "active", ...dateFields },
+      include: { user: { select: USER_SUMMARY }, course: { select: COURSE_SUMMARY } },
+    });
 
     res.status(201).json({ ok: true, enrollment: serializeEnrollment(enrollment) });
   } catch (e) {
@@ -112,9 +110,6 @@ router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
 // Edit a subscription's validity dates.
 router.patch("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(404).json({ ok: false, error: "Subscription not found" });
-    }
     const { startDate, endDate } = req.body || {};
     const update = {};
     // A falsy/empty startDate means "leave it alone" (same partial-update
@@ -124,9 +119,13 @@ router.patch("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
     if (startDate) update.startDate = new Date(startDate);
     if (endDate !== undefined) update.endDate = endDate ? new Date(endDate) : null; // null clears expiry -> lifetime
 
-    const enrollment = await Enrollment.findByIdAndUpdate(req.params.id, update, { new: true })
-      .populate("user", "name email phone")
-      .populate("course", "title slug");
+    const enrollment = await prisma.enrollment
+      .update({
+        where: { id: req.params.id },
+        data: update,
+        include: { user: { select: USER_SUMMARY }, course: { select: COURSE_SUMMARY } },
+      })
+      .catch(() => null);
     if (!enrollment) return res.status(404).json({ ok: false, error: "Subscription not found" });
 
     res.json({ ok: true, enrollment: serializeEnrollment(enrollment) });
@@ -138,10 +137,7 @@ router.patch("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
 // Remove a subscription outright (revoke access immediately).
 router.delete("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(404).json({ ok: false, error: "Subscription not found" });
-    }
-    const enrollment = await Enrollment.findByIdAndDelete(req.params.id);
+    const enrollment = await prisma.enrollment.delete({ where: { id: req.params.id } }).catch(() => null);
     if (!enrollment) return res.status(404).json({ ok: false, error: "Subscription not found" });
     res.json({ ok: true });
   } catch (e) {

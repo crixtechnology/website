@@ -1,16 +1,16 @@
 const express = require("express");
-const Contact = require("../models/Contact");
+const { prisma } = require("../db");
 const { sendContactEmail } = require("../utils/mailer");
 const { requireAdmin } = require("../middleware/requireAdmin");
-const { searchRegex } = require("../utils/searchRegex");
 const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("../utils/validators");
+const { serialize } = require("../utils/serialize");
 
 const router = express.Router();
 
 // Matches src/services/api.js's existing fetch(`${API}/contact`, ...) call —
 // no frontend change needed once REACT_APP_API_URL points here. Also what
 // the IT Services "Inquiry" form (ServiceInquiryModal) posts to, with
-// company/phone set and email/message possibly blank — see models/Contact.js.
+// company/phone set and email/message possibly blank — see prisma/schema.prisma's Contact model.
 router.post("/contact", async (req, res, next) => {
   try {
     const { name, email, phone, company, interest, message } = req.body || {};
@@ -40,9 +40,15 @@ router.post("/contact", async (req, res, next) => {
 
     // Persist first — this is now the admin panel's inbox (AdminMessages.jsx)
     // and must not be lost even if the notification email below hiccups.
-    await Contact.create({
-      name, email: email ? String(email).toLowerCase().trim() : "", phone: phone || "", company: company || "",
-      interest: interest || "", message: message || "",
+    await prisma.contact.create({
+      data: {
+        name,
+        email: email ? String(email).toLowerCase().trim() : "",
+        phone: phone || "",
+        company: company || "",
+        interest: interest || "",
+        message: message || "",
+      },
     });
 
     // Best-effort notification email; a delivery failure here shouldn't turn
@@ -66,13 +72,21 @@ router.post("/contact", async (req, res, next) => {
 router.get("/admin/contacts", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
-    const filter = q
-      ? { $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }, { phone: searchRegex(q) }, { company: searchRegex(q) }, { message: searchRegex(q) }] }
+    const where = q
+      ? {
+          OR: [
+            { name: { contains: q } },
+            { email: { contains: q } },
+            { phone: { contains: q } },
+            { company: { contains: q } },
+            { message: { contains: q } },
+          ],
+        }
       : {};
-    if (req.query.status === "new" || req.query.status === "read") filter.status = req.query.status;
+    if (req.query.status === "new" || req.query.status === "read") where.status = req.query.status;
 
-    const contacts = await Contact.find(filter).sort({ createdAt: -1 });
-    res.json({ ok: true, contacts });
+    const contacts = await prisma.contact.findMany({ where, orderBy: { createdAt: "desc" } });
+    res.json({ ok: true, contacts: serialize(contacts) });
   } catch (e) {
     next(e);
   }
@@ -84,9 +98,9 @@ router.patch("/admin/contacts/:id", requireAdmin, async (req, res, next) => {
     if (!["new", "read"].includes(status)) {
       return res.status(400).json({ ok: false, error: "status must be new or read" });
     }
-    const contact = await Contact.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    const contact = await prisma.contact.update({ where: { id: req.params.id }, data: { status } }).catch(() => null);
     if (!contact) return res.status(404).json({ ok: false, error: "Message not found" });
-    res.json({ ok: true, contact });
+    res.json({ ok: true, contact: serialize(contact) });
   } catch (e) {
     next(e);
   }
@@ -94,7 +108,7 @@ router.patch("/admin/contacts/:id", requireAdmin, async (req, res, next) => {
 
 router.delete("/admin/contacts/:id", requireAdmin, async (req, res, next) => {
   try {
-    const contact = await Contact.findByIdAndDelete(req.params.id);
+    const contact = await prisma.contact.delete({ where: { id: req.params.id } }).catch(() => null);
     if (!contact) return res.status(404).json({ ok: false, error: "Message not found" });
     res.json({ ok: true });
   } catch (e) {

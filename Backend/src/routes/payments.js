@@ -1,12 +1,9 @@
 const express = require("express");
 const crypto = require("crypto");
+const { prisma } = require("../db");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
-const Payment = require("../models/Payment");
-const Course = require("../models/Course");
-const Application = require("../models/Application");
-const Enrollment = require("../models/Enrollment");
 const { hasValidAccess, computeEndDate } = require("../utils/enrollmentAccess");
-const { nextSequence } = require("../models/Counter");
+const { nextSequence } = require("../utils/counter");
 const { round2 } = require("../utils/money");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
@@ -18,14 +15,19 @@ const router = express.Router();
 // Razorpay webhook — whichever confirmation lands first does the work, the
 // other becomes a no-op. Returns the Application (for its course slug).
 async function grantAccessForPayment(payment, razorpayPaymentId) {
-  if (payment.status !== "paid" || payment.razorpay_payment_id !== razorpayPaymentId) {
-    payment.status = "paid";
-    payment.razorpay_payment_id = razorpayPaymentId;
-    await payment.save();
+  if (payment.status !== "paid" || payment.razorpayPaymentId !== razorpayPaymentId) {
+    payment = await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: "paid", razorpayPaymentId },
+    });
   }
-  const application = await Application.findById(payment.application);
-  if (application && application.user && application.course) {
-    const existing = await Enrollment.findOne({ user: application.user, course: application.course });
+  const application = payment.applicationId
+    ? await prisma.application.findUnique({ where: { id: payment.applicationId } })
+    : null;
+  if (application && application.userId && application.courseId) {
+    const existing = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId: application.userId, courseId: application.courseId } },
+    });
 
     if (hasValidAccess(existing)) {
       // Already has valid access — this is /verify and the webhook both
@@ -33,21 +35,34 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
       // make sure payment/status are attached; don't touch startDate/
       // endDate, so a harmless duplicate call can't relock an in-progress
       // drip schedule or shift an already-running expiry window.
-      await Enrollment.updateOne({ _id: existing._id }, { $set: { payment: payment._id, status: "active" } });
+      await prisma.enrollment.update({
+        where: { id: existing.id },
+        data: { paymentId: payment.id, status: "active" },
+      });
     } else {
       // A brand-new enrollment, or a fresh/renewed purchase of one that had
       // lapsed (expired, or manually revoked by an admin and re-bought) —
       // either way this is a real, fresh grant: full access starting now,
-      // for as long as the course's own durationDays says (Backend/src/
-      // models/Course.js) — no durationDays set means lifetime access.
-      const course = await Course.findById(application.course).select("durationDays");
+      // for as long as the course's own durationDays says (prisma/schema.prisma) —
+      // no durationDays set means lifetime access.
+      const course = await prisma.course.findUnique({
+        where: { id: application.courseId },
+        select: { durationDays: true },
+      });
       const startDate = new Date();
       const endDate = computeEndDate(startDate, course && course.durationDays);
-      await Enrollment.findOneAndUpdate(
-        { user: application.user, course: application.course },
-        { user: application.user, course: application.course, payment: payment._id, status: "active", startDate, endDate },
-        { upsert: true, new: true }
-      );
+      await prisma.enrollment.upsert({
+        where: { userId_courseId: { userId: application.userId, courseId: application.courseId } },
+        create: {
+          userId: application.userId,
+          courseId: application.courseId,
+          paymentId: payment.id,
+          status: "active",
+          startDate,
+          endDate,
+        },
+        update: { paymentId: payment.id, status: "active", startDate, endDate },
+      });
     }
 
     await attachReceipt(payment, application);
@@ -58,28 +73,31 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
 // Stamps a receipt snapshot onto the Payment the first time it's granted
 // access. /verify and the webhook can both reach this for the SAME payment
 // within milliseconds of each other in production — a plain "check
-// payment.receipt.number, then mutate, then save()" is a real race there
-// (two concurrent callers can both pass the check before either has saved),
-// so the actual "did I win the right to mint this receipt" decision is a
-// single atomic findOneAndUpdate matched on receipt.number still being
-// null: only the caller whose update actually matches a document proceeds
-// to build the PDF and send the email — the loser (if any) returns having
-// changed nothing, no second number minted, no second email sent.
+// receiptNumber, then mutate, then save" is a real race there (two
+// concurrent callers can both pass the check before either has written), so
+// the actual "did I win the right to mint this receipt" decision is a single
+// atomic UPDATE ... WHERE id = ? AND receiptNumber IS NULL: only the caller
+// whose UPDATE actually affects a row (MySQL row-locks the matched row for
+// the statement, so two concurrent UPDATEs can't both match) proceeds to
+// build the PDF and send the email — the loser returns having changed
+// nothing, no second number minted, no second email sent.
 async function attachReceipt(payment, application) {
-  if (payment.receipt && payment.receipt.number) return;
+  if (payment.receiptNumber) return;
 
-  const course = await Course.findById(application.course).select("title type price discountPercent");
+  const course = await prisma.course.findUnique({
+    where: { id: application.courseId },
+    select: { title: true, type: true, price: true, discountPercent: true },
+  });
   if (!course) return;
 
   // Prefer the price/discount as they were when the order was created
-  // (payment.orderSnapshot, see its doc comment in models/Payment.js) over
-  // the course's current values — those can have moved since if an admin
-  // edited pricing while this payment was in flight. Older payments from
-  // before orderSnapshot existed fall back to the live course, same as
+  // (payment.orderSnapshot*, see the field's doc comment in prisma/schema.prisma)
+  // over the course's current values — those can have moved since if an
+  // admin edited pricing while this payment was in flight. Older payments
+  // from before orderSnapshot existed fall back to the live course, same as
   // this code always did.
-  const snap = payment.orderSnapshot || {};
-  const basePrice = round2(snap.basePrice != null ? snap.basePrice : course.price || 0);
-  const discountPercent = snap.discountPercent != null ? snap.discountPercent : course.discountPercent || 0;
+  const basePrice = round2(payment.orderSnapshotBasePrice != null ? payment.orderSnapshotBasePrice : course.price || 0);
+  const discountPercent = payment.orderSnapshotDiscountPercent != null ? payment.orderSnapshotDiscountPercent : course.discountPercent || 0;
   const discountAmount = round2((basePrice * discountPercent) / 100);
   const totalPaid = round2((payment.amount || 0) / 100); // paise -> rupees, what was actually charged
 
@@ -89,8 +107,6 @@ async function attachReceipt(payment, application) {
   const receiptNumber = `CRX-${year}-${String(seq).padStart(5, "0")}`;
   const issuedAt = new Date();
   const receipt = {
-    number: receiptNumber,
-    issuedAt,
     buyerName: application.name || "",
     buyerEmail: application.email || "",
     buyerPhone: application.phone || "",
@@ -103,15 +119,25 @@ async function attachReceipt(payment, application) {
     paymentMode: "Razorpay (Online)",
   };
 
-  const won = await Payment.findOneAndUpdate(
-    { _id: payment._id, "receipt.number": null },
-    { $set: { user: application.user, course: application.course, receipt } },
-    { new: true }
-  );
-  if (!won) return; // the other concurrent caller (verify vs webhook) got there first
-  payment.user = won.user;
-  payment.course = won.course;
-  payment.receipt = won.receipt;
+  const affected = await prisma.$executeRaw`
+    UPDATE payments
+    SET userId = ${application.userId},
+        courseId = ${application.courseId},
+        receiptNumber = ${receiptNumber},
+        receiptIssuedAt = ${issuedAt},
+        receiptBuyerName = ${receipt.buyerName},
+        receiptBuyerEmail = ${receipt.buyerEmail},
+        receiptBuyerPhone = ${receipt.buyerPhone},
+        receiptItemType = ${receipt.itemType},
+        receiptItemTitle = ${receipt.itemTitle},
+        receiptBasePrice = ${receipt.basePrice},
+        receiptDiscountPercent = ${receipt.discountPercent},
+        receiptDiscountAmount = ${receipt.discountAmount},
+        receiptTotalPaid = ${receipt.totalPaid},
+        receiptPaymentMode = ${receipt.paymentMode}
+    WHERE id = ${payment.id} AND receiptNumber IS NULL
+  `;
+  if (affected === 0) return; // the other concurrent caller (verify vs webhook) got there first
 
   // Best-effort — a failed/unconfigured email must never undo the receipt
   // that was just saved, or break the payment flow that led here (this runs
@@ -122,20 +148,20 @@ async function attachReceipt(payment, application) {
     const pdfBuffer = buildReceiptPdfBuffer({
       receiptNumber,
       issuedAt,
-      buyerName: payment.receipt.buyerName,
-      buyerEmail: payment.receipt.buyerEmail,
-      buyerPhone: payment.receipt.buyerPhone,
+      buyerName: receipt.buyerName,
+      buyerEmail: receipt.buyerEmail,
+      buyerPhone: receipt.buyerPhone,
       itemType: course.type,
       itemTitle: course.title,
       basePrice,
       discountPercent,
       discountAmount,
       totalPaid,
-      paymentMode: payment.receipt.paymentMode,
-      razorpay_payment_id: payment.razorpay_payment_id,
+      paymentMode: receipt.paymentMode,
+      razorpay_payment_id: payment.razorpayPaymentId,
     });
     await sendReceiptEmail({
-      receipt: { receiptNumber, buyerName: payment.receipt.buyerName, buyerEmail: payment.receipt.buyerEmail, itemTitle: course.title, itemType: course.type, totalPaid },
+      receipt: { receiptNumber, buyerName: receipt.buyerName, buyerEmail: receipt.buyerEmail, itemTitle: course.title, itemType: course.type, totalPaid },
       pdfBuffer,
     });
   } catch (mailErr) {
@@ -156,10 +182,10 @@ router.post("/create-order", async (req, res, next) => {
     if (!applicationId || !courseSlug) {
       return res.status(400).json({ ok: false, error: "applicationId and courseSlug are required" });
     }
-    const application = await Application.findById(applicationId);
+    const application = await prisma.application.findUnique({ where: { id: applicationId } });
     if (!application) return res.status(404).json({ ok: false, error: "Application not found" });
 
-    const course = await Course.findOne({ slug: courseSlug });
+    const course = await prisma.course.findUnique({ where: { slug: courseSlug } });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
     if (course.status === "closed") {
       return res.status(400).json({ ok: false, error: "This course is currently closed for enrollment" });
@@ -182,8 +208,10 @@ router.post("/create-order", async (req, res, next) => {
     // already have. Enrollment access itself is unaffected either way
     // (grantAccessForPayment already no-ops the enrollment side of a
     // genuine duplicate), this only stops the needless second charge.
-    if (application.user) {
-      const existingEnrollment = await Enrollment.findOne({ user: application.user, course: course._id });
+    if (application.userId) {
+      const existingEnrollment = await prisma.enrollment.findUnique({
+        where: { userId_courseId: { userId: application.userId, courseId: course.id } },
+      });
       if (hasValidAccess(existingEnrollment)) {
         return res.status(400).json({ ok: false, error: "You already have access to this course." });
       }
@@ -195,25 +223,33 @@ router.post("/create-order", async (req, res, next) => {
     const order = await razorpay.orders.create({
       amount: amountPaise,
       currency: "INR",
-      receipt: `app_${application._id}`,
-      notes: { applicationId: String(application._id), courseSlug },
+      receipt: `app_${application.id}`,
+      notes: { applicationId: String(application.id), courseSlug },
     });
 
-    const payment = await Payment.create({
-      razorpay_order_id: order.id,
-      amount: amountPaise,
-      status: "created",
-      application: application._id,
-      // Snapshotted now, not re-read from Course at grant time — see the
-      // field's own doc comment in models/Payment.js for why.
-      orderSnapshot: { basePrice: course.price, discountPercent: course.discountPercent || 0 },
+    const payment = await prisma.payment.create({
+      data: {
+        razorpayOrderId: order.id,
+        amount: amountPaise,
+        status: "created",
+        applicationId: application.id,
+        // Snapshotted now, not re-read from Course at grant time — see the
+        // field's own doc comment in prisma/schema.prisma for why.
+        orderSnapshotBasePrice: course.price,
+        orderSnapshotDiscountPercent: course.discountPercent || 0,
+      },
     });
-    application.payment = payment._id;
-    // Defense in depth: /applications already resolves+stores this when the
-    // client sends courseSlug, but stamp it here too in case that didn't
-    // happen — the webhook needs application.course to grant access.
-    if (!application.course) application.course = course._id;
-    await application.save();
+
+    await prisma.application.update({
+      where: { id: application.id },
+      data: {
+        paymentId: payment.id,
+        // Defense in depth: /applications already resolves+stores this when
+        // the client sends courseSlug, but stamp it here too in case that
+        // didn't happen — the webhook needs application.course to grant access.
+        ...(application.courseId ? {} : { courseId: course.id }),
+      },
+    });
 
     res.status(201).json({
       ok: true,
@@ -269,20 +305,20 @@ router.post("/verify", async (req, res, next) => {
       crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
     if (!valid) return res.status(400).json({ ok: false, error: "Payment could not be verified." });
 
-    const payment = await Payment.findOne({ razorpay_order_id });
+    const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: razorpay_order_id } });
     if (!payment) return res.status(404).json({ ok: false, error: "Payment record not found" });
 
     const application = await grantAccessForPayment(payment, razorpay_payment_id);
 
     let courseSlug = null;
-    if (application && application.course) {
-      const course = await Course.findById(application.course).select("slug");
+    if (application && application.courseId) {
+      const course = await prisma.course.findUnique({ where: { id: application.courseId }, select: { slug: true } });
       courseSlug = course ? course.slug : null;
     }
     res.json({
       ok: true,
       courseSlug,
-      enrolled: !!(application && application.user && application.course),
+      enrolled: !!(application && application.userId && application.courseId),
     });
   } catch (e) {
     next(e);
@@ -309,14 +345,12 @@ router.post("/webhook", async (req, res, next) => {
     const entity = event?.payload?.payment?.entity;
 
     if (entity && event.event === "payment.captured") {
-      const payment = await Payment.findOne({ razorpay_order_id: entity.order_id });
+      const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: entity.order_id } });
       if (payment) await grantAccessForPayment(payment, entity.id);
     } else if (entity && event.event === "payment.failed") {
-      const payment = await Payment.findOne({ razorpay_order_id: entity.order_id });
+      const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: entity.order_id } });
       if (payment && payment.status !== "paid") {
-        payment.razorpay_payment_id = entity.id;
-        payment.status = "failed";
-        await payment.save();
+        await prisma.payment.update({ where: { id: payment.id }, data: { razorpayPaymentId: entity.id, status: "failed" } });
       }
     }
 
@@ -326,7 +360,7 @@ router.post("/webhook", async (req, res, next) => {
   }
 });
 
-// Exported for scripts/backfillPaymentReceipts.js, which reuses this exact
-// logic to mint receipts for payments that were granted access before the
-// receipt feature existed.
+// Exported for scripts (receipt backfills), which reuse this exact logic to
+// mint receipts for payments that were granted access before the receipt
+// feature existed.
 module.exports = Object.assign(router, { attachReceipt });

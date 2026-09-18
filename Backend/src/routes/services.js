@@ -1,15 +1,18 @@
 const express = require("express");
-const Service = require("../models/Service");
+const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
-const { searchRegex } = require("../utils/searchRegex");
+const { serialize } = require("../utils/serialize");
 
 const router = express.Router();
 
 // ---------- public: the IT services list shown on /services ----------
 router.get("/services", async (req, res, next) => {
   try {
-    const services = await Service.find({ status: "active" }).sort({ order: 1, createdAt: 1 });
-    res.json({ ok: true, services });
+    const services = await prisma.service.findMany({
+      where: { status: "active" },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+    });
+    res.json({ ok: true, services: serialize(services) });
   } catch (e) {
     next(e);
   }
@@ -19,11 +22,17 @@ router.get("/services", async (req, res, next) => {
 router.get("/admin/services", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
-    const filter = q
-      ? { $or: [{ title: searchRegex(q) }, { tag: searchRegex(q) }, { desc: searchRegex(q) }] }
+    const where = q
+      ? {
+          OR: [
+            { title: { contains: q } },
+            { tag: { contains: q } },
+            { desc: { contains: q } },
+          ],
+        }
       : {};
-    const services = await Service.find(filter).sort({ order: 1, createdAt: 1 });
-    res.json({ ok: true, services });
+    const services = await prisma.service.findMany({ where, orderBy: [{ order: "asc" }, { createdAt: "asc" }] });
+    res.json({ ok: true, services: serialize(services) });
   } catch (e) {
     next(e);
   }
@@ -36,17 +45,21 @@ router.post("/admin/services", requireAdmin, async (req, res, next) => {
 
     let resolvedOrder = Number(order);
     if (!Number.isFinite(resolvedOrder)) {
-      const last = await Service.findOne().sort({ order: -1 }).select("order");
+      const last = await prisma.service.findFirst({ orderBy: { order: "desc" }, select: { order: true } });
       resolvedOrder = (last ? last.order : 0) + 1;
     }
 
-    const service = await Service.create({
-      title, tag: tag || "", desc: desc || "",
-      points: Array.isArray(points) ? points : [],
-      order: resolvedOrder,
-      status: status === "inactive" ? "inactive" : "active",
+    const service = await prisma.service.create({
+      data: {
+        title,
+        tag: tag || "",
+        desc: desc || "",
+        points: Array.isArray(points) ? points : [],
+        order: resolvedOrder,
+        status: status === "inactive" ? "inactive" : "active",
+      },
     });
-    res.status(201).json({ ok: true, service });
+    res.status(201).json({ ok: true, service: serialize(service) });
   } catch (e) {
     next(e);
   }
@@ -55,17 +68,17 @@ router.post("/admin/services", requireAdmin, async (req, res, next) => {
 router.put("/admin/services/:id", requireAdmin, async (req, res, next) => {
   try {
     const { title, tag, desc, points, order, status } = req.body || {};
-    const update = {};
-    if (title !== undefined) update.title = title;
-    if (tag !== undefined) update.tag = tag;
-    if (desc !== undefined) update.desc = desc;
-    if (points !== undefined) update.points = Array.isArray(points) ? points : [];
-    if (order !== undefined && Number.isFinite(Number(order))) update.order = Number(order);
-    if (status !== undefined) update.status = status === "inactive" ? "inactive" : "active";
+    const data = {};
+    if (title !== undefined) data.title = title;
+    if (tag !== undefined) data.tag = tag;
+    if (desc !== undefined) data.desc = desc;
+    if (points !== undefined) data.points = Array.isArray(points) ? points : [];
+    if (order !== undefined && Number.isFinite(Number(order))) data.order = Number(order);
+    if (status !== undefined) data.status = status === "inactive" ? "inactive" : "active";
 
-    const service = await Service.findByIdAndUpdate(req.params.id, update, { new: true });
+    const service = await prisma.service.update({ where: { id: req.params.id }, data }).catch(() => null);
     if (!service) return res.status(404).json({ ok: false, error: "Service not found" });
-    res.json({ ok: true, service });
+    res.json({ ok: true, service: serialize(service) });
   } catch (e) {
     next(e);
   }
@@ -73,7 +86,7 @@ router.put("/admin/services/:id", requireAdmin, async (req, res, next) => {
 
 router.delete("/admin/services/:id", requireAdmin, async (req, res, next) => {
   try {
-    const service = await Service.findByIdAndDelete(req.params.id);
+    const service = await prisma.service.delete({ where: { id: req.params.id } }).catch(() => null);
     if (!service) return res.status(404).json({ ok: false, error: "Service not found" });
     res.json({ ok: true });
   } catch (e) {

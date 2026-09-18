@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const rateLimit = require("express-rate-limit");
 const { OAuth2Client } = require("google-auth-library");
-const User = require("../models/User");
+const { prisma } = require("../db");
 const { requireAuth } = require("../middleware/requireAuth");
 const { isDisposableEmail } = require("../utils/disposableEmail");
 const { isValidEmail, isValidPhone } = require("../utils/validators");
@@ -31,7 +31,7 @@ const authLimiter = rateLimit({
 });
 
 function signToken(user, sessionId) {
-  const payload = { sub: user._id.toString(), email: user.email, role: user.role, name: user.name };
+  const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
   if (sessionId) payload.sid = sessionId;
   return signJwt(payload, { expiresIn: "7d" });
 }
@@ -47,9 +47,10 @@ function signToken(user, sessionId) {
 async function startSession(user) {
   if (user.role !== "student") return null;
   const sessionId = crypto.randomBytes(24).toString("hex");
-  user.activeSessionId = sessionId;
-  user.activeSessionLastSeenAt = new Date();
-  await user.save();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { activeSessionId: sessionId, activeSessionLastSeenAt: new Date() },
+  });
   return sessionId;
 }
 
@@ -66,7 +67,7 @@ function rejectIfAlreadyLoggedInElsewhere(res, user) {
 }
 
 function publicUser(user) {
-  return { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role };
+  return { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role };
 }
 
 // ---------- student self-signup (role is always "student" — admin accounts
@@ -98,25 +99,25 @@ router.post("/signup", authLimiter, async (req, res, next) => {
         error: "Temporary/disposable email addresses aren't allowed — please use a permanent email.",
       });
     }
-    const existing = await User.findOne({ email: normalizedEmail });
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) return res.status(409).json({ ok: false, error: "An account with this email already exists" });
 
     const passwordHash = await bcrypt.hash(password, 10);
     let user;
     try {
-      user = await User.create({
-        name: name.trim(), email: normalizedEmail, phone: phone || "", passwordHash, role: "student",
+      user = await prisma.user.create({
+        data: { name: name.trim(), email: normalizedEmail, phone: phone || "", passwordHash, role: "student" },
       });
     } catch (createErr) {
-      // The findOne check above isn't atomic with this create — two
+      // The findUnique check above isn't atomic with this create — two
       // concurrent signups for the same email (double-submit, a slow
       // connection retried, or a scripted burst) can both pass it and both
-      // reach here; User.email's unique index (models/User.js) then lets
-      // only one create() actually succeed. Without this catch the loser
-      // fell through to the generic error handler as a raw 500 with the
-      // Mongo error string verbatim (exposing db/collection/index names) —
-      // this turns that into the same clean 409 the upfront check gives.
-      if (createErr && createErr.code === 11000) {
+      // reach here; User.email's unique index (prisma/schema.prisma) then
+      // lets only one create() actually succeed. Without this catch the
+      // loser fell through to the generic error handler as a raw 500 with
+      // the SQL error string verbatim (exposing table/index names) — this
+      // turns that into the same clean 409 the upfront check gives.
+      if (createErr && createErr.code === "P2002") {
         return res.status(409).json({ ok: false, error: "An account with this email already exists" });
       }
       throw createErr;
@@ -143,7 +144,7 @@ router.post("/login", authLimiter, async (req, res, next) => {
     // than 72 characters; bcryptjs truncates consistently on both hash and
     // compare, so bcrypt.compare below still resolves it correctly. Rate
     // limiting (authLimiter above) is what actually bounds abuse here.
-    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+    const user = await prisma.user.findUnique({ where: { email: String(email).toLowerCase().trim() } });
     if (!user) return res.status(401).json({ ok: false, error: "Invalid credentials" });
     if (!user.passwordHash) {
       return res.status(401).json({ ok: false, error: "This account uses Google Sign-In. Continue with Google instead." });
@@ -186,18 +187,16 @@ router.post("/google", authLimiter, async (req, res, next) => {
     }
 
     const email = String(payload.email).toLowerCase().trim();
-    let user = await User.findOne({ $or: [{ googleId: payload.sub }, { email }] });
+    let user = await prisma.user.findFirst({ where: { OR: [{ googleId: payload.sub }, { email }] } });
 
     if (!user) {
-      user = await User.create({
-        name: payload.name || email.split("@")[0],
-        email, phone: "", googleId: payload.sub, role: "student",
+      user = await prisma.user.create({
+        data: { name: payload.name || email.split("@")[0], email, phone: "", googleId: payload.sub, role: "student" },
       });
     } else if (!user.googleId) {
       // Existing email/password account signing in with Google for the
       // first time — link it rather than creating a duplicate.
-      user.googleId = payload.sub;
-      await user.save();
+      user = await prisma.user.update({ where: { id: user.id }, data: { googleId: payload.sub } });
     }
 
     if (rejectIfAlreadyLoggedInElsewhere(res, user)) return;
@@ -218,10 +217,10 @@ router.post("/logout", requireAuth, async (req, res, next) => {
       // Only clears the slot if it's still THIS session's — a token from a
       // device that's already been superseded elsewhere can't accidentally
       // free up a newer, different session.
-      await User.updateOne(
-        { _id: req.user.sub, activeSessionId: req.user.sid },
-        { $set: { activeSessionId: null, activeSessionLastSeenAt: null } }
-      );
+      await prisma.user.updateMany({
+        where: { id: req.user.sub, activeSessionId: req.user.sid },
+        data: { activeSessionId: null, activeSessionLastSeenAt: null },
+      });
     }
     res.json({ ok: true });
   } catch (e) {
@@ -232,7 +231,7 @@ router.post("/logout", requireAuth, async (req, res, next) => {
 // ---------- current user (used to restore a session on page load) ----------
 router.get("/me", requireAuth, async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.sub);
+    const user = await prisma.user.findUnique({ where: { id: req.user.sub } });
     if (!user) return res.status(404).json({ ok: false, error: "User not found" });
     res.json({ ok: true, user: publicUser(user) });
   } catch (e) {
@@ -246,16 +245,17 @@ router.get("/me", requireAuth, async (req, res, next) => {
 // flow, not a plain profile field.
 router.patch("/me", requireAuth, async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.sub);
-    if (!user) return res.status(404).json({ ok: false, error: "User not found" });
+    const existing = await prisma.user.findUnique({ where: { id: req.user.sub } });
+    if (!existing) return res.status(404).json({ ok: false, error: "User not found" });
 
     const { name, phone } = req.body || {};
+    const update = {};
 
     if (name !== undefined) {
       const n = String(name).trim();
       if (!n) return res.status(400).json({ ok: false, error: "Name can't be empty." });
       if (n.length > 80) return res.status(400).json({ ok: false, error: "Name is too long." });
-      user.name = n;
+      update.name = n;
     }
 
     if (phone !== undefined) {
@@ -263,10 +263,10 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       if (p && !isValidPhone(p)) {
         return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
       }
-      user.phone = p;
+      update.phone = p;
     }
 
-    await user.save();
+    const user = await prisma.user.update({ where: { id: req.user.sub }, data: update });
     res.json({ ok: true, user: publicUser(user) });
   } catch (e) {
     next(e);

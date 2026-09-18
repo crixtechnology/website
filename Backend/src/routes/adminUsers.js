@@ -1,15 +1,12 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const User = require("../models/User");
-const Enrollment = require("../models/Enrollment");
-const Application = require("../models/Application");
+const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { serializeEnrollment } = require("../utils/enrollmentAccess");
-const { searchRegex } = require("../utils/searchRegex");
+const { serialize } = require("../utils/serialize");
 
 const router = express.Router();
 
-const SAFE_FIELDS = "name email phone role createdAt";
+const SAFE_FIELDS = { id: true, name: true, email: true, phone: true, role: true, createdAt: true };
 
 // ---------- admin: user directory, search + full CRUD ----------
 // This is the "user data" section of the admin panel's search — separate
@@ -19,11 +16,11 @@ const SAFE_FIELDS = "name email phone role createdAt";
 router.get("/admin/users", requireAdmin, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
-    const filter = q
-      ? { $or: [{ name: searchRegex(q) }, { email: searchRegex(q) }, { phone: searchRegex(q) }] }
+    const where = q
+      ? { OR: [{ name: { contains: q } }, { email: { contains: q } }, { phone: { contains: q } }] }
       : {};
-    const users = await User.find(filter).select(SAFE_FIELDS).sort({ createdAt: -1 });
-    res.json({ ok: true, users });
+    const users = await prisma.user.findMany({ where, select: SAFE_FIELDS, orderBy: { createdAt: "desc" } });
+    res.json({ ok: true, users: serialize(users) });
   } catch (e) {
     next(e);
   }
@@ -33,22 +30,27 @@ router.get("/admin/users", requireAdmin, async (req, res, next) => {
 // admin can grant/edit/revoke access right from a user's page too.
 router.get("/admin/users/:id", requireAdmin, async (req, res, next) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(404).json({ ok: false, error: "User not found" });
-    }
-    const user = await User.findById(req.params.id).select(SAFE_FIELDS);
+    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: SAFE_FIELDS });
     if (!user) return res.status(404).json({ ok: false, error: "User not found" });
 
     const [enrollments, applications] = await Promise.all([
-      Enrollment.find({ user: user._id, status: "active" }).populate("course", "title slug type").sort({ createdAt: -1 }),
-      Application.find({ user: user._id }).select("type refTitle createdAt").sort({ createdAt: -1 }),
+      prisma.enrollment.findMany({
+        where: { userId: user.id, status: "active" },
+        include: { course: { select: { id: true, title: true, slug: true, type: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.application.findMany({
+        where: { userId: user.id },
+        select: { id: true, type: true, refTitle: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
     res.json({
       ok: true,
-      user,
-      enrollments: enrollments.map(serializeEnrollment),
-      applications,
+      user: serialize(user),
+      enrollments: enrollments.map((e) => serializeEnrollment(e)),
+      applications: serialize(applications),
     });
   } catch (e) {
     next(e);
@@ -57,9 +59,6 @@ router.get("/admin/users/:id", requireAdmin, async (req, res, next) => {
 
 router.patch("/admin/users/:id", requireAdmin, async (req, res, next) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(404).json({ ok: false, error: "User not found" });
-    }
     const { name, phone, role } = req.body || {};
     const update = {};
 
@@ -81,9 +80,11 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res, next) => {
       update.role = role;
     }
 
-    const user = await User.findByIdAndUpdate(req.params.id, update, { new: true }).select(SAFE_FIELDS);
+    const user = await prisma.user
+      .update({ where: { id: req.params.id }, data: update, select: SAFE_FIELDS })
+      .catch(() => null);
     if (!user) return res.status(404).json({ ok: false, error: "User not found" });
-    res.json({ ok: true, user });
+    res.json({ ok: true, user: serialize(user) });
   } catch (e) {
     next(e);
   }
@@ -91,25 +92,22 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res, next) => {
 
 router.delete("/admin/users/:id", requireAdmin, async (req, res, next) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(404).json({ ok: false, error: "User not found" });
-    }
     if (String(req.admin.sub) === String(req.params.id)) {
       return res.status(400).json({ ok: false, error: "You can't delete your own account." });
     }
-    const target = await User.findById(req.params.id);
+    const target = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!target) return res.status(404).json({ ok: false, error: "User not found" });
 
     if (target.role === "admin") {
-      const otherAdmins = await User.countDocuments({ role: "admin", _id: { $ne: target._id } });
+      const otherAdmins = await prisma.user.count({ where: { role: "admin", id: { not: target.id } } });
       if (otherAdmins === 0) {
         return res.status(400).json({ ok: false, error: "Can't delete the only remaining admin account." });
       }
     }
 
-    await Promise.all([
-      User.findByIdAndDelete(target._id),
-      Enrollment.deleteMany({ user: target._id }),
+    await prisma.$transaction([
+      prisma.enrollment.deleteMany({ where: { userId: target.id } }),
+      prisma.user.delete({ where: { id: target.id } }),
     ]);
     res.json({ ok: true });
   } catch (e) {
