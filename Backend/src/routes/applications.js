@@ -5,6 +5,7 @@ const { attachUserIfPresent } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { searchRegex } = require("../utils/searchRegex");
 const { sendApplicationEmail } = require("../utils/mailer");
+const { isValidEmail, isValidPhone } = require("../utils/validators");
 
 const router = express.Router();
 
@@ -25,6 +26,15 @@ router.post("/applications", attachUserIfPresent, async (req, res, next) => {
     }
     if (!["internship", "course"].includes(type)) {
       return res.status(400).json({ ok: false, error: "type must be 'internship' or 'course'" });
+    }
+    // Same format rules as routes/contact.js and routes/auth.js (utils/validators.js)
+    // — InquiryModal's own client-side checks mirror these, this is the
+    // server-side backstop for a request that skips or tampers with them.
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid email address." });
+    }
+    if (!isValidPhone(phone)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
     }
 
     // Resolved for either type now that an internship may also be a real,

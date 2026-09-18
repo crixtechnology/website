@@ -446,6 +446,10 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .field input,.field textarea,.field select{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:var(--text);font-family:'Sora',sans-serif;font-size:.9rem}
 .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(20,201,201,.22)}
 .field input:disabled,.field textarea:disabled,.field select:disabled{opacity:.55;cursor:not-allowed}
+.phone-row{display:flex;gap:8px}
+.phone-row select{flex:0 0 108px;padding-left:10px;padding-right:6px}
+.phone-row input{flex:1;min-width:0}
+@media(max-width:380px){.phone-row{flex-wrap:wrap}.phone-row select{flex:1 1 100%}.phone-row input{flex:1 1 100%}}
 .form-note{font-size:.8rem;color:var(--muted);margin-top:14px}
 .form-error{font-size:.8rem;color:var(--danger);margin:0 0 12px;line-height:1.4}
 /* Floats top-center over the whole page (above modals too — see z-index)

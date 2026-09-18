@@ -10,6 +10,7 @@ import {
 import { submitContact, getCourses, getCourse, getServices } from "../services/api.js";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
+import { isValidEmail, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
 
 /* ================= HOME ================= */
 export function Home() {
@@ -603,7 +604,7 @@ export function Contact() {
     title: "Contact Us | Crix Technology",
     description: "Get in touch with Crix Technology for internships, online courses, or IT services — we reply within two working days.",
   });
-  const [form, setForm] = useState({ name: "", email: "", interest: "Internship", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", countryCode: "+91", phone: "", interest: "Internship", message: "" });
   const [status, setStatus] = useState("");
   const [kind, setKind] = useState(""); // "error" | "success" | "info"
 
@@ -612,21 +613,38 @@ export function Contact() {
   const onSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (sending) return; // already in flight — ignore a repeat click/Enter
-    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+    const phoneDigits = form.phone.trim();
+    const problems = [
+      !form.name.trim() && "your name",
+      !form.email.trim() ? "your email" : !isValidEmail(form.email) && "a valid email address",
+      !form.message.trim() && "a message",
+      phoneDigits && phoneLengthError(form.countryCode, phoneDigits),
+    ].filter(Boolean);
+    if (problems.length) {
+      const list = problems.length === 1
+        ? problems[0]
+        : `${problems.slice(0, -1).join(", ")} and ${problems[problems.length - 1]}`;
       setKind("error");
-      setStatus("Please fill in your name, email and message.");
+      setStatus(`Please add ${list}.`);
       return;
     }
     setKind("info");
     setStatus("Sending...");
     setSending(true);
-    const res = await submitContact(form);
+    const res = await submitContact({
+      name: form.name, email: form.email, interest: form.interest, message: form.message,
+      phone: phoneDigits ? `${form.countryCode} ${phoneDigits}` : "",
+    });
     setSending(false);
     setKind(res.ok ? "success" : "error");
     setStatus(res.ok ? "Message sent. We'll reply within two working days." : res.error);
   };
 
-  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus(""); setKind(""); };
+  const set = (k) => (e) => {
+    const value = k === "phone" ? e.target.value.replace(/\D/g, "") : e.target.value;
+    setForm({ ...form, [k]: value });
+    setStatus(""); setKind("");
+  };
 
   return (
     <>
@@ -639,6 +657,13 @@ export function Contact() {
               <input id="c-name" name="name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Full name" /></div>
             <div className="field"><label htmlFor="c-email">Email</label>
               <input id="c-email" name="email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
+            <div className="field"><label htmlFor="c-phone">Phone (optional)</label>
+              <div className="phone-row">
+                <select aria-label="Country code" value={form.countryCode} onChange={set("countryCode")}>
+                  {COUNTRY_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                </select>
+                <input id="c-phone" name="phone" autoComplete="tel" inputMode="numeric" value={form.phone} onChange={set("phone")} placeholder="98765 43210" />
+              </div></div>
             <div className="field"><label htmlFor="c-interest">I'm interested in</label>
               <select id="c-interest" name="interest" value={form.interest} onChange={set("interest")}>
                 <option>Internship</option><option>IT Services</option><option>Online Course</option><option>Other</option>
