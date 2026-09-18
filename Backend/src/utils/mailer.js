@@ -216,4 +216,56 @@ async function sendReceiptEmail({ receipt, pdfBuffer }) {
   return { sent: true, id: data && data.id };
 }
 
-module.exports = { sendContactEmail, sendApplicationEmail, sendReceiptEmail };
+// ---------- "you already have an account" notice (transactional — goes to
+// the existing account's own inbox, not the site owner) ----------
+// Sent by routes/auth.js's /signup when the submitted email already has an
+// account, INSTEAD of the old distinct "account already exists" 409 —
+// telling the caller that directly is an email-enumeration leak (anyone can
+// probe which addresses are registered). The signup response is now
+// ambiguous either way; this email is where the real account owner actually
+// finds out, the same way a "reset your password" flow never confirms
+// account existence in its own response either. Uses Resend (like
+// sendReceiptEmail above), not formsubmit.co — same reason: this has to
+// reach an arbitrary customer inbox that's never pre-confirmed anything.
+async function sendAccountExistsEmail({ to, name }) {
+  if (resendLooksUnset) return { sent: false, reason: "RESEND_API_KEY not configured" };
+
+  const safeName = escapeHtml(name || "there");
+  const loginLink = siteOrigin();
+  const html = `
+    <div style="font-family:Helvetica,Arial,sans-serif;color:#1e293b;max-width:520px;margin:0 auto">
+      <h2 style="color:#0f1f3d;margin-bottom:4px">Hi ${safeName},</h2>
+      <p>Someone just tried to create a Crix Technology account with this email address — but you
+      already have one.</p>
+      <p>If this was you, just log in instead: <a href="${loginLink}">${loginLink}</a></p>
+      <p>If it wasn't you, no action is needed — no account was created and your existing one is unaffected.</p>
+      <p style="color:#64748b;font-size:13px">Crix Technology Private Limited</p>
+    </div>
+  `;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: RECEIPT_FROM,
+        to,
+        subject: "You already have a Crix Technology account",
+        html,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(`Resend error (status ${res.status}): ${(data && data.message) || "no error message in response"}`);
+  }
+  return { sent: true, id: data && data.id };
+}
+
+module.exports = { sendContactEmail, sendApplicationEmail, sendReceiptEmail, sendAccountExistsEmail };

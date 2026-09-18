@@ -9,6 +9,7 @@ const { isDisposableEmail } = require("../utils/disposableEmail");
 const { isValidEmail, isValidPhone } = require("../utils/validators");
 const { signToken: signJwt } = require("../utils/jwt");
 const { hasLiveSession } = require("../utils/sessionPolicy");
+const { sendAccountExistsEmail } = require("../utils/mailer");
 
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -99,8 +100,31 @@ router.post("/signup", authLimiter, async (req, res, next) => {
         error: "Temporary/disposable email addresses aren't allowed — please use a permanent email.",
       });
     }
+    // Deliberately ambiguous: telling the caller outright that this email
+    // already has an account (the old 409 "An account with this email
+    // already exists") is an email-enumeration leak — anyone can probe
+    // arbitrary addresses and learn which ones are registered. Both this
+    // branch and the create()-race branch below return the exact same
+    // { ok: true, token: null, ... } shape as a result — same status code,
+    // same fields, no signal either way — and the real account owner (not
+    // whoever's asking) is the one who actually finds out, via email, the
+    // same way a "forgot password" flow never confirms account existence in
+    // its own response either.
+    const respondAmbiguously = () =>
+      res.status(201).json({
+        ok: true,
+        token: null,
+        user: null,
+        message: "If this email already has an account, we've sent a reminder to that inbox — check it to log in.",
+      });
+
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-    if (existing) return res.status(409).json({ ok: false, error: "An account with this email already exists" });
+    if (existing) {
+      sendAccountExistsEmail({ to: existing.email, name: existing.name }).catch((mailErr) => {
+        console.error("[auth] account-exists notification failed:", mailErr.message);
+      });
+      return respondAmbiguously();
+    }
 
     const passwordHash = await bcrypt.hash(password, 10);
     let user;
@@ -115,10 +139,12 @@ router.post("/signup", authLimiter, async (req, res, next) => {
       // reach here; User.email's unique index (prisma/schema.prisma) then
       // lets only one create() actually succeed. Without this catch the
       // loser fell through to the generic error handler as a raw 500 with
-      // the SQL error string verbatim (exposing table/index names) — this
-      // turns that into the same clean 409 the upfront check gives.
+      // the SQL error string verbatim (exposing table/index names).
       if (createErr && createErr.code === "P2002") {
-        return res.status(409).json({ ok: false, error: "An account with this email already exists" });
+        sendAccountExistsEmail({ to: normalizedEmail }).catch((mailErr) => {
+          console.error("[auth] account-exists notification failed:", mailErr.message);
+        });
+        return respondAmbiguously();
       }
       throw createErr;
     }

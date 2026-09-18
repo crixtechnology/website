@@ -857,6 +857,13 @@ export function AuthModal() {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
   const [status, setStatus] = useState("");
+  // Almost always "error" (every existing setStatus call site is a
+  // validation/failure message) — "info" is used for exactly one case: the
+  // ambiguous signup response below, which is deliberately NOT styled as a
+  // failure since it's shown to a real, successful "someone will hear from
+  // us" outcome just as often as a genuine failed attempt (see its own
+  // comment further down).
+  const [statusKind, setStatusKind] = useState("error");
   const [loading, setLoading] = useState(false);
   const googleBtnRef = useRef(null);
   useBodyScrollLock(!!authModal);
@@ -866,6 +873,7 @@ export function AuthModal() {
       setMode(authModal.mode || "login");
       setForm({ name: "", email: "", phone: "", password: "" });
       setStatus("");
+      setStatusKind("error");
       setLoading(false);
     }
   }, [authModal]);
@@ -879,7 +887,7 @@ export function AuthModal() {
 
   // Switching between "Log in" / "Create an account" shouldn't carry a
   // stale error from the other form along with it.
-  const switchMode = (m) => { setMode(m); setStatus(""); };
+  const switchMode = (m) => { setMode(m); setStatus(""); setStatusKind("error"); };
 
   const finishAuth = (res, fallbackError) => {
     if (res.ok) {
@@ -887,6 +895,7 @@ export function AuthModal() {
       closeAuthModal();
       if (onSuccess) onSuccess(res.user);
     } else {
+      setStatusKind("error");
       setStatus(res.error || fallbackError);
     }
   };
@@ -929,6 +938,7 @@ export function AuthModal() {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return; // already in flight — avoid a duplicate login/signup request
+    setStatusKind("error"); // any status set from here down defaults to an error styling, unless overridden below
     if (mode === "login") {
       if (!form.email.trim() || !form.password.trim()) { setStatus("Enter your email and password."); return; }
     } else {
@@ -941,6 +951,17 @@ export function AuthModal() {
     setStatus("");
     const res = mode === "login" ? await login(form.email.trim(), form.password) : await signup(form);
     setLoading(false);
+    // Signup's response is deliberately ambiguous when the email already has
+    // an account (see routes/auth.js) — `ok: true` but no `token`, since a
+    // genuine new signup logs straight in (real token) and this can't, on
+    // pain of logging the caller into someone else's account. Show the
+    // backend's own neutral message instead of treating it as either an
+    // error or a real login — the modal stays open, nothing is stored.
+    if (mode === "signup" && res.ok && !res.token) {
+      setStatusKind("info");
+      setStatus(res.message || "Check your email to continue.");
+      return;
+    }
     finishAuth(res, mode === "login" ? "Login failed." : "Could not create your account.");
   };
 
@@ -974,7 +995,7 @@ export function AuthModal() {
             <input id="auth-password" type="password" value={form.password} onChange={set("password")}
               placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
               autoComplete={mode === "login" ? "current-password" : "new-password"} disabled={loading} /></div>
-          <Alert kind="error">{status}</Alert>
+          <Alert kind={statusKind}>{status}</Alert>
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
             {loading ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}
           </button>

@@ -10,9 +10,6 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => { await teardownTestDb(); });
 
-// Covers the duplicate-signup fix: routes/auth.js catches the unique-email
-// race (two concurrent signups for the same address) and turns it into a
-// clean 409 instead of leaking the raw SQL/Prisma error string.
 describe("POST /api/auth/signup", () => {
   const email = "duplicate-test@example.com";
   const validSignup = { name: "Test User", email, phone: "9876543210", password: "a-real-password" };
@@ -25,13 +22,22 @@ describe("POST /api/auth/signup", () => {
     expect(res.body.user.email).toBe(email);
   });
 
-  it("rejects a second signup with the same email as a clean 409, not a raw 500", async () => {
+  // Anti-enumeration: a duplicate-email signup must look the same, from the
+  // outside, as a real one — same status code, same `ok: true`, nothing that
+  // distinguishes it (an old "An account already exists" 409 let anyone
+  // probe arbitrary addresses and learn which ones are registered). It must
+  // NOT get a real session token though — that would log the caller straight
+  // into someone else's account, an actual account-takeover bug.
+  it("responds ambiguously to a duplicate email instead of confirming the account exists", async () => {
     const res = await request(app).post("/api/auth/signup").send(validSignup);
-    expect(res.status).toBe(409);
-    expect(res.body.ok).toBe(false);
-    // The bug this guards against specifically leaked the raw DB error
-    // string (mentions the constraint/error code) into the response body.
-    expect(JSON.stringify(res.body)).not.toMatch(/P2002|Unique constraint|PrismaClientKnownRequestError/i);
+    expect(res.status).toBe(201);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.token).toBeFalsy();
+    expect(JSON.stringify(res.body)).not.toMatch(/already exists|P2002|Unique constraint|PrismaClientKnownRequestError/i);
+
+    // And no second account was actually created for the same email.
+    const count = await prisma.user.count({ where: { email } });
+    expect(count).toBe(1);
   });
 
   it("rejects a password shorter than 8 characters", async () => {
