@@ -16,6 +16,7 @@ function serializeReceipt(payment) {
     buyerPhone: payment.receiptBuyerPhone,
     itemType: payment.receiptItemType,
     itemTitle: payment.receiptItemTitle,
+    tier: payment.tier,
     basePrice: payment.receiptBasePrice,
     discountPercent: payment.receiptDiscountPercent,
     discountAmount: payment.receiptDiscountAmount,

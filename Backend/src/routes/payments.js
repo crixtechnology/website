@@ -5,6 +5,7 @@ const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate } = require("../utils/enrollmentAccess");
 const { nextSequence } = require("../utils/counter");
 const { round2 } = require("../utils/money");
+const { WITH_TIERS, isTier, tierTotal } = require("../utils/tiers");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
 const { publicWriteLimiter } = require("../utils/rateLimit");
@@ -58,11 +59,12 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
           userId: application.userId,
           courseId: application.courseId,
           paymentId: payment.id,
+          tier: payment.tier,
           status: "active",
           startDate,
           endDate,
         },
-        update: { paymentId: payment.id, status: "active", startDate, endDate },
+        update: { paymentId: payment.id, tier: payment.tier, status: "active", startDate, endDate },
       });
     }
 
@@ -87,18 +89,18 @@ async function attachReceipt(payment, application) {
 
   const course = await prisma.course.findUnique({
     where: { id: application.courseId },
-    select: { title: true, type: true, price: true, discountPercent: true },
+    select: { title: true, type: true },
   });
   if (!course) return;
 
   // Prefer the price/discount as they were when the order was created
   // (payment.orderSnapshot*, see the field's doc comment in prisma/schema.prisma)
-  // over the course's current values — those can have moved since if an
-  // admin edited pricing while this payment was in flight. Older payments
-  // from before orderSnapshot existed fall back to the live course, same as
-  // this code always did.
-  const basePrice = round2(payment.orderSnapshotBasePrice != null ? payment.orderSnapshotBasePrice : course.price || 0);
-  const discountPercent = payment.orderSnapshotDiscountPercent != null ? payment.orderSnapshotDiscountPercent : course.discountPercent || 0;
+  // over the plan's current values — those can have moved since if an
+  // admin edited pricing while this payment was in flight. Orders always carry
+  // the snapshot; a payment somehow without one falls back to what was
+  // actually charged, with no discount.
+  const basePrice = round2(payment.orderSnapshotBasePrice != null ? payment.orderSnapshotBasePrice : (payment.amount || 0) / 100);
+  const discountPercent = payment.orderSnapshotDiscountPercent != null ? payment.orderSnapshotDiscountPercent : 0;
   const discountAmount = round2((basePrice * discountPercent) / 100);
   const totalPaid = round2((payment.amount || 0) / 100); // paise -> rupees, what was actually charged
 
@@ -154,6 +156,7 @@ async function attachReceipt(payment, application) {
       buyerPhone: receipt.buyerPhone,
       itemType: course.type,
       itemTitle: course.title,
+      tier: payment.tier,
       basePrice,
       discountPercent,
       discountAmount,
@@ -162,7 +165,7 @@ async function attachReceipt(payment, application) {
       razorpay_payment_id: payment.razorpayPaymentId,
     });
     await sendReceiptEmail({
-      receipt: { receiptNumber, buyerName: receipt.buyerName, buyerEmail: receipt.buyerEmail, itemTitle: course.title, itemType: course.type, totalPaid },
+      receipt: { receiptNumber, buyerName: receipt.buyerName, buyerEmail: receipt.buyerEmail, itemTitle: course.title, itemType: course.type, tier: payment.tier, totalPaid },
       pdfBuffer,
     });
   } catch (mailErr) {
@@ -179,27 +182,35 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
         error: "Live payments are disabled by a safety guard. Set ALLOW_LIVE_PAYMENTS=true in Backend/.env to enable real charges.",
       });
     }
-    const { applicationId, courseSlug } = req.body || {};
+    const { applicationId, courseSlug, tier: tierName } = req.body || {};
     if (!applicationId || !courseSlug) {
       return res.status(400).json({ ok: false, error: "applicationId and courseSlug are required" });
     }
     const application = await prisma.application.findUnique({ where: { id: applicationId } });
     if (!application) return res.status(404).json({ ok: false, error: "Application not found" });
 
-    const course = await prisma.course.findUnique({ where: { slug: courseSlug } });
+    const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_TIERS });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
     if (course.status === "closed") {
       return res.status(400).json({ ok: false, error: "This course is currently closed for enrollment" });
     }
     // Server-side mirror of the frontend's own "Buy now only shows when
-    // openForBuy" gating (price set AND status open) — the frontend button
-    // is not the only way to reach this endpoint. Without this, an
-    // apply-only internship/course (price left null on purpose, meant to
-    // only ever show "Request to apply"/"Request to enroll") would fall
-    // through to `null * (1 - .../100)` below, silently coercing to a ₹0
-    // Razorpay order instead of a clear rejection.
-    if (course.price == null) {
+    // openForBuy" gating (at least one plan priced AND status open) — the
+    // frontend button is not the only way to reach this endpoint. Without
+    // this, an apply-only internship/course (no plans on purpose, meant to
+    // only ever show "Request to apply"/"Request to enroll") would have no
+    // price to charge, so it's rejected clearly instead.
+    if (course.tiers.length === 0) {
       return res.status(400).json({ ok: false, error: "This course is not available for online purchase." });
+    }
+    // The buyer picks a plan; its price — never a client-sent amount — is
+    // what gets charged.
+    if (!isTier(tierName)) {
+      return res.status(400).json({ ok: false, error: "Choose a plan (Basic, Plus or Pro) to continue." });
+    }
+    const plan = course.tiers.find((t) => t.tier === tierName);
+    if (!plan) {
+      return res.status(400).json({ ok: false, error: "That plan isn't available for this course." });
     }
 
     // Don't let an already-enrolled, still-valid student pay again for the
@@ -218,14 +229,13 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
       }
     }
 
-    const discounted = course.price * (1 - (course.discountPercent || 0) / 100);
-    const amountPaise = Math.round(discounted * 100); // Razorpay wants the smallest currency unit
+    const amountPaise = Math.round(tierTotal(plan) * 100); // Razorpay wants the smallest currency unit
 
     const order = await razorpay.orders.create({
       amount: amountPaise,
       currency: "INR",
       receipt: `app_${application.id}`,
-      notes: { applicationId: String(application.id), courseSlug },
+      notes: { applicationId: String(application.id), courseSlug, tier: plan.tier },
     });
 
     const payment = await prisma.payment.create({
@@ -234,10 +244,11 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
         amount: amountPaise,
         status: "created",
         applicationId: application.id,
-        // Snapshotted now, not re-read from Course at grant time — see the
+        tier: plan.tier,
+        // Snapshotted now, not re-read from the plan at grant time — see the
         // field's own doc comment in prisma/schema.prisma for why.
-        orderSnapshotBasePrice: course.price,
-        orderSnapshotDiscountPercent: course.discountPercent || 0,
+        orderSnapshotBasePrice: plan.price,
+        orderSnapshotDiscountPercent: plan.discountPercent || 0,
       },
     });
 
@@ -245,6 +256,7 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
       where: { id: application.id },
       data: {
         paymentId: payment.id,
+        tier: plan.tier,
         // Defense in depth: /applications already resolves+stores this when
         // the client sends courseSlug, but stamp it here too in case that
         // didn't happen — the webhook needs application.course to grant access.

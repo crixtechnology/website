@@ -4,6 +4,7 @@ import { UserContext } from "../../context/UserContext.jsx";
 import { getMyEnrollments, getReceipt } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { downloadReceiptPdf } from "../../utils/receiptPdf.js";
+import { tierLabel } from "../../utils/tiers.js";
 
 export default function MyCourses() {
   usePageMeta({ title: "My Courses | Crix Technology" });
@@ -80,7 +81,7 @@ export default function MyCourses() {
             {enrollments.map((en) => (
               <div className="admin-row" key={en._id}>
                 <div className="admin-row-main">
-                  <b>{en.course?.title || "Course"} {en.expired && <span className="admin-pill expired">expired</span>}</b>
+                  <b>{en.course?.title || "Course"} {en.tier && <span className="plan-pill">{tierLabel(en.tier)}</span>} {en.expired && <span className="admin-pill expired">expired</span>}</b>
                   <span className="admin-row-meta">Purchased {new Date(en.createdAt).toLocaleDateString("en-IN")}</span>
                 </div>
                 <div className="admin-row-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

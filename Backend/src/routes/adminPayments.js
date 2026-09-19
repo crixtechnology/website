@@ -106,6 +106,7 @@ router.get("/admin/payments", requireAdmin, async (req, res, next) => {
         buyerEmail: p.receiptBuyerEmail,
         itemTitle: p.receiptItemTitle,
         itemType: p.receiptItemType,
+        tier: p.tier,
         totalPaid: p.receiptTotalPaid,
         createdAt: p.createdAt,
       })),

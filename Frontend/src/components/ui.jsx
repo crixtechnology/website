@@ -8,6 +8,7 @@ import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { trackEvent } from "../utils/analytics.js";
 import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
+import { offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -117,6 +118,61 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
   return `https://wa.me/${site.whatsapp}?text=${text}`;
 }
 
+/* ---------- Plans (Basic / Plus / Pro) ----------
+   PlanPrice: one plan's price, with the struck-through list price and the
+   discount badge when it has one. */
+function PlanPrice({ plan, className = "" }) {
+  const off = plan.discountPercent > 0;
+  return (
+    <span className={`plan-price ${className}`}>
+      {off && <span className="price-old">{formatINR(plan.price)}</span>}
+      <span className="price-now">{formatINR(planPrice(plan))}</span>
+      {off && <span className="price-off">{plan.discountPercent}% off</span>}
+    </span>
+  );
+}
+
+// PlanStrip: the compact "what does it cost" row on a program card — one cell
+// per plan the item sells, so all three prices are visible before opening
+// anything. Purely informational; choosing a plan happens in BuyModal.
+function PlanStrip({ plans }) {
+  return (
+    <div className="plan-strip" style={{ "--plans": plans.length }}>
+      {plans.map((p) => (
+        <div className="plan-mini" key={p.tier}>
+          <span className="plan-mini-name">{tierLabel(p.tier)}</span>
+          <b>{formatINR(planPrice(p))}</b>
+          {p.discountPercent > 0 && <s>{formatINR(p.price)}</s>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// PlanCards: the full comparison — a card per plan with its price and
+// admin-written feature list, and a button that starts the purchase on that
+// plan. Shared by the "See more" popup and the standalone detail page.
+export function PlanCards({ plans, onChoose }) {
+  return (
+    <div className="plan-cards" role="list" style={{ "--plans": plans.length }}>
+      {plans.map((p) => (
+        <div className={`plan-card plan-card--${p.tier}`} role="listitem" key={p.tier}>
+          <span className="plan-card-name">{tierLabel(p.tier)}</span>
+          <PlanPrice plan={p} />
+          {p.features?.length ? (
+            <ul className="plan-features">
+              {p.features.map((f) => <li key={f}>{f}</li>)}
+            </ul>
+          ) : null}
+          <button className="btn btn-solid buy-btn" onClick={() => onChoose(p.tier)}>
+            Choose {tierLabel(p.tier)}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ---------- InfoCard (program/service/course) ---------- */
 // Alternates entrance direction per column (left / top / right) so a 3-up grid
 // visibly converges from different sides as it scrolls into view.
@@ -128,10 +184,9 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
 // just from the section heading above the grid). Omit for Services cards.
 export function InfoCard({ item, i, onDetail, onBuy, onInquire, onServiceInquire, isProgram, kind }) {
   const variant = i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top";
-  const hasPrice = item.price != null;
-  const discounted = hasPrice ? Math.round(item.price * (1 - (item.discountPercent || 0) / 100)) : null;
+  const plans = offeredTiers(item);
   const closed = item.status === "closed";
-  const openForBuy = hasPrice && !closed;
+  const openForBuy = isOpenForBuy(item);
   const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
   // Derived from `kind`, not `item.deliverables` — every internship/course
   // issues the same fixed set of documents for its type (see content.js's
@@ -156,17 +211,13 @@ export function InfoCard({ item, i, onDetail, onBuy, onInquire, onServiceInquire
             {deliverables.map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
           </div>
         ) : null}
-        {openForBuy && (
-          <div className="price-row">
-            {item.discountPercent > 0 && <span className="price-old">₹{item.price.toLocaleString("en-IN")}</span>}
-            <span className="price-now">₹{discounted.toLocaleString("en-IN")}</span>
-            {item.discountPercent > 0 && <span className="price-off">{item.discountPercent}% off</span>}
-          </div>
-        )}
+        {openForBuy && <PlanStrip plans={plans} />}
         <div className="card-btn-row">
           {isProgram && (
             openForBuy ? (
-              <button className="btn btn-solid buy-btn" onClick={() => onBuy && onBuy(item)}>Buy now</button>
+              <button className="btn btn-solid buy-btn" onClick={() => onBuy && onBuy(item)}>
+                {plans.length > 1 ? "Choose a plan" : "Buy now"}
+              </button>
             ) : kind === "internship" ? (
               <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Request to apply for this internship — no account needed">
                 Request to apply
@@ -262,13 +313,17 @@ export function Alert({ kind = "info", children }) {
    Buying is gated behind login (see pages.jsx) — `user` is the account the
    purchase will be made under. Falls back to a guest form if it's ever
    opened without one. */
-export function BuyModal({ item, user, onClose }) {
+export function BuyModal({ item, user, initialTier, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   // status.kind: "" (hidden) | "info" (progress) | "error"
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [loading, setLoading] = useState(false);
+  // The plan the buyer has clicked; null until they do, in which case the
+  // one they arrived with (initialTier, from a "Choose Pro" button) or the
+  // first plan on offer is used — see `plan` below.
+  const [tier, setTier] = useState(null);
   useBodyScrollLock(!!item);
 
   // This one BuyModal instance stays mounted across different items (the
@@ -291,6 +346,7 @@ export function BuyModal({ item, user, onClose }) {
       setForm(user ? { name: user.name || "", email: user.email || "", phone: user.phone || "" } : { name: "", email: "", phone: "" });
       setStatus({ text: "", kind: "" });
       setLoading(false);
+      setTier(null);
     }
   }, [item, user]);
 
@@ -303,6 +359,9 @@ export function BuyModal({ item, user, onClose }) {
 
   if (!item) return null;
 
+  const plans = offeredTiers(item);
+  const plan = plans.find((p) => p.tier === tier) || plans.find((p) => p.tier === initialTier) || plans[0];
+
   const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); clearStatus(); };
 
   // A logged-in account whose profile is missing name / email / phone is
@@ -311,7 +370,7 @@ export function BuyModal({ item, user, onClose }) {
   // The bare guest form only shows when there's somehow no account.
   const needsProfile = !!user && !isProfileComplete(user);
   const goCompleteProfile = () => {
-    const back = `${location.pathname}?buy=${encodeURIComponent(item.slug || "")}`;
+    const back = `${location.pathname}?buy=${encodeURIComponent(item.slug || "")}${plan ? `&tier=${plan.tier}` : ""}`;
     onClose();
     navigate(`/profile?reason=complete&next=${encodeURIComponent(back)}`);
   };
@@ -329,6 +388,7 @@ export function BuyModal({ item, user, onClose }) {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return; // already in flight — avoid double-submitting a payment order
+    if (!plan) { setError("Choose a plan to continue."); return; }
     const missing = [
       !form.name.trim() && "name",
       !form.email.trim() && "email",
@@ -354,7 +414,7 @@ export function BuyModal({ item, user, onClose }) {
       // the static content.js fallback never has) — so it's never
       // undefined in practice; "course" is just a defensive fallback.
       type: item.type === "internship" ? "internship" : "course", refTitle: item.title, courseSlug: item.slug,
-      name: form.name, email: form.email, phone: form.phone,
+      name: form.name, email: form.email, phone: form.phone, tier: plan.tier,
     });
     if (stale()) return;
     if (!appRes.ok || !appRes.application) {
@@ -363,7 +423,7 @@ export function BuyModal({ item, user, onClose }) {
       return;
     }
 
-    const orderRes = await createRazorpayOrder(appRes.application._id, item.slug);
+    const orderRes = await createRazorpayOrder(appRes.application._id, item.slug, plan.tier);
     if (stale()) return;
     if (!orderRes.ok) {
       setLoading(false);
@@ -373,7 +433,7 @@ export function BuyModal({ item, user, onClose }) {
 
     trackEvent("begin_checkout", {
       currency: orderRes.currency, value: (orderRes.amount || 0) / 100,
-      items: [{ item_id: item.slug, item_name: item.title, item_category: item.type }],
+      items: [{ item_id: item.slug, item_name: item.title, item_category: item.type, item_variant: plan.tier }],
     });
 
     const scriptOk = await loadRazorpayScript();
@@ -390,7 +450,7 @@ export function BuyModal({ item, user, onClose }) {
       amount: orderRes.amount,
       currency: orderRes.currency,
       name: "Crix Technology",
-      description: item.title,
+      description: `${item.title} — ${tierLabel(plan.tier)} plan`,
       prefill: { name: form.name, email: form.email, contact: form.phone },
       theme: { color: "#14C9C9" },
       handler: async (resp) => {
@@ -400,7 +460,7 @@ export function BuyModal({ item, user, onClose }) {
         if (v.ok) {
           trackEvent("purchase", {
             transaction_id: resp.razorpay_payment_id, currency: orderRes.currency, value: (orderRes.amount || 0) / 100,
-            items: [{ item_id: item.slug, item_name: item.title, item_category: item.type }],
+            items: [{ item_id: item.slug, item_name: item.title, item_category: item.type, item_variant: plan.tier }],
           });
         }
         if (v.ok && v.enrolled) {
@@ -453,6 +513,24 @@ export function BuyModal({ item, user, onClose }) {
               </p>
             )}
             <form onSubmit={onSubmit}>
+              <fieldset className="plan-picker">
+                <legend>{plans.length > 1 ? "Choose your plan" : "Your plan"}</legend>
+                {plans.map((p) => (
+                  <label className={`plan-option${plan && plan.tier === p.tier ? " is-selected" : ""}`} key={p.tier}>
+                    <input type="radio" name="buy-plan" value={p.tier} checked={!!plan && plan.tier === p.tier}
+                      onChange={() => { setTier(p.tier); clearStatus(); }} />
+                    <span className="plan-option-head">
+                      <b>{tierLabel(p.tier)}</b>
+                      <PlanPrice plan={p} />
+                    </span>
+                    {/* Only the selected plan expands its feature list, so
+                        three plans don't push the details form off-screen. */}
+                    {plan && plan.tier === p.tier && p.features?.length ? (
+                      <ul className="plan-features">{p.features.map((f) => <li key={f}>{f}</li>)}</ul>
+                    ) : null}
+                  </label>
+                ))}
+              </fieldset>
               {!user && (
                 <>
                   <div className="field"><label htmlFor="buy-name">Full name</label>
@@ -464,7 +542,7 @@ export function BuyModal({ item, user, onClose }) {
                 </>
               )}
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
-                {loading ? "Please wait..." : "Continue to payment"}
+                {loading ? "Please wait..." : plan ? `Continue to payment · ${formatINR(planPrice(plan))}` : "Continue to payment"}
               </button>
               <Alert kind={status.kind}>{status.text}</Alert>
             </form>
@@ -619,18 +697,20 @@ export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire 
   if (!data) return null;
   const { item, kind, isProgram } = data;
 
-  const hasPrice = item.price != null;
-  const discounted = hasPrice ? Math.round(item.price * (1 - (item.discountPercent || 0) / 100)) : null;
+  const plans = offeredTiers(item);
   const closed = item.status === "closed";
-  const openForBuy = hasPrice && !closed;
+  const openForBuy = isOpenForBuy(item);
   const deliverables = kind ? programDeliverables[kind] : null;
   const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
 
   const act = (fn) => () => { onClose(); fn && fn(item); };
+  // "Choose Pro" — same close-then-open-in-one-handler swap as act(), but the
+  // plan clicked travels with it so BuyModal opens on that plan.
+  const choosePlan = (tier) => { onClose(); onBuy && onBuy(item, tier); };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-box detail-modal-box" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal-box detail-modal-box${openForBuy && plans.length > 1 ? " detail-modal-box--plans" : ""}`} role="dialog" aria-modal="true" aria-labelledby="detail-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <div className="card-top">
           <div className="card-top-left">
@@ -661,18 +741,16 @@ export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire 
         ) : null}
 
         {openForBuy && (
-          <div className="price-row" style={{ marginTop: 20 }}>
-            {item.discountPercent > 0 && <span className="price-old">₹{item.price.toLocaleString("en-IN")}</span>}
-            <span className="price-now">₹{discounted.toLocaleString("en-IN")}</span>
-            {item.discountPercent > 0 && <span className="price-off">{item.discountPercent}% off</span>}
+          <div className="plans-block">
+            <h4 className="plans-heading">{plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
+            <PlanCards plans={plans} onChoose={choosePlan} />
           </div>
         )}
 
-        <div style={{ marginTop: 24 }}>
+        {/* An open item's purchase buttons live on the plan cards above. */}
+        <div style={{ marginTop: openForBuy ? 0 : 24 }}>
           {isProgram ? (
-            openForBuy ? (
-              <button className="btn btn-solid buy-btn" onClick={act(onBuy)}>Buy now</button>
-            ) : kind === "internship" ? (
+            openForBuy ? null : kind === "internship" ? (
               <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to apply</button>
             ) : (
               <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to enroll</button>

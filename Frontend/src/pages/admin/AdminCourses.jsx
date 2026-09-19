@@ -5,16 +5,22 @@ import {
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, formatINR } from "../../utils/tiers.js";
 
-const EMPTY_FORM = { type: "course", title: "", tag: "", desc: "", points: "", price: "", discountPercent: "0", durationDays: "" };
+const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", discountPercent: "0", features: "" }]));
+const EMPTY_FORM = { type: "course", title: "", tag: "", desc: "", points: "", durationDays: "", plans: emptyPlans() };
 
 function courseToForm(c) {
+  const plans = emptyPlans();
+  for (const t of c.tiers || []) {
+    if (plans[t.tier]) plans[t.tier] = { price: String(t.price), discountPercent: String(t.discountPercent ?? 0), features: (t.features || []).join("\n") };
+  }
   return {
     type: c.type === "internship" ? "internship" : "course",
     title: c.title || "", tag: c.tag || "", desc: c.desc || "",
     points: (c.points || []).join("\n"),
-    price: String(c.price ?? ""), discountPercent: String(c.discountPercent ?? 0),
     durationDays: c.durationDays ? String(c.durationDays) : "",
+    plans,
   };
 }
 
@@ -50,9 +56,13 @@ export default function AdminCourses() {
   useEffect(() => { load(); }, []);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const setPlan = (tier, k) => (e) => {
+    const value = e.target.value;
+    setForm((f) => ({ ...f, plans: { ...f.plans, [tier]: { ...f.plans[tier], [k]: value } } }));
+  };
 
   const startEdit = (c) => { setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const cancelEdit = () => { setEditingId(null); setForm(EMPTY_FORM); };
+  const cancelEdit = () => { setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() }); };
 
   // Landed here as ?edit=<id> — from AdminApplications.jsx linking a course
   // application's title straight to its entry here. Same deep-link pattern
@@ -79,7 +89,25 @@ export default function AdminCourses() {
     // e.g. creating the same course/internship twice.
     if (saving) return;
     if (!form.title.trim()) { setError("Title is required."); return; }
-    if (form.type === "course" && !form.price.trim()) { setError("Price is required for a course."); return; }
+
+    // A plan with a blank price is simply not offered. The server treats the
+    // list as the complete set, so a plan cleared here is removed there too.
+    const tiers = TIER_ORDER.map((tier) => {
+      const p = form.plans[tier];
+      return {
+        tier,
+        price: p.price.trim() ? Number(p.price) : null,
+        discountPercent: Number(p.discountPercent) || 0,
+        features: p.features.split("\n").map((f) => f.trim()).filter(Boolean),
+      };
+    });
+    const bad = tiers.find((t) => t.price !== null && (!Number.isFinite(t.price) || t.price < 0));
+    if (bad) { setError(`The ${TIER_LABEL[bad.tier]} price must be a number, 0 or more.`); return; }
+    if (form.type === "course" && !tiers.some((t) => t.price !== null)) {
+      setError("Set a price on at least one plan (Basic, Plus or Pro) for a course.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     const payload = {
@@ -88,10 +116,7 @@ export default function AdminCourses() {
       tag: form.tag.trim(),
       desc: form.desc.trim(),
       points: form.points.split("\n").map((p) => p.trim()).filter(Boolean),
-      // Price is optional for either type now — leave it blank for an
-      // apply-only internship (or course-in-progress), same field either way.
-      price: form.price.trim() ? Number(form.price) : null,
-      discountPercent: Number(form.discountPercent) || 0,
+      tiers,
       durationDays: form.durationDays ? Number(form.durationDays) : null,
     };
     const res = editingId ? await adminUpdateCourse(editingId, payload) : await adminCreateCourse(payload);
@@ -100,7 +125,7 @@ export default function AdminCourses() {
     else setError(res.error || "Could not save.");
   };
 
-  // The explicit trigger — saving a price never opens a course for sale by
+  // The explicit trigger — saving prices never opens a course for sale by
   // itself (see routes/courses.js); this toggle is the separate, deliberate
   // step that actually does.
   const toggleStatus = async (c) => {
@@ -123,27 +148,29 @@ export default function AdminCourses() {
   const internships = entries.filter((c) => c.type === "internship" && matches(c));
 
   const renderRow = (c) => {
-    const hasPrice = c.price != null;
+    const plans = offeredTiers(c);
+    const hasPlans = plans.length > 0;
+    const cheapest = hasPlans ? Math.min(...plans.map(planPrice)) : null;
     return (
       <div className="admin-row" key={c._id}>
         <div className="admin-row-main">
           <b>{c.title}</b>
           <span className="admin-row-meta">
-            {hasPrice
-              ? <>₹{c.price} {c.discountPercent > 0 && `· ${c.discountPercent}% off`} · {c.tag}</>
+            {hasPlans
+              ? <>{plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from {formatINR(cheapest)} · {c.tag}</>
               : <>Apply-only · {c.tag}</>}
             {c.durationDays ? ` · ${c.durationDays} days` : ""}
           </span>
         </div>
         <div className="admin-row-actions">
-          {hasPrice ? (
+          {hasPlans ? (
             <button className={`status-toggle ${c.status}`} onClick={() => toggleStatus(c)}
               title={c.status === "open" ? "Buy now is live — click to take it off sale" : "Not for sale yet — click to enable Buy now"}>
               {c.status === "open" ? "Open" : "Closed"}
             </button>
           ) : (
             <span className="status-toggle closed" style={{ opacity: 0.5, cursor: "not-allowed" }}
-              title={c.type === "internship" ? "Apply-only — set a price above to make this purchasable" : "Set a price above before this can go on sale"}>
+              title={c.type === "internship" ? "Apply-only — set a price on a plan above to make this purchasable" : "Set a price on a plan above before this can go on sale"}>
               {c.type === "internship" ? "Apply-only" : "No price yet"}
             </span>
           )}
@@ -178,23 +205,40 @@ export default function AdminCourses() {
               <input value={form.title} onChange={set("title")} placeholder="Full Stack (MERN) Development" /></div>
             <div className="field"><label>Tag</label>
               <input value={form.tag} onChange={set("tag")} placeholder="Beginner friendly" /></div>
-            <div className="field"><label>Price (₹){form.type === "internship" ? " — optional" : ""}</label>
-              <input type="number" min="0" value={form.price} onChange={set("price")}
-                placeholder={form.type === "internship" ? "Leave blank for apply-only" : "4999"} /></div>
-            <div className="field"><label>Discount (%)</label>
-              <input type="number" min="0" max="100" value={form.discountPercent} onChange={set("discountPercent")} placeholder="0" /></div>
             <div className="field"><label>Duration (days)</label>
               <input type="number" min="1" value={form.durationDays} onChange={set("durationDays")} placeholder="30" /></div>
           </div>
-          <p className="form-note" style={{ margin: "-8px 0 16px" }}>
-            {form.type === "internship"
-              ? "Leave price blank to keep this an apply-only internship (shows \"Apply\"). Set a price to make it purchasable — same two-step flow as a course: saving the price doesn't put it on sale yet, use the Open/Closed toggle below when you're ready for \"Buy now\" to go live."
-              : "Saving a price doesn't put it on sale yet — use the Open/Closed toggle next to it in the list below when you're ready for \"Buy now\" to go live."}
-          </p>
           <div className="field"><label>Description</label>
             <textarea rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
           <div className="field"><label>Points (one per line)</label>
             <textarea rows="4" value={form.points} onChange={set("points")} placeholder={"Frontend fundamentals\nReact in depth\nNode.js & MongoDB"} /></div>
+
+          <fieldset className="plan-editor-set">
+            <legend>Plans &amp; pricing</legend>
+            <p className="form-note" style={{ margin: "0 0 14px" }}>
+              Offer up to three plans. A plan with a blank price isn't offered.
+              {form.type === "internship"
+                ? " Leave all three blank to keep this an apply-only internship (shows \"Request to apply\")."
+                : " A course needs at least one priced plan."}
+              {" "}Saving prices doesn't put it on sale yet — use the Open/Closed toggle in the list below when you're ready for
+              purchases to go live. What you list under each plan is shown to buyers; it doesn't restrict course access.
+            </p>
+            <div className="plan-editors">
+              {TIER_ORDER.map((tier) => (
+                <div className="plan-editor" key={tier}>
+                  <h4>{TIER_LABEL[tier]}</h4>
+                  <div className="field"><label htmlFor={`plan-${tier}-price`}>Price (₹)</label>
+                    <input id={`plan-${tier}-price`} type="number" min="0" value={form.plans[tier].price} onChange={setPlan(tier, "price")} placeholder="Not offered" /></div>
+                  <div className="field"><label htmlFor={`plan-${tier}-discount`}>Discount (%)</label>
+                    <input id={`plan-${tier}-discount`} type="number" min="0" max="100" value={form.plans[tier].discountPercent} onChange={setPlan(tier, "discountPercent")} placeholder="0" /></div>
+                  <div className="field"><label htmlFor={`plan-${tier}-features`}>What's included (one per line)</label>
+                    <textarea id={`plan-${tier}-features`} rows="5" value={form.plans[tier].features} onChange={setPlan(tier, "features")}
+                      placeholder={tier === "basic" ? "Recorded lectures\nCertificate" : tier === "plus" ? "Everything in Basic\nLive doubt sessions" : "Everything in Plus\n1:1 mentoring"} /></div>
+                </div>
+              ))}
+            </div>
+          </fieldset>
+
           {error && <p className="form-error">{error}</p>}
           <div style={{ display: "flex", gap: 12 }}>
             <button className="btn btn-solid" type="submit" disabled={saving}>

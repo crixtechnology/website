@@ -212,13 +212,13 @@ export async function adminDeleteApplication(id) {
 }
 
 // ---------- Razorpay ----------
-export async function createRazorpayOrder(applicationId, courseSlug) {
+export async function createRazorpayOrder(applicationId, courseSlug, tier) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
     const res = await fetch(`${API}/payments/create-order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ applicationId, courseSlug }),
+      body: JSON.stringify({ applicationId, courseSlug, tier }),
     });
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not start payment" };

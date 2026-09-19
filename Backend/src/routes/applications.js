@@ -5,6 +5,7 @@ const { requireAdmin } = require("../middleware/requireAdmin");
 const { sendApplicationEmail } = require("../utils/mailer");
 const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("../utils/validators");
 const { serialize } = require("../utils/serialize");
+const { isTier } = require("../utils/tiers");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 
 const router = express.Router();
@@ -20,7 +21,7 @@ const router = express.Router();
 // grant access afterwards.
 router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req, res, next) => {
   try {
-    const { type, refTitle, name, email, phone, college, track, courseSlug } = req.body || {};
+    const { type, refTitle, name, email, phone, college, track, courseSlug, tier } = req.body || {};
     if (!type || !refTitle || !name || !email || !phone) {
       return res.status(400).json({ ok: false, error: "type, refTitle, name, email and phone are required" });
     }
@@ -65,6 +66,9 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
         track: track || "",
         userId: req.user ? req.user.sub : null,
         courseId: course ? course.id : null,
+        // The plan (Basic/Plus/Pro) the buyer picked, when they picked one —
+        // create-order re-stamps it from the plan it actually charges.
+        tier: isTier(tier) ? tier : null,
       },
     });
 

@@ -14,6 +14,7 @@
 // clicked before it will forward any submission (including this one) —
 // this isn't something the code can do for you.
 const { primaryOrigin } = require("./clientOrigin");
+const { tierLabel } = require("./tiers");
 
 const FORMSUBMIT_URL = (to) => `https://formsubmit.co/ajax/${encodeURIComponent(to)}`;
 
@@ -170,10 +171,11 @@ async function sendReceiptEmail({ receipt, pdfBuffer }) {
   const safeName = escapeHtml(receipt.buyerName || "there");
   const safeTitle = escapeHtml(receipt.itemTitle || "your purchase");
   const kindLabel = receipt.itemType === "internship" ? "internship" : "course";
+  const planLabel = tierLabel(receipt.tier);
   const html = `
     <div style="font-family:Helvetica,Arial,sans-serif;color:#1e293b;max-width:520px;margin:0 auto">
       <h2 style="color:#0f1f3d;margin-bottom:4px">Thanks for your purchase, ${safeName}!</h2>
-      <p>Your payment for <strong>${safeTitle}</strong> (${kindLabel}) has been confirmed.</p>
+      <p>Your payment for <strong>${safeTitle}</strong> (${kindLabel}${planLabel ? `, ${planLabel} plan` : ""}) has been confirmed.</p>
       <p>Receipt No: <strong>${escapeHtml(receipt.receiptNumber)}</strong><br/>
       Amount Paid: <strong>${fmtRupees(receipt.totalPaid)}</strong></p>
       <p>Your receipt is attached to this email as a PDF — you can also download it any time from
