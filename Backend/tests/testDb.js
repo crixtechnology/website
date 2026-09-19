@@ -59,6 +59,14 @@ async function setupTestDb() {
 }
 
 async function clearTestDb() {
+  // Referral rows point at users (and credit entries at referrals/payments), so
+  // they go before everything they reference.
+  await prisma.creditEntry.deleteMany();
+  await prisma.ambassadorEarning.deleteMany();
+  await prisma.ambassadorPayout.deleteMany();
+  await prisma.referral.deleteMany();
+  await prisma.ambassador.deleteMany();
+  await prisma.setting.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.enrollment.deleteMany();
   await prisma.application.deleteMany();

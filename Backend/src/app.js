@@ -20,6 +20,8 @@ const enrollmentRoutes = require("./routes/enrollments");
 const videoRoutes = require("./routes/videos");
 const adminUserRoutes = require("./routes/adminUsers");
 const serviceRoutes = require("./routes/services");
+const referralRoutes = require("./routes/referrals");
+const ambassadorRoutes = require("./routes/ambassadors");
 const receiptRoutes = require("./routes/receipts");
 const adminPaymentRoutes = require("./routes/adminPayments");
 
@@ -77,6 +79,8 @@ app.use("/api", adminUserRoutes);
 app.use("/api", serviceRoutes);
 app.use("/api", receiptRoutes);
 app.use("/api", adminPaymentRoutes);
+app.use("/api", referralRoutes);
+app.use("/api", ambassadorRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

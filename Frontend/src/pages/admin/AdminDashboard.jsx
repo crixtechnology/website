@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetRevenueSummary } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetRevenueSummary, adminGetReferrals, adminGetAmbassadors } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
@@ -12,14 +12,14 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     courses: 0, openCourses: 0, internships: 0, openInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
-    totalRevenue: 0,
+    totalRevenue: 0, referrals: 0, referralsRewarded: 0, ambassadorApplications: 0, ambassadorPayouts: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, revenueRes] = await Promise.all([
-        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetRevenueSummary(),
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, revenueRes, referralsRes, ambassadorsRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetRevenueSummary(), adminGetReferrals(), adminGetAmbassadors(),
       ]);
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
       const courses = entries.filter((c) => c.type !== "internship");
@@ -49,6 +49,10 @@ export default function AdminDashboard() {
         newMessages: contacts.filter((c) => c.status === "new").length,
         newApplications: applications.filter((a) => !a.contacted).length,
         totalRevenue: revenueRes.ok ? revenueRes.summary.totalRevenue : 0,
+        referrals: referralsRes.ok ? referralsRes.summary.total : 0,
+        referralsRewarded: referralsRes.ok ? referralsRes.summary.rewarded : 0,
+        ambassadorApplications: ambassadorsRes.ok ? ambassadorsRes.summary.applied : 0,
+        ambassadorPayouts: ambassadorsRes.ok ? ambassadorsRes.summary.payoutsWaiting : 0,
       });
       setLoading(false);
     })();
@@ -66,6 +70,8 @@ export default function AdminDashboard() {
     { label: "Live class schedule", value: "Manage", sub: "Google Meet sessions", to: "/admin/lectures" },
     { label: "Course videos", value: "Manage", sub: "recorded lectures", to: "/admin/videos" },
     { label: "Services", value: "Manage", sub: "public /services page", to: "/admin/services" },
+    { label: "Referrals", value: stats.referrals, sub: `${stats.referralsRewarded} led to a purchase · rules & credit`, to: "/admin/referrals" },
+    { label: "Campus ambassadors", value: stats.ambassadorApplications, sub: `applications to review · ${stats.ambassadorPayouts} payouts to send`, to: "/admin/ambassadors" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
     { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },
   ];

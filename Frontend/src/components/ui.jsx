@@ -3,11 +3,15 @@ import { createPortal } from "react-dom";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { site, marquee, programDeliverables } from "../data/content.js";
-import { submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder } from "../services/api.js";
+import {
+  submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder,
+  getMyReferral, applyReferral, getPriceQuote,
+} from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { trackEvent } from "../utils/analytics.js";
 import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
+import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 
 export const REDUCED =
@@ -398,6 +402,95 @@ const loadRazorpayScript = () =>
     document.body.appendChild(script);
   });
 
+// The referral part of checkout: an optional code box (only for a student who
+// hasn't been referred and hasn't bought anything), and the itemised total —
+// plan price, referral discount, referral credit — as the server will charge it.
+// `onPayable` tells the buy button what to show as the amount.
+function CheckoutExtras({ item, tier, onPayable }) {
+  const [quote, setQuote] = useState(null);
+  const [referral, setReferral] = useState(null); // /me/referral: whether a code can still be applied
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [note, setNote] = useState({ kind: "", text: "" });
+  const [busy, setBusy] = useState(false);
+  const [requote, setRequote] = useState(0); // bumped after a code is applied
+
+  useEffect(() => {
+    let alive = true;
+    getMyReferral().then((res) => {
+      if (!alive || !res.ok) return;
+      setReferral(res);
+      const remembered = getStoredReferral(); // from a shared ?ref= link
+      if (res.canApplyCode && remembered) { setCode(remembered); setOpen(true); }
+    });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    onPayable(null);
+    getPriceQuote(item.slug, tier).then((res) => {
+      if (!alive) return;
+      setQuote(res.ok ? res : null);
+      onPayable(res.ok ? res.payable : null);
+    });
+    return () => { alive = false; };
+  }, [item.slug, tier, requote, onPayable]);
+
+  const apply = async () => {
+    if (busy || !code.trim()) return;
+    setBusy(true);
+    setNote({ kind: "", text: "" });
+    const res = await applyReferral(code);
+    setBusy(false);
+    if (res.ok) {
+      clearStoredReferral();
+      setReferral((r) => (r ? { ...r, canApplyCode: false } : r));
+      setNote({ kind: "ok", text: `Code applied — ${res.discountPercent}% off your first purchase.` });
+      setRequote((n) => n + 1);
+    } else {
+      setNote({ kind: "error", text: res.error });
+    }
+  };
+
+  const hasBreakdown = quote && (quote.referralDiscount > 0 || quote.creditApplied > 0);
+  return (
+    <div className="checkout-extras">
+      {referral && referral.canApplyCode && (
+        open ? (
+          <div className="ref-apply">
+            <label htmlFor="buy-ref">Referral code</label>
+            <div className="ref-apply-row">
+              <input id="buy-ref" value={code} placeholder="CRIX-XXXXXX" autoComplete="off"
+                onChange={(e) => { setCode(e.target.value); setNote({ kind: "", text: "" }); }}
+                // Enter here applies the code — it must not submit the form and start a payment.
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); apply(); } }} />
+              <button className="btn btn-ghost" type="button" onClick={apply} disabled={busy || !code.trim()}>
+                {busy ? "Checking…" : "Apply"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="link-btn ref-toggle" onClick={() => setOpen(true)}>Have a referral code?</button>
+        )
+      )}
+      {note.text && <p className={note.kind === "ok" ? "ref-ok" : "form-error"}>{note.text}</p>}
+      {hasBreakdown && (
+        <dl className="order-summary">
+          <div><dt>Plan price</dt><dd>{formatINR(quote.planPrice)}</dd></div>
+          {quote.referralDiscount > 0 && (
+            <div className="is-off"><dt>Referral discount ({quote.referralPercent}%)</dt><dd>−{formatINR(quote.referralDiscount)}</dd></div>
+          )}
+          {quote.creditApplied > 0 && (
+            <div className="is-off"><dt>Referral credit</dt><dd>−{formatINR(quote.creditApplied)}</dd></div>
+          )}
+          <div className="is-total"><dt>You pay</dt><dd>{formatINR(quote.payable)}</dd></div>
+        </dl>
+      )}
+    </div>
+  );
+}
+
 /* ---------- BuyModal: confirms the logged-in account then opens Razorpay Checkout ----------
    Buying is gated behind login (see pages.jsx) — `user` is the account the
    purchase will be made under. Falls back to a guest form if it's ever
@@ -414,6 +507,9 @@ export function BuyModal({ item, user, initialTier, onClose }) {
   // one they arrived with (initialTier, from a "Choose Pro" button) or the
   // first plan on offer is used — see `plan` below.
   const [tier, setTier] = useState(null);
+  // What the server will actually charge for the chosen plan (after any referral
+  // discount / credit); null until CheckoutExtras has priced it.
+  const [payable, setPayable] = useState(null);
   useBodyScrollLock(!!item);
   useModalFocus(!!item);
 
@@ -532,6 +628,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
         const v = await verifyPayment(resp);
         if (stale()) return;
         if (v.ok) {
+          clearStoredReferral();
           trackEvent("purchase", {
             transaction_id: resp.razorpay_payment_id, currency: orderRes.currency, value: (orderRes.amount || 0) / 100,
             items: [{ item_id: item.slug, item_name: item.title, item_category: item.type, item_variant: plan.tier }],
@@ -615,8 +712,9 @@ export function BuyModal({ item, user, initialTier, onClose }) {
                   </label>
                 ))}
               </fieldset>
+              {plan && <CheckoutExtras item={item} tier={plan.tier} onPayable={setPayable} />}
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
-                {loading ? "Please wait..." : plan ? `Continue to payment · ${formatINR(planPrice(plan))}` : "Continue to payment"}
+                {loading ? "Please wait..." : plan ? `Continue to payment · ${formatINR(payable != null ? payable : planPrice(plan))}` : "Continue to payment"}
               </button>
               <Alert kind={status.kind}>{status.text}</Alert>
             </form>
@@ -1142,7 +1240,7 @@ function loadGoogleScript() {
 export function AuthModal() {
   const { authModal, closeAuthModal, login, signup, loginWithGoogle, sessionExpired } = useContext(UserContext);
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", referralCode: "" });
   const [status, setStatus] = useState("");
   // Almost always "error" (every existing setStatus call site is a
   // validation/failure message) — "info" is used for exactly one case: the
@@ -1159,7 +1257,8 @@ export function AuthModal() {
   useEffect(() => {
     if (authModal) {
       setMode(authModal.mode || "login");
-      setForm({ name: "", email: "", phone: "", password: "" });
+      // A code remembered from a shared referral link pre-fills the signup box.
+      setForm({ name: "", email: "", phone: "", password: "", referralCode: getStoredReferral() });
       setStatus("");
       setStatusKind("error");
       setLoading(false);
@@ -1278,6 +1377,10 @@ export function AuthModal() {
           {mode === "signup" && (
             <div className="field"><label htmlFor="auth-phone">Phone</label>
               <input id="auth-phone" value={form.phone} onChange={set("phone")} placeholder="98765 43210" autoComplete="tel" disabled={loading} /></div>
+          )}
+          {mode === "signup" && (
+            <div className="field"><label htmlFor="auth-ref">Referral code (optional)</label>
+              <input id="auth-ref" value={form.referralCode} onChange={set("referralCode")} placeholder="CRIX-XXXXXX" autoComplete="off" disabled={loading} /></div>
           )}
           <div className="field"><label htmlFor="auth-password">Password</label>
             <input id="auth-password" type="password" value={form.password} onChange={set("password")}
@@ -1493,6 +1596,7 @@ const FOOT_COLS = [
       ["Web Development Track", "/programs#courses"],
       ["Android Development", "/programs#internships"],
       ["Online Courses", "/programs#courses"],
+      ["Campus Ambassador", "/ambassador"],
     ],
   },
   {

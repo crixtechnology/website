@@ -6,6 +6,7 @@
 // gracefully "backend not configured" bolte hain.
 // ============================================================
 import { site } from "../data/content.js";
+import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 
 const API = process.env.REACT_APP_API_URL || "";
 
@@ -249,16 +250,16 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
 }
 
 // ---------- Auth (unified — students and admins both use these) ----------
-export async function signup({ name, email, phone, password }) {
+export async function signup({ name, email, phone, password, referralCode }) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
     const res = await fetch(`${API}/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone, password }),
+      body: JSON.stringify({ name, email, phone, password, referralCode: (referralCode || "").trim() || undefined }),
     });
     const data = await res.json();
-    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); }
+    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); clearStoredReferral(); }
     return data;
   } catch (e) {
     return { ok: false, error: "Could not sign up right now." };
@@ -289,10 +290,10 @@ export async function googleAuth(credential) {
     const res = await fetch(`${API}/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ credential }),
+      body: JSON.stringify({ credential, referralCode: getStoredReferral() || undefined }),
     });
     const data = await res.json();
-    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); }
+    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); clearStoredReferral(); }
     return data;
   } catch (e) {
     return { ok: false, error: "Could not sign in with Google right now." };
@@ -558,6 +559,133 @@ export async function createUpgradeOrder(courseSlug, tier) {
     return { ok: false, error: "Could not start the upgrade right now." };
   }
 }
+
+// ---------- Referrals ----------
+// Is this a usable code? (live feedback in the code box; says nothing about whose it is)
+export async function checkReferralCode(code) {
+  try {
+    const res = await fetch(`${API}/referrals/check?code=${encodeURIComponent(code)}`);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, valid: false, error: "Could not check that code right now." };
+  }
+}
+
+// My code, the friends I've referred, my credit, and whether I can still use a friend's code.
+export async function getMyReferral() {
+  try {
+    const res = await authFetch("/me/referral");
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not load your referrals" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not load your referrals" };
+  }
+}
+
+export async function applyReferral(code) {
+  try {
+    const res = await authFetch("/referrals/apply", { method: "POST", body: JSON.stringify({ code }) });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not apply that code" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not apply that code right now." };
+  }
+}
+
+// What checkout will charge for a plan, itemised (plan price, referral discount,
+// referral credit, total) — the same pricing the order itself uses.
+export async function getPriceQuote(courseSlug, tier) {
+  try {
+    const res = await authFetch("/payments/quote", { method: "POST", body: JSON.stringify({ courseSlug, tier }) });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not price this" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not price this right now." };
+  }
+}
+
+export async function adminGetReferrals(q, status) {
+  try {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (status) params.set("status", status);
+    const res = await authFetch(`/admin/referrals${params.toString() ? `?${params}` : ""}`);
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load referrals" };
+  }
+}
+
+export async function adminGetReferralSettings() {
+  try {
+    const res = await authFetch("/admin/referral-settings");
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load the referral rules" };
+  }
+}
+
+export async function adminUpdateReferralSettings(settings) {
+  try {
+    const res = await authFetch("/admin/referral-settings", { method: "PUT", body: JSON.stringify(settings) });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not save the referral rules" };
+  }
+}
+
+// ---------- Campus ambassador programme ----------
+// Small helper: every call below is "authFetch, drop the session on a 401, read
+// the JSON, turn a failure into { ok:false, error }".
+async function ambassadorCall(path, options, fallbackError) {
+  try {
+    const res = await authFetch(path, options);
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || fallbackError };
+    return data;
+  } catch (e) {
+    return { ok: false, error: fallbackError };
+  }
+}
+
+// What the programme offers (public — shown before anyone applies).
+export async function getAmbassadorProgram() {
+  try {
+    const res = await fetch(`${API}/ambassador/program`);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load the programme details" };
+  }
+}
+// My application status, or — once approved — my whole ambassador dashboard.
+export const getMyAmbassador = () => ambassadorCall("/me/ambassador", {}, "Could not load your ambassador details");
+export const applyAmbassador = (form) => ambassadorCall("/ambassador/apply", { method: "POST", body: JSON.stringify(form) }, "Could not send your application");
+export const updateAmbassadorProfile = (fields) => ambassadorCall("/me/ambassador/profile", { method: "PUT", body: JSON.stringify(fields) }, "Could not save your details");
+export const requestAmbassadorPayout = () => ambassadorCall("/me/ambassador/payouts", { method: "POST" }, "Could not request the payout");
+
+export function adminGetAmbassadors(q, status) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (status) params.set("status", status);
+  return ambassadorCall(`/admin/ambassadors${params.toString() ? `?${params}` : ""}`, {}, "Could not load ambassadors");
+}
+export const adminGetAmbassador = (id) => ambassadorCall(`/admin/ambassadors/${id}`, {}, "Could not load this ambassador");
+export const adminUpdateAmbassador = (id, fields) => ambassadorCall(`/admin/ambassadors/${id}`, { method: "PATCH", body: JSON.stringify(fields) }, "Could not update this ambassador");
+export const adminVoidEarning = (id, voidIt) => ambassadorCall(`/admin/ambassador-earnings/${id}`, { method: "PATCH", body: JSON.stringify({ void: voidIt }) }, "Could not update this commission");
+export const adminGetAmbassadorPayouts = (status) => ambassadorCall(`/admin/ambassador-payouts${status ? `?status=${status}` : ""}`, {}, "Could not load payouts");
+export const adminUpdateAmbassadorPayout = (id, body) => ambassadorCall(`/admin/ambassador-payouts/${id}`, { method: "PATCH", body: JSON.stringify(body) }, "Could not update this payout");
+export const adminGetAmbassadorSettings = () => ambassadorCall("/admin/ambassador-settings", {}, "Could not load the programme rules");
+export const adminUpdateAmbassadorSettings = (settings) => ambassadorCall("/admin/ambassador-settings", { method: "PUT", body: JSON.stringify(settings) }, "Could not save the programme rules");
 
 // ---------- Admin: revenue (summary + paginated transaction list) ----------
 export async function adminGetRevenueSummary() {
