@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getAdminToken, adminGetUsers, adminGetUser, adminUpdateUser, adminDeleteUser,
@@ -59,8 +59,17 @@ export default function AdminUsers() {
   useEffect(() => { adminGetCourses().then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
   useDebouncedLoad(loadList, q);
 
+  // On narrow screens the detail panel stacks under the list — bring it into view.
+  const detailRef = useRef(null);
+  const scrollToDetail = () => {
+    if (window.matchMedia && window.matchMedia("(max-width: 900px)").matches) {
+      setTimeout(() => { if (detailRef.current) detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60);
+    }
+  };
+
   const openDetail = async (id) => {
     setSelectedId(id);
+    scrollToDetail();
     setDetailLoading(true);
     setDetailError("");
     // Clear immediately, not just on failure: while this fetch is in flight
@@ -154,7 +163,7 @@ export default function AdminUsers() {
 
         {error && <p className="form-error">{error}</p>}
 
-        <div style={{ display: "grid", gridTemplateColumns: selectedId ? "1fr 1.1fr" : "1fr", gap: 24, alignItems: "start" }}>
+        <div className={`admin-split${selectedId ? " has-detail" : ""}`}>
           {loading ? (
             <p style={{ color: "var(--muted)" }}>Loading...</p>
           ) : users.length === 0 ? (
@@ -178,15 +187,15 @@ export default function AdminUsers() {
           )}
 
           {selectedId && (
-            <div className="admin-form" style={{ position: "sticky", top: 100 }}>
+            <div className="admin-form admin-detail-panel" ref={detailRef}>
               {detailLoading ? (
                 <p style={{ color: "var(--muted)" }}>Loading...</p>
               ) : !detail ? (
                 <p className="form-error">{detailError || "Could not load."}</p>
               ) : (
                 <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3 style={{ margin: 0 }}>{detail.user.name}</h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+                    <h3 style={{ margin: 0, minWidth: 0 }}>{detail.user.name}</h3>
                     <button className="btn btn-ghost" onClick={closeDetail}>✕ Close</button>
                   </div>
 
@@ -203,7 +212,7 @@ export default function AdminUsers() {
                     </div>
                     <p className="form-note" style={{ margin: "-8px 0 16px" }}>Email: {detail.user.email} (not editable — it's the login identifier)</p>
                     {detailError && <p className="form-error">{detailError}</p>}
-                    <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
+                    <div className="admin-actions" style={{ marginBottom: 28 }}>
                       <button className="btn btn-solid" type="submit" disabled={savingUser}>{savingUser ? "Saving..." : "Save changes"}</button>
                       {!isSelf && <button type="button" className="btn btn-ghost admin-danger" onClick={removeUser}>Delete account</button>}
                     </div>

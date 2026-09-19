@@ -141,7 +141,7 @@ export default function AdminLectures() {
               </p>
               <div className="field"><label>Notes (optional)</label>
                 <textarea rows="2" value={form.notes} onChange={set("notes")} placeholder="Shown to enrolled students" /></div>
-              <div style={{ display: "flex", gap: 12 }}>
+              <div className="admin-actions">
                 <button className="btn btn-solid" type="submit" disabled={saving}>
                   {saving ? "Saving..." : editingId ? "Save changes" : "Add"}
                 </button>

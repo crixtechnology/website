@@ -106,7 +106,7 @@ export default function AdminServices() {
           <div className="field"><label>Points (one per line)</label>
             <textarea rows="4" value={form.points} onChange={set("points")} placeholder={"Responsive design\nSEO-friendly structure"} /></div>
           {error && <p className="form-error">{error}</p>}
-          <div style={{ display: "flex", gap: 12 }}>
+          <div className="admin-actions">
             <button className="btn btn-solid" type="submit" disabled={saving}>
               {saving ? "Saving..." : editingId ? "Save changes" : "Create"}
             </button>

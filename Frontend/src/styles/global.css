@@ -122,7 +122,7 @@ h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
 nav.topbar{position:fixed;top:0;left:0;right:0;z-index:50;height:68px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(var(--ink-rgb),.55);border-bottom:1px solid var(--line);transition:background .35s ease,box-shadow .35s ease,border-color .35s ease,height .35s ease}
 nav.topbar.scrolled{height:58px;background:rgba(var(--ink-rgb),.88);box-shadow:0 12px 34px rgba(0,0,0,.35);border-bottom-color:rgba(127,232,224,.32)}
 .nav-in{display:flex;align-items:center;justify-content:space-between;height:100%}
-.logo{position:relative;z-index:2;display:inline-flex;align-items:center;gap:10px;text-decoration:none;vertical-align:middle}
+.logo{position:relative;z-index:2;display:inline-flex;align-items:center;gap:10px;min-height:44px;text-decoration:none;vertical-align:middle}
 .logo img{height:32px;width:auto;display:block;transition:height .35s ease}
 nav.topbar.scrolled .logo img{height:27px}
 .logo-text{display:flex;flex-direction:column;justify-content:center;gap:4px}
@@ -229,7 +229,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .hero-meta b{display:block;color:var(--text);font-family:'Unbounded',sans-serif;font-size:1.15rem;font-weight:600;letter-spacing:0;margin-bottom:4px}
 @media(max-width:640px){.hero-meta{display:none}}
 
-.scroll-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.3em;color:var(--muted)}
+.scroll-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.3em;color:var(--muted)}
 .scroll-hint .wheel{width:22px;height:36px;border:1px solid var(--muted);border-radius:12px;position:relative}
 .scroll-hint .wheel::after{content:"";position:absolute;left:50%;top:7px;width:3px;height:7px;border-radius:3px;background:var(--cyan);transform:translateX(-50%);animation:drop 1.8s infinite}
 @keyframes drop{0%{opacity:0;top:6px}30%{opacity:1}100%{opacity:0;top:20px}}
@@ -570,10 +570,10 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 .device-topbar i:nth-child(1){background:var(--teal)}
 .device-topbar i:nth-child(2){background:var(--amber)}
 .device-topbar i:nth-child(3){background:#4a5875}
-.device-topbar span{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.1em;color:#5f7191;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.device-topbar span{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.1em;color:#5f7191;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .particle-stage{position:relative;height:min(46vw,270px);min-height:190px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,rgba(20,201,201,.22),transparent 70%)}
 .particle-stage canvas{display:block}
-.particle-label{position:absolute;left:14px;bottom:12px;font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);background:rgba(10,18,36,.55);border:1px solid rgba(127,232,224,.25);padding:5px 10px;border-radius:20px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.particle-label{position:absolute;left:14px;bottom:12px;font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);background:rgba(10,18,36,.55);border:1px solid rgba(127,232,224,.25);padding:5px 10px;border-radius:20px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .device-sheen{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,0) 45%);pointer-events:none}
 .device-deck{width:calc(100% - 40px);height:18px;margin:0 auto;background:linear-gradient(180deg,#223258,#0c1730);border-radius:0 0 10px 10px;transform:perspective(200px) rotateX(-18deg);transform-origin:top;box-shadow:0 14px 24px rgba(0,0,0,.4)}
 .device-cable-svg{position:absolute;right:2%;bottom:-6px;width:48%;max-width:280px;height:80px;overflow:visible;pointer-events:none}
@@ -598,7 +598,7 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 
 /* ---------- Plans: Basic / Plus / Pro ---------- */
 .plan-price{display:inline-flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.plan-pill{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);background:rgba(var(--teal-rgb),.12);border:1px solid rgba(var(--teal-rgb),.3);padding:2px 8px;border-radius:20px;vertical-align:middle;white-space:nowrap}
+.plan-pill{font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);background:rgba(var(--teal-rgb),.12);border:1px solid rgba(var(--teal-rgb),.3);padding:2px 8px;border-radius:20px;vertical-align:middle;white-space:nowrap}
 
 /* Full comparison: See more popup and the standalone detail page. */
 .plans-block{margin-top:26px}
@@ -765,3 +765,19 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 .amb-why{color:var(--muted);font-size:.86rem;line-height:1.6;margin:0 0 12px;overflow-wrap:anywhere}
 .amb-why b{color:var(--text)}
 .amb-payto{font-family:'JetBrains Mono',monospace;user-select:all;overflow-wrap:anywhere}
+
+/* ---------- Responsive fixes (layout audit) ---------- */
+.back-link{display:inline-flex;align-items:center;min-height:44px;padding-right:10px}
+/* Buttons keep to one line, but a long label on a very narrow screen wraps instead of spilling out. */
+@media(max-width:400px){.btn{white-space:normal;text-align:center;line-height:1.35}}
+/* Admin: list + detail side by side on wide screens, stacked on tablets and phones. */
+.admin-split{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start}
+.admin-split.has-detail{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}
+.admin-detail-panel{position:sticky;top:100px;min-width:0;overflow-wrap:anywhere}
+@media(max-width:900px){.admin-split.has-detail{grid-template-columns:minmax(0,1fr)}.admin-detail-panel{position:static;scroll-margin-top:84px}}
+.admin-form-grid--2{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:480px){.admin-form-grid--2{grid-template-columns:minmax(0,1fr)}}
+.admin-actions{display:flex;flex-wrap:wrap;gap:12px}
+/* Long unbroken strings (emails, URLs, pasted text) wrap instead of pushing the layout wider. */
+p,li,td,h1,h2,h3,h4,.admin-row-meta,.info-row a{overflow-wrap:break-word}
+.admin-row>*{min-width:0}
