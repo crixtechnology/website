@@ -11,7 +11,9 @@ import { submitContact, getCourses, getCourse, getServices } from "../services/a
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
-import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
+import { isValidName, emailFormatError } from "../utils/validators.js";
+import { phoneError } from "../utils/phone.js";
+import PhoneInput from "../components/PhoneInput.jsx";
 import { offeredTiers, isOpenForBuy, TIER_ORDER } from "../utils/tiers.js";
 
 // The ?tier= a purchase link carries, if it names a real plan.
@@ -614,7 +616,7 @@ export function Contact() {
     title: "Contact Us | Crix Technology",
     description: "Get in touch with Crix Technology for internships, online courses, or IT services — we reply within two working days.",
   });
-  const [form, setForm] = useState({ name: "", email: "", countryCode: "+91", phone: "", interest: "Internship", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", interest: "Internship", message: "" });
   const [status, setStatus] = useState("");
   const [kind, setKind] = useState(""); // "error" | "success" | "info"
 
@@ -623,12 +625,12 @@ export function Contact() {
   const onSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (sending) return; // already in flight — ignore a repeat click/Enter
-    const phoneDigits = form.phone.trim();
+    const phone = form.phone.trim();
     const problems = [
       !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
       !form.email.trim() ? "your email" : emailFormatError(form.email),
       !form.message.trim() && "a message",
-      phoneDigits && phoneLengthError(form.countryCode, phoneDigits),
+      phone && phoneError(phone),
     ].filter(Boolean);
     if (problems.length) {
       const list = problems.length === 1
@@ -643,7 +645,7 @@ export function Contact() {
     setSending(true);
     const res = await submitContact({
       name: form.name, email: form.email, interest: form.interest, message: form.message,
-      phone: phoneDigits ? `${form.countryCode} ${phoneDigits}` : "",
+      phone,
     });
     setSending(false);
     setKind(res.ok ? "success" : "error");
@@ -653,8 +655,11 @@ export function Contact() {
   };
 
   const set = (k) => (e) => {
-    const value = k === "phone" ? e.target.value.replace(/\D/g, "") : e.target.value;
-    setForm({ ...form, [k]: value });
+    setForm({ ...form, [k]: e.target.value });
+    setStatus(""); setKind("");
+  };
+  const setPhone = (phone) => {
+    setForm((f) => ({ ...f, phone }));
     setStatus(""); setKind("");
   };
 
@@ -670,12 +675,7 @@ export function Contact() {
             <div className="field"><label htmlFor="c-email">Email</label>
               <input id="c-email" name="email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
             <div className="field"><label htmlFor="c-phone">Phone (optional)</label>
-              <div className="phone-row">
-                <select aria-label="Country code" value={form.countryCode} onChange={set("countryCode")}>
-                  {COUNTRY_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-                </select>
-                <input id="c-phone" name="phone" autoComplete="tel" inputMode="numeric" value={form.phone} onChange={set("phone")} placeholder="98765 43210" />
-              </div></div>
+              <PhoneInput id="c-phone" name="phone" value={form.phone} onChange={setPhone} /></div>
             <div className="field"><label htmlFor="c-interest">I'm interested in</label>
               <select id="c-interest" name="interest" value={form.interest} onChange={set("interest")}>
                 <option>Internship</option><option>IT Services</option><option>Online Course</option><option>Other</option>

@@ -9,12 +9,15 @@ function isValidEmail(email) {
   return EMAIL_RE.test(String(email).trim());
 }
 
-// 8-15 digits after stripping formatting — covers a bare local number up to
-// a full international one with country code, loose enough for the several
-// plausible ways a visitor might type theirs (spaces, dashes, +91 prefix).
+// 7-15 digits after stripping formatting — covers a bare local number up to
+// a full international one with country code (E.164 allows at most 15), loose
+// enough for every country the phone field offers (a few small ones have
+// 7-digit totals) and for the several plausible ways a visitor might type
+// theirs (spaces, dashes, +91 prefix). The per-country length check lives in
+// the frontend (utils/phone.js) as instant feedback.
 function isValidPhone(phone) {
   const digits = String(phone).replace(/\D/g, "");
-  return digits.length >= 8 && digits.length <= 15;
+  return digits.length >= 7 && digits.length <= 15;
 }
 
 // Well-known, long-lived disposable/temporary email providers — students and
