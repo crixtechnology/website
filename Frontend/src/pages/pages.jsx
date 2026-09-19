@@ -5,7 +5,7 @@ import {
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, legal,
-  techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables,
+  techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables, fallbackPrograms,
 } from "../data/content.js";
 import { submitContact, getCourses, getCourse, getServices } from "../services/api.js";
 import { UserContext } from "../context/UserContext.jsx";
@@ -308,7 +308,13 @@ export function CourseDetail() {
   useEffect(() => {
     let alive = true;
     setCourse(undefined);
-    getCourse(slug).then((res) => { if (alive) setCourse(res.ok ? res.course : null); });
+    // Live data first; if the API has no such course (or isn't reachable),
+    // the static list the cards fall back to supplies the page instead, so a
+    // card that opened this route never lands on "not found".
+    getCourse(slug).then((res) => {
+      if (!alive) return;
+      setCourse(res.ok ? res.course : fallbackPrograms.find((p) => p.slug === slug) || null);
+    });
     return () => { alive = false; };
   }, [slug]);
 

@@ -10,6 +10,7 @@ const { isValidEmail, isValidPhone, isValidName } = require("../utils/validators
 const { signToken: signJwt } = require("../utils/jwt");
 const { hasLiveSession } = require("../utils/sessionPolicy");
 const { sendAccountExistsEmail } = require("../utils/mailer");
+const { applyReferralCode } = require("../utils/referrals");
 
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -108,7 +109,7 @@ function publicUser(user) {
 // are only ever created by scripts/seedAdmin.js) ----------
 router.post("/signup", authLimiter, async (req, res, next) => {
   try {
-    const { name, email, phone, password } = req.body || {};
+    const { name, email, phone, password, referralCode } = req.body || {};
     if (!name || !email || !password) {
       return res.status(400).json({ ok: false, error: "name, email and password are required" });
     }
@@ -192,6 +193,12 @@ router.post("/signup", authLimiter, async (req, res, next) => {
       }
       throw createErr;
     }
+    // A referral code that came with the signup (typed in, or remembered from a
+    // shared link). A bad or stale code never blocks the account — the student
+    // can still enter one at checkout, where a wrong code is reported.
+    if (referralCode) {
+      await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
+    }
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);
     respondNoEarlierThan(workStartedAt, () => res.status(201).json({ ok: true, token, user: publicUser(user) }));
@@ -246,7 +253,7 @@ router.post("/google", authLimiter, async (req, res, next) => {
     if (!googleClient) {
       return res.status(503).json({ ok: false, error: "Google Sign-In isn't configured yet." });
     }
-    const { credential } = req.body || {};
+    const { credential, referralCode } = req.body || {};
     if (!credential) return res.status(400).json({ ok: false, error: "Missing Google credential" });
 
     let payload;
@@ -267,6 +274,9 @@ router.post("/google", authLimiter, async (req, res, next) => {
       user = await prisma.user.create({
         data: { name: payload.name || email.split("@")[0], email, phone: "", googleId: payload.sub, role: "student" },
       });
+      if (referralCode) {
+        await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
+      }
     } else if (!user.googleId) {
       // Existing email/password account signing in with Google for the
       // first time — link it rather than creating a duplicate.

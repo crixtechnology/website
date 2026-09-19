@@ -105,8 +105,25 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res, next) => {
       }
     }
 
+    // A commission an ambassador has already asked to be paid for (or been paid
+    // for) is a financial record — it isn't erased because the student it came
+    // from is being deleted.
+    const lockedCommissions = await prisma.ambassadorEarning.count({
+      where: { payoutId: { not: null }, OR: [{ referral: { refereeId: target.id } }, { ambassador: { userId: target.id } }] },
+    });
+    if (lockedCommissions > 0) {
+      return res.status(409).json({ ok: false, error: "This account is tied to ambassador commissions that have been requested or paid out, so it can't be deleted." });
+    }
+
     await prisma.$transaction([
       prisma.enrollment.deleteMany({ where: { userId: target.id } }),
+      prisma.creditEntry.deleteMany({ where: { userId: target.id } }),
+      // Ambassador side first: commissions (their own, and ones earned off this
+      // student's purchase), then payout requests, then the profile itself.
+      prisma.ambassadorEarning.deleteMany({ where: { OR: [{ ambassador: { userId: target.id } }, { referral: { refereeId: target.id } }] } }),
+      prisma.ambassadorPayout.deleteMany({ where: { ambassador: { userId: target.id } } }),
+      prisma.referral.deleteMany({ where: { OR: [{ referrerId: target.id }, { refereeId: target.id }] } }),
+      prisma.ambassador.deleteMany({ where: { userId: target.id } }),
       prisma.user.delete({ where: { id: target.id } }),
     ]);
     res.json({ ok: true });

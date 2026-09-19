@@ -581,3 +581,18 @@ CIN: U63122GJ2026PTC179737`,
     ],
   },
 };
+
+// The static internships/courses above are only what shows before (or without)
+// the backend. They get the same URL slug the backend would give each title
+// (routes/courses.js slugify), so their "See more" opens the same
+// /programs/:slug page a database-backed card does — the page falls back to
+// this list (CourseDetail) when the API has no row for that slug, instead of
+// these cards being the one place "See more" opens a popup.
+const slugify = (title) => String(title).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+for (const list of [internships, courses]) {
+  for (const entry of list) if (!entry.slug) entry.slug = slugify(entry.title);
+}
+export const fallbackPrograms = [
+  ...internships.map((e) => ({ ...e, type: "internship" })),
+  ...courses.map((e) => ({ ...e, type: "course" })),
+];

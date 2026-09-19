@@ -30,12 +30,21 @@ model User {
   role                     Role      @default(student)
   activeSessionId          String?
   activeSessionLastSeenAt  DateTime?
+  // Shown to the student in "Refer & earn"; friends enter it at signup/checkout.
+  // Created lazily (utils/referrals.js ensureReferralCode) and stored without
+  // punctuation, e.g. CRIXK7P3QZ.
+  referralCode             String?   @unique
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
   enrollments  Enrollment[]
   applications Application[]
   payments     Payment[]
+
+  referralsMade Referral[]    @relation("Referrer")
+  referredBy    Referral?     @relation("Referee")
+  creditEntries CreditEntry[]
+  ambassador    Ambassador?
 
   @@map("users")
 }
@@ -200,6 +209,10 @@ model Payment {
   razorpaySignature             String?
   amount                        Int
   currency                      String        @default("INR")
+  // Paise taken off this order by a referral discount / by referral credit the
+  // buyer had earned. `amount` is already net of both.
+  referralDiscount              Int           @default(0)
+  creditApplied                 Int           @default(0)
   tier                          Tier?
   // Set only on a plan-upgrade payment: the plan the buyer held before
   // paying the difference to reach `tier`. Null for an ordinary purchase.
@@ -289,4 +302,184 @@ model Counter {
   seq  Int    @default(0)
 
   @@map("counters")
+}
+
+enum ReferralStatus {
+  pending
+  rewarded
+}
+
+// One row per referred student (refereeId is unique — a student can only ever
+// be referred once). Created when a code is applied; flips to rewarded, and the
+// referrer is credited, when the referee's first course/internship payment lands.
+// The discount % and reward are snapshotted at apply time so later changes to
+// the admin settings never change what was promised.
+model Referral {
+  id                     String         @id @default(cuid())
+  referrerId             String
+  referrer               User           @relation("Referrer", fields: [referrerId], references: [id])
+  refereeId              String         @unique
+  referee                User           @relation("Referee", fields: [refereeId], references: [id])
+  status                 ReferralStatus @default(pending)
+  refereeDiscountPercent Int            @default(0)
+  // Paise credited to the referrer when this is rewarded.
+  rewardAmount           Int            @default(0)
+  qualifyingPaymentId    String?
+  // Set when the referrer was an approved campus ambassador at the time the code
+  // was applied: the reward is then a cash commission (commissionPercent of what
+  // the friend pays) instead of credit, and rewardAmount stays 0.
+  ambassadorId           String?
+  ambassador             Ambassador?    @relation(fields: [ambassadorId], references: [id])
+  commissionPercent      Int            @default(0)
+  createdAt              DateTime       @default(now())
+  rewardedAt             DateTime?
+
+  creditEntries CreditEntry[]
+  earning       AmbassadorEarning?
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+enum CreditKind {
+  referral_reward
+  redeemed
+  adjustment
+}
+
+// Append-only ledger of a student's referral credit, in paise: + earned, - spent.
+// Balance is the sum, so there is no counter to race on. The unique pairs make
+// "reward this referral" and "redeem for this payment" idempotent when /verify
+// and the Razorpay webhook both fire.
+model CreditEntry {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id])
+  amount     Int
+  kind       CreditKind
+  referralId String?
+  referral   Referral?  @relation(fields: [referralId], references: [id])
+  paymentId  String?
+  note       String     @default("")
+  createdAt  DateTime   @default(now())
+
+  @@unique([paymentId, kind])
+  @@unique([referralId, kind])
+  @@index([userId])
+  @@map("credit_entries")
+}
+
+// Small key/value store for admin-editable settings (currently the referral rules).
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+enum AmbassadorStatus {
+  applied
+  approved
+  rejected
+  suspended
+}
+
+enum KitStatus {
+  not_sent
+  preparing
+  shipped
+  delivered
+}
+
+enum PayoutStatus {
+  requested
+  paid
+  rejected
+}
+
+// A student who applied to be (or is) a campus ambassador. Approved ambassadors
+// share their referral code (User.referralCode); friends who use it get the usual
+// welcome discount and the ambassador earns a cash commission on what they pay.
+model Ambassador {
+  id                  String           @id @default(cuid())
+  userId              String           @unique
+  user                User             @relation(fields: [userId], references: [id])
+  status              AmbassadorStatus @default(applied)
+  college             String
+  city                String
+  yearOfStudy         String           @default("")
+  branch              String           @default("")
+  socialHandle        String           @default("")
+  // TEXT columns can't have a database default — the app always passes a value.
+  motivation          String           @db.Text
+  // Overrides the programme-wide commission %; null means use the default.
+  commissionPercent   Int?
+  // Where to pay — UPI or a bank account. Only the admin paying them ever sees
+  // the full details; the ambassador sees the bank account masked.
+  upiId               String           @default("")
+  bankHolder          String           @default("")
+  bankAccount         String           @default("")
+  bankIfsc            String           @default("")
+  // Perks: a welcome kit (needs somewhere to send it) and a certificate.
+  shippingAddress     String           @db.Text
+  kitStatus           KitStatus        @default(not_sent)
+  kitNote             String           @default("")
+  certificateNumber   String?          @unique
+  certificateIssuedAt DateTime?
+  adminNote           String           @default("")
+  appliedAt           DateTime         @default(now())
+  approvedAt          DateTime?
+  updatedAt           DateTime         @updatedAt
+
+  earnings  AmbassadorEarning[]
+  payouts   AmbassadorPayout[]
+  referrals Referral[]
+
+  @@map("ambassadors")
+}
+
+// One commission, earned when a referred student's first purchase went through
+// (referralId is unique, so it can only ever be earned once). It sits on hold
+// until availableAt, then becomes payable; a payout request claims it (payoutId).
+model AmbassadorEarning {
+  id           String            @id @default(cuid())
+  ambassadorId String
+  ambassador   Ambassador        @relation(fields: [ambassadorId], references: [id])
+  referralId   String            @unique
+  referral     Referral          @relation(fields: [referralId], references: [id])
+  paymentId    String
+  // Paise: what the student paid, the % applied, and the resulting commission.
+  baseAmount   Int
+  percent      Int
+  amount       Int
+  availableAt  DateTime
+  void         Boolean           @default(false)
+  payoutId     String?
+  payout       AmbassadorPayout? @relation(fields: [payoutId], references: [id])
+  createdAt    DateTime          @default(now())
+
+  @@index([ambassadorId])
+  @@map("ambassador_earnings")
+}
+
+// A request to be paid, and (once the admin has paid it by UPI/bank transfer) the record of it.
+model AmbassadorPayout {
+  id           String              @id @default(cuid())
+  ambassadorId String
+  ambassador   Ambassador          @relation(fields: [ambassadorId], references: [id])
+  // Paise.
+  amount       Int
+  status       PayoutStatus        @default(requested)
+  // Snapshot of where to send it, taken at request time.
+  payTo        String
+  reference    String              @default("")
+  note         String              @default("")
+  requestedAt  DateTime            @default(now())
+  paidAt       DateTime?
+  updatedAt    DateTime            @updatedAt
+  earnings     AmbassadorEarning[]
+
+  @@index([ambassadorId])
+  @@map("ambassador_payouts")
 }

@@ -8,6 +8,7 @@ const { round2 } = require("../utils/money");
 const { WITH_TIERS, isTier, tierRank, tierTotal } = require("../utils/tiers");
 const { getUpgradeOptions } = require("../utils/upgrades");
 const { requireAuth } = require("../middleware/requireAuth");
+const { priceOrder, rewardReferrerForPurchase, redeemCreditForPurchase } = require("../utils/referrals");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
 const { publicWriteLimiter } = require("../utils/rateLimit");
@@ -101,6 +102,13 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
       });
     }
 
+    // A first purchase rewards whoever referred this student, and spends any
+    // referral credit the order was priced with. An upgrade is neither.
+    if (!payment.fromTier) {
+      await rewardReferrerForPurchase(payment, application);
+      await redeemCreditForPurchase(payment, application);
+    }
+
     await attachReceipt(payment, application);
   }
   return application;
@@ -138,7 +146,11 @@ async function attachReceipt(payment, application) {
   // Derived from what was really charged rather than recomputed from the
   // percentage, so the receipt always adds up (base - discount = total) even
   // though the charge is rounded to whole rupees.
-  const discountAmount = discountPercent > 0 ? round2(Math.max(0, basePrice - totalPaid)) : 0;
+  const extraOff = (payment.referralDiscount || 0) + (payment.creditApplied || 0) > 0;
+  const discountAmount = discountPercent > 0 || extraOff ? round2(Math.max(0, basePrice - totalPaid)) : 0;
+  // With a referral discount or credit in the mix, the plain plan % no longer
+  // describes the discount, so show the effective % of the list price instead.
+  const effectiveDiscountPercent = extraOff && basePrice > 0 ? round2((discountAmount / basePrice) * 100) : discountPercent;
 
   const seq = await nextSequence("receipt");
   const year = new Date().getFullYear();
@@ -152,7 +164,7 @@ async function attachReceipt(payment, application) {
     itemType: course.type,
     itemTitle: course.title,
     basePrice,
-    discountPercent,
+    discountPercent: effectiveDiscountPercent,
     discountAmount,
     totalPaid,
     paymentMode: "Razorpay (Online)",
@@ -195,7 +207,7 @@ async function attachReceipt(payment, application) {
       tier: payment.tier,
       fromTier: payment.fromTier,
       basePrice,
-      discountPercent,
+      discountPercent: effectiveDiscountPercent,
       discountAmount,
       totalPaid,
       paymentMode: receipt.paymentMode,
@@ -209,6 +221,78 @@ async function attachReceipt(payment, application) {
     console.error("[payments] receipt email failed:", mailErr.message);
   }
 }
+
+// The course + plan a purchase is for, with every rule that decides whether it
+// can be bought right now — shared by create-order and the price quote so they
+// can never disagree. Returns { course, plan } or { error: { status, message } }.
+async function loadPurchasablePlan(courseSlug, tierName, userId) {
+  const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_TIERS });
+  if (!course) return { error: { status: 404, message: "Course not found" } };
+  if (course.status === "closed") {
+    return { error: { status: 400, message: "This course is currently closed for enrollment" } };
+  }
+  // Server-side mirror of the frontend's own "Buy now only shows when
+  // openForBuy" gating (at least one plan priced AND status open) — the
+  // frontend button is not the only way to reach this endpoint. Without
+  // this, an apply-only internship/course (no plans on purpose, meant to
+  // only ever show "Request to apply"/"Request to enroll") would have no
+  // price to charge, so it's rejected clearly instead.
+  if (course.tiers.length === 0) {
+    return { error: { status: 400, message: "This course is not available for online purchase." } };
+  }
+  // The buyer picks a plan; its price — never a client-sent amount — is
+  // what gets charged.
+  if (!isTier(tierName)) {
+    return { error: { status: 400, message: "Choose a plan (Basic, Plus or Pro) to continue." } };
+  }
+  const plan = course.tiers.find((t) => t.tier === tierName);
+  if (!plan) return { error: { status: 400, message: "That plan isn't available for this course." } };
+
+  // Don't let an already-enrolled, still-valid student pay again for the
+  // same course — a double "Buy now" click, two open tabs, or someone
+  // re-running an old checkout link could otherwise charge them a second time
+  // for access they already have.
+  const existingEnrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId: course.id } },
+  });
+  if (hasValidAccess(existingEnrollment)) {
+    return {
+      error: {
+        status: 400,
+        message: existingEnrollment.tier
+          ? "You already have access to this course. To move to a higher plan, use \"Upgrade plan\" in My Courses."
+          : "You already have access to this course.",
+      },
+    };
+  }
+  return { course, plan };
+}
+
+// What checkout will charge for a plan, itemised, so the buy popup can show it
+// before the student pays: plan price, referral welcome discount, referral
+// credit, total. Same pricing code create-order uses. Amounts are in rupees.
+router.post("/quote", requireAuth, async (req, res, next) => {
+  try {
+    const { courseSlug, tier: tierName } = req.body || {};
+    if (!courseSlug) return res.status(400).json({ ok: false, error: "courseSlug is required" });
+    const found = await loadPurchasablePlan(courseSlug, tierName, req.user.sub);
+    if (found.error) return res.status(found.error.status).json({ ok: false, error: found.error.message });
+
+    const planRupees = tierTotal(found.plan);
+    const pricing = await priceOrder(req.user.sub, planRupees);
+    res.json({
+      ok: true,
+      planPrice: planRupees,
+      referralPercent: pricing.referralPercent,
+      referralDiscount: pricing.referralDiscount / 100,
+      creditApplied: pricing.creditApplied / 100,
+      creditAvailable: pricing.availableCredit / 100,
+      payable: pricing.payablePaise / 100,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
 
 // ---------- 1. create an order (called right after the applicant submits the form) ----------
 router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
@@ -232,50 +316,15 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
       return res.status(401).json({ ok: false, error: "Please log in before paying, so we can unlock the course on your account." });
     }
 
-    const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_TIERS });
-    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
-    if (course.status === "closed") {
-      return res.status(400).json({ ok: false, error: "This course is currently closed for enrollment" });
-    }
-    // Server-side mirror of the frontend's own "Buy now only shows when
-    // openForBuy" gating (at least one plan priced AND status open) — the
-    // frontend button is not the only way to reach this endpoint. Without
-    // this, an apply-only internship/course (no plans on purpose, meant to
-    // only ever show "Request to apply"/"Request to enroll") would have no
-    // price to charge, so it's rejected clearly instead.
-    if (course.tiers.length === 0) {
-      return res.status(400).json({ ok: false, error: "This course is not available for online purchase." });
-    }
-    // The buyer picks a plan; its price — never a client-sent amount — is
-    // what gets charged.
-    if (!isTier(tierName)) {
-      return res.status(400).json({ ok: false, error: "Choose a plan (Basic, Plus or Pro) to continue." });
-    }
-    const plan = course.tiers.find((t) => t.tier === tierName);
-    if (!plan) {
-      return res.status(400).json({ ok: false, error: "That plan isn't available for this course." });
-    }
+    const found = await loadPurchasablePlan(courseSlug, tierName, application.userId);
+    if (found.error) return res.status(found.error.status).json({ ok: false, error: found.error.message });
+    const { course, plan } = found;
 
-    // Don't let an already-enrolled, still-valid student pay again for the
-    // same course — nothing before this point checks that, so a double
-    // "Buy now" click, two open tabs, or someone re-running an old checkout
-    // link could otherwise charge them a second time for access they
-    // already have. Enrollment access itself is unaffected either way
-    // (grantAccessForPayment already no-ops the enrollment side of a
-    // genuine duplicate), this only stops the needless second charge.
-    const existingEnrollment = await prisma.enrollment.findUnique({
-      where: { userId_courseId: { userId: application.userId, courseId: course.id } },
-    });
-    if (hasValidAccess(existingEnrollment)) {
-      return res.status(400).json({
-        ok: false,
-        error: existingEnrollment.tier
-          ? "You already have access to this course. To move to a higher plan, use \"Upgrade plan\" in My Courses."
-          : "You already have access to this course.",
-      });
-    }
-
-    const amountPaise = tierTotal(plan) * 100; // whole rupees -> paise, Razorpay's smallest unit
+    // What this buyer really pays: the plan price, less any referral welcome
+    // discount, less any referral credit they hold (utils/referrals.js) — all
+    // worked out here, never taken from the client.
+    const pricing = await priceOrder(application.userId, tierTotal(plan));
+    const amountPaise = pricing.payablePaise; // whole rupees in paise, Razorpay's smallest unit
 
     const order = await razorpay.orders.create({
       amount: amountPaise,
@@ -291,6 +340,8 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
         status: "created",
         applicationId: application.id,
         tier: plan.tier,
+        referralDiscount: pricing.referralDiscount,
+        creditApplied: pricing.creditApplied,
         // Snapshotted now, not re-read from the plan at grant time — see the
         // field's own doc comment in prisma/schema.prisma for why.
         orderSnapshotBasePrice: plan.price,

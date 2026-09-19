@@ -4,6 +4,7 @@ import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
 import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms } from "./pages/pages.jsx";
 import AdminGuard from "./pages/admin/AdminGuard.jsx";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
+import { captureReferralFromUrl } from "./utils/referral.js";
 
 // Called at module load (not inside a useEffect) deliberately: React fires
 // child effects before parent effects, so ScrollToTop's own effect (which
@@ -44,6 +45,9 @@ const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.jsx"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages.jsx"));
 const AdminApplications = lazy(() => import("./pages/admin/AdminApplications.jsx"));
 const AdminServices = lazy(() => import("./pages/admin/AdminServices.jsx"));
+const AdminReferrals = lazy(() => import("./pages/admin/AdminReferrals.jsx"));
+const AdminAmbassadors = lazy(() => import("./pages/admin/AdminAmbassadors.jsx"));
+const Ambassador = lazy(() => import("./pages/Ambassador.jsx"));
 
 // Matches the "Loading..." convention every data-fetching page here already
 // uses (MyCourses, every Admin list, etc.) rather than a full-screen splash
@@ -71,7 +75,12 @@ const savedScroll = (key) => {
 };
 
 function ScrollToTop() {
-  const { pathname, hash, key } = useLocation();
+  const { pathname, hash, key, search } = useLocation();
+
+  // A shared referral link (?ref=CODE) can land on any page — remember the code
+  // so it can pre-fill the signup form and checkout later.
+  useEffect(() => { captureReferralFromUrl(search); }, [search]);
+
   const navType = useNavigationType();
 
   // The browser's own restoration runs at popstate, before this route's
@@ -158,6 +167,7 @@ export default function App() {
             <Route path="/internships" element={<Navigate to="/programs#internships" replace />} />
             <Route path="/courses" element={<Navigate to="/programs#courses" replace />} />
             <Route path="/services" element={<Services />} />
+            <Route path="/ambassador" element={<Ambassador />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -184,6 +194,8 @@ export default function App() {
             <Route path="/admin/messages" element={<AdminGuard><AdminMessages /></AdminGuard>} />
             <Route path="/admin/applications" element={<AdminGuard><AdminApplications /></AdminGuard>} />
             <Route path="/admin/services" element={<AdminGuard><AdminServices /></AdminGuard>} />
+            <Route path="/admin/referrals" element={<AdminGuard><AdminReferrals /></AdminGuard>} />
+            <Route path="/admin/ambassadors" element={<AdminGuard><AdminAmbassadors /></AdminGuard>} />
 
             <Route path="*" element={<Home />} />
           </Routes>
