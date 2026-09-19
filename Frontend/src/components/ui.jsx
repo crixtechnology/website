@@ -240,11 +240,6 @@ export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
   );
 }
 
-// Screens this narrow (phones, portrait tablets) open a course/internship's
-// full page from "See more"; wider screens get the popup. Mirrors the site's
-// existing 920px tablet breakpoint for the card grids.
-const FULL_PAGE_QUERY = "(max-width: 920px)";
-
 /* ---------- InfoCard (program/service/course) ---------- */
 // Alternates entrance direction per column (left / top / right) so a 3-up grid
 // visibly converges from different sides as it scrolls into view.
@@ -257,13 +252,13 @@ const FULL_PAGE_QUERY = "(max-width: 920px)";
 export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isProgram, kind }) {
   const navigate = useNavigate();
   const variant = i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top";
-  // "See more" and "Choose a plan" both land here. A course/internship's plans
-  // are too long for a popup on a phone or portrait tablet, so those screens go
-  // to its full page; desktop keeps the quick popup. Services (no plans) and
-  // items with no page (the static fallback has no slug) always use the popup.
-  // Checked at click time, so rotating or resizing the window just works.
+  // "See more" and "Choose a plan" both land here. A course or internship opens
+  // its own page (/programs/:slug), on every screen size — the plans, features
+  // and upgrade options live there. Popups are kept for the request/inquiry
+  // forms, and for what has no page to open: services, and the static fallback
+  // items shown before the backend responds (they have no slug).
   const openDetail = () => {
-    if (isProgram && item.slug && window.matchMedia(FULL_PAGE_QUERY).matches) navigate(`/programs/${item.slug}`);
+    if (isProgram && item.slug) navigate(`/programs/${item.slug}`);
     else if (onDetail) onDetail({ item, kind, isProgram });
   };
   const closed = item.status === "closed";
@@ -918,9 +913,8 @@ export function InquiryModal({ item, kind, onClose }) {
 // online). Closing this and opening onBuy/onInquire/onServiceInquire happens
 // in the same click handler so React batches both state updates into one
 // re-render — no flash of both modals at once.
-// `ownedTier` is the plan the logged-in viewer already holds on this item (or
-// null): the plan cards then offer "Upgrade to …" via onUpgrade(item, tier).
-export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire, ownedTier, onUpgrade }) {
+
+export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
   useBodyScrollLock(!!data);
   useModalFocus(!!data);
 
@@ -929,21 +923,15 @@ export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire,
   if (!data) return null;
   const { item, kind, isProgram } = data;
 
-  const plans = offeredTiers(item);
   const closed = item.status === "closed";
-  const openForBuy = isOpenForBuy(item);
   const deliverables = kind ? programDeliverables[kind] : null;
   const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
 
   const act = (fn) => () => { onClose(); fn && fn(item); };
-  // "Choose Pro" — same close-then-open-in-one-handler swap as act(), but the
-  // plan clicked travels with it so BuyModal opens on that plan.
-  const choosePlan = (tier) => { onClose(); onBuy && onBuy(item, tier); };
-  const upgradePlan = (tier) => { onClose(); onUpgrade && onUpgrade(item, tier); };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className={`modal-box detail-modal-box${openForBuy && plans.length > 1 ? " detail-modal-box--plans" : ""}`} role="dialog" aria-modal="true" aria-labelledby="detail-modal-title" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-box detail-modal-box" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <div className="card-top">
           <div className="card-top-left">
@@ -951,11 +939,6 @@ export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire,
             <span className="tag">{item.tag}</span>
           </div>
           {closed && <span className="closed-badge">Currently closed</span>}
-          {/* The popup is the quick look; the page is the shareable, indexable
-              version of the same content. Only items that have a page. */}
-          {isProgram && item.slug && (
-            <Link className="detail-page-link" to={`/programs/${item.slug}`} onClick={onClose}>Open full page ↗</Link>
-          )}
         </div>
         <h3 id="detail-modal-title" style={{ margin: "12px 0 10px" }}>{item.title}</h3>
         <p style={{ color: "var(--muted)", fontSize: ".92rem", lineHeight: 1.7 }}>{item.desc}</p>
@@ -978,17 +961,9 @@ export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire,
           </ul>
         ) : null}
 
-        {openForBuy && (
-          <div className="plans-block">
-            <h4 className="plans-heading">{ownedTier ? "Your plan" : plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
-            <PlanCards plans={plans} onChoose={choosePlan} ownedTier={ownedTier} onUpgrade={upgradePlan} />
-          </div>
-        )}
-
-        {/* An open item's purchase buttons live on the plan cards above. */}
-        <div style={{ marginTop: openForBuy ? 0 : 24 }}>
+        <div style={{ marginTop: 24 }}>
           {isProgram ? (
-            openForBuy ? null : kind === "internship" ? (
+            kind === "internship" ? (
               <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to apply</button>
             ) : (
               <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to enroll</button>

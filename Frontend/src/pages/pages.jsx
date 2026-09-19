@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
@@ -14,15 +14,6 @@ import { useMyPlans } from "../hooks/useMyPlans.js";
 import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
 import { offeredTiers, isOpenForBuy, TIER_ORDER } from "../utils/tiers.js";
 
-// Home has no login/BuyModal plumbing of its own, so a purchase started there
-// (from a card or its "See more" popup) hands off to the item's detail page,
-// where the real purchase flow lives. ?buy= opens BuyModal on arrival, and
-// ?tier= carries the plan the visitor already clicked.
-const buyOnDetailPage = (navigate) => (item, tier) => {
-  const plan = tier ? `&tier=${encodeURIComponent(tier)}` : "";
-  navigate(`/programs/${item.slug}?buy=${encodeURIComponent(item.slug)}${plan}`);
-};
-
 // The ?tier= a purchase link carries, if it names a real plan.
 const tierFromParams = (params) => {
   const tier = params.get("tier");
@@ -31,7 +22,6 @@ const tierFromParams = (params) => {
 
 /* ================= HOME ================= */
 export function Home() {
-  const navigate = useNavigate();
   const heroRef = useRef(null);
   const [liveInternships, setLiveInternships] = useState(internships);
   const [inquireItem, setInquireItem] = useState(null);
@@ -115,10 +105,7 @@ export function Home() {
         </div>
       </section>
       <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
-      {/* A plan chosen in the popup (Home has no login/BuyModal plumbing of its
-          own) hands off to the item's detail page, where the real purchase flow lives. */}
-      <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} onServiceInquire={setServiceInquiryItem}
-        onBuy={buyOnDetailPage(navigate)} />
+      <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} onServiceInquire={setServiceInquiryItem} />
       <ServiceInquiryModal item={serviceInquiryItem} onClose={() => setServiceInquiryItem(null)} />
 
       <section className="section" style={{ paddingTop: 0, paddingBottom: 20 }}>
@@ -167,8 +154,6 @@ export function Programs() {
   const [buyItem, setBuyItem] = useState(null);
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on, if one was already clicked
   const [inquire, setInquire] = useState(null); // { item, kind } | null
-  const [upgrade, setUpgrade] = useState(null); // { item, tier } | null — the plan-upgrade dialog
-  const { ownedTier, reload: reloadPlans } = useMyPlans();
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
   const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
@@ -260,10 +245,8 @@ export function Programs() {
       </section>
       <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
       <InquiryModal item={inquire?.item} kind={inquire?.kind} onClose={() => setInquire(null)} />
-      <DetailModal data={detailData} onClose={() => setDetailData(null)} onBuy={handleBuy}
-        ownedTier={ownedTier(detailData?.item)} onUpgrade={(item, tier) => setUpgrade({ item, tier })}
+      <DetailModal data={detailData} onClose={() => setDetailData(null)}
         onInquire={(item) => setInquire({ item, kind: detailData?.kind })} />
-      <UpgradeModal data={upgrade} onClose={() => setUpgrade(null)} onDone={reloadPlans} />
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
