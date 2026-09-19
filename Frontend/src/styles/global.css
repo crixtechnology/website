@@ -75,8 +75,13 @@ h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
 .in{opacity:1;transform:none;filter:blur(0)}
 .stagger>*{transition-delay:calc(var(--i,0)*.12s)}
 
-/* subtle tech grid backdrop, runs behind every section for a persistent "advanced tech" feel while scrolling */
-.section{background-image:
+/* subtle tech grid backdrop, runs behind every section for a persistent "advanced tech" feel while scrolling.
+   It lives on a pseudo-element so the top/bottom fade masks ONLY the grid: a mask on the section itself also
+   faded — and clipped — anything hanging outside the section's box (e.g. the phone country list opening on
+   the Profile page's last field) and text near the section edges. */
+.section{position:relative}
+.section::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:
     linear-gradient(rgba(127,232,224,.05) 1px,transparent 1px),
     linear-gradient(90deg,rgba(127,232,224,.05) 1px,transparent 1px);
   background-size:64px 64px;
@@ -84,7 +89,7 @@ h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
   -webkit-mask-image:linear-gradient(to bottom,transparent,#000 8%,#000 92%,transparent);
   mask-image:linear-gradient(to bottom,transparent,#000 8%,#000 92%,transparent)}
 /* text-heavy pages (legal): drop the decorative grid + top/bottom fade so copy never looks washed out or blurred */
-.section--plain{background-image:none;-webkit-mask-image:none;mask-image:none}
+.section--plain::before{display:none}
 .section--plain .reveal,.section--plain .reveal-l,.section--plain .reveal-r,.section--plain .reveal-zoom,.section--plain .reveal-top{opacity:1;filter:none;transform:none}
 
 #progress{position:fixed;top:0;left:0;height:3px;width:0%;z-index:99;background:linear-gradient(90deg,var(--teal),var(--cyan),var(--amber));box-shadow:0 0 12px rgba(20,201,201,.6)}
