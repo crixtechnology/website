@@ -7,6 +7,7 @@ import {
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
+import { tierLabel } from "../../utils/tiers.js";
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString("en-IN") : "—";
@@ -150,7 +151,7 @@ export default function AdminStudents() {
                   <span className="admin-row-meta">{en.user?.email} {en.user?.phone ? `· ${en.user.phone}` : ""}</span>
                 </div>
                 <div className="admin-row-main">
-                  <b>{en.course?.title || "Course"}</b>
+                  <b>{en.course?.title || "Course"}</b>{en.tier && <> <span className="plan-pill">{tierLabel(en.tier)}</span></>}
                   <span className="admin-row-meta">
                     {en.endDate ? (
                       <span className={`admin-pill ${en.expired ? "expired" : "new"}`}>

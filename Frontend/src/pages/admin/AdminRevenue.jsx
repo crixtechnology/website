@@ -4,6 +4,7 @@ import { getAdminToken, adminGetRevenueSummary, adminGetPayments } from "../../s
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
+import { tierLabel } from "../../utils/tiers.js";
 
 const PAGE_SIZE = 20;
 
@@ -158,6 +159,7 @@ export default function AdminRevenue() {
                   <div className="admin-row-main">
                     <span>
                       {p.itemTitle} <span className={`type-pill type-pill--${p.itemType}`}>{p.itemType === "internship" ? "Internship" : "Course"}</span>
+                      {p.tier && <> <span className="plan-pill">{tierLabel(p.tier)}</span></>}
                     </span>
                   </div>
                   <div className="admin-row-actions">

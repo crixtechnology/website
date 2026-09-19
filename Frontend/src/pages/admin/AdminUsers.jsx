@@ -7,6 +7,7 @@ import {
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
+import { tierLabel } from "../../utils/tiers.js";
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString("en-IN") : "—";
@@ -211,7 +212,7 @@ export default function AdminUsers() {
                       {detail.enrollments.map((en) => (
                         <div className="admin-row" key={en._id}>
                           <div className="admin-row-main">
-                            <b>{en.course?.title}</b>
+                            <b>{en.course?.title}</b>{en.tier && <> <span className="plan-pill">{tierLabel(en.tier)}</span></>}
                             <span className="admin-row-meta">
                               Since {fmtDate(en.startDate)} ·{" "}
                               {en.endDate ? (

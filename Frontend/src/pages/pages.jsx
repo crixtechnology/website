@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
+  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, legal,
@@ -11,6 +11,22 @@ import { submitContact, getCourses, getCourse, getServices } from "../services/a
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
 import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
+import { offeredTiers, isOpenForBuy, TIER_ORDER } from "../utils/tiers.js";
+
+// Home has no login/BuyModal plumbing of its own, so a purchase started there
+// (from a card or its "See more" popup) hands off to the item's detail page,
+// where the real purchase flow lives. ?buy= opens BuyModal on arrival, and
+// ?tier= carries the plan the visitor already clicked.
+const buyOnDetailPage = (navigate) => (item, tier) => {
+  const plan = tier ? `&tier=${encodeURIComponent(tier)}` : "";
+  navigate(`/programs/${item.slug}?buy=${encodeURIComponent(item.slug)}${plan}`);
+};
+
+// The ?tier= a purchase link carries, if it names a real plan.
+const tierFromParams = (params) => {
+  const tier = params.get("tier");
+  return TIER_ORDER.includes(tier) ? tier : null;
+};
 
 /* ================= HOME ================= */
 export function Home() {
@@ -100,7 +116,7 @@ export function Home() {
                 // below) — it opens BuyModal there immediately on arrival
                 // instead of landing the visitor on the page and making
                 // them find and click "Buy now" a second time.
-                onBuy={(item) => navigate(`/programs/${item.slug}?buy=${encodeURIComponent(item.slug)}`)} />
+                onBuy={buyOnDetailPage(navigate)} />
             ))}
           </div>
           <div className="hero-ctas">
@@ -110,7 +126,7 @@ export function Home() {
       </section>
       <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
       <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} onServiceInquire={setServiceInquiryItem}
-        onBuy={(item) => navigate(`/programs/${item.slug}?buy=${encodeURIComponent(item.slug)}`)} />
+        onBuy={buyOnDetailPage(navigate)} />
       <ServiceInquiryModal item={serviceInquiryItem} onClose={() => setServiceInquiryItem(null)} />
 
       <section className="section" style={{ paddingTop: 0, paddingBottom: 20 }}>
@@ -157,6 +173,7 @@ export function Programs() {
   const [liveInternships, setLiveInternships] = useState(internships);
   const [liveCourses, setLiveCourses] = useState(courses);
   const [buyItem, setBuyItem] = useState(null);
+  const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on, if one was already clicked
   const [inquire, setInquire] = useState(null); // { item, kind } | null
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
@@ -191,18 +208,23 @@ export function Programs() {
     const match = liveCourses.find((c) => c.slug === slug) || liveInternships.find((c) => c.slug === slug);
     if (match) {
       setBuyItem(match);
+      setBuyTier(tierFromParams(params));
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
+      nextParams.delete("tier");
       setParams(nextParams, { replace: true });
     }
   }, [params, liveCourses, liveInternships, setParams]);
 
   // Buying requires an account — browsing/prices stay open to everyone.
   // Not logged in: pop the login/signup modal, then open the buy modal the
-  // moment it succeeds, right where the user already was.
-  const handleBuy = (item) => {
-    if (!isLoggedIn) { openAuthModal("login", () => setBuyItem(item)); return; }
-    setBuyItem(item);
+  // moment it succeeds, right where the user already was. `tier` is the plan
+  // already clicked (from a "Choose Pro" button), or undefined when the
+  // buyer will pick one inside the modal.
+  const handleBuy = (item, tier) => {
+    const open = () => { setBuyItem(item); setBuyTier(tier || null); };
+    if (!isLoggedIn) { openAuthModal("login", open); return; }
+    open();
   };
 
   return (
@@ -242,7 +264,7 @@ export function Programs() {
           </div>
         </div>
       </section>
-      <BuyModal item={buyItem} user={user} onClose={() => setBuyItem(null)} />
+      <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
       <InquiryModal item={inquire?.item} kind={inquire?.kind} onClose={() => setInquire(null)} />
       <DetailModal data={detailData} onClose={() => setDetailData(null)} onBuy={handleBuy}
         onInquire={(item) => setInquire({ item, kind: detailData?.kind })} />
@@ -287,12 +309,14 @@ export function CourseDetail() {
   const [params, setParams] = useSearchParams();
   const [course, setCourse] = useState(undefined); // undefined = loading, null = not found
   const [buyItem, setBuyItem] = useState(null);
+  const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on
   const [inquireOpen, setInquireOpen] = useState(false);
   const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
 
-  const handleBuy = () => {
-    if (!isLoggedIn) { openAuthModal("login", () => setBuyItem(course)); return; }
-    setBuyItem(course);
+  const handleBuy = (tier) => {
+    const open = () => { setBuyItem(course); setBuyTier(tier || null); };
+    if (!isLoggedIn) { openAuthModal("login", open); return; }
+    open();
   };
 
   usePageMeta({
@@ -311,8 +335,10 @@ export function CourseDetail() {
   useEffect(() => {
     if (course && params.get("buy")) {
       setBuyItem(course);
+      setBuyTier(tierFromParams(params));
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
+      nextParams.delete("tier");
       setParams(nextParams, { replace: true });
     }
   }, [course, params, setParams]);
@@ -338,15 +364,14 @@ export function CourseDetail() {
     );
   }
 
-  const hasPrice = course.price != null;
-  const discounted = hasPrice ? Math.round(course.price * (1 - (course.discountPercent || 0) / 100)) : null;
+  const plans = offeredTiers(course);
   const closed = course.status === "closed";
-  const openForBuy = hasPrice && !closed;
+  const openForBuy = isOpenForBuy(course);
 
   return (
     <>
       <section className="section" style={{ paddingTop: 140 }}>
-        <div className="wrap" style={{ maxWidth: 720 }}>
+        <div className="wrap" style={{ maxWidth: openForBuy && plans.length > 1 ? 940 : 720 }}>
           <Reveal as={Link} variant="reveal" to={course.type ? `/programs#${course.type}s` : "/programs"} className="back-link">← All programs</Reveal>
           <Reveal variant="reveal" className={course.type ? `card-type-${course.type}` : undefined}>
             <div className="card-top" style={{ marginTop: 24 }}>
@@ -381,31 +406,28 @@ export function CourseDetail() {
               {(course.points || []).map((p) => <li key={p}>{p}</li>)}
             </ul>
 
-            {openForBuy && (
-              <div className="price-row" style={{ marginTop: 30 }}>
-                {course.discountPercent > 0 && <span className="price-old">₹{course.price.toLocaleString("en-IN")}</span>}
-                <span className="price-now">₹{discounted.toLocaleString("en-IN")}</span>
-                {course.discountPercent > 0 && <span className="price-off">{course.discountPercent}% off</span>}
+            {openForBuy ? (
+              <div className="plans-block">
+                <h4 className="plans-heading">{plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
+                <PlanCards plans={plans} onChoose={handleBuy} />
+              </div>
+            ) : (
+              <div style={{ maxWidth: 280, marginTop: 24 }}>
+                {course.type === "internship" ? (
+                  <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to apply for this internship — no account needed">
+                    Request to apply
+                  </button>
+                ) : (
+                  <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to enroll in this course — no account needed">
+                    Request to enroll
+                  </button>
+                )}
               </div>
             )}
-
-            <div style={{ maxWidth: 280, marginTop: 24 }}>
-              {openForBuy ? (
-                <button className="btn btn-solid buy-btn" onClick={handleBuy}>Buy now</button>
-              ) : course.type === "internship" ? (
-                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to apply for this internship — no account needed">
-                  Request to apply
-                </button>
-              ) : (
-                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to enroll in this course — no account needed">
-                  Request to enroll
-                </button>
-              )}
-            </div>
           </Reveal>
         </div>
       </section>
-      <BuyModal item={buyItem} user={user} onClose={() => setBuyItem(null)} />
+      <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
       <InquiryModal item={inquireOpen ? course : null} kind={course.type} onClose={() => setInquireOpen(false)} />
     </>
   );

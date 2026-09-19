@@ -11,6 +11,15 @@ jest.mock("../src/utils/receiptPdf", () => ({
 }));
 const { buildReceiptPdfBuffer } = require("../src/utils/receiptPdf");
 
+// No live Razorpay round-trip in tests — the order endpoint only needs an id
+// back. The mock records the amount it was asked to charge so tests can
+// assert on the price the server picked.
+jest.mock("../src/utils/razorpay", () => ({
+  isLiveBlocked: false,
+  razorpay: { orders: { create: jest.fn(async () => ({ id: "order_mock_1", currency: "INR" })) } },
+}));
+const { razorpay } = require("../src/utils/razorpay");
+
 let app, prisma, attachReceipt;
 let adminToken;
 
@@ -33,7 +42,7 @@ const authed = (req, token) => req.set("Authorization", `Bearer ${token}`);
 // actually encounter.
 async function createPricedCourse(overrides = {}) {
   const create = await authed(request(app).post("/api/admin/courses"), adminToken).send({
-    type: "course", title: `Course ${Date.now()}-${Math.random()}`, price: 5000, ...overrides,
+    type: "course", title: `Course ${Date.now()}-${Math.random()}`, tiers: [{ tier: "basic", price: 5000 }], ...overrides,
   });
   const open = await authed(request(app).put(`/api/admin/courses/${create.body.course._id}`), adminToken).send({ status: "open" });
   return open.body.course;
@@ -50,7 +59,7 @@ async function createStudent(email) {
 // both fixed gaps where the frontend gated the button but nothing stopped
 // a direct API call from bypassing it.
 describe("POST /api/payments/create-order — server-side guards", () => {
-  it("rejects a course with no price instead of silently computing a ₹0 order", async () => {
+  it("rejects a course with no plans instead of silently computing a ₹0 order", async () => {
     // The admin API itself refuses to ever leave a course open with no
     // price (that's the courses.js invariant tested separately in
     // courses.test.js) — so the only realistic way this state exists is
@@ -59,14 +68,14 @@ describe("POST /api/payments/create-order — server-side guards", () => {
     // (see Backend/src/scripts/seedPrograms.js's own history). Simulating
     // that directly here is what actually exercises this guard, since
     // going through the admin API can't reach it.
-    const course = await prisma.course.create({ data: { type: "internship", title: `Unpriced ${Date.now()}`, slug: `unpriced-${Date.now()}`, desc: "", price: null, status: "open" } });
+    const course = await prisma.course.create({ data: { type: "internship", title: `Unpriced ${Date.now()}`, slug: `unpriced-${Date.now()}`, desc: "", status: "open" } });
     const { token } = await createStudent("unpriced-buyer@example.com");
     const appRes = await authed(request(app).post("/api/applications"), token).send({
       type: "internship", refTitle: course.title, courseSlug: course.slug,
       name: "Student", email: "unpriced-buyer@example.com", phone: "9876500000",
     });
     const order = await request(app).post("/api/payments/create-order").send({
-      applicationId: appRes.body.application._id, courseSlug: course.slug,
+      applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
     });
     expect(order.status).toBe(400);
     expect(order.body.error).toMatch(/not available/i);
@@ -86,10 +95,102 @@ describe("POST /api/payments/create-order — server-side guards", () => {
       name: "Student", email: "repeat-buyer@example.com", phone: "9876500000",
     });
     const order = await request(app).post("/api/payments/create-order").send({
-      applicationId: appRes.body.application._id, courseSlug: course.slug,
+      applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
     });
     expect(order.status).toBe(400);
     expect(order.body.error).toMatch(/already have access/i);
+  });
+});
+
+// Basic / Plus / Pro: the buyer picks a plan and the server charges THAT
+// plan's price, read from the database — never an amount the client sent.
+describe("POST /api/payments/create-order — plans", () => {
+  let course, applicationId;
+
+  beforeAll(async () => {
+    course = await createPricedCourse({
+      tiers: [
+        { tier: "basic", price: 1000 },
+        { tier: "plus", price: 2000, discountPercent: 25 },
+        { tier: "pro", price: 3000 },
+      ],
+    });
+    const { token } = await createStudent("plans-buyer@example.com");
+    const appRes = await authed(request(app).post("/api/applications"), token).send({
+      type: "course", refTitle: course.title, courseSlug: course.slug, tier: "pro",
+      name: "Student", email: "plans-buyer@example.com", phone: "9876500000",
+    });
+    applicationId = appRes.body.application._id;
+  });
+
+  beforeEach(() => razorpay.orders.create.mockClear());
+
+  it("charges the chosen plan's discounted price and records the plan on the payment and application", async () => {
+    const res = await request(app).post("/api/payments/create-order").send({ applicationId, courseSlug: course.slug, tier: "plus" });
+    expect(res.status).toBe(201);
+    expect(res.body.amount).toBe(150000); // ₹2000 less 25%, in paise
+    expect(razorpay.orders.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 150000 }));
+
+    const payment = await prisma.payment.findFirst({ where: { applicationId }, orderBy: { createdAt: "desc" } });
+    expect(payment.tier).toBe("plus");
+    expect(payment.orderSnapshotBasePrice).toBe(2000);
+    expect(payment.orderSnapshotDiscountPercent).toBe(25);
+    // create-order overrides the plan the application was created with ("pro").
+    const application = await prisma.application.findUnique({ where: { id: applicationId } });
+    expect(application.tier).toBe("plus");
+  });
+
+  it("requires a plan to be chosen", async () => {
+    const res = await request(app).post("/api/payments/create-order").send({ applicationId, courseSlug: course.slug });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/choose a plan/i);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a plan name that does not exist", async () => {
+    const res = await request(app).post("/api/payments/create-order").send({ applicationId, courseSlug: course.slug, tier: "gold" });
+    expect(res.status).toBe(400);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a plan this course does not offer", async () => {
+    const twoPlans = await createPricedCourse({ tiers: [{ tier: "basic", price: 1000 }, { tier: "pro", price: 3000 }] });
+    const res = await request(app).post("/api/payments/create-order").send({ applicationId, courseSlug: twoPlans.slug, tier: "plus" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/isn't available/i);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+  });
+});
+
+// The plan bought is what the enrollment and receipt then show.
+describe("granting access records the purchased plan", () => {
+  it("stamps the plan on the enrollment and on the receipt", async () => {
+    const crypto = require("crypto");
+    const course = await createPricedCourse({ tiers: [{ tier: "basic", price: 1000 }, { tier: "pro", price: 3000 }] });
+    const { user, token } = await createStudent("grant-plan@example.com");
+    const application = await prisma.application.create({
+      data: { type: "course", refTitle: course.title, name: "Grant Plan", email: "grant-plan@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "pro" },
+    });
+    const payment = await prisma.payment.create({
+      data: { razorpayOrderId: `order_grant_${Date.now()}`, amount: 300000, status: "created", tier: "pro", applicationId: application.id, orderSnapshotBasePrice: 3000, orderSnapshotDiscountPercent: 0 },
+    });
+    const paymentId = "pay_grant_1";
+    const signature = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "").update(`${payment.razorpayOrderId}|${paymentId}`).digest("hex");
+
+    buildReceiptPdfBuffer.mockClear();
+    const verify = await request(app).post("/api/payments/verify").send({
+      razorpay_order_id: payment.razorpayOrderId, razorpay_payment_id: paymentId, razorpay_signature: signature,
+    });
+    expect(verify.status).toBe(200);
+    expect(verify.body.enrolled).toBe(true);
+
+    const enrollment = await prisma.enrollment.findFirst({ where: { userId: user.id, courseId: course._id } });
+    expect(enrollment.tier).toBe("pro");
+    const mine = await authed(request(app).get("/api/me/enrollments"), token);
+    expect(mine.body.enrollments[0].tier).toBe("pro");
+    const receipts = await authed(request(app).get("/api/me/receipts"), token);
+    expect(receipts.body.receipts[0]).toMatchObject({ tier: "pro", totalPaid: 3000 });
+    expect(buildReceiptPdfBuffer).toHaveBeenLastCalledWith(expect.objectContaining({ tier: "pro" }));
   });
 });
 

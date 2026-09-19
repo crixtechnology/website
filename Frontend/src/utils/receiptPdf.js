@@ -9,6 +9,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { site } from "../data/content.js";
 import { amountToWords } from "./numberToWords.js";
+import { tierLabel } from "./tiers.js";
 import loadImageDataUrl from "./loadImageDataUrl.js";
 
 const PAGE_W = 210;
@@ -60,6 +61,7 @@ export async function buildReceiptPdf(receipt) {
     buyerPhone,
     itemType,
     itemTitle,
+    tier,
     basePrice,
     discountPercent,
     discountAmount,
@@ -173,11 +175,12 @@ export async function buildReceiptPdf(receipt) {
 
   // ── Item table (single line item: the course/internship purchased) ────
   const kindLabel = itemType === "internship" ? "Internship" : "Course";
+  const planLabel = tierLabel(tier);
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN },
     head: [["#", "Description", "Qty", "Rate", "Amount"]],
-    body: [["1", `${itemTitle} (${kindLabel})`, "1", fmtMoney(basePrice), fmtMoney(basePrice)]],
+    body: [["1", `${itemTitle} (${kindLabel}${planLabel ? `, ${planLabel} plan` : ""})`, "1", fmtMoney(basePrice), fmtMoney(basePrice)]],
     theme: "plain",
     styles: { font: "helvetica", fontSize: 9.5, cellPadding: { top: 3, bottom: 3, left: 3, right: 3 }, textColor: hexToRgb(BRAND.text), lineColor: hexToRgb(BRAND.border), lineWidth: 0.1 },
     headStyles: { fillColor: hexToRgb(BRAND.navy), textColor: [255, 255, 255], fontStyle: "bold", halign: "left" },

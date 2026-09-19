@@ -7,6 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 const { jsPDF } = require("jspdf");
+const { tierLabel } = require("./tiers");
 // v5's CJS export shape mirrors its ESM default export — a standalone
 // autoTable(doc, options) function, not the older doc.autoTable() plugin
 // style. Same call shape as Frontend/src/utils/receiptPdf.js's `import
@@ -105,7 +106,7 @@ function loadLogoBase64() {
 function buildReceiptPdfBuffer(receipt) {
   const {
     receiptNumber, issuedAt, buyerName, buyerEmail, buyerPhone,
-    itemType, itemTitle, basePrice, discountPercent, discountAmount,
+    itemType, itemTitle, tier, basePrice, discountPercent, discountAmount,
     totalPaid, paymentMode, razorpay_payment_id,
   } = receipt;
 
@@ -209,11 +210,12 @@ function buildReceiptPdfBuffer(receipt) {
   y += 12;
 
   const kindLabel = itemType === "internship" ? "Internship" : "Course";
+  const planLabel = tierLabel(tier);
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN },
     head: [["#", "Description", "Qty", "Rate", "Amount"]],
-    body: [["1", `${itemTitle} (${kindLabel})`, "1", fmtMoney(basePrice), fmtMoney(basePrice)]],
+    body: [["1", `${itemTitle} (${kindLabel}${planLabel ? `, ${planLabel} plan` : ""})`, "1", fmtMoney(basePrice), fmtMoney(basePrice)]],
     theme: "plain",
     styles: { font: "helvetica", fontSize: 9.5, cellPadding: { top: 3, bottom: 3, left: 3, right: 3 }, textColor: hexToRgb(BRAND.text), lineColor: hexToRgb(BRAND.border), lineWidth: 0.1 },
     headStyles: { fillColor: hexToRgb(BRAND.navy), textColor: [255, 255, 255], fontStyle: "bold", halign: "left" },

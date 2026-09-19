@@ -3,6 +3,7 @@ const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
 const { serializeEnrollment } = require("../utils/enrollmentAccess");
+const { isTier } = require("../utils/tiers");
 
 const router = express.Router();
 
@@ -69,7 +70,7 @@ router.get("/admin/enrollments", requireAdmin, async (req, res, next) => {
 // just updates their dates instead of erroring on the unique index.
 router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
   try {
-    const { userId, email, courseId, startDate, endDate } = req.body || {};
+    const { userId, email, courseId, startDate, endDate, tier } = req.body || {};
     if (!courseId) {
       return res.status(400).json({ ok: false, error: "A valid courseId is required" });
     }
@@ -90,9 +91,16 @@ router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
     const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
 
+    if (tier !== undefined && tier !== null && tier !== "" && !isTier(tier)) {
+      return res.status(400).json({ ok: false, error: "tier must be basic, plus or pro" });
+    }
+
     const dateFields = {};
     if (startDate) dateFields.startDate = new Date(startDate);
     if (endDate !== undefined) dateFields.endDate = endDate ? new Date(endDate) : null;
+    // Which plan this grant counts as — optional, an admin-granted access with
+    // no plan just stays untiered.
+    if (tier !== undefined) dateFields.tier = isTier(tier) ? tier : null;
 
     const enrollment = await prisma.enrollment.upsert({
       where: { userId_courseId: { userId: user.id, courseId: course.id } },

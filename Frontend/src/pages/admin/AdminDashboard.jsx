@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
 import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetRevenueSummary } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { offeredTiers } from "../../utils/tiers.js";
 
 export default function AdminDashboard() {
   usePageMeta({ title: "Admin Dashboard | Crix Technology" });
@@ -30,18 +31,18 @@ export default function AdminDashboard() {
       const applications = applicationsRes.ok ? applicationsRes.applications || [] : [];
       setStats({
         courses: courses.length,
-        // "Open" only counts as actually buyable when it also has a price —
-        // a course can carry a leftover status:"open" from before it had a
-        // price (e.g. bulk-imported data) without being purchasable; don't
+        // "Open" only counts as actually buyable when it also has a priced
+        // plan — a course can carry a leftover status:"open" from before it
+        // had one (e.g. bulk-imported data) without being purchasable; don't
         // let the dashboard claim it's live when "Buy now" wouldn't show.
-        openCourses: courses.filter((c) => c.status === "open" && c.price != null).length,
+        openCourses: courses.filter((c) => c.status === "open" && offeredTiers(c).length > 0).length,
         internships: internships.length,
         // Same "open" = "actually buyable" rule as courses now that an
-        // internship may optionally carry a real price too (see
-        // Backend/src/routes/courses.js) — an apply-only (unpriced)
+        // internship may optionally carry priced plans too (see
+        // Backend/src/routes/courses.js) — an apply-only (no plans)
         // internship has no meaningful open/closed toggle in the admin
         // list, so it shouldn't count as "open" here either.
-        openInternships: internships.filter((c) => c.status === "open" && c.price != null).length,
+        openInternships: internships.filter((c) => c.status === "open" && offeredTiers(c).length > 0).length,
         students: students.size,
         enrollments: enrollments.length,
         users: users.length,

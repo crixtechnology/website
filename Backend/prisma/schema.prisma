@@ -40,6 +40,12 @@ model User {
   @@map("users")
 }
 
+enum Tier {
+  basic
+  plus
+  pro
+}
+
 enum CourseType {
   course
   internship
@@ -60,13 +66,12 @@ model Course {
   // ""` on create (routes/courses.js), so no DB-level default is needed.
   desc            String       @db.Text
   points          Json         @default("[]")
-  price           Float?
-  discountPercent Int          @default(0)
   durationDays    Int?
   status          CourseStatus @default(open)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
+  tiers        CourseTier[]
   lectures     Lecture[]
   videos       Video[]
   enrollments  Enrollment[]
@@ -74,6 +79,27 @@ model Course {
   payments     Payment[]
 
   @@map("courses")
+}
+
+// One row per plan (basic / plus / pro) a course or internship offers. A tier
+// row existing IS the tier being offered — an item with zero rows is
+// apply-only / not purchasable. Replaces the old single Course.price and
+// Course.discountPercent columns (migration 20260919_course_tiers copies each
+// old price into a Basic row). `features` is an admin-written list of what
+// that plan includes; it is descriptive only — course access is not gated by tier.
+model CourseTier {
+  id              String   @id @default(cuid())
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tier            Tier
+  price           Float
+  discountPercent Int      @default(0)
+  features        Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([courseId, tier])
+  @@map("course_tiers")
 }
 
 model Lecture {
@@ -120,6 +146,7 @@ model Enrollment {
   course    Course           @relation(fields: [courseId], references: [id])
   paymentId String?
   payment   Payment?         @relation(fields: [paymentId], references: [id])
+  tier      Tier?
   startDate DateTime         @default(now())
   endDate   DateTime?
   status    EnrollmentStatus @default(active)
@@ -144,6 +171,7 @@ model Application {
   phone     String
   college   String          @default("")
   track     String          @default("")
+  tier      Tier?
   paymentId String?
   payment   Payment?        @relation("ApplicationCurrentPayment", fields: [paymentId], references: [id])
   userId    String?
@@ -172,6 +200,7 @@ model Payment {
   razorpaySignature             String?
   amount                        Int
   currency                      String        @default("INR")
+  tier                          Tier?
   status                        PaymentStatus @default(created)
   applicationId                 String?
   application                   Application?  @relation("PaymentApplication", fields: [applicationId], references: [id])

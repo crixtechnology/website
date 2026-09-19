@@ -9,12 +9,12 @@
 // Safe to re-run — skips any title whose slug already exists.
 //   node src/scripts/seedPrograms.js
 //
-// Both types are seeded with price: null (no "Buy now" until an admin sets
-// a real price via the admin panel — matches current behavior exactly,
-// since the static fallback never had prices either). Internships aren't
-// required to stay unpriced — an admin can set a real price on one
-// afterward, same two-step (set price, then open) flow as a course — this
-// script's starter data just doesn't presume to do that for you.
+// Both types are seeded with no plans (no "Buy now" until an admin sets a
+// price on a Basic/Plus/Pro plan via the admin panel — matches current
+// behavior exactly, since the static fallback never had prices either).
+// Internships aren't required to stay unpriced — an admin can add plans to
+// one afterward, same two-step (set prices, then open) flow as a course —
+// this script's starter data just doesn't presume to do that for you.
 //
 // DRIFT WARNING: this script only ever INSERTS — "safe to re-run" means it
 // skips a title whose slug already exists, it never updates one. Once a
@@ -109,7 +109,7 @@ async function seed(list, type) {
     const existing = await prisma.course.findUnique({ where: { slug } });
     if (existing) { skipped++; continue; }
     await prisma.course.create({
-      data: { type, title: entry.title, slug, tag: entry.tag, desc: entry.desc, points: entry.points, price: null, status: "open" },
+      data: { type, title: entry.title, slug, tag: entry.tag, desc: entry.desc, points: entry.points, status: "open" },
     });
     created++;
   }
