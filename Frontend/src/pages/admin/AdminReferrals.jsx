@@ -90,7 +90,7 @@ export default function AdminReferrals() {
                 <input type="checkbox" checked={settings.enabled} onChange={setField("enabled")} />
                 <span>Referral programme is on (codes are accepted and rewards are earned)</span>
               </label>
-              <div className="admin-form-grid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
+              <div className="admin-form-grid admin-form-grid--2" style={{ marginTop: 14 }}>
                 <div className="field"><label htmlFor="ref-discount">Friend's discount (% off first purchase)</label>
                   <input id="ref-discount" type="number" min="0" max="90" step="1" value={settings.refereeDiscountPercent} onChange={setField("refereeDiscountPercent")} /></div>
                 <div className="field"><label htmlFor="ref-credit">Referrer's credit (₹ per friend who pays)</label>
