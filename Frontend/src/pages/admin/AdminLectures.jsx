@@ -4,6 +4,7 @@ import {
   adminGetCourses, adminGetLectures, adminCreateLecture, adminUpdateLecture, adminDeleteLecture,
 } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { isValidHttpUrl } from "../../utils/validators.js";
 
 const EMPTY_FORM = { title: "", scheduledAt: "", scheduledEndAt: "", link: "", notes: "" };
 
@@ -76,6 +77,7 @@ export default function AdminLectures() {
     // Enter twice quickly (or a slow network) fires two concurrent saves.
     if (saving) return;
     if (!form.title.trim() || !form.link.trim()) { setError("Title and Google Meet link are required."); return; }
+    if (!isValidHttpUrl(form.link.trim())) { setError("Link must be a valid http(s) URL."); return; }
     if (!form.scheduledAt || !form.scheduledEndAt) { setError("Start and end time are both required."); return; }
     if (new Date(form.scheduledEndAt) <= new Date(form.scheduledAt)) { setError("End time must be after the start time."); return; }
     setSaving(true);
@@ -104,7 +106,7 @@ export default function AdminLectures() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h2 style={{ margin: "14px 0 0" }}>Live class schedule</h2>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Live class schedule</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
               Recorded lectures are managed under <Link to="/admin/videos">Course videos</Link>.
             </p>

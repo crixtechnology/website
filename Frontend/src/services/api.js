@@ -153,7 +153,7 @@ export async function getCourses(type) {
 export async function getCourse(slug) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
-    const res = await fetch(`${API}/courses/${slug}`);
+    const res = await fetch(`${API}/courses/${encodeURIComponent(slug)}`);
     return await res.json();
   } catch (e) {
     return { ok: false, error: "Could not load this course." };

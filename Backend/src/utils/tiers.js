@@ -79,10 +79,12 @@ function parseTiers(input) {
   return { ok: true, tiers };
 }
 
-// What one plan actually charges, in rupees — the same discount maths the
-// order (payments.js) and every price shown on the site use.
+// What one plan actually charges, in WHOLE rupees — rounded the same way the
+// site rounds every price it shows (Frontend/src/utils/tiers.js planPrice), so
+// the amount a buyer is charged is exactly the amount they were shown. Left
+// unrounded, a 20%-off ₹5,999 plan showed ₹4,799 but charged ₹4,799.20.
 function tierTotal(tier) {
-  return tier.price * (1 - (tier.discountPercent || 0) / 100);
+  return Math.round(tier.price * (1 - (tier.discountPercent || 0) / 100));
 }
 
 module.exports = { TIERS, WITH_TIERS, isTier, tierRank, tierLabel, parseTiers, tierTotal };

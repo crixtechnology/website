@@ -56,6 +56,72 @@ export function useBodyScrollLock(active) {
   }, [active]);
 }
 
+// Popups can stack (the login popup opens over the buy popup), and Escape
+// should close only the one on top — not every popup that happens to be open.
+// Each open popup registers on this stack; only the last one answers Escape.
+const modalStack = [];
+export function useModalEscape(active, onClose) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    if (!active) return;
+    const entry = {};
+    modalStack.push(entry);
+    const onKey = (e) => {
+      if (e.key === "Escape" && modalStack[modalStack.length - 1] === entry) closeRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      const at = modalStack.indexOf(entry);
+      if (at >= 0) modalStack.splice(at, 1);
+    };
+  }, [active]);
+}
+
+// Keyboard/screen-reader focus for popups: moves focus onto the dialog when it
+// opens (so Tab starts inside it, not on the page behind), keeps Tab cycling
+// within it, and returns focus to whatever opened it when it closes. Call it
+// next to useBodyScrollLock with the same "is open" flag.
+export function useModalFocus(active) {
+  useEffect(() => {
+    if (!active) return;
+    const opener = document.activeElement;
+    const dialog = () => {
+      const boxes = document.querySelectorAll(".modal-box");
+      return boxes.length ? boxes[boxes.length - 1] : null;
+    };
+    // Next tick, so the dialog has rendered. Focus the dialog itself rather than
+    // its first field — that would pop the on-screen keyboard open on phones.
+    const t = setTimeout(() => {
+      const box = dialog();
+      if (box && !box.contains(document.activeElement)) {
+        box.setAttribute("tabindex", "-1");
+        box.focus({ preventScroll: true });
+      }
+    }, 0);
+    const onKey = (e) => {
+      if (e.key !== "Tab") return;
+      const box = dialog();
+      if (!box) return;
+      const focusable = [...box.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled])')]
+        .filter((el) => el.getClientRects().length > 0);
+      if (!focusable.length) { e.preventDefault(); return; }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const at = document.activeElement;
+      if (e.shiftKey && (at === first || at === box)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("keydown", onKey);
+      if (opener && typeof opener.focus === "function" && document.contains(opener)) opener.focus({ preventScroll: true });
+    };
+  }, [active]);
+}
+
 /* ---------- Reveal (scroll-in animation wrapper) ---------- */
 // Content that's already in the viewport the moment this mounts (almost
 // always true for above-the-fold sections right after a page navigation —
@@ -343,6 +409,7 @@ const loadRazorpayScript = () =>
    opened without one. */
 export function BuyModal({ item, user, initialTier, onClose }) {
   const navigate = useNavigate();
+  const { openAuthModal } = useContext(UserContext);
   const location = useLocation();
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   // status.kind: "" (hidden) | "info" (progress) | "error"
@@ -353,6 +420,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
   // first plan on offer is used — see `plan` below.
   const [tier, setTier] = useState(null);
   useBodyScrollLock(!!item);
+  useModalFocus(!!item);
 
   // This one BuyModal instance stays mounted across different items (the
   // parent just swaps its `item` prop) — closing it mid-flight and opening
@@ -378,19 +446,12 @@ export function BuyModal({ item, user, initialTier, onClose }) {
     }
   }, [item, user]);
 
-  useEffect(() => {
-    if (!item) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [item, onClose]);
+  useModalEscape(!!item, onClose);
 
   if (!item) return null;
 
   const plans = offeredTiers(item);
   const plan = plans.find((p) => p.tier === tier) || plans.find((p) => p.tier === initialTier) || plans[0];
-
-  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); clearStatus(); };
 
   // A logged-in account whose profile is missing name / email / phone is
   // sent to /profile to fill them in (and comes straight back to this
@@ -509,7 +570,23 @@ export function BuyModal({ item, user, initialTier, onClose }) {
         <span className="eyebrow">Enroll</span>
         <h3 id="buy-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
 
-        {needsProfile ? (
+        {plans.length === 0 ? (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
+              This isn't available to buy online right now. Close this and use "Request to enroll" instead.
+            </p>
+            <button className="btn btn-ghost" onClick={onClose} style={{ width: "100%" }}>Close</button>
+          </>
+        ) : !user ? (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
+              Log in or create an account to continue — your course is unlocked on your account as soon as you've paid.
+            </p>
+            <button className="btn btn-solid" onClick={() => openAuthModal("login")} style={{ width: "100%" }}>
+              Log in to continue
+            </button>
+          </>
+        ) : needsProfile ? (
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
               Purchasing as <b style={{ color: "var(--text)" }}>{user.name || user.email}</b>. We need a
@@ -521,15 +598,9 @@ export function BuyModal({ item, user, initialTier, onClose }) {
           </>
         ) : (
           <>
-            {user ? (
-              <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
-                Purchasing as <b style={{ color: "var(--text)" }}>{user.name}</b> ({user.email}).
-              </p>
-            ) : (
-              <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
-                Fill your details to continue to payment.
-              </p>
-            )}
+            <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
+              Purchasing as <b style={{ color: "var(--text)" }}>{user.name}</b> ({user.email}).
+            </p>
             <form onSubmit={onSubmit}>
               <fieldset className="plan-picker">
                 <legend>{plans.length > 1 ? "Choose your plan" : "Your plan"}</legend>
@@ -549,16 +620,6 @@ export function BuyModal({ item, user, initialTier, onClose }) {
                   </label>
                 ))}
               </fieldset>
-              {!user && (
-                <>
-                  <div className="field"><label htmlFor="buy-name">Full name</label>
-                    <input id="buy-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Your name" /></div>
-                  <div className="field"><label htmlFor="buy-email">Email</label>
-                    <input id="buy-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
-                  <div className="field"><label htmlFor="buy-phone">Phone</label>
-                    <input id="buy-phone" autoComplete="tel" inputMode="tel" value={form.phone} onChange={set("phone")} placeholder="98765 43210" /></div>
-                </>
-              )}
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Please wait..." : plan ? `Continue to payment · ${formatINR(planPrice(plan))}` : "Continue to payment"}
               </button>
@@ -589,6 +650,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
   // write into this one.
   const genRef = useRef(0);
   useBodyScrollLock(!!item);
+  useModalFocus(!!item);
 
   useEffect(() => {
     if (!item) return;
@@ -607,12 +669,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
     });
   }, [item]);
 
-  useEffect(() => {
-    if (!item) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [item, onClose]);
+  useModalEscape(!!item, onClose);
 
   if (!item) return null;
 
@@ -747,6 +804,7 @@ export function InquiryModal({ item, kind, onClose }) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   useBodyScrollLock(!!item);
+  useModalFocus(!!item);
 
   useEffect(() => {
     if (item) {
@@ -757,12 +815,7 @@ export function InquiryModal({ item, kind, onClose }) {
     }
   }, [item]);
 
-  useEffect(() => {
-    if (!item) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [item, onClose]);
+  useModalEscape(!!item, onClose);
 
   if (!item) return null;
 
@@ -869,13 +922,9 @@ export function InquiryModal({ item, kind, onClose }) {
 // null): the plan cards then offer "Upgrade to …" via onUpgrade(item, tier).
 export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire, ownedTier, onUpgrade }) {
   useBodyScrollLock(!!data);
+  useModalFocus(!!data);
 
-  useEffect(() => {
-    if (!data) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [data, onClose]);
+  useModalEscape(!!data, onClose);
 
   if (!data) return null;
   const { item, kind, isProgram } = data;
@@ -971,6 +1020,7 @@ export function ServiceInquiryModal({ item, onClose }) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   useBodyScrollLock(!!item);
+  useModalFocus(!!item);
 
   useEffect(() => {
     if (item) {
@@ -981,12 +1031,7 @@ export function ServiceInquiryModal({ item, onClose }) {
     }
   }, [item]);
 
-  useEffect(() => {
-    if (!item) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [item, onClose]);
+  useModalEscape(!!item, onClose);
 
   if (!item) return null;
 
@@ -1134,6 +1179,7 @@ export function AuthModal() {
   const [loading, setLoading] = useState(false);
   const googleBtnRef = useRef(null);
   useBodyScrollLock(!!authModal);
+  useModalFocus(!!authModal);
 
   useEffect(() => {
     if (authModal) {
@@ -1145,12 +1191,7 @@ export function AuthModal() {
     }
   }, [authModal]);
 
-  useEffect(() => {
-    if (!authModal) return;
-    const onKey = (e) => { if (e.key === "Escape") closeAuthModal(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [authModal, closeAuthModal]);
+  useModalEscape(!!authModal, closeAuthModal);
 
   // Switching between "Log in" / "Create an account" shouldn't carry a
   // stale error from the other form along with it.
@@ -1212,6 +1253,11 @@ export function AuthModal() {
       if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.password.trim()) {
         setStatus("Please fill in every field."); return;
       }
+      if (!isValidName(form.name)) { setStatus("Enter a valid name (letters only)."); return; }
+      const emailProblem = emailFormatError(form.email);
+      if (emailProblem) { setStatus(`Please add ${emailProblem}.`); return; }
+      const phoneDigits = form.phone.replace(/\D/g, "");
+      if (phoneDigits.length < 8 || phoneDigits.length > 15) { setStatus("Enter a valid phone number."); return; }
       if (form.password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
     }
     setLoading(true);
@@ -1533,7 +1579,24 @@ export function Footer() {
 export function Chrome() {
   const [loaded, setLoaded] = useState(false);
   const [showTop, setShowTop] = useState(false);
+  // Phones have no hover, so the "24×7 available" note would never be seen
+  // there: on touch screens it slides out once per visit, a few seconds in,
+  // then tucks itself away again.
+  const [waPeek, setWaPeek] = useState(false);
   const progressRef = useRef(null);
+
+  useEffect(() => {
+    let seen = false;
+    try { seen = !!sessionStorage.getItem("crix-wa-peek"); } catch (e) { /* storage blocked — just peek */ }
+    if (seen || REDUCED || !window.matchMedia("(hover: none)").matches) return;
+    let hide;
+    const show = setTimeout(() => {
+      setWaPeek(true);
+      try { sessionStorage.setItem("crix-wa-peek", "1"); } catch (e) { /* ignore */ }
+      hide = setTimeout(() => setWaPeek(false), 4500);
+    }, 4000);
+    return () => { clearTimeout(show); clearTimeout(hide); };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), REDUCED ? 0 : 550);
@@ -1554,8 +1617,13 @@ export function Chrome() {
         <div className="ld"><Logo /></div>
       </div>
       <div id="progress" ref={progressRef}></div>
-      <a id="wa" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
+      <a id="wa" className={waPeek ? "peek" : ""} href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer"
+        aria-label="Chat on WhatsApp — available 24×7">
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.6.9 5 2.3 7L4 29l7.3-2.2c1.9 1 3.6 1.5 5.7 1.5 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm6.6 16.9c-.3.8-1.6 1.5-2.3 1.6-.6.1-1.3.2-2.2-.1-.5-.2-1.1-.4-1.9-.7-3.4-1.5-5.6-4.9-5.8-5.1-.2-.2-1.4-1.8-1.4-3.5s.9-2.5 1.2-2.8c.3-.3.7-.4.9-.4h.7c.2 0 .5-.1.8.6.3.8 1 2.6 1.1 2.8.1.2.2.4 0 .7-.1.3-.2.4-.4.7-.2.2-.4.5-.6.7-.2.2-.4.4-.2.8s1 1.7 2.2 2.7c1.5 1.3 2.8 1.7 3.2 1.9.4.2.6.2.8-.1.2-.2.9-1.1 1.2-1.5.2-.4.5-.3.8-.2.3.1 2.1 1 2.4 1.2.4.2.6.3.7.4.1.3.1.9-.2 1.7z"/></svg>
+        <span className="wa-tip" aria-hidden="true">
+          <span className="wa-tip-badge"><svg viewBox="0 0 32 32"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.6.9 5 2.3 7L4 29l7.3-2.2c1.9 1 3.6 1.5 5.7 1.5 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm6.6 16.9c-.3.8-1.6 1.5-2.3 1.6-.6.1-1.3.2-2.2-.1-.5-.2-1.1-.4-1.9-.7-3.4-1.5-5.6-4.9-5.8-5.1-.2-.2-1.4-1.8-1.4-3.5s.9-2.5 1.2-2.8c.3-.3.7-.4.9-.4h.7c.2 0 .5-.1.8.6.3.8 1 2.6 1.1 2.8.1.2.2.4 0 .7-.1.3-.2.4-.4.7-.2.2-.4.5-.6.7-.2.2-.4.4-.2.8s1 1.7 2.2 2.7c1.5 1.3 2.8 1.7 3.2 1.9.4.2.6.2.8-.1.2-.2.9-1.1 1.2-1.5.2-.4.5-.3.8-.2.3.1 2.1 1 2.4 1.2.4.2.6.3.7.4.1.3.1.9-.2 1.7z"/></svg></span>
+          <span className="wa-tip-text"><b>24×7 available</b><small>Chat with us on WhatsApp</small></span>
+        </span>
       </a>
       <button id="toTop" className={showTop ? "show" : ""} aria-label="Back to top"
         onClick={() => window.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" })}>↑</button>
@@ -1581,11 +1649,12 @@ export function RotatingWord({ words }) {
   const [swap, setSwap] = useState(false);
   useEffect(() => {
     if (REDUCED) return;
+    let swapTimer;
     const t = setInterval(() => {
       setSwap(true);
-      setTimeout(() => { setI((v) => (v + 1) % words.length); setSwap(false); }, 360);
+      swapTimer = setTimeout(() => { setI((v) => (v + 1) % words.length); setSwap(false); }, 360);
     }, 3400);
-    return () => clearInterval(t);
+    return () => { clearInterval(t); clearTimeout(swapTimer); };
   }, [words]);
   return <span className={`rotator ${swap ? "swap" : ""}`}>{words[i]}</span>;
 }

@@ -75,7 +75,7 @@ export default function MyCourses() {
       <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 480 }}>
           <span className="eyebrow">My learning</span>
-          <h2 style={{ margin: "14px 0 16px" }}>Log in to see your courses</h2>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to see your courses</h1>
           <button className="btn btn-solid" onClick={() => openAuthModal("login")}>Log in</button>
         </div>
       </section>
@@ -88,7 +88,7 @@ export default function MyCourses() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">My learning</span>
-            <h2 style={{ margin: "14px 0 0" }}>Welcome, {user?.name}</h2>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Welcome, {user?.name}</h1>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <Link className="btn btn-ghost" to="/profile">Edit profile</Link>

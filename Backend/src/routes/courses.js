@@ -14,6 +14,15 @@ function slugify(title) {
     .replace(/(^-|-$)/g, "");
 }
 
+// Blank / null means "no fixed duration" (lifetime access); anything else must
+// be a positive whole number of days — a stray string would otherwise reach the
+// database and come back as a 500.
+function validDuration(value) {
+  if (value === undefined || value === null || value === "" || value === 0) return true;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 && n <= 36500;
+}
+
 function typeFilter(req) {
   const type = req.query.type;
   return type === "course" || type === "internship" ? { type } : {};
@@ -54,8 +63,11 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
   try {
     const { type, title, tag, desc, points, tiers, durationDays, status } = req.body || {};
     const entryType = type === "internship" ? "internship" : "course";
-    if (!title) {
+    if (!title || !String(title).trim()) {
       return res.status(400).json({ ok: false, error: "title is required" });
+    }
+    if (!validDuration(durationDays)) {
+      return res.status(400).json({ ok: false, error: "durationDays must be a positive whole number of days" });
     }
     const parsed = parseTiers(tiers === undefined ? [] : tiers);
     if (!parsed.ok) return res.status(400).json({ ok: false, error: parsed.error });
@@ -82,7 +94,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
           // apply, no online purchase) but MAY carry plans too — some slots
           // are sold, some are free/discounted promos decided case-by-case.
           tiers: { create: parsed.tiers },
-          durationDays: durationDays || null,
+          durationDays: durationDays ? Number(durationDays) : null,
           // Always starts closed, even with plans already set — saving a
           // price is not the same action as publishing it for sale. The admin
           // list's separate Open/Closed toggle is the actual trigger; opening
@@ -119,11 +131,19 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
     const effectiveType = type === "course" || type === "internship" ? type : existing.type;
 
     const update = { type: effectiveType };
-    if (title !== undefined) update.title = title;
+    if (title !== undefined) {
+      if (!String(title).trim()) return res.status(400).json({ ok: false, error: "title can't be empty" });
+      update.title = title;
+    }
     if (tag !== undefined) update.tag = tag;
     if (desc !== undefined) update.desc = desc;
     if (points !== undefined) update.points = Array.isArray(points) ? points : [];
-    if (durationDays !== undefined) update.durationDays = durationDays || null;
+    if (durationDays !== undefined) {
+      if (!validDuration(durationDays)) {
+        return res.status(400).json({ ok: false, error: "durationDays must be a positive whole number of days" });
+      }
+      update.durationDays = durationDays ? Number(durationDays) : null;
+    }
     if (status !== undefined) update.status = status === "closed" ? "closed" : "open";
 
     // `tiers`, when sent, is the COMPLETE set of plans this item offers: any
@@ -197,8 +217,29 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
 
 router.delete("/admin/courses/:id", requireAdmin, async (req, res, next) => {
   try {
-    const course = await prisma.course.delete({ where: { id: req.params.id } }).catch(() => null);
+    const course = await prisma.course.findUnique({ where: { id: req.params.id } });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+
+    // A purchase is a record of what a student paid for — never wiped as a
+    // side effect of tidying up the catalogue. (This used to fall through a
+    // blanket .catch() and answer "Course not found" for any course that
+    // still had students, lectures or videos, which was simply wrong.)
+    const enrolled = await prisma.enrollment.count({ where: { courseId: course.id } });
+    if (enrolled > 0) {
+      return res.status(409).json({
+        ok: false,
+        error: `${enrolled} student${enrolled === 1 ? " is" : "s are"} enrolled in this. Remove their subscriptions first (Students page), or just set it to Closed.`,
+      });
+    }
+
+    // Schedule and video rows only exist for this course, so they go with it;
+    // its plans cascade, and past applications/payments keep their history
+    // (the link to the course is simply cleared).
+    await prisma.$transaction([
+      prisma.lecture.deleteMany({ where: { courseId: course.id } }),
+      prisma.video.deleteMany({ where: { courseId: course.id } }),
+      prisma.course.delete({ where: { id: course.id } }),
+    ]);
     res.json({ ok: true });
   } catch (e) {
     next(e);

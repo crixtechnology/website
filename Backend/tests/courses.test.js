@@ -167,3 +167,53 @@ describe("course plans (basic / plus / pro)", () => {
     expect(await prisma.courseTier.count({ where: { courseId: id } })).toBe(0);
   });
 });
+
+describe("DELETE /admin/courses/:id", () => {
+  it("answers 404 only for a course that really doesn't exist", async () => {
+    const res = await authed(request(app).delete("/api/admin/courses/does-not-exist"));
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses to delete a course with enrolled students, and says why (was a misleading 404)", async () => {
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
+    const id = create.body.course._id;
+    const student = await prisma.user.create({ data: { name: "Enrolled", email: `enrolled-${Date.now()}@test.com`, passwordHash: "x" } });
+    await prisma.enrollment.create({ data: { userId: student.id, courseId: id } });
+    const res = await authed(request(app).delete(`/api/admin/courses/${id}`));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/enrolled/i);
+    expect(await prisma.course.count({ where: { id } })).toBe(1);
+  });
+
+  it("deletes a course together with its lectures and videos when nobody is enrolled", async () => {
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
+    const id = create.body.course._id;
+    await prisma.lecture.create({ data: { courseId: id, title: "L1", scheduledAt: new Date(), scheduledEndAt: new Date(Date.now() + 3600000), link: "https://meet.example.com/x" } });
+    await prisma.video.create({ data: { courseId: id, title: "V1", b2Key: `key-${Date.now()}`, dayNumber: 1 } });
+    const res = await authed(request(app).delete(`/api/admin/courses/${id}`));
+    expect(res.status).toBe(200);
+    expect(await prisma.course.count({ where: { id } })).toBe(0);
+    expect(await prisma.lecture.count({ where: { courseId: id } })).toBe(0);
+    expect(await prisma.video.count({ where: { courseId: id } })).toBe(0);
+  });
+});
+
+describe("course field validation", () => {
+  it("rejects a blank title and a junk duration instead of a 500", async () => {
+    const blank = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: "   ", tiers: [{ tier: "basic", price: 100 }] });
+    expect(blank.status).toBe(400);
+    const junk = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), durationDays: "abc", tiers: [{ tier: "basic", price: 100 }] });
+    expect(junk.status).toBe(400);
+    const ok = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), durationDays: "30", tiers: [{ tier: "basic", price: 100 }] });
+    expect(ok.status).toBe(201);
+    expect(ok.body.course.durationDays).toBe(30);
+  });
+
+  it("rejects unparseable lecture dates instead of a 500", async () => {
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
+    const res = await authed(request(app).post("/api/admin/lectures")).send({
+      course: create.body.course._id, title: "Bad dates", scheduledAt: "not-a-date", scheduledEndAt: "also-not", link: "https://meet.example.com/x",
+    });
+    expect(res.status).toBe(400);
+  });
+});

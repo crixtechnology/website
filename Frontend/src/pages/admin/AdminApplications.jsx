@@ -52,7 +52,7 @@ export default function AdminApplications() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h2 style={{ margin: "14px 0 0" }}>Applications &amp; inquiries</h2>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Applications &amp; inquiries</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
               "Request to apply" and "Request to enroll" submissions from the public site — no account required to submit.
             </p>

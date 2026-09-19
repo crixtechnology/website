@@ -134,7 +134,7 @@ export default function AdminUsers() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h2 style={{ margin: "14px 0 0" }}>Users</h2>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Users</h1>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
         </div>

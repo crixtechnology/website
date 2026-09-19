@@ -4,6 +4,7 @@ const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
 const { hasValidAccess } = require("../utils/enrollmentAccess");
 const { serialize } = require("../utils/serialize");
+const { isValidHttpUrl } = require("../utils/validators");
 
 const router = express.Router();
 
@@ -30,6 +31,15 @@ router.post("/admin/lectures", requireAdmin, async (req, res, next) => {
     const { course, title, scheduledAt, scheduledEndAt, link, notes } = req.body || {};
     if (!course || !title || !scheduledAt || !scheduledEndAt || !link) {
       return res.status(400).json({ ok: false, error: "course, title, scheduledAt, scheduledEndAt and link are required" });
+    }
+    // This gets rendered straight into a student-facing <a href> (the "Join
+    // live" button) — an http(s) requirement is what stops it ever being set
+    // to a `javascript:` URI, which React won't sanitize out on its own.
+    if (!isValidHttpUrl(link)) {
+      return res.status(400).json({ ok: false, error: "link must be a valid http(s) URL" });
+    }
+    if (Number.isNaN(new Date(scheduledAt).getTime()) || Number.isNaN(new Date(scheduledEndAt).getTime())) {
+      return res.status(400).json({ ok: false, error: "Start and end time must be valid dates" });
     }
     if (new Date(scheduledEndAt) <= new Date(scheduledAt)) {
       return res.status(400).json({ ok: false, error: "End time must be after the start time" });
@@ -63,7 +73,15 @@ router.put("/admin/lectures/:id", requireAdmin, async (req, res, next) => {
     if (title !== undefined) data.title = title;
     if (scheduledAt !== undefined) data.scheduledAt = new Date(scheduledAt);
     if (scheduledEndAt !== undefined) data.scheduledEndAt = new Date(scheduledEndAt);
-    if (link !== undefined) data.link = link;
+    if ((data.scheduledAt && Number.isNaN(data.scheduledAt.getTime())) || (data.scheduledEndAt && Number.isNaN(data.scheduledEndAt.getTime()))) {
+      return res.status(400).json({ ok: false, error: "Start and end time must be valid dates" });
+    }
+    if (link !== undefined) {
+      if (!isValidHttpUrl(link)) {
+        return res.status(400).json({ ok: false, error: "link must be a valid http(s) URL" });
+      }
+      data.link = link;
+    }
     if (notes !== undefined) data.notes = notes;
 
     // Validate against the resulting start/end, not just whichever of the

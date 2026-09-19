@@ -66,7 +66,7 @@ export default function AdminRevenue() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h2 style={{ margin: "14px 0 0" }}>Revenue</h2>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Revenue</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
               Every completed course/internship purchase, rolled up from the receipts issued on payment.
             </p>

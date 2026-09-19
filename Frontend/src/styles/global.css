@@ -32,11 +32,11 @@
    shifted enough to stay legible on white. */
 :root[data-theme="light"]{
   --ink:#F5F7FB; --ink-rgb:245,247,251; --panel:#FFFFFF; --panel-2:#F0F3F9;
-  --teal:#0D8C86; --teal-rgb:13,140,134; --cyan:#0E7490; --amber:#B45309;
+  --teal:#0A7A74; --teal-rgb:10,122,116; --cyan:#0E7490; --amber:#9A4508;
   --text:#101B33; --muted:#55627A;
   --line:rgba(16,27,51,.12);
   --danger:#C0392B; --danger-rgb:192,57,43;
-  --internship-rgb:13,140,134; --course-rgb:180,83,9;
+  --internship-rgb:10,122,116; --course-rgb:154,69,8;
 }
 /* Decorative blurred background blobs (see .aurora below) read as a heavy
    gray smudge at full opacity on a light page — soften rather than hide. */
@@ -89,7 +89,7 @@ h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
 
 #progress{position:fixed;top:0;left:0;height:3px;width:0%;z-index:99;background:linear-gradient(90deg,var(--teal),var(--cyan),var(--amber));box-shadow:0 0 12px rgba(20,201,201,.6)}
 
-#toTop{position:fixed;right:26px;bottom:26px;z-index:60;width:46px;height:46px;border-radius:50%;background:linear-gradient(120deg,var(--teal),var(--cyan));color:var(--ink);border:none;cursor:pointer;font-size:1.1rem;opacity:0;pointer-events:none;transform:translateY(16px);transition:opacity .35s,transform .35s}
+#toTop{position:fixed;right:30px;bottom:92px;z-index:60;width:46px;height:46px;border-radius:50%;background:linear-gradient(120deg,var(--teal),var(--cyan));color:var(--ink);border:none;cursor:pointer;font-size:1.1rem;opacity:0;pointer-events:none;transform:translateY(16px);transition:opacity .35s,transform .35s}
 #toTop.show{opacity:1;pointer-events:auto;transform:none}
 
 #loader{position:fixed;inset:0;background:var(--ink);z-index:200;display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,visibility .6s}
@@ -127,7 +127,7 @@ nav.topbar.scrolled{height:58px;background:rgba(var(--ink-rgb),.88);box-shadow:0
 nav.topbar.scrolled .logo img{height:27px}
 .logo-text{display:flex;flex-direction:column;justify-content:center;gap:4px}
 .logo-top{font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.02rem;line-height:1;letter-spacing:.03em;color:var(--text)}
-.logo-bottom{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.5rem;line-height:1;letter-spacing:.32em;color:var(--cyan)}
+.logo-bottom{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.58rem;line-height:1;letter-spacing:.22em;color:var(--cyan)}
 .foot-logo img{height:26px}
 .foot-logo .logo-top{font-size:.92rem}
 .nav-links{display:flex;gap:30px;list-style:none}
@@ -255,13 +255,13 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .card{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:clamp(24px,6vw,36px) clamp(20px,5vw,30px);position:relative;transform-style:preserve-3d;transition:border-color .3s;will-change:transform;display:flex;flex-direction:column;height:100%}
 .card::before{content:"";position:absolute;inset:0;border-radius:var(--radius);background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(127,232,224,.10),transparent 42%);pointer-events:none}
 .card:hover{border-color:rgba(127,232,224,.4)}
-.card .tag{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--amber)}
+.card .tag{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--amber)}
 .card h3{font-size:1.18rem;margin:14px 0 12px;min-height:2.6em}
 .card p{color:var(--muted);font-size:.92rem}
 .card-benefit{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:4.2em}
-.duration-chip{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:10px}
+.duration-chip{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:10px}
 .deliverable-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.deliverable-chip{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.04em;text-transform:uppercase;color:var(--teal);background:rgba(20,201,201,.10);border:1px solid rgba(20,201,201,.25);padding:3px 9px;border-radius:20px}
+.deliverable-chip{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--teal);background:rgba(20,201,201,.10);border:1px solid rgba(20,201,201,.25);padding:3px 9px;border-radius:20px}
 .card-type-course .deliverable-chip{color:var(--course);background:rgba(var(--course-rgb),.10);border-color:rgba(var(--course-rgb),.25)}
 /* --course is aliased to the same --amber the topic `tag` already used
    site-wide (see :root) — on a course card that put the vivid "Course"
@@ -278,7 +278,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
    card-top's space-between still only has two flex children (this group,
    and the optional closed-badge on the far right). */
 .card-top-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.type-pill{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;line-height:1}
+.type-pill{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;line-height:1}
 .type-pill--internship{color:var(--internship);background:rgba(var(--internship-rgb),.14);border:1px solid rgba(var(--internship-rgb),.35)}
 .type-pill--course{color:var(--course);background:rgba(var(--course-rgb),.14);border:1px solid rgba(var(--course-rgb),.35)}
 .card-type-internship:hover{border-color:rgba(var(--internship-rgb),.4)}
@@ -294,7 +294,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .card ul li{font-size:.85rem;color:var(--text);padding:7px 0;border-top:1px dashed rgba(147,163,188,.18)}
 .card ul li::before{content:"→";color:var(--teal);margin-right:10px}
 .card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.closed-badge{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);background:rgba(var(--danger-rgb),.12);border:1px solid rgba(var(--danger-rgb),.3);padding:3px 9px;border-radius:20px}
+.closed-badge{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);background:rgba(var(--danger-rgb),.12);border:1px solid rgba(var(--danger-rgb),.3);padding:3px 9px;border-radius:20px}
 .price-row{display:flex;align-items:baseline;gap:10px;margin-top:20px;padding-top:16px;border-top:1px dashed rgba(147,163,188,.18);flex-wrap:wrap}
 .price-old{font-size:.82rem;color:var(--muted);text-decoration:line-through}
 .price-now{font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.2rem;color:var(--text)}
@@ -337,14 +337,20 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
    which every other modal's spacing also depends on and already fits fine
    as-is. */
 .compact-form .field{margin-bottom:8px}
-.compact-form .field label{margin-bottom:4px;font-size:.64rem}
+.compact-form .field label{margin-bottom:4px;font-size:.7rem}
 .compact-form .field input,.compact-form .field textarea{padding:10px 14px}
 /* DetailModal (InfoCard's "See more") carries a full description + points
    list, sometimes deliverable chips and a price row too — noticeably more
    content than the compact Buy/Auth/Inquire modals sharing .modal-box, so
    it gets a bit more width instead of everything else being cramped. */
 .detail-modal-box{max-width:540px}
-.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;padding:4px}
+.modal-close{position:absolute;top:10px;right:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:50%;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;padding:0}
+.modal-close:hover{background:rgba(147,163,188,.14)}
+/* A long title must not run underneath the (larger) close button. */
+.modal-box h3{padding-right:28px}
+/* Focus moves onto the dialog itself when a popup opens (useModalFocus); it
+   isn't a control, so it shouldn't wear a focus ring. */
+.modal-box:focus{outline:none}
 .modal-close:hover{color:var(--text)}
 .modal-box--video{max-width:880px}
 .modal-box--video .lecture-embed{margin-top:0}
@@ -442,7 +448,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px}
 @media(max-width:820px){.contact-grid{grid-template-columns:1fr}}
 .field{margin-bottom:18px}
-.field label{display:block;font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px;cursor:pointer}
+.field label{display:block;font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px;cursor:pointer}
 .field input,.field textarea,.field select{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:var(--text);font-family:'Sora',sans-serif;font-size:.9rem}
 .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(20,201,201,.22)}
 .field input:disabled,.field textarea:disabled,.field select:disabled{opacity:.55;cursor:not-allowed}
@@ -507,12 +513,12 @@ footer{border-top:1px solid var(--line);padding:44px 0 96px;margin-top:40px}
 .foot-contact a{display:inline-block;padding:7px 0;color:var(--cyan);text-decoration:none}
 .foot-contact a:hover{color:var(--teal)}
 .foot-contact span:has(.wa-pill){display:inline-flex;align-items:center;flex-wrap:wrap}
-a.wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.64rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(30,190,93,.12);border:1px solid rgba(30,190,93,.28);padding:6px 16px;border-radius:20px;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap;transition:background .2s ease,color .2s ease,border-color .2s ease,transform .15s ease}
+a.wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(30,190,93,.12);border:1px solid rgba(30,190,93,.28);padding:6px 16px;border-radius:20px;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap;transition:background .2s ease,color .2s ease,border-color .2s ease,transform .15s ease}
 a.wa-pill:hover,a.wa-pill:focus-visible{background:#1EBE5D;color:#04170c;border-color:#1EBE5D;transform:translateY(-1px)}
 a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
-.foot-hours{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.66rem;letter-spacing:.06em}
-.foot-cols{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:28px;flex:1;min-width:280px;max-width:560px}
-.foot-cols h4{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+.foot-hours{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.06em}
+.foot-cols{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:28px;flex:1;min-width:min(100%,420px);max-width:560px}
+.foot-cols h4{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
 .foot-cols .foot-links{flex-direction:column;gap:2px}
 .foot-base{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:36px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.72rem}
 .foot-base .mono{font-family:'JetBrains Mono',monospace;letter-spacing:.06em}
@@ -560,7 +566,7 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 @media(max-width:640px){.device-cable-svg{display:none}}
 @media(max-width:460px){.device-deck{width:calc(100% - 24px)}}
 
-#wa{position:fixed;left:26px;bottom:26px;z-index:60;width:50px;height:50px;border-radius:50%;background:#1EBE5D;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(30,190,93,.4);transition:transform .25s}
+#wa{position:fixed;right:26px;bottom:26px;z-index:60;width:50px;height:50px;border-radius:50%;background:#1EBE5D;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(30,190,93,.4);transition:transform .25s}
 #wa:hover{transform:translateY(-3px) scale(1.06)}
 #wa svg{width:26px;height:26px;fill:#fff}
 
@@ -621,5 +627,47 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 
 /* "Open full page" link in the See more popup's header — sits before the
    close button, so it's kept clear of it. */
-.detail-page-link{margin-left:auto;margin-right:34px;font-family:'JetBrains Mono',monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);text-decoration:none;white-space:nowrap}
+.detail-page-link{margin-left:auto;margin-right:44px;font-family:'JetBrains Mono',monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);text-decoration:none;white-space:nowrap}
 .detail-page-link:hover{text-decoration:underline}
+
+
+/* ---------- Touch targets & light-theme contrast (bug sweep) ---------- */
+/* Footer links, contact links, WhatsApp pills and the inline "Create an
+   account" button measured 22-32px tall on phones; 44px is the comfortable
+   minimum for a thumb (WCAG 2.5.8 requires at least 24px). Padding only —
+   no visual change on desktop, where these stay compact. */
+@media(max-width:820px),(pointer:coarse){
+  .foot-links a{padding:11px 0}
+  .foot-contact a{padding:11px 0}
+  a.wa-pill{padding:11px 18px}
+  .modal-box .link-btn{padding:12px 6px;margin:-12px -6px}
+  .info-row a:not(.wa-pill){display:inline-block;padding:9px 0}
+}
+/* #1EBE5D on the light page was 2.1:1. */
+[data-theme="light"] a.wa-pill{color:#0F7A3B;border-color:rgba(15,122,59,.4);background:rgba(15,122,59,.1)}
+/* Teal text on its own 10-14% teal tint only reached 4.0-4.5:1 in the light theme. */
+[data-theme="light"] .type-pill--internship,
+[data-theme="light"] .deliverable-chip{color:#075E59}
+[data-theme="light"] .card-type-course .deliverable-chip,
+[data-theme="light"] .type-pill--course{color:#8A3F06}
+
+/* ---------- WhatsApp float: "24x7 available" popup ---------- */
+/* Slides out to the LEFT of the button (it sits at the right edge) on hover or
+   keyboard focus; on touch screens Chrome() shows it once via the .peek class. */
+#wa{overflow:visible}
+#wa::before{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(30,190,93,.5);animation:waPulse 2.6s ease-out infinite;pointer-events:none}
+@keyframes waPulse{0%{box-shadow:0 0 0 0 rgba(30,190,93,.45)}70%,100%{box-shadow:0 0 0 14px rgba(30,190,93,0)}}
+#wa .wa-tip{position:absolute;right:calc(100% + 14px);top:50%;display:flex;align-items:center;gap:10px;padding:9px 16px 9px 10px;border-radius:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);box-shadow:0 12px 32px rgba(0,0,0,.35);white-space:nowrap;opacity:0;visibility:hidden;pointer-events:none;transform:translate(10px,-50%);transition:opacity .2s,transform .2s,visibility .2s}
+#wa .wa-tip::after{content:"";position:absolute;top:50%;right:-6px;width:10px;height:10px;background:var(--panel);border-top:1px solid var(--line);border-right:1px solid var(--line);transform:translateY(-50%) rotate(45deg)}
+#wa:hover .wa-tip,#wa:focus-visible .wa-tip,#wa.peek .wa-tip{opacity:1;visibility:visible;transform:translate(0,-50%)}
+#wa .wa-tip-badge{flex:none;width:32px;height:32px;border-radius:50%;background:#1EBE5D;display:flex;align-items:center;justify-content:center}
+#wa .wa-tip-badge svg{width:18px;height:18px;fill:#fff}
+#wa .wa-tip-text b{display:block;font-family:'Sora',sans-serif;font-size:.84rem;font-weight:600;line-height:1.2}
+#wa .wa-tip-text small{display:block;font-size:.72rem;color:var(--muted);margin-top:2px}
+#wa:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+@media(max-width:640px){
+  #wa{right:14px;bottom:14px;width:46px;height:46px}
+  #toTop{right:16px;bottom:72px;width:42px;height:42px}
+}
+/* Page titles that are an <h1> for structure but keep the section-heading size. */
+.title-lg{font-size:clamp(1.6rem,3.4vw,2.6rem)}
