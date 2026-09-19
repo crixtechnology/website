@@ -1,5 +1,5 @@
-import { Suspense, lazy, useEffect } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigationType } from "react-router-dom";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
 import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms } from "./pages/pages.jsx";
 import AdminGuard from "./pages/admin/AdminGuard.jsx";
@@ -58,10 +58,73 @@ function RouteLoading() {
   );
 }
 
+// Where the page was scrolled to, per history entry (react-router's
+// location.key survives Back/Forward and even a reload). Lets "Back" from a
+// course's page land on the card that was clicked instead of the top of the
+// list. sessionStorage, so it's per-tab and gone when the tab closes.
+const scrollKey = (key) => `crix-scroll:${key}`;
+const savedScroll = (key) => {
+  try {
+    const y = Number(sessionStorage.getItem(scrollKey(key)));
+    return Number.isFinite(y) && y > 0 ? y : null;
+  } catch (e) { return null; }
+};
+
 function ScrollToTop() {
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key } = useLocation();
+  const navType = useNavigationType();
+
+  // The browser's own restoration runs at popstate, before this route's
+  // content exists, so it lands wrong — this component takes over instead.
+  useEffect(() => {
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => { window.history.scrollRestoration = previous; };
+  }, []);
+
+  // Record the scroll position under the CURRENT history entry. The key ref is
+  // updated in a layout effect (i.e. synchronously at commit) so a scroll event
+  // caused by the next route rendering can never be filed under the old entry.
+  const keyRef = useRef(key);
+  useLayoutEffect(() => { keyRef.current = key; }, [key]);
+  useEffect(() => {
+    let queued = false;
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      // A short timer rather than requestAnimationFrame: rAF is paused in a
+      // background/hidden tab, and a position that never gets saved is worse
+      // than one saved a tick late.
+      setTimeout(() => {
+        queued = false;
+        // An open popup pins <body> with position:fixed (useBodyScrollLock in
+        // ui.jsx), which makes scrollY read 0 even though the page is still
+        // scrolled — don't overwrite the real position with that.
+        if (document.body.style.position === "fixed") return;
+        try { sessionStorage.setItem(scrollKey(keyRef.current), String(Math.round(window.scrollY))); } catch (e) { /* storage blocked — skip */ }
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   useEffect(() => {
     trackPageview(pathname + hash);
+    if (!hash && navType === "POP") {
+      const y = savedScroll(key);
+      if (y !== null) {
+        // The list may still be growing (courses arrive from the API), so keep
+        // trying for a moment until the page is tall enough to reach the spot.
+        let tries = 0;
+        let timer;
+        const restore = () => {
+          window.scrollTo({ top: y, behavior: "instant" });
+          if (Math.abs(window.scrollY - y) > 2 && ++tries < 60) timer = setTimeout(restore, 50);
+        };
+        timer = setTimeout(restore, 0);
+        return () => clearTimeout(timer);
+      }
+    }
     if (!hash) { window.scrollTo(0, 0); return; }
     // Nav links to /programs#internships / #courses land here — the target
     // section exists as soon as Programs mounts, but give it a tick so the
@@ -73,7 +136,7 @@ function ScrollToTop() {
       else window.scrollTo(0, 0);
     });
     return () => cancelAnimationFrame(raf);
-  }, [pathname, hash]);
+  }, [pathname, hash, key, navType]);
   return null;
 }
 

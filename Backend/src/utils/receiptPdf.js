@@ -106,7 +106,7 @@ function loadLogoBase64() {
 function buildReceiptPdfBuffer(receipt) {
   const {
     receiptNumber, issuedAt, buyerName, buyerEmail, buyerPhone,
-    itemType, itemTitle, tier, basePrice, discountPercent, discountAmount,
+    itemType, itemTitle, tier, fromTier, basePrice, discountPercent, discountAmount,
     totalPaid, paymentMode, razorpay_payment_id,
   } = receipt;
 
@@ -215,7 +215,7 @@ function buildReceiptPdfBuffer(receipt) {
     startY: y,
     margin: { left: MARGIN, right: MARGIN },
     head: [["#", "Description", "Qty", "Rate", "Amount"]],
-    body: [["1", `${itemTitle} (${kindLabel}${planLabel ? `, ${planLabel} plan` : ""})`, "1", fmtMoney(basePrice), fmtMoney(basePrice)]],
+    body: [["1", `${itemTitle} (${kindLabel}${planLabel ? `, ${fromTier ? `upgrade from ${tierLabel(fromTier)} to ${planLabel}` : `${planLabel} plan`}` : ""})`, "1", fmtMoney(basePrice), fmtMoney(basePrice)]],
     theme: "plain",
     styles: { font: "helvetica", fontSize: 9.5, cellPadding: { top: 3, bottom: 3, left: 3, right: 3 }, textColor: hexToRgb(BRAND.text), lineColor: hexToRgb(BRAND.border), lineWidth: 0.1 },
     headStyles: { fillColor: hexToRgb(BRAND.navy), textColor: [255, 255, 255], fontStyle: "bold", halign: "left" },

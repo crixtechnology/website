@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
+  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, legal,
@@ -10,6 +10,7 @@ import {
 import { submitContact, getCourses, getCourse, getServices } from "../services/api.js";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
+import { useMyPlans } from "../hooks/useMyPlans.js";
 import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
 import { offeredTiers, isOpenForBuy, TIER_ORDER } from "../utils/tiers.js";
 
@@ -105,18 +106,7 @@ export function Home() {
           <Reveal as="h2" variant="reveal-l">Real projects. Real experience. Real pay.</Reveal>
           <div className="grid3 stagger">
             {liveInternships.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem} onDetail={setDetailData}
-                // Home has no login/BuyModal plumbing of its own (unlike
-                // Programs/CourseDetail) — an internship priced+open enough
-                // to show "Buy now" here (from the card or from the "See
-                // more" popup below) sends the click to its full detail
-                // page instead, where the real purchase flow lives. ?buy=
-                // is CourseDetail's own existing "resume purchase" query
-                // param (also used by the post-profile-completion redirect
-                // below) — it opens BuyModal there immediately on arrival
-                // instead of landing the visitor on the page and making
-                // them find and click "Buy now" a second time.
-                onBuy={buyOnDetailPage(navigate)} />
+              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem} onDetail={setDetailData} />
             ))}
           </div>
           <div className="hero-ctas">
@@ -125,6 +115,8 @@ export function Home() {
         </div>
       </section>
       <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
+      {/* A plan chosen in the popup (Home has no login/BuyModal plumbing of its
+          own) hands off to the item's detail page, where the real purchase flow lives. */}
       <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} onServiceInquire={setServiceInquiryItem}
         onBuy={buyOnDetailPage(navigate)} />
       <ServiceInquiryModal item={serviceInquiryItem} onClose={() => setServiceInquiryItem(null)} />
@@ -175,6 +167,8 @@ export function Programs() {
   const [buyItem, setBuyItem] = useState(null);
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on, if one was already clicked
   const [inquire, setInquire] = useState(null); // { item, kind } | null
+  const [upgrade, setUpgrade] = useState(null); // { item, tier } | null — the plan-upgrade dialog
+  const { ownedTier, reload: reloadPlans } = useMyPlans();
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
   const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
@@ -242,7 +236,7 @@ export function Programs() {
           </Reveal>
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {liveInternships.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} onBuy={handleBuy} isProgram kind="internship"
+              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship"
                 onInquire={(item) => setInquire({ item, kind: "internship" })} onDetail={setDetailData} />
             ))}
           </div>
@@ -258,7 +252,7 @@ export function Programs() {
           </Reveal>
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {liveCourses.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} onBuy={handleBuy} isProgram kind="course"
+              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="course"
                 onInquire={(item) => setInquire({ item, kind: "course" })} onDetail={setDetailData} />
             ))}
           </div>
@@ -267,7 +261,9 @@ export function Programs() {
       <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
       <InquiryModal item={inquire?.item} kind={inquire?.kind} onClose={() => setInquire(null)} />
       <DetailModal data={detailData} onClose={() => setDetailData(null)} onBuy={handleBuy}
+        ownedTier={ownedTier(detailData?.item)} onUpgrade={(item, tier) => setUpgrade({ item, tier })}
         onInquire={(item) => setInquire({ item, kind: detailData?.kind })} />
+      <UpgradeModal data={upgrade} onClose={() => setUpgrade(null)} onDone={reloadPlans} />
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
@@ -311,6 +307,8 @@ export function CourseDetail() {
   const [buyItem, setBuyItem] = useState(null);
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on
   const [inquireOpen, setInquireOpen] = useState(false);
+  const [upgrade, setUpgrade] = useState(null); // { item, tier } | null — the plan-upgrade dialog
+  const { ownedTier, reload: reloadPlans } = useMyPlans();
   const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
 
   const handleBuy = (tier) => {
@@ -408,8 +406,8 @@ export function CourseDetail() {
 
             {openForBuy ? (
               <div className="plans-block">
-                <h4 className="plans-heading">{plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
-                <PlanCards plans={plans} onChoose={handleBuy} />
+                <h4 className="plans-heading">{ownedTier(course) ? "Your plan" : plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
+                <PlanCards plans={plans} onChoose={handleBuy} ownedTier={ownedTier(course)} onUpgrade={(tier) => setUpgrade({ item: course, tier })} />
               </div>
             ) : (
               <div style={{ maxWidth: 280, marginTop: 24 }}>
@@ -428,6 +426,7 @@ export function CourseDetail() {
         </div>
       </section>
       <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
+      <UpgradeModal data={upgrade} onClose={() => setUpgrade(null)} onDone={reloadPlans} />
       <InquiryModal item={inquireOpen ? course : null} kind={course.type} onClose={() => setInquireOpen(false)} />
     </>
   );

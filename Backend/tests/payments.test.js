@@ -16,7 +16,8 @@ const { buildReceiptPdfBuffer } = require("../src/utils/receiptPdf");
 // assert on the price the server picked.
 jest.mock("../src/utils/razorpay", () => ({
   isLiveBlocked: false,
-  razorpay: { orders: { create: jest.fn(async () => ({ id: "order_mock_1", currency: "INR" })) } },
+  // A fresh order id per call — /verify looks a payment up by its order id.
+  razorpay: { orders: { create: jest.fn(async () => ({ id: `order_mock_${Math.random().toString(36).slice(2)}`, currency: "INR" })) } },
 }));
 const { razorpay } = require("../src/utils/razorpay");
 
@@ -245,5 +246,125 @@ describe("attachReceipt — concurrent /verify + webhook race", () => {
     // check can: with the old check-then-save() pattern, BOTH concurrent
     // calls would pass the pre-save check and both would reach this step.
     expect(buildReceiptPdfBuffer).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Upgrading a plan (Basic -> Plus/Pro, Plus -> Pro): the student pays the
+// target plan's price minus everything they've already paid for the course.
+describe("plan upgrades", () => {
+  const crypto = require("crypto");
+  let course, user, token, enrollment;
+
+  // Signs a /verify request the way Razorpay Checkout's success callback would.
+  const verify = (orderId, paymentId) => request(app).post("/api/payments/verify").send({
+    razorpay_order_id: orderId, razorpay_payment_id: paymentId,
+    razorpay_signature: crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "").update(`${orderId}|${paymentId}`).digest("hex"),
+  });
+  const upgradeOptions = () => authed(request(app).get(`/api/payments/upgrade-options/${course.slug}`), token);
+  const createUpgrade = (tier) => authed(request(app).post("/api/payments/create-upgrade-order"), token).send({ courseSlug: course.slug, tier });
+
+  beforeAll(async () => {
+    course = await createPricedCourse({
+      durationDays: 90,
+      tiers: [{ tier: "basic", price: 1000 }, { tier: "plus", price: 2000, discountPercent: 25 }, { tier: "pro", price: 3000 }],
+    });
+    ({ user, token } = await createStudent("upgrader@example.com"));
+    // A finished Basic purchase: application + paid payment (₹1000) + enrollment.
+    const application = await prisma.application.create({
+      data: { type: "course", refTitle: course.title, name: "Upgrader", email: "upgrader@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "basic" },
+    });
+    const payment = await prisma.payment.create({
+      data: { razorpayOrderId: `order_basic_${Date.now()}`, razorpayPaymentId: "pay_basic", amount: 100000, status: "paid", tier: "basic", applicationId: application.id },
+    });
+    enrollment = await prisma.enrollment.create({
+      data: { userId: user.id, courseId: course._id, paymentId: payment.id, tier: "basic", status: "active", startDate: new Date(Date.now() - 5 * 86400000), endDate: new Date(Date.now() + 85 * 86400000) },
+    });
+  });
+
+  beforeEach(() => razorpay.orders.create.mockClear());
+
+  it("offers each higher plan at its price minus what was already paid", async () => {
+    const res = await upgradeOptions();
+    expect(res.status).toBe(200);
+    expect(res.body.currentTier).toBe("basic");
+    expect(res.body.paid).toBe(1000);
+    expect(res.body.options).toEqual([
+      { tier: "plus", planPrice: 1500, due: 500 },   // ₹2000 less 25%, minus the ₹1000 paid
+      { tier: "pro", planPrice: 3000, due: 2000 },
+    ]);
+  });
+
+  it("requires a login", async () => {
+    const res = await request(app).post("/api/payments/create-upgrade-order").send({ courseSlug: course.slug, tier: "plus" });
+    expect(res.status).toBe(401);
+  });
+
+  it("refuses to 'upgrade' to the current plan or down to a lower one", async () => {
+    const same = await createUpgrade("basic");
+    expect(same.status).toBe(400);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the caller has no access to the course", async () => {
+    const { token: otherToken } = await createStudent("no-access@example.com");
+    const res = await authed(request(app).post("/api/payments/create-upgrade-order"), otherToken).send({ courseSlug: course.slug, tier: "pro" });
+    expect(res.status).toBe(400);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+  });
+
+  it("charges only the difference, then moves the plan up without touching the access dates", async () => {
+    const order = await createUpgrade("plus");
+    expect(order.status).toBe(201);
+    expect(order.body.amount).toBe(50000); // ₹500 in paise
+    expect(razorpay.orders.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 50000 }));
+
+    const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: order.body.orderId } });
+    expect(payment).toMatchObject({ tier: "plus", fromTier: "basic", amount: 50000 });
+    // Nothing changes until the payment is confirmed.
+    expect((await prisma.enrollment.findUnique({ where: { id: enrollment.id } })).tier).toBe("basic");
+
+    const before = await prisma.enrollment.findUnique({ where: { id: enrollment.id } });
+    const confirmed = await verify(order.body.orderId, "pay_upgrade_plus");
+    expect(confirmed.status).toBe(200);
+    // A second confirmation (the webhook landing after /verify) is a no-op.
+    expect((await verify(order.body.orderId, "pay_upgrade_plus")).status).toBe(200);
+
+    const after = await prisma.enrollment.findUnique({ where: { id: enrollment.id } });
+    expect(after.tier).toBe("plus");
+    expect(after.startDate.getTime()).toBe(before.startDate.getTime());
+    expect(after.endDate.getTime()).toBe(before.endDate.getTime());
+    expect(after.paymentId).toBe(before.paymentId); // still points at the original purchase
+
+    const receipts = await authed(request(app).get("/api/me/receipts"), token);
+    const upgradeReceipt = receipts.body.receipts.find((r) => r.fromTier === "basic");
+    expect(upgradeReceipt).toMatchObject({ tier: "plus", totalPaid: 500, courseId: course._id });
+    expect(buildReceiptPdfBuffer).toHaveBeenLastCalledWith(expect.objectContaining({ tier: "plus", fromTier: "basic" }));
+  });
+
+  it("counts earlier upgrades toward the next one", async () => {
+    const res = await upgradeOptions();
+    expect(res.body.currentTier).toBe("plus");
+    expect(res.body.paid).toBe(1500);
+    expect(res.body.options).toEqual([{ tier: "pro", planPrice: 3000, due: 1500 }]); // Basic + Plus + Pro = ₹3000 in total
+
+    const order = await createUpgrade("pro");
+    expect(order.body.amount).toBe(150000);
+    await verify(order.body.orderId, "pay_upgrade_pro");
+    expect((await prisma.enrollment.findUnique({ where: { id: enrollment.id } })).tier).toBe("pro");
+  });
+
+  it("offers nothing once on the top plan", async () => {
+    const res = await upgradeOptions();
+    expect(res.body.currentTier).toBe("pro");
+    expect(res.body.options).toEqual([]);
+    expect((await createUpgrade("pro")).status).toBe(400);
+  });
+
+  it("does not offer upgrades on access that was not bought as a plan", async () => {
+    const { user: granted, token: grantedToken } = await createStudent("admin-granted@example.com");
+    await prisma.enrollment.create({ data: { userId: granted.id, courseId: course._id, status: "active" } });
+    const res = await authed(request(app).get(`/api/payments/upgrade-options/${course.slug}`), grantedToken);
+    expect(res.body.options).toEqual([]);
+    expect(res.body.reason).toMatch(/can't be upgraded online/i);
   });
 });

@@ -25,6 +25,11 @@ function tierLabel(tier) {
   return isTier(tier) ? tier[0].toUpperCase() + tier.slice(1) : "";
 }
 
+// 0 = basic, 1 = plus, 2 = pro — a higher rank is a higher plan (an upgrade).
+function tierRank(tier) {
+  return TIERS.indexOf(tier);
+}
+
 function isTier(value) {
   return TIERS.includes(value);
 }
@@ -80,4 +85,4 @@ function tierTotal(tier) {
   return tier.price * (1 - (tier.discountPercent || 0) / 100);
 }
 
-module.exports = { TIERS, WITH_TIERS, isTier, tierLabel, parseTiers, tierTotal };
+module.exports = { TIERS, WITH_TIERS, isTier, tierRank, tierLabel, parseTiers, tierTotal };
