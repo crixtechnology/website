@@ -643,7 +643,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
             navigate(v.courseSlug ? `/learn/${v.courseSlug}` : "/dashboard");
           }, 900);
         } else if (v.ok) {
-          setInfo("Payment confirmed — check 'My Courses' for access.");
+          setInfo("Payment confirmed — check your Dashboard for access.");
           setTimeout(() => { onClose(); navigate("/dashboard"); }, 1200);
         } else {
           setError(
@@ -1417,20 +1417,22 @@ export function Logo({ className = "" }) {
 /* ---------- Navbar ---------- */
 /* Sun/moon toggle — shows the icon for the theme you'd SWITCH TO (a sun
    while dark, inviting you toward light) rather than the current one,
-   matching the usual convention for this kind of control. Sits outside
-   both .nav-account and .nav-links-mobile-account so it stays visible at
-   every breakpoint without needing to be duplicated into the mobile
-   dropdown the way the login/account controls are. */
-function ThemeToggle() {
+   matching the usual convention for this kind of control. Rendered twice:
+   as a round icon button in the header on desktop, and (row) as a full-width
+   "Switch to light mode" row inside the mobile menu — under the mobile
+   breakpoint the header only holds the logo and the burger, so a lone icon
+   used to float in the middle between them. CSS shows one or the other. */
+function ThemeToggle({ row = false }) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
+  const label = isDark ? "Switch to light mode" : "Switch to dark mode";
   return (
     <button
       type="button"
-      className="theme-toggle"
+      className={`theme-toggle${row ? " theme-toggle--row" : ""}`}
       onClick={toggleTheme}
-      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
-      title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      aria-label={row ? undefined : label}
+      title={row ? undefined : label}
     >
       {isDark ? (
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1442,6 +1444,7 @@ function ThemeToggle() {
           <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />
         </svg>
       )}
+      {row && <span>{label}</span>}
     </button>
   );
 }
@@ -1529,7 +1532,7 @@ export function Navbar() {
           })}
           {/* .nav-cta/.nav-account (below) are desktop-only (hidden under the
               mobile breakpoint) — duplicate the same account links here so
-              logging in/out and reaching My Courses is still reachable from
+              logging in/out and reaching My Dashboard is still reachable from
               the mobile menu, not just on desktop. */}
           <li className="nav-links-mobile-account">
             {isLoggedIn ? (
@@ -1538,7 +1541,7 @@ export function Navbar() {
                   <NavLink to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
                 )}
                 <NavLink to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
-                  {isAdmin ? "Admin" : "My Courses"}
+                  {isAdmin ? "Admin" : "My Dashboard"}
                 </NavLink>
                 <button className="btn btn-ghost nav-logout" onClick={() => { logout(); setOpen(false); navigate("/"); }}>Log out</button>
               </>
@@ -1551,6 +1554,9 @@ export function Navbar() {
               <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
             )}
           </li>
+          {/* Mobile only (the header's own icon is hidden there): stays open after a
+              tap so the change is visible straight away. */}
+          <li className="nav-links-mobile-theme"><ThemeToggle row /></li>
         </ul>
         {isLoggedIn ? (
           <span className="nav-account">
@@ -1558,7 +1564,7 @@ export function Navbar() {
               <NavLink className="nav-account-link" to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
             )}
             <Link className="nav-cta" to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
-              {isAdmin ? "Admin" : "My Courses"}
+              {isAdmin ? "Admin" : "My Dashboard"}
             </Link>
             <button className="btn btn-ghost nav-logout" onClick={() => { logout(); setOpen(false); navigate("/"); }}>
               Log out

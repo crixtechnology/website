@@ -33,7 +33,7 @@ export default function Learn() {
   // Ticks once a minute so the Join button's appear/disappear window (and a
   // class that just ended) updates live without the student refreshing.
   const [now, setNow] = useState(() => Date.now());
-  usePageMeta({ title: data?.course ? `${data.course.title} — Learn | Crix Technology` : "My Courses | Crix Technology" });
+  usePageMeta({ title: data?.course ? `${data.course.title} — Learn | Crix Technology` : "Learn | Crix Technology" });
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -99,7 +99,7 @@ export default function Learn() {
         <div className="wrap">
           <span className="eyebrow">Not available</span>
           <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>{error}</h1>
-          <Link className="btn btn-solid" to="/dashboard">← My courses</Link>
+          <Link className="btn btn-solid" to="/dashboard">← Dashboard</Link>
         </div>
       </section>
     );
@@ -115,7 +115,7 @@ export default function Learn() {
   return (
     <section className="section" style={{ paddingTop: 140 }}>
       <div className="wrap" style={{ maxWidth: 720 }}>
-        <Link className="back-link" to="/dashboard">← My courses</Link>
+        <Link className="back-link" to="/dashboard">← Dashboard</Link>
         <h1 className="title-lg" style={{ margin: "24px 0 6px" }}>{course.title}</h1>
         <p style={{ color: "var(--muted)", marginBottom: 32 }}>{course.desc}</p>
 

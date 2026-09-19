@@ -14,7 +14,7 @@ const badDate = (d) => d instanceof Date && Number.isNaN(d.getTime());
 const USER_SUMMARY = { id: true, name: true, email: true, phone: true };
 const COURSE_SUMMARY = { id: true, title: true, slug: true };
 
-// ---------- student: "My Courses" ----------
+// ---------- student: "My Dashboard" (courses) ----------
 router.get("/me/enrollments", requireAuth, async (req, res, next) => {
   try {
     const enrollments = await prisma.enrollment.findMany({
