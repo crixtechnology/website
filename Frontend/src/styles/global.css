@@ -594,7 +594,6 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 .plan-features li{font-size:.84rem;color:var(--text);padding:6px 0;border-top:1px dashed rgba(147,163,188,.18)}
 .plan-features li::before{content:"✓";color:var(--teal);margin-right:8px}
 .plan-card .buy-btn{margin-top:auto}
-.detail-modal-box--plans{max-width:900px}
 
 /* BuyModal: pick the plan being bought. */
 .plan-picker{border:0;padding:0;margin:0 0 14px;min-width:0;display:flex;flex-direction:column;gap:8px}
@@ -625,10 +624,6 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 /* Second line inside a plan option: how the upgrade price is worked out. */
 .plan-option-sub{display:block;margin-top:4px;font-size:.74rem;color:var(--muted)}
 
-/* "Open full page" link in the See more popup's header — sits before the
-   close button, so it's kept clear of it. */
-.detail-page-link{margin-left:auto;margin-right:44px;font-family:'JetBrains Mono',monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);text-decoration:none;white-space:nowrap}
-.detail-page-link:hover{text-decoration:underline}
 
 
 /* ---------- Touch targets & light-theme contrast (bug sweep) ---------- */
