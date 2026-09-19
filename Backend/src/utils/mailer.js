@@ -179,7 +179,7 @@ async function sendReceiptEmail({ receipt, pdfBuffer }) {
       <p>Receipt No: <strong>${escapeHtml(receipt.receiptNumber)}</strong><br/>
       Amount Paid: <strong>${fmtRupees(receipt.totalPaid)}</strong></p>
       <p>Your receipt is attached to this email as a PDF — you can also download it any time from
-      "My Courses" on your account.</p>
+      "My Dashboard" on your account.</p>
       <p style="color:#64748b;font-size:13px">Crix Technology Private Limited</p>
     </div>
   `;

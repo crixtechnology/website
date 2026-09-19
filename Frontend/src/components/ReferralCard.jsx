@@ -6,7 +6,7 @@ const money = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
 const shortDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
 // "Refer & earn" — a student's own referral code and link, how their referrals
-// are going, and their credit. Lives on My Courses. Also where a friend's code
+// are going, and their credit. Lives on My Dashboard. Also where a friend's code
 // can be entered, for a student who hasn't bought anything yet.
 export default function ReferralCard() {
   const [data, setData] = useState(undefined); // undefined = loading, null = couldn't load
@@ -20,7 +20,7 @@ export default function ReferralCard() {
   useEffect(() => { load(); return () => clearTimeout(copyTimer.current); }, []);
 
   if (data === undefined) return null;
-  if (data === null) return null; // a hiccup here shouldn't break My Courses
+  if (data === null) return null; // a hiccup here shouldn't break My Dashboard
 
   const { settings } = data;
   const link = referralLink(data.code);

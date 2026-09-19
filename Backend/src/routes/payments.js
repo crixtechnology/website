@@ -260,7 +260,7 @@ async function loadPurchasablePlan(courseSlug, tierName, userId) {
       error: {
         status: 400,
         message: existingEnrollment.tier
-          ? "You already have access to this course. To move to a higher plan, use \"Upgrade plan\" in My Courses."
+          ? "You already have access to this course. To move to a higher plan, use \"Upgrade plan\" in My Dashboard."
           : "You already have access to this course.",
       },
     };

@@ -9,7 +9,7 @@ import { downloadReceiptPdf } from "../../utils/receiptPdf.js";
 import { tierLabel } from "../../utils/tiers.js";
 
 export default function MyCourses() {
-  usePageMeta({ title: "My Courses | Crix Technology" });
+  usePageMeta({ title: "My Dashboard | Crix Technology" });
   const { isLoggedIn, user, logout, openAuthModal } = useContext(UserContext);
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState([]);
@@ -75,8 +75,8 @@ export default function MyCourses() {
     return (
       <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 480 }}>
-          <span className="eyebrow">My learning</span>
-          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to see your courses</h1>
+          <span className="eyebrow">My dashboard</span>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to see your dashboard</h1>
           <button className="btn btn-solid" onClick={() => openAuthModal("login")}>Log in</button>
         </div>
       </section>
@@ -88,7 +88,7 @@ export default function MyCourses() {
       <div className="wrap">
         <div className="admin-head">
           <div>
-            <span className="eyebrow">My learning</span>
+            <span className="eyebrow">My dashboard</span>
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Welcome, {user?.name}</h1>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -97,6 +97,7 @@ export default function MyCourses() {
           </div>
         </div>
 
+        <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>My courses</h2>
         {loading ? (
           <p style={{ color: "var(--muted)" }}>Loading...</p>
         ) : enrollments.length === 0 ? (
