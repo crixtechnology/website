@@ -10,7 +10,9 @@ import {
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { trackEvent } from "../utils/analytics.js";
-import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
+import { isValidName, emailFormatError } from "../utils/validators.js";
+import { phoneError, compactPhone } from "../utils/phone.js";
+import PhoneInput from "./PhoneInput.jsx";
 import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 
@@ -621,7 +623,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       currency: orderRes.currency,
       name: "Crix Technology",
       description: `${item.title} — ${tierLabel(plan.tier)} plan`,
-      prefill: { name: form.name, email: form.email, contact: form.phone },
+      prefill: { name: form.name, email: form.email, contact: compactPhone(form.phone) },
       theme: { color: "#14C9C9" },
       handler: async (resp) => {
         setInfo("Confirming your payment...");
@@ -892,7 +894,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
 // and the admin catching the message there. No account needed either way.
 // `item` doubles as the "is this open" flag, same pattern as BuyModal.
 export function InquiryModal({ item, kind, onClose }) {
-  const [form, setForm] = useState({ name: "", email: "", countryCode: "+91", phone: "", college: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", college: "" });
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -901,7 +903,7 @@ export function InquiryModal({ item, kind, onClose }) {
 
   useEffect(() => {
     if (item) {
-      setForm({ name: "", email: "", countryCode: "+91", phone: "", college: "" });
+      setForm({ name: "", email: "", phone: "", college: "" });
       setStatus({ text: "", kind: "" });
       setLoading(false);
       setDone(false);
@@ -913,19 +915,22 @@ export function InquiryModal({ item, kind, onClose }) {
   if (!item) return null;
 
   const set = (k) => (e) => {
-    const value = k === "phone" ? e.target.value.replace(/\D/g, "") : e.target.value;
-    setForm({ ...form, [k]: value });
+    setForm({ ...form, [k]: e.target.value });
+    setStatus({ text: "", kind: "" });
+  };
+  const setPhone = (phone) => {
+    setForm((f) => ({ ...f, phone }));
     setStatus({ text: "", kind: "" });
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return; // already in flight — avoid a duplicate Application record
-    const phoneDigits = form.phone.trim();
+    const phone = form.phone.trim();
     const missing = [
       !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
       !form.email.trim() ? "your email" : emailFormatError(form.email),
-      !phoneDigits ? "your phone number" : phoneLengthError(form.countryCode, phoneDigits),
+      !phone ? "your phone number" : phoneError(phone),
     ].filter(Boolean);
     if (missing.length) {
       const list = missing.length === 1
@@ -938,7 +943,7 @@ export function InquiryModal({ item, kind, onClose }) {
     setStatus({ text: "", kind: "" });
     const res = await submitApplication({
       type: kind, refTitle: item.title, courseSlug: item.slug,
-      name: form.name.trim(), email: form.email.trim(), phone: `${form.countryCode} ${phoneDigits}`, college: form.college.trim(),
+      name: form.name.trim(), email: form.email.trim(), phone, college: form.college.trim(),
     });
     setLoading(false);
     if (!res.ok) {
@@ -962,7 +967,7 @@ export function InquiryModal({ item, kind, onClose }) {
           <>
             <Alert kind="success">
               Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""} — we've got your details for
-              "{item.title}" and will reach out on {form.email} or {form.countryCode} {form.phone} within 2 working days.
+              "{item.title}" and will reach out on {form.email} or {form.phone} within 2 working days.
             </Alert>
             <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
           </>
@@ -977,12 +982,7 @@ export function InquiryModal({ item, kind, onClose }) {
               <div className="field"><label htmlFor="inquiry-email">Email</label>
                 <input id="inquiry-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
               <div className="field"><label htmlFor="inquiry-phone">Phone</label>
-                <div className="phone-row">
-                  <select aria-label="Country code" value={form.countryCode} onChange={set("countryCode")}>
-                    {COUNTRY_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-                  </select>
-                  <input id="inquiry-phone" autoComplete="tel" inputMode="numeric" value={form.phone} onChange={set("phone")} placeholder="98765 43210" />
-                </div></div>
+                <PhoneInput id="inquiry-phone" value={form.phone} onChange={setPhone} /></div>
               <div className="field"><label htmlFor="inquiry-college">College / University (optional)</label>
                 <input id="inquiry-college" autoComplete="organization" value={form.college} onChange={set("college")}
                   placeholder={kind === "internship" ? "For your placement records" : "e.g. ABC Institute of Technology"} /></div>
@@ -1088,7 +1088,7 @@ export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
 // us" record. `interest` is set to the specific service's title so the
 // admin can tell which service a lead came in for.
 export function ServiceInquiryModal({ item, onClose }) {
-  const [form, setForm] = useState({ company: "", name: "", countryCode: "+91", phone: "", email: "", message: "" });
+  const [form, setForm] = useState({ company: "", name: "", phone: "", email: "", message: "" });
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -1097,7 +1097,7 @@ export function ServiceInquiryModal({ item, onClose }) {
 
   useEffect(() => {
     if (item) {
-      setForm({ company: "", name: "", countryCode: "+91", phone: "", email: "", message: "" });
+      setForm({ company: "", name: "", phone: "", email: "", message: "" });
       setStatus({ text: "", kind: "" });
       setLoading(false);
       setDone(false);
@@ -1109,19 +1109,22 @@ export function ServiceInquiryModal({ item, onClose }) {
   if (!item) return null;
 
   const set = (k) => (e) => {
-    const value = k === "phone" ? e.target.value.replace(/\D/g, "") : e.target.value;
-    setForm({ ...form, [k]: value });
+    setForm({ ...form, [k]: e.target.value });
+    setStatus({ text: "", kind: "" });
+  };
+  const setPhone = (phone) => {
+    setForm((f) => ({ ...f, phone }));
     setStatus({ text: "", kind: "" });
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return; // already in flight — same guard Contact() uses for this exact race
-    const phoneDigits = form.phone.trim();
+    const phone = form.phone.trim();
     const missing = [
       !form.company.trim() ? "business/company name" : form.company.trim().length < 2 && "a valid business/company name",
       !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
-      !phoneDigits ? "a contact number" : phoneLengthError(form.countryCode, phoneDigits),
+      !phone ? "a contact number" : phoneError(phone),
       form.email.trim() && emailFormatError(form.email),
     ].filter(Boolean);
     if (missing.length) {
@@ -1134,7 +1137,7 @@ export function ServiceInquiryModal({ item, onClose }) {
     setLoading(true);
     setStatus({ text: "", kind: "" });
     const res = await submitContact({
-      name: form.name.trim(), company: form.company.trim(), phone: `${form.countryCode} ${phoneDigits}`,
+      name: form.name.trim(), company: form.company.trim(), phone,
       email: form.email.trim(), interest: item.title, message: form.message.trim(),
     });
     setLoading(false);
@@ -1183,12 +1186,7 @@ export function ServiceInquiryModal({ item, onClose }) {
               <div className="field"><label htmlFor="svc-name">Your name</label>
                 <input id="svc-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Full name" /></div>
               <div className="field"><label htmlFor="svc-phone">Contact number</label>
-                <div className="phone-row">
-                  <select aria-label="Country code" value={form.countryCode} onChange={set("countryCode")}>
-                    {COUNTRY_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-                  </select>
-                  <input id="svc-phone" autoComplete="tel" inputMode="numeric" value={form.phone} onChange={set("phone")} placeholder="98765 43210" />
-                </div></div>
+                <PhoneInput id="svc-phone" value={form.phone} onChange={setPhone} /></div>
               <div className="field"><label htmlFor="svc-email">Email (optional)</label>
                 <input id="svc-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
               <div className="field"><label htmlFor="svc-message">Details about your business (optional)</label>
@@ -1330,8 +1328,8 @@ export function AuthModal() {
       if (!isValidName(form.name)) { setStatus("Enter a valid name (letters only)."); return; }
       const emailProblem = emailFormatError(form.email);
       if (emailProblem) { setStatus(`Please add ${emailProblem}.`); return; }
-      const phoneDigits = form.phone.replace(/\D/g, "");
-      if (phoneDigits.length < 8 || phoneDigits.length > 15) { setStatus("Enter a valid phone number."); return; }
+      const phoneProblem = phoneError(form.phone);
+      if (phoneProblem) { setStatus(`Please add ${phoneProblem}.`); return; }
       if (form.password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
     }
     setLoading(true);
@@ -1376,7 +1374,7 @@ export function AuthModal() {
             <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="username" disabled={loading} /></div>
           {mode === "signup" && (
             <div className="field"><label htmlFor="auth-phone">Phone</label>
-              <input id="auth-phone" value={form.phone} onChange={set("phone")} placeholder="98765 43210" autoComplete="tel" disabled={loading} /></div>
+              <PhoneInput id="auth-phone" value={form.phone} onChange={(phone) => { setForm((f) => ({ ...f, phone })); setStatus(""); }} disabled={loading} /></div>
           )}
           {mode === "signup" && (
             <div className="field"><label htmlFor="auth-ref">Referral code (optional)</label>

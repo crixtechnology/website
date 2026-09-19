@@ -8,6 +8,8 @@ import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 import { tierLabel } from "../../utils/tiers.js";
+import { phoneError } from "../../utils/phone.js";
+import PhoneInput from "../../components/PhoneInput.jsx";
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString("en-IN") : "—";
@@ -84,6 +86,9 @@ export default function AdminUsers() {
     // submit on Enter inside a text field — without this guard, pressing
     // Enter twice quickly fires two concurrent saves.
     if (savingUser) return;
+    // A blank phone is allowed (it clears it); anything typed has to be a real number.
+    const phoneProblem = editForm.phone.trim() && phoneError(editForm.phone);
+    if (phoneProblem) { setDetailError(`Please enter ${phoneProblem}.`); return; }
     setSavingUser(true);
     const res = await adminUpdateUser(selectedId, editForm);
     setSavingUser(false);
@@ -188,8 +193,8 @@ export default function AdminUsers() {
                   <form onSubmit={saveUser}>
                     <div className="field"><label>Name</label>
                       <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
-                    <div className="field"><label>Phone</label>
-                      <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></div>
+                    <div className="field"><label htmlFor="au-phone">Phone</label>
+                      <PhoneInput id="au-phone" value={editForm.phone} onChange={(phone) => setEditForm((f) => ({ ...f, phone }))} /></div>
                     <div className="field"><label>Role</label>
                       <select value={editForm.role} disabled={isSelf} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
                         <option value="student">Student</option>

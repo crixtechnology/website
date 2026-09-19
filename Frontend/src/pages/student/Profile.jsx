@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { UserContext, isProfileComplete } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { Alert } from "../../components/ui.jsx";
+import PhoneInput from "../../components/PhoneInput.jsx";
+import { phoneError } from "../../utils/phone.js";
 
 export default function Profile() {
   usePageMeta({ title: "Your Profile | Crix Technology", description: "Manage your Crix Technology account details." });
@@ -52,6 +54,8 @@ export default function Profile() {
     if (saving) return;
     if (!form.name.trim()) { setStatus({ text: "Name can't be empty.", kind: "error" }); return; }
     if (!form.phone.trim()) { setStatus({ text: "Please add a phone number.", kind: "error" }); return; }
+    const phoneProblem = phoneError(form.phone);
+    if (phoneProblem) { setStatus({ text: `Please add ${phoneProblem}.`, kind: "error" }); return; }
 
     setSaving(true);
     setStatus({ text: "Saving...", kind: "info" });
@@ -104,8 +108,8 @@ export default function Profile() {
 
           <div className="field">
             <label htmlFor="pf-phone">Phone</label>
-            <input id="pf-phone" autoComplete="tel" inputMode="tel" value={form.phone} onChange={set("phone")}
-              placeholder="98765 43210" disabled={saving} />
+            <PhoneInput id="pf-phone" value={form.phone} disabled={saving}
+              onChange={(phone) => { setForm((f) => ({ ...f, phone })); setStatus({ text: "", kind: "" }); }} />
           </div>
 
           <button className="btn btn-solid" type="submit" disabled={saving} style={{ width: "100%", marginTop: 4 }}>
