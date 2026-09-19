@@ -1,7 +1,8 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { getMyEnrollments, getReceipt } from "../../services/api.js";
+import { getMyEnrollments, getMyReceipts, getReceipt } from "../../services/api.js";
+import { UpgradeModal } from "../../components/ui.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { downloadReceiptPdf } from "../../utils/receiptPdf.js";
 import { tierLabel } from "../../utils/tiers.js";
@@ -17,13 +18,38 @@ export default function MyCourses() {
   // without a single shared flag disabling every row's button at once.
   const [receiptState, setReceiptState] = useState({});
 
-  useEffect(() => {
-    if (!isLoggedIn) return;
+  // Every receipt of this student's — the original purchase of a course plus
+  // one per plan upgrade (those carry `fromTier` and the course's id).
+  const [receipts, setReceipts] = useState([]);
+  const [upgrade, setUpgrade] = useState(null); // { item } | null — the plan-upgrade dialog
+
+  const load = () => {
     getMyEnrollments().then((res) => {
       setLoading(false);
       if (res.ok) setEnrollments(res.enrollments || []);
     });
+    getMyReceipts().then((res) => {
+      if (res.ok) setReceipts(res.receipts || []);
+    });
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    load();
   }, [isLoggedIn]);
+
+  // An upgrade receipt is already complete in the list response, so it goes
+  // straight to the PDF builder — no second fetch like the original's.
+  async function handleDownloadUpgradeReceipt(receipt) {
+    const key = `up-${receipt.paymentId}`;
+    setReceiptState((s) => ({ ...s, [key]: "loading" }));
+    try {
+      await downloadReceiptPdf(receipt);
+      setReceiptState((s) => { const next = { ...s }; delete next[key]; return next; });
+    } catch (e) {
+      setReceiptState((s) => ({ ...s, [key]: "error" }));
+    }
+  }
 
   async function handleDownloadReceipt(enrollment) {
     const id = enrollment._id;
@@ -112,12 +138,32 @@ export default function MyCourses() {
                   {receiptState[en._id] === "error" && (
                     <span style={{ color: "var(--danger)", fontSize: ".8rem" }}>Could not load receipt</span>
                   )}
+                  {receipts
+                    .filter((r) => r.fromTier && en.course && r.courseId === en.course._id)
+                    .map((r) => (
+                      <button
+                        key={r.paymentId}
+                        className="btn btn-ghost"
+                        disabled={receiptState[`up-${r.paymentId}`] === "loading"}
+                        onClick={() => handleDownloadUpgradeReceipt(r)}
+                        title={`Receipt for the upgrade from ${tierLabel(r.fromTier)} to ${tierLabel(r.tier)}`}
+                      >
+                        {receiptState[`up-${r.paymentId}`] === "loading" ? "Preparing…" : `Upgrade Receipt (${tierLabel(r.tier)})`}
+                      </button>
+                    ))}
+                  {/* Only a plan bought on the site can be upgraded, and only
+                      while access is live and there's a higher plan to go to
+                      — the dialog itself tells them if none is on offer. */}
+                  {en.tier && en.tier !== "pro" && !en.expired && en.course && (
+                    <button className="btn btn-ghost" onClick={() => setUpgrade({ item: en.course })}>Upgrade plan</button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+      <UpgradeModal data={upgrade} onClose={() => setUpgrade(null)} onDone={load} />
     </section>
   );
 }

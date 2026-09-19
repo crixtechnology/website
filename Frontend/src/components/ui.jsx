@@ -3,12 +3,12 @@ import { createPortal } from "react-dom";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { site, marquee, programDeliverables } from "../data/content.js";
-import { submitApplication, createRazorpayOrder, verifyPayment, submitContact } from "../services/api.js";
+import { submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder } from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { trackEvent } from "../utils/analytics.js";
 import { isValidName, emailFormatError, phoneLengthError, COUNTRY_CODES } from "../utils/validators.js";
-import { offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
+import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -132,46 +132,52 @@ function PlanPrice({ plan, className = "" }) {
   );
 }
 
-// PlanStrip: the compact "what does it cost" row on a program card — one cell
-// per plan the item sells, so all three prices are visible before opening
-// anything. Purely informational; choosing a plan happens in BuyModal.
-function PlanStrip({ plans }) {
+// PlanCards: the plan comparison — a card per plan with its price and
+// admin-written feature list, and a button that starts the purchase on that
+// plan. This is the only place plans are shown (the "See more" popup and the
+// standalone detail page); program cards carry no prices.
+// When the viewer already owns the course, `ownedTier` turns the buttons into
+// upgrade actions: their own plan is marked, lower plans read "included", and
+// each higher plan offers "Upgrade to …" (via onUpgrade) instead of "Choose".
+export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
+  const ownedRank = ownedTier ? TIER_ORDER.indexOf(ownedTier) : -1;
   return (
-    <div className="plan-strip" style={{ "--plans": plans.length }}>
-      {plans.map((p) => (
-        <div className="plan-mini" key={p.tier}>
-          <span className="plan-mini-name">{tierLabel(p.tier)}</span>
-          <b>{formatINR(planPrice(p))}</b>
-          {p.discountPercent > 0 && <s>{formatINR(p.price)}</s>}
-        </div>
-      ))}
+    <div className="plan-cards" role="list" style={{ "--plans": plans.length }}>
+      {plans.map((p) => {
+        const rank = TIER_ORDER.indexOf(p.tier);
+        return (
+          <div className={`plan-card plan-card--${p.tier}`} role="listitem" key={p.tier}>
+            <span className="plan-card-name">{tierLabel(p.tier)}</span>
+            <PlanPrice plan={p} />
+            {p.features?.length ? (
+              <ul className="plan-features">
+                {p.features.map((f) => <li key={f}>{f}</li>)}
+              </ul>
+            ) : null}
+            {!ownedTier ? (
+              <button className="btn btn-solid buy-btn" onClick={() => onChoose(p.tier)}>
+                Choose {tierLabel(p.tier)}
+              </button>
+            ) : rank === ownedRank ? (
+              <span className="plan-owned">Your current plan</span>
+            ) : rank < ownedRank ? (
+              <span className="plan-owned plan-owned--muted">Included in your plan</span>
+            ) : (
+              <button className="btn btn-solid buy-btn" onClick={() => onUpgrade(p.tier)}>
+                Upgrade to {tierLabel(p.tier)}
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-// PlanCards: the full comparison — a card per plan with its price and
-// admin-written feature list, and a button that starts the purchase on that
-// plan. Shared by the "See more" popup and the standalone detail page.
-export function PlanCards({ plans, onChoose }) {
-  return (
-    <div className="plan-cards" role="list" style={{ "--plans": plans.length }}>
-      {plans.map((p) => (
-        <div className={`plan-card plan-card--${p.tier}`} role="listitem" key={p.tier}>
-          <span className="plan-card-name">{tierLabel(p.tier)}</span>
-          <PlanPrice plan={p} />
-          {p.features?.length ? (
-            <ul className="plan-features">
-              {p.features.map((f) => <li key={f}>{f}</li>)}
-            </ul>
-          ) : null}
-          <button className="btn btn-solid buy-btn" onClick={() => onChoose(p.tier)}>
-            Choose {tierLabel(p.tier)}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
+// Screens this narrow (phones, portrait tablets) open a course/internship's
+// full page from "See more"; wider screens get the popup. Mirrors the site's
+// existing 920px tablet breakpoint for the card grids.
+const FULL_PAGE_QUERY = "(max-width: 920px)";
 
 /* ---------- InfoCard (program/service/course) ---------- */
 // Alternates entrance direction per column (left / top / right) so a 3-up grid
@@ -182,9 +188,18 @@ export function PlanCards({ plans, onChoose }) {
 // kind: "internship" | "course" — drives the type pill, the card's accent
 // color, and the CTA verb, so the category reads even out of context (not
 // just from the section heading above the grid). Omit for Services cards.
-export function InfoCard({ item, i, onDetail, onBuy, onInquire, onServiceInquire, isProgram, kind }) {
+export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isProgram, kind }) {
+  const navigate = useNavigate();
   const variant = i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top";
-  const plans = offeredTiers(item);
+  // "See more" and "Choose a plan" both land here. A course/internship's plans
+  // are too long for a popup on a phone or portrait tablet, so those screens go
+  // to its full page; desktop keeps the quick popup. Services (no plans) and
+  // items with no page (the static fallback has no slug) always use the popup.
+  // Checked at click time, so rotating or resizing the window just works.
+  const openDetail = () => {
+    if (isProgram && item.slug && window.matchMedia(FULL_PAGE_QUERY).matches) navigate(`/programs/${item.slug}`);
+    else if (onDetail) onDetail({ item, kind, isProgram });
+  };
   const closed = item.status === "closed";
   const openForBuy = isOpenForBuy(item);
   const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
@@ -211,12 +226,13 @@ export function InfoCard({ item, i, onDetail, onBuy, onInquire, onServiceInquire
             {deliverables.map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
           </div>
         ) : null}
-        {openForBuy && <PlanStrip plans={plans} />}
         <div className="card-btn-row">
           {isProgram && (
             openForBuy ? (
-              <button className="btn btn-solid buy-btn" onClick={() => onBuy && onBuy(item)}>
-                {plans.length > 1 ? "Choose a plan" : "Buy now"}
+              // Prices live in the "See more" popup, not on the card — choosing
+              // a plan opens that same popup rather than a separate flow.
+              <button className="btn btn-solid buy-btn" onClick={openDetail}>
+                Choose a plan
               </button>
             ) : kind === "internship" ? (
               <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Request to apply for this internship — no account needed">
@@ -242,12 +258,12 @@ export function InfoCard({ item, i, onDetail, onBuy, onInquire, onServiceInquire
               onClick={(e) => {
                 if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                 e.preventDefault();
-                onDetail && onDetail({ item, kind, isProgram });
+                openDetail();
               }}>
               See more →
             </a>
           ) : (
-            <button className="btn btn-ghost see-more-btn" onClick={() => onDetail && onDetail({ item, kind, isProgram })}>
+            <button className="btn btn-ghost see-more-btn" onClick={openDetail}>
               See more →
             </button>
           )}
@@ -308,6 +324,18 @@ export function Alert({ kind = "info", children }) {
     document.body
   );
 }
+
+// Loads Razorpay's Checkout script on first use; resolves false if it can't.
+// Shared by BuyModal and UpgradeModal.
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 
 /* ---------- BuyModal: confirms the logged-in account then opens Razorpay Checkout ----------
    Buying is gated behind login (see pages.jsx) — `user` is the account the
@@ -374,16 +402,6 @@ export function BuyModal({ item, user, initialTier, onClose }) {
     onClose();
     navigate(`/profile?reason=complete&next=${encodeURIComponent(back)}`);
   };
-
-  const loadRazorpayScript = () =>
-    new Promise((resolve) => {
-      if (window.Razorpay) return resolve(true);
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -553,6 +571,169 @@ export function BuyModal({ item, user, initialTier, onClose }) {
   );
 }
 
+/* ---------- UpgradeModal: move an owned course up a plan (Basic -> Plus/Pro, Plus -> Pro) ----------
+   `data` is `{ item, tier? }` (item needs `slug` + `title`; `tier` is the plan
+   to preselect) or null when closed. The server prices each step — target
+   plan's price minus everything already paid — so what's shown here is exactly
+   what create-upgrade-order charges. `onDone` fires once the payment is
+   confirmed, so the caller can refresh what it shows about the student's plan. */
+export function UpgradeModal({ data, onClose, onDone }) {
+  const item = data ? data.item : null;
+  const [info, setInfo] = useState(null); // null = loading, else { currentTier, paid, options, reason }
+  const [tier, setTier] = useState(null);
+  const [status, setStatus] = useState({ text: "", kind: "" });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  // Same stale-async guard as BuyModal's genRef: bumped whenever a fresh item
+  // opens so a still-running fetch/payment chain from the previous open can't
+  // write into this one.
+  const genRef = useRef(0);
+  useBodyScrollLock(!!item);
+
+  useEffect(() => {
+    if (!item) return;
+    genRef.current += 1;
+    const gen = genRef.current;
+    setInfo(null);
+    setTier(null);
+    setStatus({ text: "", kind: "" });
+    setLoading(false);
+    setDone(false);
+    getUpgradeOptions(item.slug).then((res) => {
+      if (genRef.current !== gen) return;
+      setInfo(res.ok
+        ? { currentTier: res.currentTier, paid: res.paid, options: res.options || [], reason: res.reason || "" }
+        : { currentTier: null, paid: 0, options: [], reason: res.error || "Could not load your upgrade options." });
+    });
+  }, [item]);
+
+  useEffect(() => {
+    if (!item) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [item, onClose]);
+
+  if (!item) return null;
+
+  const options = info ? info.options : [];
+  const selected = options.find((o) => o.tier === tier) || options.find((o) => o.tier === data.tier) || options[0];
+
+  const onPay = async () => {
+    if (loading || !selected) return; // already in flight — avoid a second order
+    setLoading(true);
+    setStatus({ text: "", kind: "" });
+    const myGen = genRef.current;
+    const stale = () => genRef.current !== myGen;
+
+    const orderRes = await createUpgradeOrder(item.slug, selected.tier);
+    if (stale()) return;
+    if (!orderRes.ok) {
+      setLoading(false);
+      setStatus({ text: orderRes.error || "Could not start the upgrade right now.", kind: "error" });
+      return;
+    }
+    trackEvent("begin_checkout", {
+      currency: orderRes.currency, value: (orderRes.amount || 0) / 100,
+      items: [{ item_id: item.slug, item_name: item.title, item_variant: selected.tier }],
+    });
+
+    const scriptOk = await loadRazorpayScript();
+    if (stale()) return;
+    setLoading(false);
+    if (!scriptOk || !window.Razorpay) {
+      setStatus({ text: "Could not load the payment gateway. Check your connection and try again.", kind: "error" });
+      return;
+    }
+
+    const rzp = new window.Razorpay({
+      key: orderRes.keyId,
+      order_id: orderRes.orderId,
+      amount: orderRes.amount,
+      currency: orderRes.currency,
+      name: "Crix Technology",
+      description: `${item.title} — upgrade to ${tierLabel(selected.tier)}`,
+      theme: { color: "#14C9C9" },
+      handler: async (resp) => {
+        setStatus({ text: "Confirming your payment...", kind: "info" });
+        const v = await verifyPayment(resp);
+        if (stale()) return;
+        if (v.ok) {
+          trackEvent("purchase", {
+            transaction_id: resp.razorpay_payment_id, currency: orderRes.currency, value: (orderRes.amount || 0) / 100,
+            items: [{ item_id: item.slug, item_name: item.title, item_variant: selected.tier }],
+          });
+          setStatus({ text: "", kind: "" });
+          setDone(true);
+          onDone && onDone();
+        } else {
+          setStatus({
+            text: (v.error || "We received your payment") + " — if your plan doesn't update shortly, contact us and we'll sort it out.",
+            kind: "error",
+          });
+        }
+      },
+      modal: { ondismiss: () => setStatus({ text: "", kind: "" }) },
+    });
+    rzp.open();
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="upgrade-modal-title" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        <span className="eyebrow">Upgrade plan</span>
+        <h3 id="upgrade-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
+
+        {done ? (
+          <>
+            <Alert kind="success">Payment confirmed — you're now on the {tierLabel(selected ? selected.tier : "")} plan.</Alert>
+            <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
+          </>
+        ) : info === null ? (
+          <p style={{ color: "var(--muted)", fontSize: ".85rem", marginTop: 12 }}>Checking your plan…</p>
+        ) : options.length === 0 ? (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".9rem", margin: "12px 0 20px" }}>
+              {info.reason || (info.currentTier === "pro"
+                ? "You're already on the highest plan."
+                : "There's no higher plan available to upgrade to right now.")}
+            </p>
+            <button className="btn btn-ghost" onClick={onClose} style={{ width: "100%" }}>Close</button>
+          </>
+        ) : (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".85rem", margin: "4px 0 16px" }}>
+              You're on the <b style={{ color: "var(--text)" }}>{tierLabel(info.currentTier)}</b> plan. Pay only the
+              difference to move up — everything you've already paid is credited.
+            </p>
+            <fieldset className="plan-picker">
+              <legend>Upgrade to</legend>
+              {options.map((o) => (
+                <label className={`plan-option${selected && selected.tier === o.tier ? " is-selected" : ""}`} key={o.tier}>
+                  <input type="radio" name="upgrade-plan" value={o.tier} checked={!!selected && selected.tier === o.tier}
+                    onChange={() => { setTier(o.tier); setStatus({ text: "", kind: "" }); }} />
+                  <span className="plan-option-head">
+                    <b>{tierLabel(o.tier)}</b>
+                    <span className="plan-price"><span className="price-now">{formatINR(o.due)}</span></span>
+                  </span>
+                  <span className="plan-option-sub">
+                    {formatINR(o.planPrice)} plan − {formatINR(info.paid)} already paid
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            <button className="btn btn-solid" onClick={onPay} disabled={loading} style={{ width: "100%" }}>
+              {loading ? "Please wait..." : selected ? `Pay ${formatINR(selected.due)} to upgrade` : "Upgrade"}
+            </button>
+            <Alert kind={status.kind}>{status.text}</Alert>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // InquiryModal: collects name/email/phone/college and creates an Application
 // (routes/applications.js) — this is what "Request to apply" (internships)
 // and "Request to enroll" (unpriced/closed courses) open now, replacing the
@@ -684,7 +865,9 @@ export function InquiryModal({ item, kind, onClose }) {
 // online). Closing this and opening onBuy/onInquire/onServiceInquire happens
 // in the same click handler so React batches both state updates into one
 // re-render — no flash of both modals at once.
-export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire }) {
+// `ownedTier` is the plan the logged-in viewer already holds on this item (or
+// null): the plan cards then offer "Upgrade to …" via onUpgrade(item, tier).
+export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire, ownedTier, onUpgrade }) {
   useBodyScrollLock(!!data);
 
   useEffect(() => {
@@ -707,6 +890,7 @@ export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire 
   // "Choose Pro" — same close-then-open-in-one-handler swap as act(), but the
   // plan clicked travels with it so BuyModal opens on that plan.
   const choosePlan = (tier) => { onClose(); onBuy && onBuy(item, tier); };
+  const upgradePlan = (tier) => { onClose(); onUpgrade && onUpgrade(item, tier); };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -718,6 +902,11 @@ export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire 
             <span className="tag">{item.tag}</span>
           </div>
           {closed && <span className="closed-badge">Currently closed</span>}
+          {/* The popup is the quick look; the page is the shareable, indexable
+              version of the same content. Only items that have a page. */}
+          {isProgram && item.slug && (
+            <Link className="detail-page-link" to={`/programs/${item.slug}`} onClick={onClose}>Open full page ↗</Link>
+          )}
         </div>
         <h3 id="detail-modal-title" style={{ margin: "12px 0 10px" }}>{item.title}</h3>
         <p style={{ color: "var(--muted)", fontSize: ".92rem", lineHeight: 1.7 }}>{item.desc}</p>
@@ -742,8 +931,8 @@ export function DetailModal({ data, onClose, onBuy, onInquire, onServiceInquire 
 
         {openForBuy && (
           <div className="plans-block">
-            <h4 className="plans-heading">{plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
-            <PlanCards plans={plans} onChoose={choosePlan} />
+            <h4 className="plans-heading">{ownedTier ? "Your plan" : plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
+            <PlanCards plans={plans} onChoose={choosePlan} ownedTier={ownedTier} onUpgrade={upgradePlan} />
           </div>
         )}
 

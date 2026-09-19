@@ -529,6 +529,36 @@ export async function getReceipt(paymentId) {
   }
 }
 
+// ---------- Student: upgrade a plan (Basic -> Plus/Pro, Plus -> Pro) ----------
+// What the logged-in student could upgrade to on a course, priced as the
+// target plan minus what they've already paid:
+//   { ok, currentTier, paid, options: [{ tier, planPrice, due }], reason? }
+export async function getUpgradeOptions(courseSlug) {
+  try {
+    const res = await authFetch(`/payments/upgrade-options/${encodeURIComponent(courseSlug)}`);
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not load upgrade options" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not load upgrade options" };
+  }
+}
+
+// Starts the Razorpay order for an upgrade — same response shape as
+// createRazorpayOrder, so the same Checkout + verifyPayment flow finishes it.
+export async function createUpgradeOrder(courseSlug, tier) {
+  try {
+    const res = await authFetch("/payments/create-upgrade-order", { method: "POST", body: JSON.stringify({ courseSlug, tier }) });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not start the upgrade" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not start the upgrade right now." };
+  }
+}
+
 // ---------- Admin: revenue (summary + paginated transaction list) ----------
 export async function adminGetRevenueSummary() {
   try {

@@ -22,7 +22,12 @@ export function planPrice(plan) {
   return Math.round(plan.price * (1 - (plan.discountPercent || 0) / 100));
 }
 
-export const formatINR = (amount) => `₹${amount.toLocaleString("en-IN")}`;
+// Whole rupees print bare (₹2,999); an amount with paise keeps both digits
+// (₹4,799.20), as an upgrade's price difference can.
+export const formatINR = (amount) =>
+  Number.isInteger(amount)
+    ? `₹${amount.toLocaleString("en-IN")}`
+    : `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // "Buy" is only offered when something is priced AND the admin has opened it.
 // A closed item hides its prices entirely and falls back to the request form.

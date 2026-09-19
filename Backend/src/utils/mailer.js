@@ -175,7 +175,7 @@ async function sendReceiptEmail({ receipt, pdfBuffer }) {
   const html = `
     <div style="font-family:Helvetica,Arial,sans-serif;color:#1e293b;max-width:520px;margin:0 auto">
       <h2 style="color:#0f1f3d;margin-bottom:4px">Thanks for your purchase, ${safeName}!</h2>
-      <p>Your payment for <strong>${safeTitle}</strong> (${kindLabel}${planLabel ? `, ${planLabel} plan` : ""}) has been confirmed.</p>
+      <p>Your payment for <strong>${safeTitle}</strong> (${kindLabel}${planLabel ? `, ${receipt.fromTier ? `upgrade from ${tierLabel(receipt.fromTier)} to ${planLabel}` : `${planLabel} plan`}` : ""}) has been confirmed.</p>
       <p>Receipt No: <strong>${escapeHtml(receipt.receiptNumber)}</strong><br/>
       Amount Paid: <strong>${fmtRupees(receipt.totalPaid)}</strong></p>
       <p>Your receipt is attached to this email as a PDF — you can also download it any time from

@@ -201,6 +201,9 @@ model Payment {
   amount                        Int
   currency                      String        @default("INR")
   tier                          Tier?
+  // Set only on a plan-upgrade payment: the plan the buyer held before
+  // paying the difference to reach `tier`. Null for an ordinary purchase.
+  fromTier                      Tier?
   status                        PaymentStatus @default(created)
   applicationId                 String?
   application                   Application?  @relation("PaymentApplication", fields: [applicationId], references: [id])

@@ -5,12 +5,36 @@ const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate } = require("../utils/enrollmentAccess");
 const { nextSequence } = require("../utils/counter");
 const { round2 } = require("../utils/money");
-const { WITH_TIERS, isTier, tierTotal } = require("../utils/tiers");
+const { WITH_TIERS, isTier, tierRank, tierTotal } = require("../utils/tiers");
+const { getUpgradeOptions } = require("../utils/upgrades");
+const { requireAuth } = require("../middleware/requireAuth");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 
 const router = express.Router();
+
+// The Razorpay SDK rejects with { statusCode, error: { description } } —
+// shapes the generic error handler can't read, so it would otherwise become a
+// bare 500 "Server error" for the customer. Translates it into a clean 502 and
+// returns true when it was one; false means "not a Razorpay error, next(e)".
+function respondToRazorpayError(e, res) {
+  if (!e || !e.statusCode) return false;
+  if (e.statusCode === 401) {
+    console.error(
+      "Razorpay rejected the request (401) — RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET " +
+      "in Backend/.env are wrong or still placeholders."
+    );
+    res.status(502).json({
+      ok: false,
+      error: "Payments aren't set up correctly yet. Please contact us on WhatsApp to complete your enrollment.",
+    });
+    return true;
+  }
+  console.error("Razorpay order create failed:", e.statusCode, e.error && e.error.description);
+  res.status(502).json({ ok: false, error: (e.error && e.error.description) || "Payment gateway error" });
+  return true;
+}
 
 // Marks a payment paid and grants the matching course enrolment. Idempotent
 // and safe to call from BOTH the browser-side /verify endpoint and the
@@ -31,7 +55,16 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
       where: { userId_courseId: { userId: application.userId, courseId: application.courseId } },
     });
 
-    if (hasValidAccess(existing)) {
+    if (payment.fromTier) {
+      // A plan upgrade: the student already has this course and paid the
+      // difference to move up a plan. Only the plan changes — never the
+      // start/end dates (that would relock the drip schedule or restart the
+      // expiry window) — and enrollment.paymentId stays on the original
+      // purchase. The rank check makes /verify + webhook both firing a no-op.
+      if (existing && tierRank(payment.tier) > tierRank(existing.tier)) {
+        await prisma.enrollment.update({ where: { id: existing.id }, data: { tier: payment.tier } });
+      }
+    } else if (hasValidAccess(existing)) {
       // Already has valid access — this is /verify and the webhook both
       // firing for the SAME purchase, a genuinely idempotent no-op. Just
       // make sure payment/status are attached; don't touch startDate/
@@ -157,6 +190,7 @@ async function attachReceipt(payment, application) {
       itemType: course.type,
       itemTitle: course.title,
       tier: payment.tier,
+      fromTier: payment.fromTier,
       basePrice,
       discountPercent,
       discountAmount,
@@ -165,7 +199,7 @@ async function attachReceipt(payment, application) {
       razorpay_payment_id: payment.razorpayPaymentId,
     });
     await sendReceiptEmail({
-      receipt: { receiptNumber, buyerName: receipt.buyerName, buyerEmail: receipt.buyerEmail, itemTitle: course.title, itemType: course.type, tier: payment.tier, totalPaid },
+      receipt: { receiptNumber, buyerName: receipt.buyerName, buyerEmail: receipt.buyerEmail, itemTitle: course.title, itemType: course.type, tier: payment.tier, fromTier: payment.fromTier, totalPaid },
       pdfBuffer,
     });
   } catch (mailErr) {
@@ -272,23 +306,112 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
       keyId: process.env.RAZORPAY_KEY_ID, // public key id — safe to send to the frontend checkout widget
     });
   } catch (e) {
-    // The Razorpay SDK rejects with { statusCode, error: { description } } —
-    // shapes the generic error handler can't read, so it would otherwise
-    // become a bare 500 "Server error" for the customer. Translate it here.
-    if (e && e.statusCode) {
-      if (e.statusCode === 401) {
-        console.error(
-          "Razorpay rejected the request (401) — RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET " +
-          "in Backend/.env are wrong or still placeholders."
-        );
-        return res.status(502).json({
-          ok: false,
-          error: "Payments aren't set up correctly yet. Please contact us on WhatsApp to complete your enrollment.",
-        });
-      }
-      console.error("Razorpay order create failed:", e.statusCode, e.error && e.error.description);
-      return res.status(502).json({ ok: false, error: (e.error && e.error.description) || "Payment gateway error" });
+    if (respondToRazorpayError(e, res)) return;
+    next(e);
+  }
+});
+
+// ---------- 1b. upgrade an existing plan (Basic -> Plus/Pro, Plus -> Pro) ----------
+// What the logged-in student could upgrade to on a course, with what each step
+// would cost — the single source of truth for the price the upgrade dialog
+// shows and create-upgrade-order then charges.
+router.get("/upgrade-options/:courseSlug", requireAuth, async (req, res, next) => {
+  try {
+    const course = await prisma.course.findUnique({ where: { slug: req.params.courseSlug }, include: WITH_TIERS });
+    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+
+    const result = await getUpgradeOptions(req.user.sub, course);
+    if (!result.ok) return res.json({ ok: true, currentTier: null, options: [], reason: result.reason });
+
+    res.json({
+      ok: true,
+      currentTier: result.currentTier,
+      paid: result.paidPaise / 100,
+      options: result.options.map((o) => ({ tier: o.tier, planPrice: o.planPaise / 100, due: o.duePaise / 100 })),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Creates the Razorpay order for an upgrade. Charges the difference between
+// the target plan and everything already paid (see utils/upgrades.js) —
+// computed here, never taken from the client. Needs a login, since the
+// upgrade applies to the caller's own enrollment. Once paid, /verify or the
+// webhook moves the enrollment up a plan via grantAccessForPayment.
+router.post("/create-upgrade-order", publicWriteLimiter, requireAuth, async (req, res, next) => {
+  try {
+    if (isLiveBlocked) {
+      return res.status(503).json({
+        ok: false,
+        error: "Live payments are disabled by a safety guard. Set ALLOW_LIVE_PAYMENTS=true in Backend/.env to enable real charges.",
+      });
     }
+    const { courseSlug, tier: tierName } = req.body || {};
+    if (!courseSlug) return res.status(400).json({ ok: false, error: "courseSlug is required" });
+    if (!isTier(tierName)) return res.status(400).json({ ok: false, error: "Choose a plan to upgrade to." });
+
+    const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_TIERS });
+    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+
+    const result = await getUpgradeOptions(req.user.sub, course);
+    if (!result.ok) return res.status(400).json({ ok: false, error: result.reason });
+    const option = result.options.find((o) => o.tier === tierName);
+    if (!option) {
+      return res.status(400).json({ ok: false, error: "That plan isn't an available upgrade from your current plan." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.sub } });
+    if (!user) return res.status(401).json({ ok: false, error: "Account not found" });
+
+    // The grant and receipt paths work off an Application (who bought what),
+    // so an upgrade gets one too. Marked contacted: nobody needs to follow up
+    // on an upgrade, and it shouldn't show up as a new lead in the admin inbox.
+    const application = await prisma.application.create({
+      data: {
+        type: course.type,
+        refTitle: course.title,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        userId: user.id,
+        courseId: course.id,
+        tier: tierName,
+        contacted: true,
+      },
+    });
+
+    const order = await razorpay.orders.create({
+      amount: option.duePaise,
+      currency: "INR",
+      receipt: `app_${application.id}`,
+      notes: { applicationId: String(application.id), courseSlug, tier: tierName, upgradeFrom: result.currentTier },
+    });
+
+    const payment = await prisma.payment.create({
+      data: {
+        razorpayOrderId: order.id,
+        amount: option.duePaise,
+        status: "created",
+        applicationId: application.id,
+        tier: tierName,
+        fromTier: result.currentTier,
+        // The receipt for an upgrade is for the difference paid, undiscounted.
+        orderSnapshotBasePrice: option.duePaise / 100,
+        orderSnapshotDiscountPercent: 0,
+      },
+    });
+    await prisma.application.update({ where: { id: application.id }, data: { paymentId: payment.id } });
+
+    res.status(201).json({
+      ok: true,
+      orderId: order.id,
+      amount: option.duePaise,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (e) {
+    if (respondToRazorpayError(e, res)) return;
     next(e);
   }
 });
