@@ -47,7 +47,7 @@ export default function AdminMessages() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h2 style={{ margin: "14px 0 0" }}>Contact messages</h2>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Contact messages</h1>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
         </div>

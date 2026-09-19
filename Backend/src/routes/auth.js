@@ -6,7 +6,7 @@ const { OAuth2Client } = require("google-auth-library");
 const { prisma } = require("../db");
 const { requireAuth } = require("../middleware/requireAuth");
 const { isDisposableEmail } = require("../utils/disposableEmail");
-const { isValidEmail, isValidPhone } = require("../utils/validators");
+const { isValidEmail, isValidPhone, isValidName } = require("../utils/validators");
 const { signToken: signJwt } = require("../utils/jwt");
 const { hasLiveSession } = require("../utils/sessionPolicy");
 const { sendAccountExistsEmail } = require("../utils/mailer");
@@ -112,6 +112,12 @@ router.post("/signup", authLimiter, async (req, res, next) => {
     if (!name || !email || !password) {
       return res.status(400).json({ ok: false, error: "name, email and password are required" });
     }
+    if (!isValidName(name)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid name." });
+    }
+    if (phone && !isValidPhone(phone)) {
+      return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
+    }
     const normalizedEmail = String(email).toLowerCase().trim();
     if (!isValidEmail(normalizedEmail)) {
       return res.status(400).json({ ok: false, error: "Enter a valid email address." });
@@ -158,7 +164,7 @@ router.post("/signup", authLimiter, async (req, res, next) => {
     let user;
     try {
       user = await prisma.user.create({
-        data: { name: name.trim(), email: normalizedEmail, phone: phone || "", passwordHash, role: "student" },
+        data: { name: String(name).trim(), email: normalizedEmail, phone: phone ? String(phone).trim() : "", passwordHash, role: "student" },
       });
     } catch (createErr) {
       if (createErr && createErr.code === "P2002") {

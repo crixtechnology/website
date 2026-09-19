@@ -79,3 +79,20 @@ export function phoneLengthError(countryCode, digits) {
   const country = COUNTRY_CODES.find((c) => c.code === countryCode) || COUNTRY_CODES[0];
   return String(digits).length === country.digits ? "" : `a valid ${country.digits}-digit number for ${country.code}`;
 }
+
+// Mirrors Backend/src/utils/validators.js's isValidHttpUrl — defense in
+// depth for anywhere a stored link gets rendered straight into an <a href>
+// (e.g. Learn.jsx's "Join live" button, built from an admin-set Lecture
+// link). React does not strip a `javascript:` URI out of href on its own;
+// the backend is the real gate (this can't help a request that skips it),
+// but this stops a bad value already in the DB — pre-existing, or from
+// anywhere that isn't this one validated route — from ever being rendered
+// as a clickable link.
+export function isValidHttpUrl(value) {
+  try {
+    const u = new URL(String(value));
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch (e) {
+    return false;
+  }
+}

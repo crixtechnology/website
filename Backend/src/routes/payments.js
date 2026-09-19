@@ -134,8 +134,11 @@ async function attachReceipt(payment, application) {
   // actually charged, with no discount.
   const basePrice = round2(payment.orderSnapshotBasePrice != null ? payment.orderSnapshotBasePrice : (payment.amount || 0) / 100);
   const discountPercent = payment.orderSnapshotDiscountPercent != null ? payment.orderSnapshotDiscountPercent : 0;
-  const discountAmount = round2((basePrice * discountPercent) / 100);
   const totalPaid = round2((payment.amount || 0) / 100); // paise -> rupees, what was actually charged
+  // Derived from what was really charged rather than recomputed from the
+  // percentage, so the receipt always adds up (base - discount = total) even
+  // though the charge is rounded to whole rupees.
+  const discountAmount = discountPercent > 0 ? round2(Math.max(0, basePrice - totalPaid)) : 0;
 
   const seq = await nextSequence("receipt");
   const year = new Date().getFullYear();
@@ -222,6 +225,12 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
     }
     const application = await prisma.application.findUnique({ where: { id: applicationId } });
     if (!application) return res.status(404).json({ ok: false, error: "Application not found" });
+    // Access is granted to the account the application belongs to. An
+    // application with no account (a guest form filled in while logged out)
+    // would take the payment and then have nobody to unlock the course for.
+    if (!application.userId) {
+      return res.status(401).json({ ok: false, error: "Please log in before paying, so we can unlock the course on your account." });
+    }
 
     const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_TIERS });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
@@ -254,16 +263,19 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
     // already have. Enrollment access itself is unaffected either way
     // (grantAccessForPayment already no-ops the enrollment side of a
     // genuine duplicate), this only stops the needless second charge.
-    if (application.userId) {
-      const existingEnrollment = await prisma.enrollment.findUnique({
-        where: { userId_courseId: { userId: application.userId, courseId: course.id } },
+    const existingEnrollment = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId: application.userId, courseId: course.id } },
+    });
+    if (hasValidAccess(existingEnrollment)) {
+      return res.status(400).json({
+        ok: false,
+        error: existingEnrollment.tier
+          ? "You already have access to this course. To move to a higher plan, use \"Upgrade plan\" in My Courses."
+          : "You already have access to this course.",
       });
-      if (hasValidAccess(existingEnrollment)) {
-        return res.status(400).json({ ok: false, error: "You already have access to this course." });
-      }
     }
 
-    const amountPaise = Math.round(tierTotal(plan) * 100); // Razorpay wants the smallest currency unit
+    const amountPaise = tierTotal(plan) * 100; // whole rupees -> paise, Razorpay's smallest unit
 
     const order = await razorpay.orders.create({
       amount: amountPaise,

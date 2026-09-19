@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
 import { getLearnData } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { isValidHttpUrl } from "../../utils/validators.js";
 import CourseVideos from "../../components/CourseVideos.jsx";
 
 // How early the "Join live" button shows up before a class's start time —
@@ -77,7 +78,7 @@ export default function Learn() {
       <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 480 }}>
           <span className="eyebrow">Course access</span>
-          <h2 style={{ margin: "14px 0 16px" }}>Log in to view this course</h2>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to view this course</h1>
           <button className="btn btn-solid" onClick={() => openAuthModal("login")}>Log in</button>
         </div>
       </section>
@@ -97,7 +98,7 @@ export default function Learn() {
       <section className="section" style={{ paddingTop: 140 }}>
         <div className="wrap">
           <span className="eyebrow">Not available</span>
-          <h2 style={{ margin: "14px 0 16px" }}>{error}</h2>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>{error}</h1>
           <Link className="btn btn-solid" to="/dashboard">← My courses</Link>
         </div>
       </section>
@@ -115,7 +116,7 @@ export default function Learn() {
     <section className="section" style={{ paddingTop: 140 }}>
       <div className="wrap" style={{ maxWidth: 720 }}>
         <Link className="back-link" to="/dashboard">← My courses</Link>
-        <h2 style={{ margin: "24px 0 6px" }}>{course.title}</h2>
+        <h1 className="title-lg" style={{ margin: "24px 0 6px" }}>{course.title}</h1>
         <p style={{ color: "var(--muted)", marginBottom: 32 }}>{course.desc}</p>
 
         <h3 style={{ margin: "0 0 16px" }}>Upcoming live classes</h3>
@@ -135,7 +136,7 @@ export default function Learn() {
                     <b>{lec.title} {live && <span className="admin-pill new">live now</span>}</b>
                     <span className="admin-row-meta">{fmtRange(lec.scheduledAt, lec.scheduledEndAt)}</span>
                   </div>
-                  {canJoin ? (
+                  {canJoin && isValidHttpUrl(lec.link) ? (
                     <a className="btn btn-solid" href={lec.link} target="_blank" rel="noopener noreferrer">Join live →</a>
                   ) : (
                     <span style={{ color: "var(--muted)", fontSize: ".85rem" }}>

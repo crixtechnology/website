@@ -368,3 +368,72 @@ describe("plan upgrades", () => {
     expect(res.body.reason).toMatch(/can't be upgraded online/i);
   });
 });
+
+// Regression tests for bugs found in the bug sweep.
+describe("create-order — bug-sweep regressions", () => {
+  beforeEach(() => razorpay.orders.create.mockClear());
+
+  it("refuses an application with no account behind it instead of taking money it can't unlock", async () => {
+    const course = await createPricedCourse();
+    // A guest application: no Authorization header, so no userId is attached.
+    const appRes = await request(app).post("/api/applications").send({
+      type: "course", refTitle: course.title, courseSlug: course.slug,
+      name: "Guest Buyer", email: "guest-buyer@example.com", phone: "9876500000",
+    });
+    expect(appRes.status).toBe(201);
+    const order = await request(app).post("/api/payments/create-order").send({
+      applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
+    });
+    expect(order.status).toBe(401);
+    expect(order.body.error).toMatch(/log in/i);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+  });
+
+  it("charges whole rupees — exactly the rounded price the site shows", async () => {
+    // ₹5,999 less 20% is ₹4,799.20; the site shows ₹4,799, so that's what is charged.
+    const course = await createPricedCourse({ tiers: [{ tier: "basic", price: 5999, discountPercent: 20 }] });
+    const { token } = await createStudent("whole-rupees@example.com");
+    const appRes = await authed(request(app).post("/api/applications"), token).send({
+      type: "course", refTitle: course.title, courseSlug: course.slug,
+      name: "Whole Rupees", email: "whole-rupees@example.com", phone: "9876500000",
+    });
+    const order = await request(app).post("/api/payments/create-order").send({
+      applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
+    });
+    expect(order.status).toBe(201);
+    expect(order.body.amount).toBe(479900);
+  });
+
+  it("points an owner of a plan at Upgrade instead of just refusing", async () => {
+    const course = await createPricedCourse({ tiers: [{ tier: "basic", price: 1000 }, { tier: "pro", price: 3000 }] });
+    const { user, token } = await createStudent("owner-hint@example.com");
+    await prisma.enrollment.create({ data: { userId: user.id, courseId: course._id, status: "active", tier: "basic" } });
+    const appRes = await authed(request(app).post("/api/applications"), token).send({
+      type: "course", refTitle: course.title, courseSlug: course.slug,
+      name: "Owner Hint", email: "owner-hint@example.com", phone: "9876500000",
+    });
+    const order = await request(app).post("/api/payments/create-order").send({
+      applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "pro",
+    });
+    expect(order.status).toBe(400);
+    expect(order.body.error).toMatch(/upgrade plan/i);
+  });
+});
+
+describe("receipts add up when the price was discounted", () => {
+  it("derives the discount from what was charged, so base - discount = total", async () => {
+    const course = await createPricedCourse({ tiers: [{ tier: "basic", price: 5999, discountPercent: 20 }] });
+    const { user } = await createStudent("receipt-sum@example.com");
+    const application = await prisma.application.create({
+      data: { type: "course", refTitle: course.title, name: "Receipt Sum", email: "receipt-sum@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "basic" },
+    });
+    const payment = await prisma.payment.create({
+      data: { razorpayOrderId: `order_sum_${Date.now()}`, razorpayPaymentId: "pay_sum", amount: 479900, status: "paid", tier: "basic", applicationId: application.id, orderSnapshotBasePrice: 5999, orderSnapshotDiscountPercent: 20 },
+    });
+    await attachReceipt(payment, application);
+    const saved = await prisma.payment.findUnique({ where: { id: payment.id } });
+    expect(saved.receiptBasePrice).toBe(5999);
+    expect(saved.receiptTotalPaid).toBe(4799);
+    expect(saved.receiptDiscountAmount).toBe(1200); // 5999 - 4799, not the unrounded 1199.80
+  });
+});

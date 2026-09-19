@@ -15,6 +15,9 @@ const router = express.Router();
 router.post("/contact", publicWriteLimiter, async (req, res, next) => {
   try {
     const { name, email, phone, company, interest, message } = req.body || {};
+    if ([name, email, phone, company, interest].some((v) => v && String(v).length > 150) || (message && String(message).length > 5000)) {
+      return res.status(400).json({ ok: false, error: "One of the fields is too long." });
+    }
     if (!name || (!email && !phone)) {
       return res.status(400).json({ ok: false, error: "name and either an email or phone number are required" });
     }

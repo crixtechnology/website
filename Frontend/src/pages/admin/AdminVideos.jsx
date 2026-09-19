@@ -90,7 +90,7 @@ export default function AdminVideos() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h2 style={{ margin: "14px 0 0" }}>Course videos</h2>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Course videos</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
               All recorded videos are playable any time once a student is enrolled. New recordings are added automatically by the sync script.
             </p>

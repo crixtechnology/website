@@ -22,6 +22,9 @@ const router = express.Router();
 router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req, res, next) => {
   try {
     const { type, refTitle, name, email, phone, college, track, courseSlug, tier } = req.body || {};
+    if ([refTitle, name, email, phone, college, track].some((v) => v && String(v).length > 150)) {
+      return res.status(400).json({ ok: false, error: "One of the fields is too long." });
+    }
     if (!type || !refTitle || !name || !email || !phone) {
       return res.status(400).json({ ok: false, error: "type, refTitle, name, email and phone are required" });
     }

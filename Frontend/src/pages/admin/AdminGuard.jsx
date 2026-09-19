@@ -31,7 +31,7 @@ export default function AdminGuard({ children }) {
     <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
       <div className="wrap" style={{ maxWidth: 480 }}>
         <span className="eyebrow">Admin</span>
-        <h2 style={{ margin: "14px 0 16px" }}>Log in to continue</h2>
+        <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to continue</h1>
         <button className="btn btn-solid" onClick={onLoginClick}>Log in</button>
         {error && <p className="form-note">{error}</p>}
       </div>

@@ -659,6 +659,8 @@ export function Contact() {
     setSending(false);
     setKind(res.ok ? "success" : "error");
     setStatus(res.ok ? "Message sent. We'll reply within two working days." : res.error);
+    // Clear what was sent, so pressing the button again can't quietly post the same message twice.
+    if (res.ok) setForm((f) => ({ ...f, name: "", email: "", phone: "", message: "" }));
   };
 
   const set = (k) => (e) => {
@@ -720,7 +722,7 @@ function PageHead({ eyebrow, title, text }) {
       <Aurora />
       <Reveal variant="reveal-top" style={{ position: "relative", zIndex: 2 }} className="wrap">
         <span className="eyebrow">{eyebrow}</span>
-        <h2 style={{ fontSize: "clamp(1.9rem,4vw,3rem)" }}>{title}</h2>
+        <h1 style={{ fontSize: "clamp(1.9rem,4vw,3rem)", margin: "14px 0 18px" }}>{title}</h1>
         <p>{text}</p>
       </Reveal>
     </header>

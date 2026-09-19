@@ -76,7 +76,7 @@ export default function AdminDashboard() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h2 style={{ margin: "14px 0 0" }}>Dashboard</h2>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Dashboard</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Signed in as {user?.email}</p>
           </div>
           <button className="btn btn-ghost" onClick={() => { logout(); navigate("/admin"); }}>Log out</button>

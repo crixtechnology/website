@@ -43,7 +43,7 @@ async function getUpgradeOptions(userId, course) {
   const options = course.tiers
     .filter((plan) => tierRank(plan.tier) > tierRank(enrollment.tier))
     .map((plan) => {
-      const planPaise = Math.round(tierTotal(plan) * 100);
+      const planPaise = tierTotal(plan) * 100;
       return { tier: plan.tier, planPaise, duePaise: planPaise - paidPaise };
     })
     .filter((option) => option.duePaise >= MIN_UPGRADE_PAISE);

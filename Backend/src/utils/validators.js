@@ -55,4 +55,22 @@ function isValidName(name) {
   return NAME_RE.test(String(name).trim());
 }
 
-module.exports = { EMAIL_RE, isValidEmail, isValidPhone, isDisposableEmail, NAME_RE, isValidName };
+// Restricts a stored link to an actual http(s) URL. Without this, an admin
+// field like Lecture.link (rendered directly into a student-facing <a href>
+// on the "Join live" button — Frontend/src/pages/student/Learn.jsx) could be
+// set to a `javascript:` URI — React does NOT sanitize that scheme out of
+// href by default — and execute in whichever student's browser clicks it,
+// with access to their sessionStorage JWT. Only matters if the admin account
+// setting it is malicious or compromised, but that shouldn't be a lever to
+// pivot into arbitrary student account takeover, so it's checked at the API
+// boundary regardless of what any particular UI does with the value.
+function isValidHttpUrl(value) {
+  try {
+    const u = new URL(String(value));
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch (e) {
+    return false;
+  }
+}
+
+module.exports = { EMAIL_RE, isValidEmail, isValidPhone, isDisposableEmail, NAME_RE, isValidName, isValidHttpUrl };

@@ -29,7 +29,7 @@ export default function Profile() {
       <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 480 }}>
           <span className="eyebrow">Your account</span>
-          <h2 style={{ margin: "14px 0 16px" }}>Log in to manage your profile</h2>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to manage your profile</h1>
           <button className="btn btn-solid" onClick={() => openAuthModal("login")}>Log in</button>
         </div>
       </section>
@@ -73,7 +73,7 @@ export default function Profile() {
     <section className="section" style={{ paddingTop: 140 }}>
       <div className="wrap" style={{ maxWidth: 560 }}>
         <span className="eyebrow">Your account</span>
-        <h2 style={{ margin: "14px 0 8px" }}>Your profile</h2>
+        <h1 className="title-lg" style={{ margin: "14px 0 8px" }}>Your profile</h1>
         <p style={{ color: "var(--muted)", marginBottom: 28 }}>
           These details are used for your enrolments and payment receipts.
         </p>

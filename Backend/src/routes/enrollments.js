@@ -7,6 +7,10 @@ const { isTier } = require("../utils/tiers");
 
 const router = express.Router();
 
+// An unparseable date string becomes an Invalid Date, which Prisma rejects with a
+// 500; catch it up front and answer 400 instead. undefined / null are fine.
+const badDate = (d) => d instanceof Date && Number.isNaN(d.getTime());
+
 const USER_SUMMARY = { id: true, name: true, email: true, phone: true };
 const COURSE_SUMMARY = { id: true, title: true, slug: true };
 
@@ -98,6 +102,9 @@ router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
     const dateFields = {};
     if (startDate) dateFields.startDate = new Date(startDate);
     if (endDate !== undefined) dateFields.endDate = endDate ? new Date(endDate) : null;
+    if (badDate(dateFields.startDate) || badDate(dateFields.endDate)) {
+      return res.status(400).json({ ok: false, error: "Start and end dates must be valid dates" });
+    }
     // Which plan this grant counts as — optional, an admin-granted access with
     // no plan just stays untiered.
     if (tier !== undefined) dateFields.tier = isTier(tier) ? tier : null;
@@ -120,6 +127,9 @@ router.patch("/admin/enrollments/:id", requireAdmin, async (req, res, next) => {
   try {
     const { startDate, endDate } = req.body || {};
     const update = {};
+    if (badDate(startDate ? new Date(startDate) : undefined) || badDate(endDate ? new Date(endDate) : undefined)) {
+      return res.status(400).json({ ok: false, error: "Start and end dates must be valid dates" });
+    }
     // A falsy/empty startDate means "leave it alone" (same partial-update
     // convention as every other field here) — it must NOT silently reset
     // the drip schedule's day-1 to right now, which would relock videos a
