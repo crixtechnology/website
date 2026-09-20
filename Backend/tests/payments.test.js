@@ -360,6 +360,54 @@ describe("plan upgrades", () => {
     expect((await createUpgrade("pro")).status).toBe(400);
   });
 
+  // Bought Pro, an admin removed the access, then Basic was bought: the old
+  // Pro payment belongs to the old access and must not count as already paid.
+  it("only counts what was paid for the current access, not for access that was removed", async () => {
+    const { user: rebuyer, token: rebuyerToken } = await createStudent("rebuyer@example.com");
+    const appFor = (tier) => prisma.application.create({
+      data: { type: "course", refTitle: course.title, name: "Rebuyer", email: "rebuyer@example.com", phone: "9876500001", userId: rebuyer.id, courseId: course._id, tier },
+    });
+    const proApp = await appFor("pro");
+    await prisma.payment.create({
+      data: { razorpayOrderId: `order_oldpro_${Date.now()}`, razorpayPaymentId: "pay_oldpro", amount: 300000, status: "paid", tier: "pro", applicationId: proApp.id, createdAt: new Date(Date.now() - 3 * 86400000) },
+    });
+    // (the Pro enrollment was removed — there is no enrollment row left)
+    const basicApp = await appFor("basic");
+    const basicPayment = await prisma.payment.create({
+      data: { razorpayOrderId: `order_rebasic_${Date.now()}`, razorpayPaymentId: "pay_rebasic", amount: 100000, status: "paid", tier: "basic", applicationId: basicApp.id },
+    });
+    await prisma.enrollment.create({
+      data: { userId: rebuyer.id, courseId: course._id, paymentId: basicPayment.id, tier: "basic", status: "active", startDate: new Date(), endDate: new Date(Date.now() + 90 * 86400000) },
+    });
+
+    const res = await authed(request(app).get(`/api/payments/upgrade-options/${course.slug}`), rebuyerToken);
+    expect(res.body.currentTier).toBe("basic");
+    expect(res.body.paid).toBe(1000); // not ₹4000
+    expect(res.body.options).toEqual([
+      { tier: "plus", planPrice: 1500, due: 500 },
+      { tier: "pro", planPrice: 3000, due: 2000 },
+    ]);
+    expect(res.body.reason).toBeUndefined();
+  });
+
+  it("explains when what was already paid covers every higher plan", async () => {
+    const { user: overpaid, token: overpaidToken } = await createStudent("overpaid@example.com");
+    const application = await prisma.application.create({
+      data: { type: "course", refTitle: course.title, name: "Overpaid", email: "overpaid@example.com", phone: "9876500002", userId: overpaid.id, courseId: course._id, tier: "pro" },
+    });
+    const payment = await prisma.payment.create({
+      data: { razorpayOrderId: `order_overpaid_${Date.now()}`, razorpayPaymentId: "pay_overpaid", amount: 300000, status: "paid", tier: "pro", applicationId: application.id },
+    });
+    // e.g. the plan was edited down to Basic after a Pro purchase
+    await prisma.enrollment.create({
+      data: { userId: overpaid.id, courseId: course._id, paymentId: payment.id, tier: "basic", status: "active", startDate: new Date(), endDate: new Date(Date.now() + 90 * 86400000) },
+    });
+    const res = await authed(request(app).get(`/api/payments/upgrade-options/${course.slug}`), overpaidToken);
+    expect(res.body.options).toEqual([]);
+    expect(res.body.reason).toMatch(/already paid ₹3,000/);
+    expect(res.body.reason).toMatch(/contact us/i);
+  });
+
   it("does not offer upgrades on access that was not bought as a plan", async () => {
     const { user: granted, token: grantedToken } = await createStudent("admin-granted@example.com");
     await prisma.enrollment.create({ data: { userId: granted.id, courseId: course._id, status: "active" } });
