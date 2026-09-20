@@ -4,6 +4,7 @@ import { UserContext, isProfileComplete } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { Alert } from "../../components/ui.jsx";
 import PhoneInput from "../../components/PhoneInput.jsx";
+import PasswordSettings from "../../components/PasswordSettings.jsx";
 import { phoneError } from "../../utils/phone.js";
 
 export default function Profile() {
@@ -118,6 +119,8 @@ export default function Profile() {
 
           <Alert kind={status.kind}>{status.text}</Alert>
         </form>
+
+        <PasswordSettings />
       </div>
     </section>
   );

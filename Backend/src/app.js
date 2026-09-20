@@ -11,6 +11,7 @@ const helmet = require("helmet");
 const { allowedOrigins: getAllowedOrigins } = require("./utils/clientOrigin");
 
 const authRoutes = require("./routes/auth");
+const passwordRoutes = require("./routes/password");
 const courseRoutes = require("./routes/courses");
 const applicationRoutes = require("./routes/applications");
 const paymentRoutes = require("./routes/payments");
@@ -70,6 +71,7 @@ app.use(express.json());
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/auth", passwordRoutes);
 app.use("/api", courseRoutes);
 app.use("/api", applicationRoutes);
 app.use("/api/payments", paymentRoutes);

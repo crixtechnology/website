@@ -18,12 +18,13 @@ let prisma;
 
 async function setupTestDb() {
   process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret-do-not-use-in-production";
-  // Force every best-effort external integration (Resend receipt emails,
+  // Force every best-effort external integration (SMTP emails,
   // formsubmit.co notifications) onto its fail-soft "skip" path instead of
   // making real network calls during tests — both are already designed to
   // no-op cleanly when unset/unreachable, so this doesn't change what's
   // being tested, just removes an external network dependency from the run.
-  process.env.RESEND_API_KEY = "";
+  process.env.SMTP_HOST = "";
+  process.env.MAIL_DEV_LOG = "";
   process.env.CONTACT_TO_EMAIL = "";
 
   if (!process.env.TEST_DATABASE_URL) {
@@ -59,8 +60,18 @@ async function setupTestDb() {
 }
 
 async function clearTestDb() {
+  // This deletes every row. A test file that requires ../src/db (directly or via
+  // a util) BEFORE setupTestDb() runs gets a Prisma client bound to the real
+  // dev database from .env, not crix_test — so check what we're actually
+  // connected to, rather than trusting the env var, and refuse if it isn't a
+  // *_test database.
+  const [{ db }] = await prisma.$queryRaw`SELECT DATABASE() AS db`;
+  if (!/_test$/.test(String(db))) {
+    throw new Error(`Refusing to wipe database "${db}" — not a *_test database. A test file probably required ../src/db before setupTestDb() ran; require it inside beforeAll instead.`);
+  }
   // Referral rows point at users (and credit entries at referrals/payments), so
   // they go before everything they reference.
+  await prisma.emailOtp.deleteMany();
   await prisma.creditEntry.deleteMany();
   await prisma.ambassadorEarning.deleteMany();
   await prisma.ambassadorPayout.deleteMany();

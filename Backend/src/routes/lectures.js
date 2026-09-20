@@ -2,7 +2,7 @@ const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
-const { hasValidAccess } = require("../utils/enrollmentAccess");
+const { hasValidAccess, isAdminUser } = require("../utils/enrollmentAccess");
 const { serialize } = require("../utils/serialize");
 const { isValidHttpUrl } = require("../utils/validators");
 
@@ -116,14 +116,17 @@ router.get("/learn/:courseSlug", requireAuth, async (req, res, next) => {
     const course = await prisma.course.findUnique({ where: { slug: req.params.courseSlug } });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
 
-    const enrollment = await prisma.enrollment.findFirst({
-      where: { userId: req.user.sub, courseId: course.id, status: "active" },
-    });
-    if (!enrollment) {
-      return res.status(403).json({ ok: false, error: "You haven't purchased this course" });
-    }
-    if (!hasValidAccess(enrollment)) {
-      return res.status(403).json({ ok: false, error: "Your access to this course has expired" });
+    // Admins can open any course or internship without being enrolled.
+    if (!(await isAdminUser(req.user))) {
+      const enrollment = await prisma.enrollment.findFirst({
+        where: { userId: req.user.sub, courseId: course.id, status: "active" },
+      });
+      if (!enrollment) {
+        return res.status(403).json({ ok: false, error: "You haven't purchased this course" });
+      }
+      if (!hasValidAccess(enrollment)) {
+        return res.status(403).json({ ok: false, error: "Your access to this course has expired" });
+      }
     }
 
     // "Upcoming" means "hasn't ended yet" — not "hasn't started yet", so a

@@ -2,7 +2,8 @@ const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
-const { serializeEnrollment } = require("../utils/enrollmentAccess");
+const { serialize } = require("../utils/serialize");
+const { serializeEnrollment, isAdminUser } = require("../utils/enrollmentAccess");
 const { isTier } = require("../utils/tiers");
 
 const { queryText } = require("../utils/validators");
@@ -18,6 +19,27 @@ const COURSE_SUMMARY = { id: true, title: true, slug: true };
 // ---------- student: "My Dashboard" (courses) ----------
 router.get("/me/enrollments", requireAuth, async (req, res, next) => {
   try {
+    // An admin's dashboard lists every course and internship as open to them —
+    // shaped like real enrollments (so MyCourses.jsx renders them unchanged)
+    // but flagged `adminAccess`, with no tier/payment/expiry, since nothing
+    // was bought.
+    if (await isAdminUser(req.user)) {
+      const courses = await prisma.course.findMany({ orderBy: [{ type: "asc" }, { createdAt: "desc" }] });
+      return res.json({
+        ok: true,
+        enrollments: courses.map((c) => ({
+          _id: `admin-${c.id}`,
+          course: serialize(c),
+          status: "active",
+          tier: null,
+          payment: null,
+          expired: false,
+          adminAccess: true,
+          createdAt: c.createdAt,
+        })),
+      });
+    }
+
     const enrollments = await prisma.enrollment.findMany({
       where: { userId: req.user.sub, status: "active" },
       include: { course: true },
