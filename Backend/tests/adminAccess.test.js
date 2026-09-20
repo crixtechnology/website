@@ -60,6 +60,29 @@ describe("admin access without enrolling", () => {
   });
 });
 
+describe("a course or internship the admin creates afterwards", () => {
+  // Nothing has to be granted: access is by role, not by an enrollment list, so
+  // anything created through the admin API is open to the admin straight away.
+  it("is open to the admin immediately, and still closed to students", async () => {
+    const newCourse = await request(app).post("/api/admin/courses").set(auth(adminToken))
+      .send({ type: "course", title: "Brand New Course", tiers: [{ tier: "basic", price: 999 }] });
+    const newInternship = await request(app).post("/api/admin/courses").set(auth(adminToken))
+      .send({ type: "internship", title: "Brand New Internship" });
+    expect(newCourse.status).toBe(201);
+    expect(newInternship.status).toBe(201);
+
+    for (const made of [newCourse.body.course, newInternship.body.course]) {
+      expect((await request(app).get(`/api/learn/${made.slug}`).set(auth(adminToken))).status).toBe(200);
+      expect((await request(app).get(`/api/courses/${made._id}/videos`).set(auth(adminToken))).status).toBe(200);
+      expect((await request(app).get(`/api/learn/${made.slug}`).set(auth(studentToken))).status).toBe(403);
+    }
+
+    const list = await request(app).get("/api/me/enrollments").set(auth(adminToken));
+    const slugs = list.body.enrollments.map((e) => e.course.slug);
+    expect(slugs).toEqual(expect.arrayContaining([newCourse.body.course.slug, newInternship.body.course.slug]));
+  });
+});
+
 describe("students are still gated", () => {
   it("403s the video list, play URL and /learn page without an enrollment", async () => {
     expect((await request(app).get(`/api/courses/${course.id}/videos`).set(auth(studentToken))).status).toBe(403);
