@@ -7,6 +7,7 @@ const { requireInternalToken } = require("../middleware/requireInternalToken");
 const { buildSignedUrl } = require("../utils/signedVideoUrl");
 const { serialize } = require("../utils/serialize");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 // Long enough to cover a full ~3h lecture plus pauses. The React player
@@ -134,7 +135,7 @@ router.post("/internal/videos", requireInternalToken, async (req, res, next) => 
 router.get("/admin/videos", requireAdmin, async (req, res, next) => {
   try {
     const where = {};
-    if (req.query.courseId) where.courseId = req.query.courseId;
+    if (queryText(req.query.courseId)) where.courseId = queryText(req.query.courseId);
     const videos = await prisma.video.findMany({
       where,
       orderBy: [{ courseId: "asc" }, { dayNumber: "asc" }, { createdAt: "asc" }],

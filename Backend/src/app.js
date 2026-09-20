@@ -55,7 +55,9 @@ app.use(cors({
     if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS: " + origin));
+      const err = new Error("Not allowed by CORS: " + origin);
+      err.status = 403;
+      callback(err);
     }
   },
 }));
@@ -82,6 +84,26 @@ app.use("/api", adminPaymentRoutes);
 app.use("/api", referralRoutes);
 app.use("/api", ambassadorRoutes);
 
+// Database errors that are really the caller's fault (or the database being away)
+// deserve a 4xx/503, not a 500: sending a number where text belongs, a value too
+// long/large for its column, or an id that doesn't exist made every route that
+// forgot to check first answer 500 with the driver's message. Returns
+// { status, message } for the ones it recognises, otherwise null.
+function databaseErrorResponse(err) {
+  if (!err) return null;
+  if (err.name === "PrismaClientValidationError") return { status: 400, message: "Some of the details sent are not valid." };
+  if (err.name === "PrismaClientInitializationError" || err.code === "P1001" || err.code === "P1002") {
+    return { status: 503, message: "The service is temporarily unavailable. Please try again in a moment." };
+  }
+  if (err.name === "PrismaClientKnownRequestError") {
+    if (err.code === "P2000" || err.code === "P2020") return { status: 400, message: "A value sent is too long or out of range." };
+    if (err.code === "P2025") return { status: 404, message: "Not found." };
+    if (err.code === "P2002") return { status: 409, message: "That already exists." };
+    if (err.code === "P2003") return { status: 409, message: "That is still linked to other records." };
+  }
+  return null;
+}
+
 app.use((err, req, res, next) => {
   console.error(err);
   // Routes handle their own known error cases directly (res.status(400)...)
@@ -90,6 +112,12 @@ app.use((err, req, res, next) => {
   // a connection string in some driver errors) only goes to the client in
   // dev, where it's a debugging aid. Production gets a message that reveals
   // nothing; the real detail is still in the server log above.
+  const db = databaseErrorResponse(err);
+  if (db) return res.status(db.status).json({ ok: false, error: db.message });
+  // A malformed JSON body / oversized payload (body-parser) is the client's mistake.
+  if (err.status >= 400 && err.status < 500 && err.type) {
+    return res.status(err.status).json({ ok: false, error: err.status === 413 ? "That request is too large." : "The request body is not valid." });
+  }
   const exposeDetail = process.env.NODE_ENV !== "production";
   res.status(err.status || 500).json({ ok: false, error: exposeDetail ? (err.message || "Server error") : "Server error" });
 });

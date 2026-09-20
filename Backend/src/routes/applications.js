@@ -8,6 +8,7 @@ const { serialize } = require("../utils/serialize");
 const { isTier } = require("../utils/tiers");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 // Stores both internship and course applications — same shape, distinguished
@@ -94,7 +95,7 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
 // so a submission is never only visible by querying the database directly.
 router.get("/admin/applications", requireAdmin, async (req, res, next) => {
   try {
-    const q = (req.query.q || "").trim();
+    const q = queryText(req.query.q);
     const where = q
       ? {
           OR: [

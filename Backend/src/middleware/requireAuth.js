@@ -50,16 +50,28 @@ async function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ ok: false, error: "Missing token" });
+  let payload;
   try {
-    const payload = verifyToken(token);
-    if (!(await isSessionValid(payload))) {
-      return res.status(401).json({ ok: false, error: "Logged out — this account was signed in on another device" });
-    }
-    req.user = payload;
-    next();
+    payload = verifyToken(token);
   } catch (e) {
     return res.status(401).json({ ok: false, error: "Invalid or expired token" });
   }
+  // Only a bad token is a 401 (the client logs the user out on one). The database
+  // being unreachable is NOT the user's session ending: it used to land in the same
+  // catch and answer 401, so a database outage signed every logged-in student out.
+  // Let the error handler answer 503 instead; the session survives and works again
+  // as soon as the database is back.
+  let valid;
+  try {
+    valid = await isSessionValid(payload);
+  } catch (e) {
+    return next(e);
+  }
+  if (!valid) {
+    return res.status(401).json({ ok: false, error: "Logged out — this account was signed in on another device" });
+  }
+  req.user = payload;
+  next();
 }
 
 // Attaches req.user if a valid token is present; never rejects the request.
@@ -67,11 +79,20 @@ async function attachUserIfPresent(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (token) {
+    let payload = null;
     try {
-      const payload = verifyToken(token);
-      if (await isSessionValid(payload)) req.user = payload;
+      payload = verifyToken(token);
     } catch (e) {
-      // ignore — request proceeds as a guest
+      // ignore — a bad token just means the request proceeds as a guest
+    }
+    if (payload) {
+      try {
+        if (await isSessionValid(payload)) req.user = payload;
+      } catch (e) {
+        // The database is away: don't quietly turn a logged-in user into a guest
+        // (an application would be saved with no account); say so instead.
+        return next(e);
+      }
     }
   }
   next();

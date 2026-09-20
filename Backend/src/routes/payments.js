@@ -295,7 +295,7 @@ router.post("/quote", requireAuth, async (req, res, next) => {
 });
 
 // ---------- 1. create an order (called right after the applicant submits the form) ----------
-router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
+router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, next) => {
   try {
     if (isLiveBlocked) {
       return res.status(503).json({
@@ -307,13 +307,17 @@ router.post("/create-order", publicWriteLimiter, async (req, res, next) => {
     if (!applicationId || !courseSlug) {
       return res.status(400).json({ ok: false, error: "applicationId and courseSlug are required" });
     }
+    if (typeof applicationId !== "string" || typeof courseSlug !== "string") {
+      return res.status(400).json({ ok: false, error: "applicationId and courseSlug must be text" });
+    }
     const application = await prisma.application.findUnique({ where: { id: applicationId } });
-    if (!application) return res.status(404).json({ ok: false, error: "Application not found" });
-    // Access is granted to the account the application belongs to. An
-    // application with no account (a guest form filled in while logged out)
-    // would take the payment and then have nobody to unlock the course for.
-    if (!application.userId) {
-      return res.status(401).json({ ok: false, error: "Please log in before paying, so we can unlock the course on your account." });
+    // Only the account the application belongs to can pay for it. This is also what
+    // keeps an application with no account (a guest form filled in while logged out)
+    // from taking a payment it could never unlock, and stops anyone who learned
+    // someone else's application id from opening orders — or reserving their referral
+    // credit — on their behalf. Same answer for "missing" and "not yours".
+    if (!application || !application.userId || application.userId !== req.user.sub) {
+      return res.status(404).json({ ok: false, error: "Application not found" });
     }
 
     const found = await loadPurchasablePlan(courseSlug, tierName, application.userId);

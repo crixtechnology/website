@@ -3,6 +3,7 @@ const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { round2 } = require("../utils/money");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 // Every real sale is a paid Payment with a receipt attached (see
@@ -78,7 +79,7 @@ router.get("/admin/payments/summary", requireAdmin, async (req, res, next) => {
 // that gap on day one.
 router.get("/admin/payments", requireAdmin, async (req, res, next) => {
   try {
-    const q = (req.query.q || "").trim();
+    const q = queryText(req.query.q);
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
 

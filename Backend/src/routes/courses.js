@@ -59,6 +59,19 @@ router.get("/admin/courses", requireAdmin, async (req, res, next) => {
   }
 });
 
+// The text fields must be text (a number/object/array made Prisma throw — a 500) and stay a
+// sensible length. Returns an error message, or "" when they're fine.
+function courseTextError({ title, tag, desc, points }) {
+  const text = (v, max) => v === undefined || (typeof v === "string" && v.length <= max);
+  if (!text(title, 150)) return "title must be text (up to 150 characters)";
+  if (!text(tag, 80)) return "tag must be text (up to 80 characters)";
+  if (!text(desc, 3000)) return "desc must be text (up to 3000 characters)";
+  if (points !== undefined && (!Array.isArray(points) || points.length > 30 || points.some((p) => typeof p !== "string" || p.length > 300))) {
+    return "points must be a list of up to 30 short texts";
+  }
+  return "";
+}
+
 router.post("/admin/courses", requireAdmin, async (req, res, next) => {
   try {
     const { type, title, tag, desc, points, tiers, durationDays, status } = req.body || {};
@@ -66,6 +79,8 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     if (!title || !String(title).trim()) {
       return res.status(400).json({ ok: false, error: "title is required" });
     }
+    const textError = courseTextError({ title, tag, desc, points });
+    if (textError) return res.status(400).json({ ok: false, error: textError });
     if (!validDuration(durationDays)) {
       return res.status(400).json({ ok: false, error: "durationDays must be a positive whole number of days" });
     }
@@ -129,6 +144,8 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
 
     const { type, title, tag, desc, points, tiers, durationDays, status } = req.body || {};
     const effectiveType = type === "course" || type === "internship" ? type : existing.type;
+    const textError = courseTextError({ title, tag, desc, points });
+    if (textError) return res.status(400).json({ ok: false, error: textError });
 
     const update = { type: effectiveType };
     if (title !== undefined) {

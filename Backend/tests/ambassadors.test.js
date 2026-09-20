@@ -71,7 +71,7 @@ async function buy(student, course) {
   const appRes = await authed(request(app).post("/api/applications"), student.token).send({
     type: "course", refTitle: course.title, courseSlug: course.slug, tier: "basic", name: "Campus Student", email: student.email, phone: "9876500000",
   });
-  const order = await request(app).post("/api/payments/create-order").send({ applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" });
+  const order = await authed(request(app).post("/api/payments/create-order"), student.token).send({ applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" });
   expect(order.status).toBe(201);
   const paymentId = `pay_${Math.random().toString(36).slice(2)}`;
   const signature = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "").update(`${order.body.orderId}|${paymentId}`).digest("hex");

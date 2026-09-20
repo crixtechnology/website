@@ -5,6 +5,13 @@
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// A query-string value as trimmed text. ?q[]=a or ?q[x]=y arrive as an array/object,
+// which used to crash every admin search with "trim is not a function"; anything
+// that isn't a plain string is treated as "no value".
+function queryText(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function isValidEmail(email) {
   return EMAIL_RE.test(String(email).trim());
 }
@@ -76,4 +83,4 @@ function isValidHttpUrl(value) {
   }
 }
 
-module.exports = { EMAIL_RE, isValidEmail, isValidPhone, isDisposableEmail, NAME_RE, isValidName, isValidHttpUrl };
+module.exports = { queryText, EMAIL_RE, isValidEmail, isValidPhone, isDisposableEmail, NAME_RE, isValidName, isValidHttpUrl };
