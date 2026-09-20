@@ -32,7 +32,7 @@ Nothing here transcodes. Playback is plain HTTP Range on the original file.
 |---|---|---|
 | `Backend/src/models/Video.js`, `routes/videos.js`, `middleware/requireEnrollment.js`, `middleware/requireInternalToken.js`, `utils/signedVideoUrl.js` | API: list videos, mint signed play URLs, internal register endpoint | with the main API |
 | `Frontend/src/components/CourseVideos.jsx` | student list + `<video>` player with token-refresh/resume | with the site |
-| `Frontend/src/pages/admin/AdminVideos.jsx` | admin: retitle / reorder day label / delete | with the site |
+| `Frontend/src/pages/admin/AdminVideos.jsx` | admin: retitle / reorder day label / move to another course / remove from site or delete the B2 file too | with the site |
 | `cloudflare-worker/` | the B2 read gateway | `wrangler deploy` (separate) |
 | `scripts/drive-to-b2-sync/` | Drive → B2 importer + registrar | run on a box/cron (separate) |
 | `scripts/test-tools/` | `upload-test-video.js`, `generate-signed-link.js` | local only |

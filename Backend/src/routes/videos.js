@@ -5,6 +5,7 @@ const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireEnrollment } = require("../middleware/requireEnrollment");
 const { requireInternalToken } = require("../middleware/requireInternalToken");
 const { buildSignedUrl } = require("../utils/signedVideoUrl");
+const { isB2Configured, deleteObjectAllVersions } = require("../utils/b2Storage");
 const { serialize } = require("../utils/serialize");
 
 const { queryText } = require("../utils/validators");
@@ -191,13 +192,44 @@ router.put("/admin/videos/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
+// Two separate actions on the same endpoint:
+//   DELETE /admin/videos/:id                    remove it from the site only — the
+//                                               file stays in Backblaze.
+//   DELETE /admin/videos/:id?deleteFile=true    also permanently delete the file
+//                                               from Backblaze (every version).
+// Deleting the file is opt-in, so a plain DELETE can never destroy one. When it
+// IS asked for it either fully succeeds or changes nothing: the file goes first,
+// and if that fails (or Backblaze isn't configured on this server, see
+// utils/b2Storage.js) the row is kept, so the video isn't left pointing at a
+// missing file or a file nobody can see.
 router.delete("/admin/videos/:id", requireAdmin, async (req, res, next) => {
   try {
-    // Only removes the metadata row — the object stays in B2 (delete it there
-    // separately if you really want it gone).
-    const video = await prisma.video.delete({ where: { id: req.params.id } }).catch(() => null);
+    const video = await prisma.video.findUnique({ where: { id: req.params.id } });
     if (!video) return res.status(404).json({ ok: false, error: "Video not found" });
-    res.json({ ok: true });
+
+    let storage = "kept";
+    let filesRemoved = 0;
+    if (req.query.deleteFile === "true") {
+      if (!isB2Configured()) {
+        return res.status(503).json({
+          ok: false,
+          error: "This server isn't connected to Backblaze, so the file can't be deleted. Nothing was changed. Use \"Remove from site\" to take it off the site only.",
+        });
+      }
+      try {
+        ({ removed: filesRemoved } = await deleteObjectAllVersions(video.b2Key));
+        storage = "deleted";
+      } catch (storageErr) {
+        console.error(`[videos] Backblaze delete failed for ${video.b2Key}:`, storageErr.message);
+        return res.status(502).json({
+          ok: false,
+          error: `Couldn't delete the file from Backblaze (${storageErr.message}). Nothing was changed.`,
+        });
+      }
+    }
+
+    await prisma.video.delete({ where: { id: video.id } }).catch(() => null);
+    res.json({ ok: true, storage, filesRemoved });
   } catch (e) {
     next(e);
   }
