@@ -8,8 +8,13 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 // Read/curate view over a course's recorded videos. Videos are created by
 // the drive-to-b2-sync script (which streams each Google Meet recording into
 // B2 and registers it here) — this page is for fixing titles and reordering
-// the day number (just a label, all videos are playable any time), or
-// removing a bad row. It does not upload.
+// the day number (just a label, all videos are playable any time), moving a
+// recording the sync filed under the wrong course/internship, or removing a
+// bad row. It does not upload.
+
+// "Web Development Track" / "[Internship] Data Analyst" — so a course and an
+// internship with similar names can be told apart in the pickers.
+const courseLabel = (c) => (c.type === "internship" ? `[Internship] ${c.title}` : c.title);
 
 function fmtDuration(seconds) {
   if (!seconds || seconds < 1) return "—";
@@ -28,7 +33,8 @@ export default function AdminVideos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ title: "", dayNumber: "" });
+  const [form, setForm] = useState({ title: "", dayNumber: "", courseId: "" });
+  const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
 
@@ -62,20 +68,34 @@ export default function AdminVideos() {
 
   const startEdit = (v) => {
     setEditingId(v._id);
-    setForm({ title: v.title, dayNumber: String(v.dayNumber) });
+    setForm({ title: v.title, dayNumber: String(v.dayNumber), courseId: v.course || courseId });
+    setNotice("");
   };
-  const cancelEdit = () => { setEditingId(null); setForm({ title: "", dayNumber: "" }); };
+  const cancelEdit = () => { setEditingId(null); setForm({ title: "", dayNumber: "", courseId: "" }); };
 
   const save = async (v) => {
     const day = Number(form.dayNumber);
     if (!form.title.trim()) { setError("Title can't be empty."); return; }
     if (!Number.isInteger(day) || day < 1) { setError("Day must be a positive whole number."); return; }
+    const moving = !!form.courseId && form.courseId !== (v.course || courseId);
+    const patch = { title: form.title.trim() };
+    // When moving, leave the day out unless it was edited: the old course's day
+    // number means nothing in the new one, so the server puts the video at the
+    // end of that list instead.
+    if (!moving || day !== v.dayNumber) patch.dayNumber = day;
+    if (moving) patch.courseId = form.courseId;
     setSaving(true);
     setError("");
-    const res = await adminUpdateVideo(v._id, { title: form.title.trim(), dayNumber: day });
+    setNotice("");
+    const res = await adminUpdateVideo(v._id, patch);
     setSaving(false);
-    if (res.ok) { cancelEdit(); load(courseId); }
-    else setError(res.error || "Could not save.");
+    if (!res.ok) { setError(res.error || "Could not save."); return; }
+    if (moving) {
+      const target = courses.find((c) => c._id === form.courseId);
+      setNotice(`Moved "${patch.title}" to ${target ? courseLabel(target) : "the other course"}.`);
+    }
+    cancelEdit();
+    load(courseId);
   };
 
   const remove = async (v) => {
@@ -100,13 +120,14 @@ export default function AdminVideos() {
 
         <div className="field" style={{ maxWidth: 420 }}>
           <label>Course</label>
-          <select value={courseId} onChange={(e) => { setCourseId(e.target.value); cancelEdit(); }}>
+          <select value={courseId} onChange={(e) => { setCourseId(e.target.value); cancelEdit(); setNotice(""); }}>
             {courses.length === 0 && <option value="">No courses yet</option>}
-            {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
+            {courses.map((c) => <option key={c._id} value={c._id}>{courseLabel(c)}</option>)}
           </select>
         </div>
 
         {error && <p className="form-note">{error}</p>}
+        {notice && <p className="form-note" role="status">{notice}</p>}
 
         {videos.length > 0 && (
           <input
@@ -145,6 +166,19 @@ export default function AdminVideos() {
                         placeholder="Day"
                         style={{ maxWidth: 120 }}
                       />
+                      <select
+                        value={form.courseId}
+                        onChange={(e) => setForm({ ...form, courseId: e.target.value })}
+                        aria-label="Course or internship this video belongs to"
+                        title="Move this video to another course or internship"
+                      >
+                        {courses.map((c) => <option key={c._id} value={c._id}>{courseLabel(c)}</option>)}
+                      </select>
+                      {form.courseId && form.courseId !== (v.course || courseId) && (
+                        <span className="admin-row-meta">
+                          Will move to the end of that list unless you change the day.
+                        </span>
+                      )}
                     </div>
                     <div className="admin-row-actions">
                       <button className="btn btn-solid" onClick={() => save(v)} disabled={saving}>
