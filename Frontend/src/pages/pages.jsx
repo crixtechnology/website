@@ -158,7 +158,7 @@ export function Programs() {
   const [inquire, setInquire] = useState(null); // { item, kind } | null
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
-  const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
+  const { user } = useContext(UserContext);
   usePageMeta({
     title: "Internships & Courses | Crix Technology",
     description: "Explore paid virtual internships and industry-ready online courses in MERN stack, AI Agentic Systems, Android development and more — delivered virtually, pan-India and globally.",
@@ -196,17 +196,6 @@ export function Programs() {
       setParams(nextParams, { replace: true });
     }
   }, [params, liveCourses, liveInternships, setParams]);
-
-  // Buying requires an account — browsing/prices stay open to everyone.
-  // Not logged in: pop the login/signup modal, then open the buy modal the
-  // moment it succeeds, right where the user already was. `tier` is the plan
-  // already clicked (from a "Choose Pro" button), or undefined when the
-  // buyer will pick one inside the modal.
-  const handleBuy = (item, tier) => {
-    const open = () => { setBuyItem(item); setBuyTier(tier || null); };
-    if (!isLoggedIn) { openAuthModal("login", open); return; }
-    open();
-  };
 
   return (
     <>

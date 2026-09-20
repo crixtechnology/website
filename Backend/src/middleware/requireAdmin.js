@@ -12,21 +12,29 @@ async function requireAdmin(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ ok: false, error: "Missing token" });
+  let payload;
   try {
-    const payload = verifyToken(token);
-    if (payload.role !== "admin") {
-      return res.status(403).json({ ok: false, error: "Admin access required" });
-    }
-    const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { role: true } });
-    if (!user || user.role !== "admin") {
-      return res.status(403).json({ ok: false, error: "Admin access required" });
-    }
-    req.admin = payload;
-    req.user = payload;
-    next();
+    payload = verifyToken(token);
   } catch (e) {
     return res.status(401).json({ ok: false, error: "Invalid or expired token" });
   }
+  if (payload.role !== "admin") {
+    return res.status(403).json({ ok: false, error: "Admin access required" });
+  }
+  // A database error here is not a bad token — see requireAuth.js: answering 401
+  // made the client log the admin out whenever the database blipped.
+  let user;
+  try {
+    user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { role: true } });
+  } catch (e) {
+    return next(e);
+  }
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ ok: false, error: "Admin access required" });
+  }
+  req.admin = payload;
+  req.user = payload;
+  next();
 }
 
 module.exports = { requireAdmin };

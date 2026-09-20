@@ -3,6 +3,7 @@ const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { serialize } = require("../utils/serialize");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 // ---------- public: the IT services list shown on /services ----------
@@ -21,7 +22,7 @@ router.get("/services", async (req, res, next) => {
 // ---------- admin: full CRUD ----------
 router.get("/admin/services", requireAdmin, async (req, res, next) => {
   try {
-    const q = (req.query.q || "").trim();
+    const q = queryText(req.query.q);
     const where = q
       ? {
           OR: [
@@ -38,10 +39,25 @@ router.get("/admin/services", requireAdmin, async (req, res, next) => {
   }
 });
 
+// Text fields must be text (a number / object / array made Prisma throw, i.e. a 500), and
+// stay a sensible length. Returns an error string, or "" when fine.
+function serviceFieldError({ title, tag, desc, points }) {
+  const text = (v, max) => v === undefined || (typeof v === "string" && v.length <= max);
+  if (!text(title, 150) || (title !== undefined && !title.trim())) return "title must be text (up to 150 characters)";
+  if (!text(tag, 60)) return "tag must be text (up to 60 characters)";
+  if (!text(desc, 2000)) return "desc must be text (up to 2000 characters)";
+  if (points !== undefined && (!Array.isArray(points) || points.length > 30 || points.some((p) => typeof p !== "string" || p.length > 300))) {
+    return "points must be a list of up to 30 short texts";
+  }
+  return "";
+}
+
 router.post("/admin/services", requireAdmin, async (req, res, next) => {
   try {
     const { title, tag, desc, points, order, status } = req.body || {};
     if (!title) return res.status(400).json({ ok: false, error: "title is required" });
+    const fieldError = serviceFieldError({ title, tag, desc, points });
+    if (fieldError) return res.status(400).json({ ok: false, error: fieldError });
 
     let resolvedOrder = Number(order);
     if (!Number.isFinite(resolvedOrder)) {
@@ -68,6 +84,8 @@ router.post("/admin/services", requireAdmin, async (req, res, next) => {
 router.put("/admin/services/:id", requireAdmin, async (req, res, next) => {
   try {
     const { title, tag, desc, points, order, status } = req.body || {};
+    const fieldError = serviceFieldError({ title, tag, desc, points });
+    if (fieldError) return res.status(400).json({ ok: false, error: fieldError });
     const data = {};
     if (title !== undefined) data.title = title;
     if (tag !== undefined) data.tag = tag;

@@ -4,6 +4,7 @@ const { requireAdmin } = require("../middleware/requireAdmin");
 const { serializeEnrollment } = require("../utils/enrollmentAccess");
 const { serialize } = require("../utils/serialize");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 const SAFE_FIELDS = { id: true, name: true, email: true, phone: true, role: true, createdAt: true };
@@ -15,7 +16,7 @@ const SAFE_FIELDS = { id: true, name: true, email: true, phone: true, role: true
 // file just manages the accounts themselves.
 router.get("/admin/users", requireAdmin, async (req, res, next) => {
   try {
-    const q = (req.query.q || "").trim();
+    const q = queryText(req.query.q);
     const where = q
       ? { OR: [{ name: { contains: q } }, { email: { contains: q } }, { phone: { contains: q } }] }
       : {};

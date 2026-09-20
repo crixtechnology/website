@@ -216,11 +216,11 @@ export async function adminDeleteApplication(id) {
 export async function createRazorpayOrder(applicationId, courseSlug, tier) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
-    const res = await fetch(`${API}/payments/create-order`, {
+    const res = await authFetch("/payments/create-order", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ applicationId, courseSlug, tier }),
     });
+    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not start payment" };
     return data;

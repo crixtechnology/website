@@ -6,6 +6,7 @@ const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("
 const { serialize } = require("../utils/serialize");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 // Matches src/services/api.js's existing fetch(`${API}/contact`, ...) call —
@@ -75,7 +76,7 @@ router.post("/contact", publicWriteLimiter, async (req, res, next) => {
 // ---------- admin: the contact-form inbox ----------
 router.get("/admin/contacts", requireAdmin, async (req, res, next) => {
   try {
-    const q = (req.query.q || "").trim();
+    const q = queryText(req.query.q);
     const where = q
       ? {
           OR: [

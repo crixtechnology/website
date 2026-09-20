@@ -6,6 +6,7 @@ const { hasValidAccess } = require("../utils/enrollmentAccess");
 const { serialize } = require("../utils/serialize");
 const { isValidHttpUrl } = require("../utils/validators");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 // This router now only handles the LIVE class schedule. Recorded lectures
@@ -15,7 +16,7 @@ const router = express.Router();
 router.get("/admin/lectures", requireAdmin, async (req, res, next) => {
   try {
     const where = {};
-    if (req.query.courseId) where.courseId = req.query.courseId;
+    if (queryText(req.query.courseId)) where.courseId = queryText(req.query.courseId);
     const lectures = await prisma.lecture.findMany({
       where,
       orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],

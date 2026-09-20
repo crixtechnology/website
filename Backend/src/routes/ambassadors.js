@@ -6,6 +6,7 @@ const { publicWriteLimiter } = require("../utils/rateLimit");
 const { ensureReferralCode, formatCode, getSettings: getReferralSettings } = require("../utils/referrals");
 const A = require("../utils/ambassadors");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 const rupees = (paise) => (paise || 0) / 100;
@@ -196,7 +197,7 @@ router.put("/admin/ambassador-settings", requireAdmin, async (req, res, next) =>
 // Every application / ambassador, with their numbers.
 router.get("/admin/ambassadors", requireAdmin, async (req, res, next) => {
   try {
-    const q = (req.query.q || "").trim();
+    const q = queryText(req.query.q);
     const where = {};
     if (["applied", "approved", "rejected", "suspended"].includes(req.query.status)) where.status = req.query.status;
     if (q) {

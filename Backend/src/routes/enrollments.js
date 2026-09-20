@@ -5,6 +5,7 @@ const { requireAuth } = require("../middleware/requireAuth");
 const { serializeEnrollment } = require("../utils/enrollmentAccess");
 const { isTier } = require("../utils/tiers");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 // An unparseable date string becomes an Invalid Date, which Prisma rejects with a
@@ -39,7 +40,7 @@ router.get("/me/enrollments", requireAuth, async (req, res, next) => {
 // else in the app (learn page, drip videos).
 router.get("/admin/enrollments", requireAdmin, async (req, res, next) => {
   try {
-    const q = (req.query.q || "").trim();
+    const q = queryText(req.query.q);
     // Enrollment itself has no searchable text (it's just refs + dates) —
     // matched here via nested relation filters on the joined user/course
     // instead of Mongo's old two-step "resolve refs first, then $in" dance;
@@ -75,6 +76,12 @@ router.get("/admin/enrollments", requireAdmin, async (req, res, next) => {
 router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
   try {
     const { userId, email, courseId, startDate, endDate, tier } = req.body || {};
+    if (typeof courseId !== "string" && courseId !== undefined && courseId !== null) {
+      return res.status(400).json({ ok: false, error: "A valid courseId is required" });
+    }
+    if ((userId !== undefined && userId !== null && typeof userId !== "string") || (email !== undefined && email !== null && typeof email !== "string")) {
+      return res.status(400).json({ ok: false, error: "userId and email must be text" });
+    }
     if (!courseId) {
       return res.status(400).json({ ok: false, error: "A valid courseId is required" });
     }

@@ -7,6 +7,7 @@ const {
   getSettings, saveSettings, ensureReferralCode, formatCode, checkCode, applyReferralCode, creditBalance,
 } = require("../utils/referrals");
 
+const { queryText } = require("../utils/validators");
 const router = express.Router();
 
 const firstName = (name) => String(name || "").trim().split(/\s+/)[0] || "A friend";
@@ -109,7 +110,7 @@ router.put("/admin/referral-settings", requireAdmin, async (req, res, next) => {
 // ---------- admin: every referral ----------
 router.get("/admin/referrals", requireAdmin, async (req, res, next) => {
   try {
-    const q = (req.query.q || "").trim();
+    const q = queryText(req.query.q);
     const where = q
       ? {
           OR: [

@@ -61,7 +61,7 @@ async function buy(student, course) {
     type: "course", refTitle: course.title, courseSlug: course.slug, tier: "basic",
     name: "Student Person", email: student.email, phone: "9876500000",
   });
-  const order = await request(app).post("/api/payments/create-order").send({
+  const order = await authed(request(app).post("/api/payments/create-order"), student.token).send({
     applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
   });
   expect(order.status).toBe(201);
@@ -218,7 +218,7 @@ describe("referral pricing, rewards and credit", () => {
       const appRes = await authed(request(app).post("/api/applications"), saver.token).send({
         type: "course", refTitle: c.title, courseSlug: c.slug, tier: "basic", name: "Student Person", email: saver.email, phone: "9876500000",
       });
-      return request(app).post("/api/payments/create-order").send({ applicationId: appRes.body.application._id, courseSlug: c.slug, tier: "basic" });
+      return authed(request(app).post("/api/payments/create-order"), saver.token).send({ applicationId: appRes.body.application._id, courseSlug: c.slug, tier: "basic" });
     };
     expect((await start(a)).body.amount).toBe(150000); // uses the ₹500
     expect((await start(b)).body.amount).toBe(200000); // that credit is already spoken for
