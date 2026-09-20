@@ -131,7 +131,7 @@ router.post("/internal/videos", requireInternalToken, async (req, res, next) => 
   }
 });
 
-// ---------- admin: manage the drip schedule ----------
+// ---------- admin: curate a course's recorded videos ----------
 router.get("/admin/videos", requireAdmin, async (req, res, next) => {
   try {
     const where = {};
@@ -148,7 +148,7 @@ router.get("/admin/videos", requireAdmin, async (req, res, next) => {
 
 router.put("/admin/videos/:id", requireAdmin, async (req, res, next) => {
   try {
-    const { title, dayNumber } = req.body || {};
+    const { title, dayNumber, courseId } = req.body || {};
     const data = {};
     if (title !== undefined) {
       if (!String(title).trim()) return res.status(400).json({ ok: false, error: "Title can't be empty" });
@@ -161,6 +161,28 @@ router.put("/admin/videos/:id", requireAdmin, async (req, res, next) => {
       }
       data.dayNumber = day;
     }
+
+    const existing = await prisma.video.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ ok: false, error: "Video not found" });
+
+    // Move the video to another course or internship — for a recording the
+    // sync filed under the wrong one. Only the database row moves: the file in
+    // B2 is keyed by its own name, not by course, so nothing is re-uploaded.
+    if (courseId !== undefined && courseId !== existing.courseId) {
+      if (typeof courseId !== "string" || !courseId) {
+        return res.status(400).json({ ok: false, error: "courseId must be a course or internship id" });
+      }
+      const target = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true } });
+      if (!target) return res.status(404).json({ ok: false, error: "Course not found" });
+      data.courseId = courseId;
+      // Unless the admin gave a day too, it goes at the end of the target's
+      // list — a day number from the old course would just collide there.
+      if (dayNumber === undefined) {
+        const last = await prisma.video.findFirst({ where: { courseId }, orderBy: { dayNumber: "desc" } });
+        data.dayNumber = (last ? last.dayNumber : 0) + 1;
+      }
+    }
+
     const video = await prisma.video.update({ where: { id: req.params.id }, data }).catch(() => null);
     if (!video) return res.status(404).json({ ok: false, error: "Video not found" });
     res.json({ ok: true, video: serialize(video, "video") });
