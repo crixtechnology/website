@@ -464,9 +464,11 @@ export async function adminUpdateVideo(id, patch) {
   }
 }
 
-export async function adminDeleteVideo(id) {
+// Default: take the video off the site only (the file stays in Backblaze).
+// { deleteFile: true } also permanently deletes the file from Backblaze.
+export async function adminDeleteVideo(id, { deleteFile = false } = {}) {
   try {
-    const res = await authFetch(`/admin/videos/${id}`, { method: "DELETE" });
+    const res = await authFetch(`/admin/videos/${id}${deleteFile ? "?deleteFile=true" : ""}`, { method: "DELETE" });
     if (res.status === 401) adminLogout();
     return await res.json();
   } catch (e) {

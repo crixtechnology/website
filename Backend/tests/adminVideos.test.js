@@ -1,3 +1,11 @@
+// Backblaze is mocked: no network, and every call the route makes can be inspected.
+const mockS3Send = jest.fn();
+jest.mock("@aws-sdk/client-s3", () => ({
+  S3Client: jest.fn(() => ({ send: mockS3Send })),
+  ListObjectVersionsCommand: jest.fn(function (input) { this.input = input; this.kind = "list"; }),
+  DeleteObjectsCommand: jest.fn(function (input) { this.input = input; this.kind = "delete"; }),
+}));
+
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 const { signToken } = require("../src/utils/jwt");
@@ -112,5 +120,110 @@ describe("the existing title and day edits still work", () => {
     expect((await put(v.id, { title: "   " })).status).toBe(400);
     expect((await put(v.id, { dayNumber: 0 })).status).toBe(400);
     expect((await put(v.id, { dayNumber: 1.5 })).status).toBe(400);
+  });
+});
+
+describe("removing a video: site only, or the Backblaze file too", () => {
+  const B2_ENV = { B2_S3_ENDPOINT: "s3.test.backblazeb2.com", B2_REGION: "test-1", B2_BUCKET: "lectures", B2_KEY_ID: "kid", B2_APP_KEY: "secret" };
+  const savedEnv = {};
+  const del = (id, query = "", token = adminToken) => request(app).delete(`/api/admin/videos/${id}${query}`).set(auth(token));
+  const exists = async (id) => !!(await prisma.video.findUnique({ where: { id } }));
+
+  // A fake bucket: `objects` = [{ Key, VersionId, marker? }]. Records what gets deleted.
+  let deletedFromBucket;
+  const fakeBucket = (objects) => {
+    deletedFromBucket = [];
+    mockS3Send.mockImplementation(async (cmd) => {
+      if (cmd.kind === "list") {
+        const hits = objects.filter((o) => o.Key.startsWith(cmd.input.Prefix));
+        return {
+          Versions: hits.filter((o) => !o.marker).map(({ Key, VersionId }) => ({ Key, VersionId })),
+          DeleteMarkers: hits.filter((o) => o.marker).map(({ Key, VersionId }) => ({ Key, VersionId })),
+          IsTruncated: false,
+        };
+      }
+      deletedFromBucket.push(...cmd.input.Delete.Objects);
+      return { Deleted: cmd.input.Delete.Objects };
+    });
+  };
+
+  beforeAll(() => { for (const k of Object.keys(B2_ENV)) { savedEnv[k] = process.env[k]; process.env[k] = B2_ENV[k]; } });
+  afterAll(() => { for (const k of Object.keys(B2_ENV)) { if (savedEnv[k] === undefined) delete process.env[k]; else process.env[k] = savedEnv[k]; } });
+  beforeEach(() => { mockS3Send.mockReset(); });
+
+  it("by default removes it from the site only and never touches Backblaze", async () => {
+    const v = await makeVideo(webDev.id, 20);
+    const res = await del(v.id);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, storage: "kept", filesRemoved: 0 });
+    expect(await exists(v.id)).toBe(false);
+    expect(mockS3Send).not.toHaveBeenCalled();
+  });
+
+  it("with deleteFile=true removes the row and every version of exactly that file", async () => {
+    const v = await makeVideo(webDev.id, 21);
+    fakeBucket([
+      { Key: v.b2Key, VersionId: "v1" },
+      { Key: v.b2Key, VersionId: "v2" },
+      { Key: v.b2Key, VersionId: "m1", marker: true },
+      { Key: `${v.b2Key}.other`, VersionId: "x1" }, // starts with the same text but is a different file
+    ]);
+    const res = await del(v.id, "?deleteFile=true");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, storage: "deleted", filesRemoved: 3 });
+    expect(await exists(v.id)).toBe(false);
+    expect(deletedFromBucket.map((o) => o.VersionId).sort()).toEqual(["m1", "v1", "v2"]);
+    expect(deletedFromBucket.every((o) => o.Key === v.b2Key)).toBe(true);
+  });
+
+  it("still removes the row when the file is already gone from Backblaze", async () => {
+    const v = await makeVideo(webDev.id, 22);
+    fakeBucket([]);
+    const res = await del(v.id, "?deleteFile=true");
+    expect(res.body).toMatchObject({ ok: true, storage: "deleted", filesRemoved: 0 });
+    expect(await exists(v.id)).toBe(false);
+  });
+
+  it("changes nothing if Backblaze fails (call error, or per-file error)", async () => {
+    const v = await makeVideo(webDev.id, 23);
+    mockS3Send.mockRejectedValue(new Error("AccessDenied"));
+    const res = await del(v.id, "?deleteFile=true");
+    expect(res.status).toBe(502);
+    expect(res.body.error).toMatch(/AccessDenied.*Nothing was changed/);
+    expect(await exists(v.id)).toBe(true);
+
+    mockS3Send.mockReset();
+    mockS3Send.mockImplementation(async (cmd) =>
+      cmd.kind === "list"
+        ? { Versions: [{ Key: v.b2Key, VersionId: "v1" }], IsTruncated: false }
+        : { Deleted: [], Errors: [{ Key: v.b2Key, Code: "AccessDenied", Message: "not allowed" }] });
+    const res2 = await del(v.id, "?deleteFile=true");
+    expect(res2.status).toBe(502);
+    expect(await exists(v.id)).toBe(true);
+    // ...and the site-only removal still works when Backblaze is the problem.
+    expect((await del(v.id)).status).toBe(200);
+    expect(await exists(v.id)).toBe(false);
+  });
+
+  it("refuses to delete the file (row kept) when this server isn't connected to Backblaze", async () => {
+    const v = await makeVideo(webDev.id, 24);
+    const saved = process.env.B2_APP_KEY;
+    delete process.env.B2_APP_KEY;
+    try {
+      const res = await del(v.id, "?deleteFile=true");
+      expect(res.status).toBe(503);
+      expect(res.body.error).toMatch(/isn't connected to Backblaze/);
+      expect(await exists(v.id)).toBe(true);
+      expect(mockS3Send).not.toHaveBeenCalled();
+    } finally { process.env.B2_APP_KEY = saved; }
+  });
+
+  it("404s for an unknown video and is admin-only", async () => {
+    expect((await del("no-such-video", "?deleteFile=true")).status).toBe(404);
+    const v = await makeVideo(webDev.id, 25);
+    expect((await del(v.id, "?deleteFile=true", studentToken)).status).toBe(403);
+    expect((await request(app).delete(`/api/admin/videos/${v.id}?deleteFile=true`)).status).toBe(401);
+    expect(await exists(v.id)).toBe(true);
+    expect(mockS3Send).not.toHaveBeenCalled();
   });
 });

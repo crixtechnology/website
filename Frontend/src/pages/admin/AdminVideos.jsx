@@ -9,8 +9,9 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 // the drive-to-b2-sync script (which streams each Google Meet recording into
 // B2 and registers it here) — this page is for fixing titles and reordering
 // the day number (just a label, all videos are playable any time), moving a
-// recording the sync filed under the wrong course/internship, or removing a
-// bad row. It does not upload.
+// recording the sync filed under the wrong course/internship, or removing one:
+// either just off the site (the file stays in Backblaze), or off the site AND
+// deleted from Backblaze for good. It does not upload.
 
 // "Web Development Track" / "[Internship] Data Analyst" — so a course and an
 // internship with similar names can be told apart in the pickers.
@@ -98,10 +99,29 @@ export default function AdminVideos() {
     load(courseId);
   };
 
-  const remove = async (v) => {
-    if (!window.confirm(`Remove "${v.title}" from the schedule? The file stays in B2.`)) return;
-    const res = await adminDeleteVideo(v._id);
-    if (res.ok) load(courseId); else setError(res.error || "Could not delete.");
+  // Two different actions, on purpose. Removing from the site is undoable in
+  // spirit (the file is still in storage); deleting the file is not.
+  const removeVideo = async (v, deleteFile) => {
+    setError("");
+    setNotice("");
+    const res = await adminDeleteVideo(v._id, { deleteFile });
+    if (!res.ok) { setError(res.error || "Could not delete."); return; }
+    setNotice(deleteFile
+      ? `Deleted "${v.title}" from the site and from Backblaze.`
+      : `Removed "${v.title}" from the site. Its file is still in Backblaze.`);
+    load(courseId);
+  };
+  const removeFromSite = (v) => {
+    if (!window.confirm(`Remove "${v.title}" from the site?
+
+Students will no longer see it, but the video file stays in Backblaze.`)) return;
+    removeVideo(v, false);
+  };
+  const deleteWithFile = (v) => {
+    if (!window.confirm(`Permanently delete "${v.title}"?
+
+This removes it from the site AND deletes the video file from Backblaze storage. This can't be undone.`)) return;
+    removeVideo(v, true);
   };
 
   return (
@@ -198,7 +218,10 @@ export default function AdminVideos() {
                     </div>
                     <div className="admin-row-actions">
                       <button className="btn btn-ghost" onClick={() => startEdit(v)}>Edit</button>
-                      <button className="btn btn-ghost admin-danger" onClick={() => remove(v)}>Delete</button>
+                      <button className="btn btn-ghost" onClick={() => removeFromSite(v)}
+                        title="Take it off the site. The file stays in Backblaze.">Remove from site</button>
+                      <button className="btn btn-ghost admin-danger" onClick={() => deleteWithFile(v)}
+                        title="Remove it from the site and permanently delete the file from Backblaze.">Delete file too</button>
                     </div>
                   </>
                 )}
