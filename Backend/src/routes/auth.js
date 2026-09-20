@@ -10,6 +10,8 @@ const { isValidEmail, isValidPhone, isValidName } = require("../utils/validators
 const { signToken: signJwt } = require("../utils/jwt");
 const { hasLiveSession } = require("../utils/sessionPolicy");
 const { sendAccountExistsEmail } = require("../utils/mailer");
+const { respondNoEarlierThan } = require("../utils/authTiming");
+const { publicUser, ensureDefaultPassword } = require("../utils/accounts");
 const { applyReferralCode } = require("../utils/referrals");
 
 const router = express.Router();
@@ -23,30 +25,6 @@ const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env
 // slow) — an attacker can tell a valid password-based email from everything
 // else purely by response time, even with an identical response body.
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync("not-a-real-account-timing-safety-only", 10);
-
-// A floor under how fast /signup and /login can ever respond once past
-// input-format validation — comfortably above the real cost of every branch
-// each one can take (bcrypt hashing/comparing, plus up to two DB writes on
-// a successful signup — create() then startSession()'s own update()), so
-// total response TIME can't distinguish branches no matter how many more
-// operations one gains over the other as this code evolves. Matching each
-// operation-count mismatch individually turned out to be whack-a-mole (this
-// file's own git history has two rounds of exactly that) — padding every
-// branch to the same floor closes the whole class of leak at once, instead
-// of needing to be re-verified by hand every time either handler changes.
-const MIN_AUTH_RESPONSE_MS = 600;
-
-// `startedAt` should be Date.now() from right where the real, potentially
-// branch-dependent work begins — i.e. AFTER input-format validation (empty
-// fields, bad email shape, password length), which fails identically no
-// matter whether the target email exists and isn't part of what this pads.
-async function respondNoEarlierThan(startedAt, send) {
-  const elapsed = Date.now() - startedAt;
-  if (elapsed < MIN_AUTH_RESPONSE_MS) {
-    await new Promise((resolve) => setTimeout(resolve, MIN_AUTH_RESPONSE_MS - elapsed));
-  }
-  send();
-}
 
 // Throttles the credential-guessing surface — /login (password brute-force),
 // /signup (mass account creation) and /google (token-verification spam) all
@@ -99,10 +77,6 @@ function rejectIfAlreadyLoggedInElsewhere(res, user) {
   if (!hasLiveSession(user)) return false;
   res.status(409).json({ ok: false, error: "This account is already logged in on another device." });
   return true;
-}
-
-function publicUser(user) {
-  return { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role };
 }
 
 // ---------- student self-signup (role is always "student" — admin accounts
@@ -284,6 +258,11 @@ router.post("/google", authLimiter, async (req, res, next) => {
     }
 
     if (rejectIfAlreadyLoggedInElsewhere(res, user)) return;
+
+    // New Google accounts (and older Google-only ones with no password yet)
+    // get a starter password so email+password login and "Change password"
+    // work for them too.
+    user = await ensureDefaultPassword(user);
 
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);

@@ -24,6 +24,7 @@ export const UserContext = createContext({
   signup: async () => ({ ok: false }),
   loginWithGoogle: async () => ({ ok: false }),
   updateProfile: async () => ({ ok: false }),
+  refreshUser: async () => {},
   logout: () => {},
   sessionExpired: false,
   clearSessionExpired: () => {},
@@ -62,6 +63,14 @@ export function UserProvider({ children }) {
     const res = await googleAuthRequest(credential);
     if (res.ok) { setUser(res.user); setToken(res.token); setSessionExpired(false); setLastActivity(); }
     return res;
+  }, []);
+
+  // Re-reads the account from the server — used after something changes facts
+  // the UI depends on that /auth/me reports (e.g. a password change clearing
+  // `hasDefaultPassword`).
+  const refreshUser = useCallback(async () => {
+    const res = await fetchMe();
+    if (res.ok && res.user) setUser(res.user);
   }, []);
 
   const logout = useCallback((opts) => {
@@ -128,11 +137,11 @@ export function UserProvider({ children }) {
       isLoggedIn: !!user && !!token,
       isAdmin: user?.role === "admin",
       profileComplete: isProfileComplete(user),
-      login, signup, loginWithGoogle, updateProfile, logout,
+      login, signup, loginWithGoogle, updateProfile, refreshUser, logout,
       sessionExpired, clearSessionExpired,
       authModal, openAuthModal, closeAuthModal,
     }),
-    [user, token, login, signup, loginWithGoogle, updateProfile, logout, sessionExpired, clearSessionExpired, authModal, openAuthModal, closeAuthModal]
+    [user, token, login, signup, loginWithGoogle, updateProfile, refreshUser, logout, sessionExpired, clearSessionExpired, authModal, openAuthModal, closeAuthModal]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

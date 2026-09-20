@@ -34,6 +34,14 @@ model User {
   // Created lazily (utils/referrals.js ensureReferralCode) and stored without
   // punctuation, e.g. CRIXK7P3QZ.
   referralCode             String?   @unique
+  // The auto-generated starter password given to an account that signed up /
+  // signed in with Google (so it also has a working email+password login),
+  // AES-256-GCM encrypted (utils/passwordVault.js) so the owner can look it up
+  // in their profile after an emailed OTP. Only ever holds a SYSTEM-generated
+  // password: cleared the moment the user picks their own (change or reset),
+  // and never written for a password the user chose — those exist only as the
+  // bcrypt `passwordHash` and can't be shown to anyone.
+  defaultPasswordEnc       String?   @db.Text
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
@@ -45,6 +53,7 @@ model User {
   referredBy    Referral?     @relation("Referee")
   creditEntries CreditEntry[]
   ambassador    Ambassador?
+  emailOtps     EmailOtp[]
 
   @@map("users")
 }
@@ -63,6 +72,24 @@ enum CourseType {
 enum CourseStatus {
   open
   closed
+}
+
+// One-time email codes for the password flows (forgot password, and revealing
+// the starter password in the profile). At most one live code per user per
+// purpose — issuing a new one replaces the old. Only an HMAC of the code is
+// stored, never the code itself, and a row is deleted as soon as it's used.
+model EmailOtp {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   String   // "reset_password" | "view_password"
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([userId, purpose])
+  @@map("email_otps")
 }
 
 model Course {

@@ -342,6 +342,56 @@ export async function updateMe(partial) {
   }
 }
 
+// ---------- Passwords (forgot / reset / change / view starter password) ----------
+// Public endpoints (no session yet): forgot -> emails a 6-digit code, reset ->
+// code + new password. Errors come back as { ok: false, error } and are shown
+// as-is; none of these can log the user out (wrong input is a 400, not a 401).
+async function publicPost(path, body, fallbackError) {
+  if (!API) return { ok: false, error: "Backend not configured yet." };
+  try {
+    const res = await fetch(`${API}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || fallbackError };
+    return data;
+  } catch (e) {
+    return { ok: false, error: fallbackError };
+  }
+}
+
+export const forgotPassword = (email) =>
+  publicPost("/auth/forgot-password", { email }, "Could not send the code right now. Please try again.");
+
+export const resetPassword = ({ email, otp, newPassword }) =>
+  publicPost("/auth/reset-password", { email, otp, newPassword }, "Could not reset your password right now.");
+
+// Logged-in versions go through authFetch so the session token is attached.
+async function authPost(path, body, fallbackError) {
+  try {
+    const res = await authFetch(path, { method: "POST", body: JSON.stringify(body || {}) });
+    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again." }; }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || fallbackError, code: data.code };
+    return data;
+  } catch (e) {
+    return { ok: false, error: fallbackError };
+  }
+}
+
+export const changePassword = ({ currentPassword, newPassword }) =>
+  authPost("/auth/change-password", { currentPassword, newPassword }, "Could not change your password right now.");
+
+// Emails a code to the account's own address, then verify returns the
+// starter password (Google-created accounts only — see the profile page).
+export const requestPasswordReveal = () =>
+  authPost("/auth/password/reveal/request", {}, "Could not send the code right now. Please try again.");
+
+export const verifyPasswordReveal = (otp) =>
+  authPost("/auth/password/reveal/verify", { otp }, "Could not verify the code right now.");
+
 // ---------- Student: my courses + learn page ----------
 export async function getMyEnrollments() {
   try {

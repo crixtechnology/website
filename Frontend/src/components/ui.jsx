@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import {
   submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder,
-  getMyReferral, applyReferral, getPriceQuote,
+  getMyReferral, applyReferral, getPriceQuote, forgotPassword, resetPassword,
 } from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
@@ -269,6 +269,7 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
   };
   const closed = item.status === "closed";
   const openForBuy = isOpenForBuy(item);
+  const { isAdmin } = useContext(UserContext);
   const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
   // Derived from `kind`, not `item.deliverables` — every internship/course
   // issues the same fixed set of documents for its type (see content.js's
@@ -295,7 +296,12 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
         ) : null}
         <div className="card-btn-row">
           {isProgram && (
-            openForBuy ? (
+            isAdmin && item.slug ? (
+              // Admins open any course/internship directly — nothing to buy or request.
+              <Link className="btn btn-solid buy-btn" to={`/learn/${item.slug}`}>
+                {kind === "internship" ? "Open internship" : "Open course"} →
+              </Link>
+            ) : openForBuy ? (
               // Prices live in the "See more" popup, not on the card — choosing
               // a plan opens that same popup rather than a separate flow.
               <button className="btn btn-solid buy-btn" onClick={openDetail}>
@@ -1248,13 +1254,27 @@ export function AuthModal() {
   // comment further down).
   const [statusKind, setStatusKind] = useState("error");
   const [loading, setLoading] = useState(false);
+  // "Forgot password" (mode === "forgot"): step 1 asks for the email and sends a
+  // 6-digit code; step 2 takes the code + a new password. See routes/password.js.
+  const [resetStep, setResetStep] = useState(1);
+  const [reset, setReset] = useState({ otp: "", password: "", confirm: "" });
+  const [resendIn, setResendIn] = useState(0); // seconds until "Resend code" is available again
   const googleBtnRef = useRef(null);
   useBodyScrollLock(!!authModal);
   useModalFocus(!!authModal);
 
   useEffect(() => {
+    if (resendIn <= 0) return;
+    const id = setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
+
+  useEffect(() => {
     if (authModal) {
       setMode(authModal.mode || "login");
+      setResetStep(1);
+      setReset({ otp: "", password: "", confirm: "" });
+      setResendIn(0);
       // A code remembered from a shared referral link pre-fills the signup box.
       setForm({ name: "", email: "", phone: "", password: "", referralCode: getStoredReferral() });
       setStatus("");
@@ -1267,7 +1287,10 @@ export function AuthModal() {
 
   // Switching between "Log in" / "Create an account" shouldn't carry a
   // stale error from the other form along with it.
-  const switchMode = (m) => { setMode(m); setStatus(""); setStatusKind("error"); };
+  const switchMode = (m) => {
+    setMode(m); setStatus(""); setStatusKind("error");
+    if (m === "forgot") { setResetStep(1); setReset({ otp: "", password: "", confirm: "" }); setResendIn(0); }
+  };
 
   const finishAuth = (res, fallbackError) => {
     if (res.ok) {
@@ -1315,10 +1338,49 @@ export function AuthModal() {
 
   const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus(""); };
 
+  const setResetField = (k) => (e) => { setReset({ ...reset, [k]: e.target.value }); setStatus(""); };
+
+  // Sends (or re-sends) the emailed code. The server answers the same way
+  // whether or not the email has an account, so this never confirms one.
+  const sendResetCode = async () => {
+    const emailProblem = emailFormatError(form.email);
+    if (!form.email.trim()) { setStatus("Enter your email."); return; }
+    if (emailProblem) { setStatus(`Please add ${emailProblem}.`); return; }
+    setLoading(true);
+    setStatus("");
+    const res = await forgotPassword(form.email.trim());
+    setLoading(false);
+    if (!res.ok) { setStatus(res.error || "Could not send the code."); return; }
+    setResetStep(2);
+    setResendIn(60);
+    setStatusKind("info");
+    setStatus(res.message);
+  };
+
+  const submitReset = async () => {
+    if (!/^\d{6}$/.test(reset.otp.trim())) { setStatus("Enter the 6-digit code from your email."); return; }
+    if (reset.password.length < 8) { setStatus("New password must be at least 8 characters."); return; }
+    if (reset.password.length > 72) { setStatus("New password must be at most 72 characters."); return; }
+    if (reset.password !== reset.confirm) { setStatus("The two passwords don't match."); return; }
+    setLoading(true);
+    setStatus("");
+    const res = await resetPassword({ email: form.email.trim(), otp: reset.otp.trim(), newPassword: reset.password });
+    setLoading(false);
+    if (!res.ok) { setStatus(res.error || "Could not reset your password."); return; }
+    // Back to the login form, email kept, so they can sign straight in.
+    setMode("login");
+    setResetStep(1);
+    setReset({ otp: "", password: "", confirm: "" });
+    setForm((f) => ({ ...f, password: "" }));
+    setStatusKind("success");
+    setStatus("Password updated. Log in with your new password.");
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return; // already in flight — avoid a duplicate login/signup request
     setStatusKind("error"); // any status set from here down defaults to an error styling, unless overridden below
+    if (mode === "forgot") { await (resetStep === 1 ? sendResetCode() : submitReset()); return; }
     if (mode === "login") {
       if (!form.email.trim() || !form.password.trim()) { setStatus("Enter your email and password."); return; }
     } else {
@@ -1354,24 +1416,53 @@ export function AuthModal() {
     <div className="modal-backdrop" onClick={closeAuthModal}>
       <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={closeAuthModal} aria-label="Close">✕</button>
-        <span className="eyebrow">{mode === "login" ? "Welcome back" : "Get started"}</span>
-        <h3 id="auth-modal-title" style={{ margin: "10px 0 14px" }}>{mode === "login" ? "Log in to your account" : "Create your account"}</h3>
+        <span className="eyebrow">{mode === "forgot" ? "Account recovery" : mode === "login" ? "Welcome back" : "Get started"}</span>
+        <h3 id="auth-modal-title" style={{ margin: "10px 0 14px" }}>
+          {mode === "forgot" ? "Reset your password" : mode === "login" ? "Log in to your account" : "Create your account"}
+        </h3>
         {sessionExpired && (
           <Alert kind="info">You were signed out after 15 minutes of inactivity. Please log in again.</Alert>
         )}
-        {GOOGLE_CLIENT_ID && (
+        {GOOGLE_CLIENT_ID && mode !== "forgot" && (
           <>
             <div ref={googleBtnRef} className="google-btn-wrap" />
             <div className="auth-divider"><span>or</span></div>
           </>
         )}
         <form onSubmit={onSubmit}>
+          {mode === "forgot" && (
+            <>
+              <p className="form-note" style={{ marginTop: 0 }}>
+                {resetStep === 1
+                  ? "Enter your account email and we'll send you a 6-digit code."
+                  : `Enter the code we emailed to ${form.email.trim()} and choose a new password.`}
+              </p>
+              <div className="field"><label htmlFor="auth-email">Email</label>
+                <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com"
+                  autoComplete="username" disabled={loading || resetStep === 2} /></div>
+              {resetStep === 2 && (
+                <>
+                  <div className="field"><label htmlFor="auth-otp">6-digit code</label>
+                    <input id="auth-otp" value={reset.otp} onChange={setResetField("otp")} placeholder="123456"
+                      inputMode="numeric" pattern="[0-9]*" maxLength={6} autoComplete="one-time-code" disabled={loading} /></div>
+                  <div className="field"><label htmlFor="auth-newpw">New password</label>
+                    <input id="auth-newpw" type="password" value={reset.password} onChange={setResetField("password")}
+                      placeholder="At least 8 characters" autoComplete="new-password" disabled={loading} /></div>
+                  <div className="field"><label htmlFor="auth-newpw2">Confirm new password</label>
+                    <input id="auth-newpw2" type="password" value={reset.confirm} onChange={setResetField("confirm")}
+                      placeholder="Repeat the new password" autoComplete="new-password" disabled={loading} /></div>
+                </>
+              )}
+            </>
+          )}
           {mode === "signup" && (
             <div className="field"><label htmlFor="auth-name">Full name</label>
               <input id="auth-name" value={form.name} onChange={set("name")} placeholder="Your name" autoComplete="name" disabled={loading} /></div>
           )}
-          <div className="field"><label htmlFor="auth-email">Email</label>
-            <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="username" disabled={loading} /></div>
+          {mode !== "forgot" && (
+            <div className="field"><label htmlFor="auth-email">Email</label>
+              <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="username" disabled={loading} /></div>
+          )}
           {mode === "signup" && (
             <div className="field"><label htmlFor="auth-phone">Phone</label>
               <PhoneInput id="auth-phone" value={form.phone} onChange={(phone) => { setForm((f) => ({ ...f, phone })); setStatus(""); }} disabled={loading} /></div>
@@ -1380,17 +1471,38 @@ export function AuthModal() {
             <div className="field"><label htmlFor="auth-ref">Referral code (optional)</label>
               <input id="auth-ref" value={form.referralCode} onChange={set("referralCode")} placeholder="CRIX-XXXXXX" autoComplete="off" disabled={loading} /></div>
           )}
-          <div className="field"><label htmlFor="auth-password">Password</label>
-            <input id="auth-password" type="password" value={form.password} onChange={set("password")}
-              placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
-              autoComplete={mode === "login" ? "current-password" : "new-password"} disabled={loading} /></div>
+          {mode !== "forgot" && (
+            <div className="field"><label htmlFor="auth-password">Password</label>
+              <input id="auth-password" type="password" value={form.password} onChange={set("password")}
+                placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
+                autoComplete={mode === "login" ? "current-password" : "new-password"} disabled={loading} />
+              {mode === "login" && (
+                <button type="button" className="link-btn" style={{ marginTop: 6, fontSize: ".82rem" }}
+                  onClick={() => switchMode("forgot")}>Forgot password?</button>
+              )}
+            </div>
+          )}
           <Alert kind={statusKind}>{status}</Alert>
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
-            {loading ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}
+            {loading ? "Please wait..."
+              : mode === "forgot" ? (resetStep === 1 ? "Send code" : "Reset password")
+              : mode === "login" ? "Log in" : "Create account"}
           </button>
         </form>
         <p className="form-note" style={{ marginTop: 14 }}>
-          {mode === "login" ? (
+          {mode === "forgot" ? (
+            <>
+              {resetStep === 2 && (
+                <>
+                  <button type="button" className="link-btn" disabled={loading || resendIn > 0} onClick={() => { setStatusKind("error"); sendResetCode(); }}>
+                    {resendIn > 0 ? `Resend code in ${resendIn}s` : "Resend code"}
+                  </button>
+                  {" · "}
+                </>
+              )}
+              <button type="button" className="link-btn" onClick={() => switchMode("login")}>Back to log in</button>
+            </>
+          ) : mode === "login" ? (
             <>New here? <button type="button" className="link-btn" onClick={() => switchMode("signup")}>Create an account</button></>
           ) : (
             <>Already have an account? <button type="button" className="link-btn" onClick={() => switchMode("login")}>Log in</button></>
@@ -1537,9 +1649,8 @@ export function Navbar() {
           <li className="nav-links-mobile-account">
             {isLoggedIn ? (
               <>
-                {!isAdmin && (
-                  <NavLink to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
-                )}
+                <NavLink to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
+                {isAdmin && <NavLink to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>}
                 <NavLink to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
                   {isAdmin ? "Admin" : "My Dashboard"}
                 </NavLink>
@@ -1560,8 +1671,9 @@ export function Navbar() {
         </ul>
         {isLoggedIn ? (
           <span className="nav-account">
-            {!isAdmin && (
-              <NavLink className="nav-account-link" to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
+            <NavLink className="nav-account-link" to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
+            {isAdmin && (
+              <NavLink className="nav-account-link" to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>
             )}
             <Link className="nav-cta" to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
               {isAdmin ? "Admin" : "My Dashboard"}

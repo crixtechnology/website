@@ -1,9 +1,12 @@
 const { prisma } = require("../db");
-const { hasValidAccess } = require("../utils/enrollmentAccess");
+const { hasValidAccess, isAdminUser } = require("../utils/enrollmentAccess");
 
 // Runs AFTER requireAuth. Loads the logged-in user's active Enrollment for
 // the course in req.params.courseId and confirms their access hasn't
 // expired. Sets req.enrollment for the handler.
+//
+// Admins skip the check entirely (req.enrollment stays null) — they can view
+// every course's content without being enrolled or paying.
 //
 // No explicit "is this a valid id" pre-check is needed the way Mongo's
 // isValidObjectId guard was — a malformed courseId here just matches no row
@@ -12,6 +15,11 @@ const { hasValidAccess } = require("../utils/enrollmentAccess");
 async function requireEnrollment(req, res, next) {
   try {
     const { courseId } = req.params;
+
+    if (await isAdminUser(req.user)) {
+      req.enrollment = null;
+      return next();
+    }
 
     const enrollment = await prisma.enrollment.findFirst({
       where: { userId: req.user.sub, courseId, status: "active" },

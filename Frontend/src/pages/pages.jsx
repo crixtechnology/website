@@ -283,7 +283,7 @@ export function CourseDetail() {
   const [inquireOpen, setInquireOpen] = useState(false);
   const [upgrade, setUpgrade] = useState(null); // { item, tier } | null — the plan-upgrade dialog
   const { ownedTier, reload: reloadPlans } = useMyPlans();
-  const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
+  const { isLoggedIn, isAdmin, user, openAuthModal } = useContext(UserContext);
 
   const handleBuy = (tier) => {
     const open = () => { setBuyItem(course); setBuyTier(tier || null); };
@@ -384,7 +384,16 @@ export function CourseDetail() {
               {(course.points || []).map((p) => <li key={p}>{p}</li>)}
             </ul>
 
-            {openForBuy ? (
+            {isAdmin ? (
+              // Admins see every course and internship without buying or
+              // applying — straight to the content (backend: isAdminUser).
+              <div style={{ maxWidth: 280, marginTop: 24 }}>
+                <Link className="btn btn-solid buy-btn" to={`/learn/${course.slug}`}>
+                  {course.type === "internship" ? "Open internship" : "Open course"} →
+                </Link>
+                <span style={{ display: "block", marginTop: 8, color: "var(--muted)", fontSize: ".82rem" }}>Admin access — no payment needed</span>
+              </div>
+            ) : openForBuy ? (
               <div className="plans-block">
                 <h4 className="plans-heading">{ownedTier(course) ? "Your plan" : plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
                 <PlanCards plans={plans} onChoose={handleBuy} ownedTier={ownedTier(course)} onUpgrade={(tier) => setUpgrade({ item: course, tier })} />

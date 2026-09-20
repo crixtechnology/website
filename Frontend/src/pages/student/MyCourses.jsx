@@ -10,7 +10,7 @@ import { tierLabel } from "../../utils/tiers.js";
 
 export default function MyCourses() {
   usePageMeta({ title: "My Dashboard | Crix Technology" });
-  const { isLoggedIn, user, logout, openAuthModal } = useContext(UserContext);
+  const { isLoggedIn, isAdmin, user, logout, openAuthModal } = useContext(UserContext);
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +97,7 @@ export default function MyCourses() {
           </div>
         </div>
 
-        <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>My courses</h2>
+        <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>{isAdmin ? "All courses & internships" : "My courses"}</h2>
         {loading ? (
           <p style={{ color: "var(--muted)" }}>Loading...</p>
         ) : enrollments.length === 0 ? (
@@ -110,7 +110,11 @@ export default function MyCourses() {
               <div className="admin-row" key={en._id}>
                 <div className="admin-row-main">
                   <b>{en.course?.title || "Course"} {en.tier && <span className="plan-pill">{tierLabel(en.tier)}</span>} {en.expired && <span className="admin-pill expired">expired</span>}</b>
-                  <span className="admin-row-meta">Purchased {new Date(en.createdAt).toLocaleDateString("en-IN")}</span>
+                  <span className="admin-row-meta">
+                    {en.adminAccess
+                      ? `${en.course?.type === "internship" ? "Internship" : "Course"} · admin access, no purchase needed`
+                      : `Purchased ${new Date(en.createdAt).toLocaleDateString("en-IN")}`}
+                  </span>
                 </div>
                 <div className="admin-row-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   {en.expired ? (
@@ -122,7 +126,7 @@ export default function MyCourses() {
                     </span>
                   ) : (
                     en.course?.slug && (
-                      <Link className="btn btn-solid" to={`/learn/${en.course.slug}`}>Go to course →</Link>
+                      <Link className="btn btn-solid" to={`/learn/${en.course.slug}`}>{en.adminAccess ? "Open →" : "Go to course →"}</Link>
                     )
                   )}
                   {/* Only real purchases carry a `payment` ref — an
