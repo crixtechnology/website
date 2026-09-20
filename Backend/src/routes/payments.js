@@ -391,6 +391,7 @@ router.get("/upgrade-options/:courseSlug", requireAuth, async (req, res, next) =
       currentTier: result.currentTier,
       paid: result.paidPaise / 100,
       options: result.options.map((o) => ({ tier: o.tier, planPrice: o.planPaise / 100, due: o.duePaise / 100 })),
+      ...(result.note ? { reason: result.note } : {}),
     });
   } catch (e) {
     next(e);
