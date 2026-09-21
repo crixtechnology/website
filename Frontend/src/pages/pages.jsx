@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
-  Reveal, InfoCard, BenefitIcon, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
+  Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, legal,
@@ -11,6 +11,7 @@ import { submitContact, getCourses, getCourse, getServices } from "../services/a
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
+import { useNoIndex } from "../hooks/useNoIndex.js";
 import { isValidName, emailFormatError } from "../utils/validators.js";
 import { phoneError } from "../utils/phone.js";
 import PhoneInput from "../components/PhoneInput.jsx";
@@ -284,6 +285,7 @@ export function CourseDetail() {
   const [upgrade, setUpgrade] = useState(null); // { item, tier } | null — the plan-upgrade dialog
   const { ownedTier, reload: reloadPlans } = useMyPlans();
   const { isLoggedIn, isAdmin, user, openAuthModal } = useContext(UserContext);
+  useNoIndex(course === null); // a course that doesn't exist is a "not found" screen: keep it out of search results
 
   const handleBuy = (tier) => {
     const open = () => { setBuyItem(course); setBuyTier(tier || null); };
@@ -421,6 +423,30 @@ export function CourseDetail() {
   );
 }
 
+/* ================= NOT FOUND ================= */
+// Shown for any address the site doesn't have (App.jsx's catch-all route).
+export function NotFound() {
+  usePageMeta({ title: "Page not found | Crix Technology", description: "The page you were looking for doesn't exist on Crix Technology." });
+  useNoIndex(true);
+  return (
+    <section className="section notfound" style={{ paddingTop: 140, minHeight: "60vh" }}>
+      <div className="wrap" style={{ maxWidth: 640 }}>
+        <div className="notfound-logo"><Link to="/" aria-label="Crix Technology — home"><Logo /></Link></div>
+        <span className="eyebrow">Error 404</span>
+        <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>We can't find that page.</h1>
+        <p style={{ color: "var(--muted)", marginBottom: 28, lineHeight: 1.7 }}>
+          The link may be old or mistyped, but Crix Technology is still here to help. Here's where to go next:
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <Link className="btn btn-solid" to="/">Go to the home page</Link>
+          <Link className="btn btn-ghost" to="/programs">Browse programs</Link>
+          <Link className="btn btn-ghost" to="/contact">Contact us</Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ================= SERVICES ================= */
 export function Services() {
   usePageMeta({
@@ -446,6 +472,7 @@ export function Services() {
         text="Websites, web apps, AI assistants and automation — delivered virtual-first to clients pan-India and globally, by the same team that trains India's next engineers." />
       <section className="section" style={{ paddingTop: 20 }}>
         <div className="wrap">
+          <h2 className="sr-only">Our services</h2>
           <div className="grid3 stagger" style={{ marginTop: 0 }}>
             {liveServices.map((it, i) => (
               <InfoCard key={it.title} item={it} i={i} onDetail={setDetailData} onServiceInquire={setServiceInquiryItem} />
@@ -753,7 +780,7 @@ function LegalPage({ eyebrow, title, doc }) {
           }}>{doc.intro}</p>
           {doc.sections.map((s) => (
             <div key={s.title} style={{ marginBottom: 32 }}>
-              <h3 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{s.title}</h3>
+              <h3 aria-level={2} style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{s.title}</h3>
               <p style={{ color: "var(--muted)", lineHeight: 1.85, whiteSpace: "pre-line" }}>{s.content}</p>
             </div>
           ))}

@@ -199,7 +199,7 @@ describe("when a code can be used (checkCoupon)", () => {
   }
 
   it("accepts a live code in any typing", async () => {
-    const c = await makeCoupon({ code: "SPRING-SALE" });
+    await makeCoupon({ code: "SPRING-SALE" });
     for (const typed of ["SPRINGSALE", "spring sale", " Spring-Sale "]) expect((await check(typed)).ok).toBe(true);
   });
 

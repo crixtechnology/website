@@ -132,7 +132,7 @@ export async function submitContact(form) {
     const text = encodeURIComponent(
       `Hi Crix Technology!\nName: ${form.name}\nEmail: ${form.email}\nInterest: ${form.interest}\nMessage: ${form.message}`
     );
-    window.open(`https://wa.me/${site.whatsapp}?text=${text}`, "_blank");
+    window.open(`https://wa.me/${site.whatsapp}?text=${text}`, "_blank", "noopener,noreferrer");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: "Could not send right now. Email us at " + site.email };
@@ -259,7 +259,12 @@ export async function signup({ name, email, phone, password, referralCode }) {
       body: JSON.stringify({ name, email, phone, password, referralCode: (referralCode || "").trim() || undefined }),
     });
     const data = await res.json();
-    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); clearStoredReferral(); }
+    // The remembered friend's code (from a shared ?ref= link) is used up as soon as
+    // the server accepts a sign-up — including the neutral "check your email" reply
+    // for an address that already has an account, which carries no token. Only a
+    // rejected or failed attempt keeps it, so it can be corrected and retried.
+    if (data.ok) clearStoredReferral();
+    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); }
     return data;
   } catch (e) {
     return { ok: false, error: "Could not sign up right now." };

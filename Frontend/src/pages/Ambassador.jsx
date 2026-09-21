@@ -79,6 +79,7 @@ export default function Ambassador() {
           <section className="section" style={{ paddingTop: 20 }}>
             <div className="wrap">
               <Reveal as="span" variant="reveal-l" className="eyebrow">What you get</Reveal>
+              <h2 className="sr-only">Benefits of the ambassador programme</h2>
               <div className="grid4 stagger">
                 {program && (
                   <Reveal variant="reveal" className="benefit" style={{ "--i": 0 }}>

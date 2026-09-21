@@ -88,6 +88,10 @@ app.use("/api", referralRoutes);
 app.use("/api", couponRoutes);
 app.use("/api", ambassadorRoutes);
 
+// Anything under /api that no route above claimed. Without this Express answers with
+// an HTML "Cannot GET /api/..." page, which the frontend then fails to parse as JSON.
+app.use("/api", (req, res) => res.status(404).json({ ok: false, error: "Not found" }));
+
 // Database errors that are really the caller's fault (or the database being away)
 // deserve a 4xx/503, not a 500: sending a number where text belongs, a value too
 // long/large for its column, or an id that doesn't exist made every route that

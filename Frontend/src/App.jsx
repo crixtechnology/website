@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigationType } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
-import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms } from "./pages/pages.jsx";
+import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
 import AdminGuard from "./pages/admin/AdminGuard.jsx";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
 import { captureReferralFromUrl } from "./utils/referral.js";
@@ -150,13 +151,36 @@ function ScrollToTop() {
   return null;
 }
 
+// Shown if a page crashes, or if its script can't be fetched (typically a tab left open
+// across a new deploy, which has since replaced the file it asks for). Reloading fixes both.
+function PageError() {
+  return (
+    <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
+      <div className="wrap" style={{ maxWidth: 560 }}>
+        <span className="eyebrow">Something went wrong</span>
+        <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>This page hit a problem.</h1>
+        <p style={{ color: "var(--muted)", marginBottom: 28, lineHeight: 1.7 }}>
+          Reloading usually fixes it. If it keeps happening, please contact us and we'll sort it out.
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <button className="btn btn-solid" onClick={() => window.location.reload()}>Reload the page</button>
+          <a className="btn btn-ghost" href="/">Go to the home page</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
+  const location = useLocation();
   return (
     <>
       <ScrollToTop />
       <Chrome />
       <Navbar />
       <main>
+        {/* Keyed by the address, so moving to another page starts with a clean slate. */}
+        <ErrorBoundary key={location.pathname} fallback={<PageError />}>
         <Suspense fallback={<RouteLoading />}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -199,9 +223,11 @@ export default function App() {
             <Route path="/admin/coupons" element={<AdminGuard><AdminCoupons /></AdminGuard>} />
             <Route path="/admin/ambassadors" element={<AdminGuard><AdminAmbassadors /></AdminGuard>} />
 
-            <Route path="*" element={<Home />} />
+            {/* Any other address: a real "not found" page, not the home page under a wrong URL. */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </main>
       <Footer />
       <AuthModal />
