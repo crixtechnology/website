@@ -4,7 +4,7 @@ import {
   login as loginRequest, signup as signupRequest, googleAuth as googleAuthRequest,
   fetchMe, updateMe,
 } from "../services/api.js";
-import { useIdleLogout } from "../hooks/useIdleLogout.js";
+import { useIdleLogout, IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
 
 // The details a course purchase needs on file (see BuyModal). Missing any of
 // these sends the user to /profile to fill them in first.
@@ -120,7 +120,7 @@ export function UserProvider({ children }) {
   useIdleLogout({
     active: !!user && !!token,
     onIdle: () => logout({ expired: true }),
-    timeoutMs: 30 * 60 * 1000,
+    timeoutMs: IDLE_TIMEOUT_MINUTES * 60 * 1000,
   });
 
   const openAuthModal = useCallback((mode = "login", onSuccess) => {

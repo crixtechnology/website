@@ -6,6 +6,7 @@ import { Contact } from "./pages/pages.jsx";
 import { AuthModal } from "./components/ui.jsx";
 import ReferralCard from "./components/ReferralCard.jsx";
 import * as api from "./services/api.js";
+import { IDLE_TIMEOUT_MINUTES } from "./hooks/useIdleLogout.js";
 
 // Forms that stay on screen after a successful submit or Apply must come back
 // empty, so pressing the button again can't quietly send the same thing twice
@@ -14,7 +15,7 @@ import * as api from "./services/api.js";
 // showing what's saved, are deliberately not covered here.)
 jest.mock("./services/api.js");
 
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+global.IS_REACT_ACT_ENVIRONMENT = true;
 
 let container;
 let root;
@@ -146,5 +147,17 @@ describe("referral 'friend's code' box", () => {
     const apply = [...container.querySelectorAll("button")].find((b) => b.textContent.includes("Apply"));
     await click(apply);
     expect(q("#ref-friend-code").value).toBe("CRIX-BAD000");
+  });
+});
+
+describe("idle sign-out notice", () => {
+  it("states the real idle limit (30 minutes), not a stale number", async () => {
+    // The limit is defined once and used both by the timer and by this message.
+    expect(IDLE_TIMEOUT_MINUTES).toBe(30);
+    const value = { authModal: { mode: "login" }, closeAuthModal: jest.fn(), login: jest.fn(), signup: jest.fn(), loginWithGoogle: jest.fn(), sessionExpired: true };
+    await render(<UserContext.Provider value={value}><AuthModal /></UserContext.Provider>);
+    // The notice is portaled to <body>, outside the test container.
+    expect(document.body.textContent).toContain("signed out after 30 minutes of inactivity");
+    expect(document.body.textContent).not.toContain("15 minutes");
   });
 });

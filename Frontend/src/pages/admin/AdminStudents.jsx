@@ -163,12 +163,12 @@ export default function AdminStudents() {
                   </span>
                 </div>
                 <div className="admin-row-actions">
-                  <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: ".7rem", color: "var(--muted)" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: ".75rem", color: "var(--muted)" }}>
                     Start
                     <input type="date" defaultValue={toDateInput(en.startDate)}
                       onBlur={(e) => { if (e.target.value && e.target.value !== toDateInput(en.startDate)) editStartDate(en, e.target.value); }} />
                   </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: ".7rem", color: "var(--muted)" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: ".75rem", color: "var(--muted)" }}>
                     Valid until
                     <input type="date" defaultValue={toDateInput(en.endDate)}
                       onBlur={(e) => { if (e.target.value !== toDateInput(en.endDate)) editEndDate(en, e.target.value); }} />
