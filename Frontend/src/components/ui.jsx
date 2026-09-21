@@ -417,7 +417,9 @@ const loadRazorpayScript = () =>
 function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
   const [quote, setQuote] = useState(null);
   // The offer-code box (an admin-made code, separate from the referral code below).
-  const [offerOpen, setOfferOpen] = useState(false);
+  // Offer codes are handed to individual students personally by the admin, so the
+  // box is just a plain input — no hint of any code on the page, and the code the
+  // student typed is never displayed back to them.
   const [offerInput, setOfferInput] = useState("");
   const [offerNote, setOfferNote] = useState({ kind: "", text: "" });
   const [offerBusy, setOfferBusy] = useState(false);
@@ -460,12 +462,12 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
     if (offerBusy || !offerInput.trim()) return;
     setOfferBusy(true);
     setOfferNote({ kind: "", text: "" });
-    const res = await getPriceQuote(item.slug, tier, offerInput.trim());
+    const typed = offerInput.trim();
+    const res = await getPriceQuote(item.slug, tier, typed);
     setOfferBusy(false);
-    if (res.ok && res.couponCode) {
+    if (res.ok && res.couponApplied) {
       setOfferInput("");
-      onCoupon(res.couponCode);
-      setOfferNote({ kind: "ok", text: `Offer code applied — you save ${formatINR(res.couponDiscount)}.` });
+      onCoupon(typed); // kept only to send with the order; the server normalises and re-checks it
     } else {
       setOfferNote({ kind: "error", text: res.couponError || res.error || "That offer code isn't valid." });
     }
@@ -496,14 +498,14 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
     <div className="checkout-extras">
       {couponCode ? (
         <p className="ref-ok" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 8px" }}>
-          <span>Offer code <b>{couponCode}</b> applied</span>
+          <span>Offer applied{quote && quote.couponDiscount > 0 ? ` — you save ${formatINR(quote.couponDiscount)}` : ""}</span>
           <button type="button" className="link-btn" onClick={removeOffer}>Remove</button>
         </p>
-      ) : offerOpen ? (
+      ) : (
         <div className="ref-apply" style={{ marginBottom: 8 }}>
           <label htmlFor="buy-offer">Offer code</label>
           <div className="ref-apply-row">
-            <input id="buy-offer" value={offerInput} placeholder="Enter your offer code" autoComplete="off"
+            <input id="buy-offer" value={offerInput} placeholder="Enter offer code" autoComplete="off" spellCheck={false}
               onChange={(e) => { setOfferInput(e.target.value); setOfferNote({ kind: "", text: "" }); }}
               // Enter here applies the code — it must not submit the form and start a payment.
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyOffer(); } }} />
@@ -512,8 +514,6 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
             </button>
           </div>
         </div>
-      ) : (
-        <button type="button" className="link-btn ref-toggle" onClick={() => setOfferOpen(true)}>Have an offer code?</button>
       )}
       {offerNote.text && <p className={offerNote.kind === "ok" ? "ref-ok" : "form-error"}>{offerNote.text}</p>}
       {referral && referral.canApplyCode && (
@@ -539,7 +539,7 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
         <dl className="order-summary">
           <div><dt>Plan price</dt><dd>{formatINR(quote.planPrice)}</dd></div>
           {quote.couponDiscount > 0 && (
-            <div className="is-off"><dt>Offer code ({quote.couponCode})</dt><dd>−{formatINR(quote.couponDiscount)}</dd></div>
+            <div className="is-off"><dt>Offer discount</dt><dd>−{formatINR(quote.couponDiscount)}</dd></div>
           )}
           {quote.referralDiscount > 0 && (
             <div className="is-off"><dt>Referral discount ({quote.referralPercent}%)</dt><dd>−{formatINR(quote.referralDiscount)}</dd></div>

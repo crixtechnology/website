@@ -118,7 +118,7 @@ export default function AdminCoupons() {
     const res = editingId ? await adminUpdateCoupon(editingId, payload) : await adminCreateCoupon(payload);
     setSaving(false);
     if (!res.ok) { setError(res.error || "Could not save."); dropToLoginIfExpired(); return; }
-    setNotice(editingId ? `Saved ${res.coupon.code}.` : `Created ${res.coupon.code}. Students can enter it in the buy popup.`);
+    setNotice(editingId ? `Saved ${res.coupon.code}.` : `Created ${res.coupon.code}. Share it with the student personally — it isn't shown anywhere on the site.`);
     cancelEdit();
     load();
   };
@@ -164,7 +164,7 @@ export default function AdminCoupons() {
             <span className="eyebrow">Admin</span>
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Offer codes</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
-              Students enter a code in the buy popup to get a discount on a course or internship.
+              Codes are never shown to students on the site. Share a code with a student personally (for example on WhatsApp or email); they type it into the offer-code box when buying. For a code meant for one person, set "Total uses" to 1.
             </p>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
@@ -181,8 +181,9 @@ export default function AdminCoupons() {
               </div>
               <span className="admin-row-meta">Letters and numbers, 3–20. Students can type it in any case.</span>
             </div>
-            <div className="field"><label htmlFor="cp-desc">Description (optional)</label>
-              <input id="cp-desc" value={form.description} onChange={set("description")} placeholder="e.g. Diwali sale" maxLength={120} /></div>
+            <div className="field"><label htmlFor="cp-desc">Note for yourself (optional)</label>
+              <input id="cp-desc" value={form.description} onChange={set("description")} placeholder="e.g. Given to Rahul, referral by college" maxLength={120} />
+              <span className="admin-row-meta">Only admins ever see this.</span></div>
 
             <div className="field"><label htmlFor="cp-type">Discount type</label>
               <select id="cp-type" value={form.discountType} onChange={set("discountType")}>
