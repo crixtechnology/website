@@ -1529,22 +1529,22 @@ export function Logo({ className = "" }) {
 /* ---------- Navbar ---------- */
 /* Sun/moon toggle — shows the icon for the theme you'd SWITCH TO (a sun
    while dark, inviting you toward light) rather than the current one,
-   matching the usual convention for this kind of control. Rendered twice:
-   as a round icon button in the header on desktop, and (row) as a full-width
-   "Switch to light mode" row inside the mobile menu — under the mobile
+   matching the usual convention for this kind of control. Rendered twice, as
+   the same round icon button: in the header on desktop, and inside the mobile
+   menu right beside the Log in / account buttons — under the mobile
    breakpoint the header only holds the logo and the burger, so a lone icon
    used to float in the middle between them. CSS shows one or the other. */
-function ThemeToggle({ row = false }) {
+function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   const label = isDark ? "Switch to light mode" : "Switch to dark mode";
   return (
     <button
       type="button"
-      className={`theme-toggle${row ? " theme-toggle--row" : ""}`}
+      className="theme-toggle"
       onClick={toggleTheme}
-      aria-label={row ? undefined : label}
-      title={row ? undefined : label}
+      aria-label={label}
+      title={label}
     >
       {isDark ? (
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1556,7 +1556,6 @@ function ThemeToggle({ row = false }) {
           <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />
         </svg>
       )}
-      {row && <span>{label}</span>}
     </button>
   );
 }
@@ -1664,10 +1663,11 @@ export function Navbar() {
               // down rather than covering it).
               <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
             )}
+            {/* Mobile only (the header's own icon is hidden there): sits right
+                beside Log in, and the menu stays open after a tap so the
+                change is visible straight away. */}
+            <ThemeToggle />
           </li>
-          {/* Mobile only (the header's own icon is hidden there): stays open after a
-              tap so the change is visible straight away. */}
-          <li className="nav-links-mobile-theme"><ThemeToggle row /></li>
         </ul>
         {isLoggedIn ? (
           <span className="nav-account">
