@@ -15,6 +15,7 @@ import { useNoIndex } from "../hooks/useNoIndex.js";
 import { isValidName, emailFormatError } from "../utils/validators.js";
 import { phoneError } from "../utils/phone.js";
 import PhoneInput from "../components/PhoneInput.jsx";
+import { CourseFacts, CourseLists, CourseFaq, RelatedPrograms, EnrollBar, useCourseJsonLd } from "../components/CourseSections.jsx";
 import { offeredTiers, isOpenForBuy, TIER_ORDER } from "../utils/tiers.js";
 
 // The ?tier= a purchase link carries, if it names a real plan.
@@ -286,6 +287,7 @@ export function CourseDetail() {
   const { ownedTier, reload: reloadPlans } = useMyPlans();
   const { isLoggedIn, isAdmin, user, openAuthModal } = useContext(UserContext);
   useNoIndex(course === null); // a course that doesn't exist is a "not found" screen: keep it out of search results
+  useCourseJsonLd(course); // schema.org "Course" markup while a real course is showing
 
   const handleBuy = (tier) => {
     const open = () => { setBuyItem(course); setBuyTier(tier || null); };
@@ -370,11 +372,7 @@ export function CourseDetail() {
             </h1>
             <p style={{ color: "var(--muted)", fontSize: "1.02rem", lineHeight: 1.7, maxWidth: "65ch" }}>{course.desc}</p>
 
-            {course.durationDays ? (
-              <div className="detail-fact" style={{ maxWidth: 260, marginTop: 24 }}>
-                <span>Duration</span><b>{course.durationDays} days</b>
-              </div>
-            ) : null}
+            <CourseFacts course={course} />
 
             {programDeliverables[course.type]?.length ? (
               <div className="deliverable-row" style={{ marginTop: 20 }}>
@@ -386,6 +384,10 @@ export function CourseDetail() {
               {(course.points || []).map((p) => <li key={p}>{p}</li>)}
             </ul>
 
+            <CourseLists course={course} />
+
+            {/* The block the phone's sticky Enroll bar watches: while this is on screen, the bar steps aside. */}
+            <div id="course-cta" style={{ marginTop: 8 }}>
             {isAdmin ? (
               // Admins see every course and internship without buying or
               // applying — straight to the content (backend: isAdminUser).
@@ -396,8 +398,8 @@ export function CourseDetail() {
                 <span style={{ display: "block", marginTop: 8, color: "var(--muted)", fontSize: ".82rem" }}>Admin access — no payment needed</span>
               </div>
             ) : openForBuy ? (
-              <div className="plans-block">
-                <h4 className="plans-heading">{ownedTier(course) ? "Your plan" : plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
+              <div className="plans-block" id="plans">
+                <h4 className="plans-heading" aria-level={2}>{ownedTier(course) ? "Your plan" : plans.length > 1 ? "Choose a plan" : "Enroll"}</h4>
                 <PlanCards plans={plans} onChoose={handleBuy} ownedTier={ownedTier(course)} onUpgrade={(tier) => setUpgrade({ item: course, tier })} />
               </div>
             ) : (
@@ -413,9 +415,14 @@ export function CourseDetail() {
                 )}
               </div>
             )}
+            </div>
+
+            <CourseFaq faqs={course.faqs} />
+            <RelatedPrograms course={course} />
           </Reveal>
         </div>
       </section>
+      {!isAdmin && <EnrollBar course={course} onInquire={() => setInquireOpen(true)} />}
       <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
       <UpgradeModal data={upgrade} onClose={() => setUpgrade(null)} onDone={reloadPlans} />
       <InquiryModal item={inquireOpen ? course : null} kind={course.type} onClose={() => setInquireOpen(false)} />

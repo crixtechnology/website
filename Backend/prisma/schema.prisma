@@ -102,6 +102,16 @@ model Course {
   // ""` on create (routes/courses.js), so no DB-level default is needed.
   desc            String       @db.Text
   points          Json         @default("[]")
+  // The richer course page (see Frontend CourseDetail). All optional lists the admin fills
+  // in per course; an empty one simply isn't shown on the page.
+  //   outcomes:      "What you'll learn" — short bullets
+  //   audience:      "Who it's for" — short bullets
+  //   prerequisites: "What you need before you start" — short bullets
+  //   faqs:          [{ q, a }] — questions and answers
+  outcomes        Json         @default("[]")
+  audience        Json         @default("[]")
+  prerequisites   Json         @default("[]")
+  faqs            Json         @default("[]")
   durationDays    Int?
   status          CourseStatus @default(open)
   createdAt       DateTime     @default(now())

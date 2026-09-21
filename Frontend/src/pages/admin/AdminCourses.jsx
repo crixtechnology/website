@@ -8,7 +8,10 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, formatINR } from "../../utils/tiers.js";
 
 const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", discountPercent: "0", features: "" }]));
-const EMPTY_FORM = { type: "course", title: "", tag: "", desc: "", points: "", durationDays: "", plans: emptyPlans() };
+// outcomes / audience / prerequisites are typed one per line; faqs is a list of { q, a } rows.
+const EMPTY_FORM = { type: "course", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", plans: emptyPlans() };
+const MAX_FAQS = 15;
+const lines = (text) => text.split("\n").map((l) => l.trim()).filter(Boolean);
 
 function courseToForm(c) {
   const plans = emptyPlans();
@@ -19,6 +22,10 @@ function courseToForm(c) {
     type: c.type === "internship" ? "internship" : "course",
     title: c.title || "", tag: c.tag || "", desc: c.desc || "",
     points: (c.points || []).join("\n"),
+    outcomes: (c.outcomes || []).join("\n"),
+    audience: (c.audience || []).join("\n"),
+    prerequisites: (c.prerequisites || []).join("\n"),
+    faqs: (c.faqs || []).map((f) => ({ q: f.q || "", a: f.a || "" })),
     durationDays: c.durationDays ? String(c.durationDays) : "",
     plans,
   };
@@ -60,6 +67,13 @@ export default function AdminCourses() {
     const value = e.target.value;
     setForm((f) => ({ ...f, plans: { ...f.plans, [tier]: { ...f.plans[tier], [k]: value } } }));
   };
+
+  const setFaq = (i, k) => (e) => {
+    const value = e.target.value;
+    setForm((f) => ({ ...f, faqs: f.faqs.map((row, j) => (j === i ? { ...row, [k]: value } : row)) }));
+  };
+  const addFaq = () => setForm((f) => (f.faqs.length >= MAX_FAQS ? f : { ...f, faqs: [...f.faqs, { q: "", a: "" }] }));
+  const removeFaq = (i) => setForm((f) => ({ ...f, faqs: f.faqs.filter((_, j) => j !== i) }));
 
   const startEdit = (c) => { setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const cancelEdit = () => { setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() }); };
@@ -103,6 +117,9 @@ export default function AdminCourses() {
     });
     const bad = tiers.find((t) => t.price !== null && (!Number.isFinite(t.price) || t.price < 0));
     if (bad) { setError(`The ${TIER_LABEL[bad.tier]} price must be a number, 0 or more.`); return; }
+    // A question needs an answer and the other way round; a row left completely blank is just ignored.
+    const halfFilled = form.faqs.findIndex((f) => (f.q.trim() && !f.a.trim()) || (!f.q.trim() && f.a.trim()));
+    if (halfFilled !== -1) { setError(`Question ${halfFilled + 1} needs both a question and an answer (or remove it).`); return; }
     if (form.type === "course" && !tiers.some((t) => t.price !== null)) {
       setError("Set a price on at least one plan (Basic, Plus or Pro) for a course.");
       return;
@@ -116,6 +133,10 @@ export default function AdminCourses() {
       tag: form.tag.trim(),
       desc: form.desc.trim(),
       points: form.points.split("\n").map((p) => p.trim()).filter(Boolean),
+      outcomes: lines(form.outcomes),
+      audience: lines(form.audience),
+      prerequisites: lines(form.prerequisites),
+      faqs: form.faqs.filter((f) => f.q.trim() && f.a.trim()).map((f) => ({ q: f.q.trim(), a: f.a.trim() })),
       tiers,
       durationDays: form.durationDays ? Number(form.durationDays) : null,
     };
@@ -212,6 +233,32 @@ export default function AdminCourses() {
             <textarea rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
           <div className="field"><label>Points (one per line)</label>
             <textarea rows="4" value={form.points} onChange={set("points")} placeholder={"Frontend fundamentals\nReact in depth\nNode.js & MongoDB"} /></div>
+
+          <fieldset className="plan-editor-set">
+            <legend>Course page content (optional)</legend>
+            <p className="admin-row-meta" style={{ margin: "0 0 14px" }}>
+              Shown on this course's own page. Anything you leave empty is simply not shown, so add only what's true and useful.
+            </p>
+            <div className="field"><label htmlFor="cc-outcomes">What you'll learn (one per line)</label>
+              <textarea id="cc-outcomes" rows="5" value={form.outcomes} onChange={set("outcomes")} placeholder={"Build and deploy a REST API\nWork with a real database"} /></div>
+            <div className="admin-form-grid admin-form-grid--2">
+              <div className="field"><label htmlFor="cc-audience">Who it's for (one per line)</label>
+                <textarea id="cc-audience" rows="4" value={form.audience} onChange={set("audience")} placeholder={"Final-year students\nCareer switchers"} /></div>
+              <div className="field"><label htmlFor="cc-prereq">Before you start (one per line)</label>
+                <textarea id="cc-prereq" rows="4" value={form.prerequisites} onChange={set("prerequisites")} placeholder={"A laptop and internet connection\nBasic programming"} /></div>
+            </div>
+            <div className="faq-editor">
+              <span className="admin-row-meta" style={{ display: "block", margin: "4px 0 10px" }}>Questions &amp; answers ({form.faqs.length}/{MAX_FAQS})</span>
+              {form.faqs.map((f, i) => (
+                <div className="faq-editor-row" key={i}>
+                  <input aria-label={`Question ${i + 1}`} value={f.q} onChange={setFaq(i, "q")} placeholder="Question" maxLength={200} />
+                  <textarea aria-label={`Answer ${i + 1}`} rows="3" value={f.a} onChange={setFaq(i, "a")} placeholder="Answer" maxLength={1500} />
+                  <button type="button" className="btn btn-ghost admin-danger" onClick={() => removeFaq(i)} aria-label={`Remove question ${i + 1}`}>Remove</button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-ghost" onClick={addFaq} disabled={form.faqs.length >= MAX_FAQS}>+ Add a question</button>
+            </div>
+          </fieldset>
 
           <fieldset className="plan-editor-set">
             <legend>Plans &amp; pricing</legend>

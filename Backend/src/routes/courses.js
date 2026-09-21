@@ -3,6 +3,7 @@ const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { serialize } = require("../utils/serialize");
 const { WITH_TIERS, parseTiers } = require("../utils/tiers");
+const { parseCourseContent } = require("../utils/courseContent");
 
 const router = express.Router();
 
@@ -81,6 +82,8 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     }
     const textError = courseTextError({ title, tag, desc, points });
     if (textError) return res.status(400).json({ ok: false, error: textError });
+    const content = parseCourseContent(req.body);
+    if (!content.ok) return res.status(400).json({ ok: false, error: content.error });
     if (!validDuration(durationDays)) {
       return res.status(400).json({ ok: false, error: "durationDays must be a positive whole number of days" });
     }
@@ -104,6 +107,9 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
           tag: tag || "",
           desc: desc || "",
           points: Array.isArray(points) ? points : [],
+          // The richer page's lists; whichever weren't sent start empty (and stay hidden).
+          outcomes: [], audience: [], prerequisites: [], faqs: [],
+          ...content.data,
           // A course/internship offers up to three plans (Basic/Plus/Pro).
           // Internships are apply-only when they have none (shows Request to
           // apply, no online purchase) but MAY carry plans too — some slots
@@ -146,8 +152,10 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
     const effectiveType = type === "course" || type === "internship" ? type : existing.type;
     const textError = courseTextError({ title, tag, desc, points });
     if (textError) return res.status(400).json({ ok: false, error: textError });
+    const content = parseCourseContent(req.body);
+    if (!content.ok) return res.status(400).json({ ok: false, error: content.error });
 
-    const update = { type: effectiveType };
+    const update = { type: effectiveType, ...content.data };
     if (title !== undefined) {
       if (!String(title).trim()) return res.status(400).json({ ok: false, error: "title can't be empty" });
       update.title = title;
