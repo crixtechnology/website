@@ -108,6 +108,8 @@ router.get("/admin/payments", requireAdmin, async (req, res, next) => {
         itemTitle: p.receiptItemTitle,
         itemType: p.receiptItemType,
         tier: p.tier,
+        couponCode: p.couponCode || "",
+        couponDiscount: (p.couponDiscount || 0) / 100,
         totalPaid: p.receiptTotalPaid,
         createdAt: p.createdAt,
       })),

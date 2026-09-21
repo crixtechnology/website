@@ -213,12 +213,12 @@ export async function adminDeleteApplication(id) {
 }
 
 // ---------- Razorpay ----------
-export async function createRazorpayOrder(applicationId, courseSlug, tier) {
+export async function createRazorpayOrder(applicationId, courseSlug, tier, couponCode) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
     const res = await authFetch("/payments/create-order", {
       method: "POST",
-      body: JSON.stringify({ applicationId, courseSlug, tier }),
+      body: JSON.stringify({ applicationId, courseSlug, tier, ...(couponCode ? { couponCode } : {}) }),
     });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
@@ -650,9 +650,11 @@ export async function applyReferral(code) {
 
 // What checkout will charge for a plan, itemised (plan price, referral discount,
 // referral credit, total) — the same pricing the order itself uses.
-export async function getPriceQuote(courseSlug, tier) {
+// `couponCode` is an admin offer code the buyer typed; a code that can't be used
+// doesn't fail the quote — the response carries `couponError` instead.
+export async function getPriceQuote(courseSlug, tier, couponCode) {
   try {
-    const res = await authFetch("/payments/quote", { method: "POST", body: JSON.stringify({ courseSlug, tier }) });
+    const res = await authFetch("/payments/quote", { method: "POST", body: JSON.stringify({ courseSlug, tier, ...(couponCode ? { couponCode } : {}) }) });
     if (res.status === 401) adminLogout();
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not price this" };
@@ -694,6 +696,12 @@ export async function adminUpdateReferralSettings(settings) {
     return { ok: false, error: "Could not save the referral rules" };
   }
 }
+
+// ---------- Admin: offer / discount codes ----------
+export const adminGetCoupons = () => ambassadorCall("/admin/coupons", {}, "Could not load the offer codes");
+export const adminCreateCoupon = (payload) => ambassadorCall("/admin/coupons", { method: "POST", body: JSON.stringify(payload) }, "Could not create the offer code");
+export const adminUpdateCoupon = (id, patch) => ambassadorCall(`/admin/coupons/${id}`, { method: "PUT", body: JSON.stringify(patch) }, "Could not save the offer code");
+export const adminDeleteCoupon = (id) => ambassadorCall(`/admin/coupons/${id}`, { method: "DELETE" }, "Could not delete the offer code");
 
 // ---------- Campus ambassador programme ----------
 // Small helper: every call below is "authFetch, drop the session on a 401, read

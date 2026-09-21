@@ -184,8 +184,13 @@ async function reservedCredit(userId) {
 // discount first (only while their referral is still pending, i.e. before their
 // first purchase), then any referral credit they hold, never going below the
 // ₹1 minimum. `planRupees` is the plan's already-discounted whole-rupee price.
-async function priceOrder(userId, planRupees) {
+//
+// `couponPaise` is an admin offer code's discount (utils/coupons.js), already
+// checked by the caller and already capped to leave at least ₹1. It comes off
+// FIRST; the referral % is then a share of what's left, not of the full price.
+async function priceOrder(userId, planRupees, couponPaise = 0) {
   const planPaise = planRupees * 100;
+  const afterCoupon = planPaise - couponPaise;
   let referralPercent = 0;
   let referralDiscount = 0;
   let availableCredit = 0;
@@ -194,19 +199,21 @@ async function priceOrder(userId, planRupees) {
     const referral = await prisma.referral.findUnique({ where: { refereeId: userId } });
     if (referral && referral.status === "pending" && referral.refereeDiscountPercent > 0) {
       referralPercent = referral.refereeDiscountPercent;
-      referralDiscount = Math.round((planRupees * referralPercent) / 100) * 100;
+      referralDiscount = Math.round((afterCoupon / 100 * referralPercent) / 100) * 100;
+      referralDiscount = Math.min(referralDiscount, Math.max(0, afterCoupon - MIN_CHARGE_PAISE));
     }
     const [balance, reserved] = await Promise.all([creditBalance(userId), reservedCredit(userId)]);
     availableCredit = Math.max(0, balance - reserved);
   }
 
-  const afterReferral = planPaise - referralDiscount;
+  const afterReferral = afterCoupon - referralDiscount;
   const usable = Math.max(0, afterReferral - MIN_CHARGE_PAISE);
   // Whole rupees only, so the order total stays a whole-rupee amount.
   const creditApplied = Math.floor(Math.min(availableCredit, usable) / 100) * 100;
 
   return {
     planPaise,
+    couponDiscount: couponPaise,
     referralPercent,
     referralDiscount,
     availableCredit,

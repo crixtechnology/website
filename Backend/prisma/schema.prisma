@@ -223,6 +223,50 @@ model Application {
   @@map("applications")
 }
 
+// An offer/discount code the admin creates in the admin panel and a student
+// enters at checkout (courses and internships). See utils/coupons.js for how a
+// code is checked and priced.
+enum DiscountType {
+  percent
+  fixed
+}
+
+enum CouponScope {
+  all
+  course
+  internship
+  selected
+}
+
+model Coupon {
+  id            String       @id @default(cuid())
+  // Stored normalised (A-Z 0-9 only, upper case): people type these in any case
+  // and with or without dashes.
+  code          String       @unique
+  description   String       @default("")
+  discountType  DiscountType
+  // Percent (1-90), or whole rupees off, depending on discountType.
+  discountValue Int
+  // For a percent code: never take off more than this many rupees.
+  maxDiscount   Int?
+  appliesTo     CouponScope  @default(all)
+  // Only used when appliesTo is "selected": the ids of the courses/internships.
+  courseIds     Json         @default("[]")
+  startsAt      DateTime?
+  expiresAt     DateTime?
+  // Total redemptions allowed across everyone; null = unlimited.
+  maxUses       Int?
+  // How many times one student may redeem it.
+  perUserLimit  Int          @default(1)
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  payments Payment[]
+
+  @@map("coupons")
+}
+
 enum PaymentStatus {
   created
   paid
@@ -240,6 +284,13 @@ model Payment {
   // buyer had earned. `amount` is already net of both.
   referralDiscount              Int           @default(0)
   creditApplied                 Int           @default(0)
+  // The admin-created offer code (see Coupon) this order used, and the paise it
+  // took off. `couponCode` is a snapshot, so the history survives the code being
+  // edited or deleted. `amount` is already net of it.
+  couponId                      String?
+  coupon                        Coupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode                    String        @default("")
+  couponDiscount                Int           @default(0)
   tier                          Tier?
   // Set only on a plan-upgrade payment: the plan the buyer held before
   // paying the difference to reach `tier`. Null for an ordinary purchase.

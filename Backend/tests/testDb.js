@@ -79,6 +79,7 @@ async function clearTestDb() {
   await prisma.ambassador.deleteMany();
   await prisma.setting.deleteMany();
   await prisma.payment.deleteMany();
+  await prisma.coupon.deleteMany();
   await prisma.enrollment.deleteMany();
   await prisma.application.deleteMany();
   await prisma.video.deleteMany();

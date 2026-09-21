@@ -12,6 +12,7 @@ const { allowedOrigins: getAllowedOrigins } = require("./utils/clientOrigin");
 
 const authRoutes = require("./routes/auth");
 const passwordRoutes = require("./routes/password");
+const couponRoutes = require("./routes/coupons");
 const courseRoutes = require("./routes/courses");
 const applicationRoutes = require("./routes/applications");
 const paymentRoutes = require("./routes/payments");
@@ -84,6 +85,7 @@ app.use("/api", serviceRoutes);
 app.use("/api", receiptRoutes);
 app.use("/api", adminPaymentRoutes);
 app.use("/api", referralRoutes);
+app.use("/api", couponRoutes);
 app.use("/api", ambassadorRoutes);
 
 // Database errors that are really the caller's fault (or the database being away)
