@@ -162,8 +162,13 @@ export default function AdminRevenue() {
                       {p.tier && <> <span className="plan-pill">{tierLabel(p.tier)}</span></>}
                     </span>
                   </div>
-                  <div className="admin-row-actions">
+                  <div className="admin-row-actions" style={{ flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                     <b>{fmtRupees(p.totalPaid)}</b>
+                    {p.couponCode && (
+                      <span className="admin-row-meta" title="Offer code used on this order">
+                        code {p.couponCode} · −{fmtRupees(p.couponDiscount)}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

@@ -46,6 +46,7 @@ const AdminMessages = lazy(() => import("./pages/admin/AdminMessages.jsx"));
 const AdminApplications = lazy(() => import("./pages/admin/AdminApplications.jsx"));
 const AdminServices = lazy(() => import("./pages/admin/AdminServices.jsx"));
 const AdminReferrals = lazy(() => import("./pages/admin/AdminReferrals.jsx"));
+const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons.jsx"));
 const AdminAmbassadors = lazy(() => import("./pages/admin/AdminAmbassadors.jsx"));
 const Ambassador = lazy(() => import("./pages/Ambassador.jsx"));
 
@@ -195,6 +196,7 @@ export default function App() {
             <Route path="/admin/applications" element={<AdminGuard><AdminApplications /></AdminGuard>} />
             <Route path="/admin/services" element={<AdminGuard><AdminServices /></AdminGuard>} />
             <Route path="/admin/referrals" element={<AdminGuard><AdminReferrals /></AdminGuard>} />
+            <Route path="/admin/coupons" element={<AdminGuard><AdminCoupons /></AdminGuard>} />
             <Route path="/admin/ambassadors" element={<AdminGuard><AdminAmbassadors /></AdminGuard>} />
 
             <Route path="*" element={<Home />} />

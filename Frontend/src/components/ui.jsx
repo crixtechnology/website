@@ -414,8 +414,13 @@ const loadRazorpayScript = () =>
 // hasn't been referred and hasn't bought anything), and the itemised total —
 // plan price, referral discount, referral credit — as the server will charge it.
 // `onPayable` tells the buy button what to show as the amount.
-function CheckoutExtras({ item, tier, onPayable }) {
+function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
   const [quote, setQuote] = useState(null);
+  // The offer-code box (an admin-made code, separate from the referral code below).
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [offerInput, setOfferInput] = useState("");
+  const [offerNote, setOfferNote] = useState({ kind: "", text: "" });
+  const [offerBusy, setOfferBusy] = useState(false);
   const [referral, setReferral] = useState(null); // /me/referral: whether a code can still be applied
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -437,13 +442,38 @@ function CheckoutExtras({ item, tier, onPayable }) {
   useEffect(() => {
     let alive = true;
     onPayable(null);
-    getPriceQuote(item.slug, tier).then((res) => {
+    getPriceQuote(item.slug, tier, couponCode).then((res) => {
       if (!alive) return;
+      // An applied code that no longer works for this plan (or has just run out)
+      // is dropped, and the buyer told — never silently charged a different price.
+      if (res.ok && couponCode && res.couponError) {
+        onCoupon("");
+        setOfferNote({ kind: "error", text: res.couponError });
+      }
       setQuote(res.ok ? res : null);
       onPayable(res.ok ? res.payable : null);
     });
     return () => { alive = false; };
-  }, [item.slug, tier, requote, onPayable]);
+  }, [item.slug, tier, requote, couponCode, onPayable, onCoupon]);
+
+  const applyOffer = async () => {
+    if (offerBusy || !offerInput.trim()) return;
+    setOfferBusy(true);
+    setOfferNote({ kind: "", text: "" });
+    const res = await getPriceQuote(item.slug, tier, offerInput.trim());
+    setOfferBusy(false);
+    if (res.ok && res.couponCode) {
+      setOfferInput("");
+      onCoupon(res.couponCode);
+      setOfferNote({ kind: "ok", text: `Offer code applied — you save ${formatINR(res.couponDiscount)}.` });
+    } else {
+      setOfferNote({ kind: "error", text: res.couponError || res.error || "That offer code isn't valid." });
+    }
+  };
+  const removeOffer = () => {
+    onCoupon("");
+    setOfferNote({ kind: "", text: "" });
+  };
 
   const apply = async () => {
     if (busy || !code.trim()) return;
@@ -461,9 +491,31 @@ function CheckoutExtras({ item, tier, onPayable }) {
     }
   };
 
-  const hasBreakdown = quote && (quote.referralDiscount > 0 || quote.creditApplied > 0);
+  const hasBreakdown = quote && (quote.couponDiscount > 0 || quote.referralDiscount > 0 || quote.creditApplied > 0);
   return (
     <div className="checkout-extras">
+      {couponCode ? (
+        <p className="ref-ok" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 8px" }}>
+          <span>Offer code <b>{couponCode}</b> applied</span>
+          <button type="button" className="link-btn" onClick={removeOffer}>Remove</button>
+        </p>
+      ) : offerOpen ? (
+        <div className="ref-apply" style={{ marginBottom: 8 }}>
+          <label htmlFor="buy-offer">Offer code</label>
+          <div className="ref-apply-row">
+            <input id="buy-offer" value={offerInput} placeholder="Enter your offer code" autoComplete="off"
+              onChange={(e) => { setOfferInput(e.target.value); setOfferNote({ kind: "", text: "" }); }}
+              // Enter here applies the code — it must not submit the form and start a payment.
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyOffer(); } }} />
+            <button className="btn btn-ghost" type="button" onClick={applyOffer} disabled={offerBusy || !offerInput.trim()}>
+              {offerBusy ? "Checking…" : "Apply"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="link-btn ref-toggle" onClick={() => setOfferOpen(true)}>Have an offer code?</button>
+      )}
+      {offerNote.text && <p className={offerNote.kind === "ok" ? "ref-ok" : "form-error"}>{offerNote.text}</p>}
       {referral && referral.canApplyCode && (
         open ? (
           <div className="ref-apply">
@@ -486,6 +538,9 @@ function CheckoutExtras({ item, tier, onPayable }) {
       {hasBreakdown && (
         <dl className="order-summary">
           <div><dt>Plan price</dt><dd>{formatINR(quote.planPrice)}</dd></div>
+          {quote.couponDiscount > 0 && (
+            <div className="is-off"><dt>Offer code ({quote.couponCode})</dt><dd>−{formatINR(quote.couponDiscount)}</dd></div>
+          )}
           {quote.referralDiscount > 0 && (
             <div className="is-off"><dt>Referral discount ({quote.referralPercent}%)</dt><dd>−{formatINR(quote.referralDiscount)}</dd></div>
           )}
@@ -518,6 +573,9 @@ export function BuyModal({ item, user, initialTier, onClose }) {
   // What the server will actually charge for the chosen plan (after any referral
   // discount / credit); null until CheckoutExtras has priced it.
   const [payable, setPayable] = useState(null);
+  // An admin offer code the buyer has applied (already checked by the server);
+  // the server checks it again when the order is created.
+  const [couponCode, setCouponCode] = useState("");
   useBodyScrollLock(!!item);
   useModalFocus(!!item);
 
@@ -542,6 +600,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       setStatus({ text: "", kind: "" });
       setLoading(false);
       setTier(null);
+      setCouponCode("");
     }
   }, [item, user]);
 
@@ -601,7 +660,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       return;
     }
 
-    const orderRes = await createRazorpayOrder(appRes.application._id, item.slug, plan.tier);
+    const orderRes = await createRazorpayOrder(appRes.application._id, item.slug, plan.tier, couponCode);
     if (stale()) return;
     if (!orderRes.ok) {
       setLoading(false);
@@ -720,7 +779,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
                   </label>
                 ))}
               </fieldset>
-              {plan && <CheckoutExtras item={item} tier={plan.tier} onPayable={setPayable} />}
+              {plan && <CheckoutExtras key={item.slug} item={item} tier={plan.tier} onPayable={setPayable} couponCode={couponCode} onCoupon={setCouponCode} />}
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Please wait..." : plan ? `Continue to payment · ${formatINR(payable != null ? payable : planPrice(plan))}` : "Continue to payment"}
               </button>

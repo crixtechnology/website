@@ -9,5 +9,6 @@ export { default as AdminMessages } from "./AdminMessages.jsx";
 export { default as AdminApplications } from "./AdminApplications.jsx";
 export { default as AdminServices } from "./AdminServices.jsx";
 export { default as AdminReferrals } from "./AdminReferrals.jsx";
+export { default as AdminCoupons } from "./AdminCoupons.jsx";
 export { default as AdminAmbassadors } from "./AdminAmbassadors.jsx";
 export { default as AdminGuard } from "./AdminGuard.jsx";
