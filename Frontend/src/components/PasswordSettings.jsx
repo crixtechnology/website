@@ -98,6 +98,7 @@ export default function PasswordSettings() {
       return;
     }
     setRevealed(res.password);
+    setOtp(""); // the one-time code has been used — don't keep it around
     setPhase("shown");
     setRevStatus({ text: "", kind: "" });
     clearTimeout(hideTimer.current);

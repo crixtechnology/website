@@ -42,6 +42,7 @@ export default function ReferralCard() {
     setBusy(false);
     if (res.ok) {
       clearStoredReferral();
+      setFriendCode("");
       setNote({ kind: "ok", text: `Applied — you'll get ${res.discountPercent}% off your first purchase.` });
       load();
     } else {
