@@ -57,6 +57,9 @@ a{color:inherit}
 .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(18px,5vw,28px)}
 .eyebrow{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.28em;text-transform:uppercase;color:var(--cyan);display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
 .eyebrow::before{content:"";width:26px;height:1px;background:var(--teal)}
+/* Even line lengths: no single stray word left alone on the last line of a heading, label or paragraph. */
+h1,h2,h3,.eyebrow,.title-lg{text-wrap:balance}
+p,li{text-wrap:pretty}
 h1,h2,h3{font-family:'Unbounded',sans-serif;font-weight:600;line-height:1.15}
 h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
 .section{padding:clamp(56px,10vw,110px) 0;position:relative;overflow-x:clip}
@@ -504,6 +507,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   animation:alertIn .3s ease}
 @keyframes alertIn{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
+/* The same message, in the flow of a popup's form instead of floating over the page. */
+.alert-inline{position:static;transform:none;z-index:auto;width:auto;max-width:none;margin:0 0 14px;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;animation:alertInline .25s ease}
+@keyframes alertInline{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .alert-icon{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;line-height:1}
 .alert-success{background:rgba(20,201,201,.22);border:1px solid rgba(20,201,201,.45)}
 .alert-success .alert-icon{background:var(--teal);color:var(--ink)}
