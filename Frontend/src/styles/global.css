@@ -156,10 +156,6 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
    and the burger, so it doesn't get lost inside either one. */
 .theme-toggle{flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:transparent;border:1px solid var(--line);color:var(--text);cursor:pointer;transition:border-color .25s,color .25s,transform .25s}
 .theme-toggle:hover{border-color:var(--cyan);color:var(--cyan);transform:translateY(-1px)}
-/* The mobile-menu version: a full-width row with the icon and a label. */
-.nav-links-mobile-theme{display:none}
-.theme-toggle.theme-toggle--row{width:100%;height:auto;min-height:44px;justify-content:flex-start;gap:12px;padding:10px 14px;border-radius:12px;font-family:'Sora',sans-serif;font-size:.86rem;font-weight:400;text-align:left}
-.theme-toggle.theme-toggle--row:hover{transform:none}
 .burger{display:none;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;width:44px;height:44px;align-items:center;justify-content:center;margin-right:-10px}
 .nav-links-mobile-account{display:none}
 /* 980px, not narrower: a logged-in student's desktop nav (5 links + Profile + My Dashboard + Log out + theme toggle)
@@ -190,7 +186,6 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
   .nav-account{display:none}
   /* The header keeps just the logo and the burger; the theme switch moves into the menu. */
   .nav-in>.theme-toggle{display:none}
-  .nav-links-mobile-theme{display:block;width:100%;padding-top:14px;margin-top:2px;border-top:1px solid var(--line)}
   /* .nav-cta/.nav-account above are the desktop pill — this is the same
      login/account controls, shown inside the mobile dropdown instead. */
   .nav-links-mobile-account{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding-top:18px;margin-top:-2px;border-top:1px solid var(--line);width:100%}
