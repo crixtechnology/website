@@ -485,6 +485,7 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
     setBusy(false);
     if (res.ok) {
       clearStoredReferral();
+      setCode("");
       setReferral((r) => (r ? { ...r, canApplyCode: false } : r));
       setNote({ kind: "ok", text: `Code applied — ${res.discountPercent}% off your first purchase.` });
       setRequote((n) => n + 1);
@@ -963,6 +964,9 @@ export function InquiryModal({ item, kind, onClose }) {
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  // What the thank-you line quotes back. The form itself is emptied on success,
+  // so typed details don't linger in the page's state once they've been sent.
+  const [sent, setSent] = useState(null);
   useBodyScrollLock(!!item);
   useModalFocus(!!item);
 
@@ -972,6 +976,7 @@ export function InquiryModal({ item, kind, onClose }) {
       setStatus({ text: "", kind: "" });
       setLoading(false);
       setDone(false);
+      setSent(null);
     }
   }, [item]);
 
@@ -1016,6 +1021,8 @@ export function InquiryModal({ item, kind, onClose }) {
       return;
     }
     trackEvent("generate_lead", { lead_type: kind, item_id: item.slug, item_name: item.title });
+    setSent({ name: form.name.trim(), email: form.email.trim(), phone });
+    setForm({ name: "", email: "", phone: "", college: "" });
     setDone(true);
   };
 
@@ -1031,8 +1038,8 @@ export function InquiryModal({ item, kind, onClose }) {
         {done ? (
           <>
             <Alert kind="success">
-              Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""} — we've got your details for
-              "{item.title}" and will reach out on {form.email} or {form.phone} within 2 working days.
+              Thanks{sent && sent.name ? `, ${sent.name.split(" ")[0]}` : ""} — we've got your details for
+              "{item.title}" and will reach out on {sent && sent.email} or {sent && sent.phone} within 2 working days.
             </Alert>
             <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
           </>
@@ -1157,6 +1164,7 @@ export function ServiceInquiryModal({ item, onClose }) {
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [sentName, setSentName] = useState(""); // for the thank-you line; the form itself is emptied on success
   useBodyScrollLock(!!item);
   useModalFocus(!!item);
 
@@ -1166,6 +1174,7 @@ export function ServiceInquiryModal({ item, onClose }) {
       setStatus({ text: "", kind: "" });
       setLoading(false);
       setDone(false);
+      setSentName("");
     }
   }, [item]);
 
@@ -1211,6 +1220,8 @@ export function ServiceInquiryModal({ item, onClose }) {
       return;
     }
     trackEvent("generate_lead", { lead_type: "service_inquiry", item_name: item.title });
+    setSentName(form.name.trim());
+    setForm({ company: "", name: "", phone: "", email: "", message: "" });
     setDone(true);
   };
 
@@ -1224,7 +1235,7 @@ export function ServiceInquiryModal({ item, onClose }) {
         {done ? (
           <>
             <Alert kind="success">
-              Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""} — we've got your details for
+              Thanks{sentName ? `, ${sentName.split(" ")[0]}` : ""} — we've got your details for
               "{item.title}" and will get back to you within two working days.
             </Alert>
             <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
@@ -1354,6 +1365,9 @@ export function AuthModal() {
   const finishAuth = (res, fallbackError) => {
     if (res.ok) {
       const onSuccess = authModal?.onSuccess;
+      // Empty every field — the password especially — before the popup closes, so
+      // nothing typed stays in memory waiting for the next time it opens.
+      setForm({ name: "", email: "", phone: "", password: "", referralCode: "" });
       closeAuthModal();
       if (onSuccess) onSuccess(res.user);
     } else {
@@ -1464,6 +1478,7 @@ export function AuthModal() {
     // backend's own neutral message instead of treating it as either an
     // error or a real login — the modal stays open, nothing is stored.
     if (mode === "signup" && res.ok && !res.token) {
+      setForm({ name: "", email: "", phone: "", password: "", referralCode: "" });
       setStatusKind("info");
       setStatus(res.message || "Check your email to continue.");
       return;

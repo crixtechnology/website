@@ -648,8 +648,9 @@ export function Contact() {
     setSending(false);
     setKind(res.ok ? "success" : "error");
     setStatus(res.ok ? "Message sent. We'll reply within two working days." : res.error);
-    // Clear what was sent, so pressing the button again can't quietly post the same message twice.
-    if (res.ok) setForm((f) => ({ ...f, name: "", email: "", phone: "", message: "" }));
+    // Clear everything that was sent (the "interested in" choice back to its default too),
+    // so pressing the button again can't quietly post the same message twice.
+    if (res.ok) setForm({ name: "", email: "", phone: "", interest: "Internship", message: "" });
   };
 
   const set = (k) => (e) => {
