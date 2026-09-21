@@ -286,7 +286,10 @@ async function loadPurchasablePlan(courseSlug, tierName, userId) {
 // before the student pays: plan price, offer code, referral welcome discount,
 // referral credit, total. Same pricing code create-order uses. Amounts are in
 // rupees. An offer code that can't be used doesn't fail the quote — the price
-// comes back without it, plus `couponError` to show next to the code box.
+// comes back without it, plus `couponError` to show next to the code box. Offer
+// codes are handed out personally by the admin and never shown on the site, so
+// the reply only says WHETHER one was applied and what it saved — it doesn't echo
+// the code or the admin's internal note back.
 router.post("/quote", requireAuth, couponAttemptLimiter, async (req, res, next) => {
   try {
     const { courseSlug, tier: tierName, couponCode } = req.body || {};
@@ -305,8 +308,7 @@ router.post("/quote", requireAuth, couponAttemptLimiter, async (req, res, next) 
     res.json({
       ok: true,
       planPrice: planRupees,
-      couponCode: applied ? applied.coupon.code : null,
-      couponDescription: applied ? applied.coupon.description : "",
+      couponApplied: !!applied,
       couponDiscount: pricing.couponDiscount / 100,
       couponError,
       referralPercent: pricing.referralPercent,

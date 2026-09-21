@@ -134,7 +134,13 @@ describe("POST /api/payments/quote with an offer code", () => {
     const c = await makeCoupon({ discountType: "percent", discountValue: 20, description: "Diwali" });
     const res = await quote(student.token, course, c.code.toLowerCase());
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ couponCode: c.code, couponDescription: "Diwali", couponDiscount: 1000, couponError: null, payable: 4000, planPrice: 5000 });
+    expect(res.body).toMatchObject({ couponApplied: true, couponDiscount: 1000, couponError: null, payable: 4000, planPrice: 5000 });
+    // Codes are shared personally by the admin, never shown on the site: the reply
+    // must not echo the code or the admin's internal note back.
+    expect(res.body).not.toHaveProperty("couponCode");
+    expect(res.body).not.toHaveProperty("couponDescription");
+    expect(JSON.stringify(res.body)).not.toContain(c.code);
+    expect(JSON.stringify(res.body)).not.toContain("Diwali");
   });
 
   it("takes a fixed amount off", async () => {
@@ -162,13 +168,13 @@ describe("POST /api/payments/quote with an offer code", () => {
   it("answers a bad code with the full price and a reason, not an error", async () => {
     const res = await quote(student.token, course, "NOSUCHCODE");
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ couponCode: null, couponDiscount: 0, payable: 5000 });
+    expect(res.body).toMatchObject({ couponApplied: false, couponDiscount: 0, payable: 5000 });
     expect(res.body.couponError).toMatch(/isn't valid/i);
   });
 
   it("is unchanged when no code is sent", async () => {
     const res = await quote(student.token, course, undefined);
-    expect(res.body).toMatchObject({ couponCode: null, couponDiscount: 0, couponError: null, payable: 5000 });
+    expect(res.body).toMatchObject({ couponApplied: false, couponDiscount: 0, couponError: null, payable: 5000 });
   });
 });
 
