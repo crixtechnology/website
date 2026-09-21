@@ -378,7 +378,10 @@ export function BenefitIcon({ name }) {
    the site renders its post-submit message through (Contact, BuyModal,
    InquiryModal, ServiceInquiryModal, AuthModal) — a colored, iconed box
    instead of each form's own plain, easy-to-miss line of text. ---------- */
-export function Alert({ kind = "info", children }) {
+// `inline` renders the message where it sits in the form instead of floating at the top of
+// the screen. Inside a popup that matters: the floating one lands on top of the popup's own
+// heading on a phone, and an error belongs next to the button that caused it.
+export function Alert({ kind = "info", inline = false, children }) {
   if (!children) return null;
   const icon = kind === "error" ? "!" : kind === "success" ? "✓" : "ⓘ";
   // Portaled straight to <body> rather than rendered in place: `.alert`'s
@@ -390,13 +393,13 @@ export function Alert({ kind = "info", children }) {
   // CSS spec. Portaling is the standard fix every toast library uses for
   // exactly this reason, so the floating position holds regardless of how
   // deep in the DOM (a modal, a Reveal, both at once) the call site is.
-  return createPortal(
-    <div className={`alert alert-${kind}`} role={kind === "error" ? "alert" : "status"} aria-live="polite">
+  const box = (
+    <div className={`alert alert-${kind}${inline ? " alert-inline" : ""}`} role={kind === "error" ? "alert" : "status"} aria-live="polite">
       <span className="alert-icon" aria-hidden="true">{icon}</span>
       <span>{children}</span>
-    </div>,
-    document.body
+    </div>
   );
+  return inline ? box : createPortal(box, document.body);
 }
 
 // Loads Razorpay's Checkout script on first use; resolves false if it can't.
@@ -785,7 +788,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Please wait..." : plan ? `Continue to payment · ${formatINR(payable != null ? payable : planPrice(plan))}` : "Continue to payment"}
               </button>
-              <Alert kind={status.kind}>{status.text}</Alert>
+              <Alert inline kind={status.kind}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -906,7 +909,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
 
         {done ? (
           <>
-            <Alert kind="success">Payment confirmed — you're now on the {tierLabel(selected ? selected.tier : "")} plan.</Alert>
+            <Alert inline kind="success">Payment confirmed — you're now on the {tierLabel(selected ? selected.tier : "")} plan.</Alert>
             <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
           </>
         ) : info === null ? (
@@ -945,7 +948,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
             <button className="btn btn-solid" onClick={onPay} disabled={loading} style={{ width: "100%" }}>
               {loading ? "Please wait..." : selected ? `Pay ${formatINR(selected.due)} to upgrade` : "Upgrade"}
             </button>
-            <Alert kind={status.kind}>{status.text}</Alert>
+            <Alert inline kind={status.kind}>{status.text}</Alert>
           </>
         )}
       </div>
@@ -1038,7 +1041,7 @@ export function InquiryModal({ item, kind, onClose }) {
 
         {done ? (
           <>
-            <Alert kind="success">
+            <Alert inline kind="success">
               Thanks{sent && sent.name ? `, ${sent.name.split(" ")[0]}` : ""} — we've got your details for
               "{item.title}" and will reach out on {sent && sent.email} or {sent && sent.phone} within 2 working days.
             </Alert>
@@ -1062,7 +1065,7 @@ export function InquiryModal({ item, kind, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending..." : kind === "internship" ? "Submit application" : "Send request"}
               </button>
-              <Alert kind={status.kind}>{status.text}</Alert>
+              <Alert inline kind={status.kind}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -1235,7 +1238,7 @@ export function ServiceInquiryModal({ item, onClose }) {
 
         {done ? (
           <>
-            <Alert kind="success">
+            <Alert inline kind="success">
               Thanks{sentName ? `, ${sentName.split(" ")[0]}` : ""} — we've got your details for
               "{item.title}" and will get back to you within two working days.
             </Alert>
@@ -1278,7 +1281,7 @@ export function ServiceInquiryModal({ item, onClose }) {
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending..." : "Send inquiry"}
               </button>
-              <Alert kind={status.kind}>{status.text}</Alert>
+              <Alert inline kind={status.kind}>{status.text}</Alert>
             </form>
           </>
         )}
@@ -1496,7 +1499,7 @@ export function AuthModal() {
           {mode === "forgot" ? "Reset your password" : mode === "login" ? "Log in to your account" : "Create your account"}
         </h3>
         {sessionExpired && (
-          <Alert kind="info">You were signed out after {IDLE_TIMEOUT_MINUTES} minutes of inactivity. Please log in again.</Alert>
+          <Alert inline kind="info">You were signed out after {IDLE_TIMEOUT_MINUTES} minutes of inactivity. Please log in again.</Alert>
         )}
         {GOOGLE_CLIENT_ID && mode !== "forgot" && (
           <>
@@ -1557,7 +1560,7 @@ export function AuthModal() {
               )}
             </div>
           )}
-          <Alert kind={statusKind}>{status}</Alert>
+          <Alert inline kind={statusKind}>{status}</Alert>
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
             {loading ? "Please wait..."
               : mode === "forgot" ? (resetStep === 1 ? "Send code" : "Reset password")
@@ -1872,11 +1875,22 @@ export function Chrome() {
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), REDUCED ? 0 : 550);
+    let lastY = window.scrollY;
     const onScroll = () => {
       const y = window.scrollY;
       const max = document.documentElement.scrollHeight - window.innerHeight;
       if (progressRef.current) progressRef.current.style.width = (max > 0 ? (y / max) * 100 : 0) + "%";
-      setShowTop(y > 600);
+      if (window.innerWidth >= 700) {
+        setShowTop(y > 600);
+      } else {
+        // On a phone the button sits over the text you're reading, so it only shows while
+        // scrolling UP (when you're likely heading back to the top), and hides again on the way down.
+        const dy = y - lastY;
+        if (y <= 600) setShowTop(false);
+        else if (dy < -8) setShowTop(true);
+        else if (dy > 8) setShowTop(false);
+        if (Math.abs(dy) > 8) lastY = y;
+      }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -1897,7 +1911,9 @@ export function Chrome() {
           <span className="wa-tip-text"><b>24×7 available</b><small>Chat with us on WhatsApp</small></span>
         </span>
       </a>
+      {/* Invisible must also mean unreachable: hidden, it is out of the tab order and away from screen readers. */}
       <button id="toTop" className={showTop ? "show" : ""} aria-label="Back to top"
+        tabIndex={showTop ? 0 : -1} aria-hidden={showTop ? undefined : true}
         onClick={() => window.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" })}>↑</button>
     </>
   );
