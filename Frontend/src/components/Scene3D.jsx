@@ -69,16 +69,23 @@ export function Hero3D() {
       m.position.set(c[1], c[2], c[3]);
       cluster.add(m);
     });
-    cluster.position.x = 4.5;
-    scene.add(cluster);
+    // The globe sits in a "rig" so it can lean toward the cursor (rig
+    // rotation) independently of its own continuous spin (cluster rotation).
+    const rig = new THREE.Group();
+    rig.position.x = 4.5;
+    rig.add(cluster);
+    scene.add(rig);
 
-    let mx = 0, my = 0, raf = 0, frame = 0, alive = true;
+    let mx = 0, my = 0, raf = 0, frame = 0, alive = true, spinBoost = 0, lastY = window.scrollY;
     const onMove = (e) => { mx = e.clientX / window.innerWidth - 0.5; my = e.clientY / window.innerHeight - 0.5; };
     const onScrollFx = () => {
       if (REDUCED) return;
       const y = window.scrollY;
       cluster.rotation.z = y * 0.0008;
       cluster.position.y = y * 0.004;
+      // Scrolling spins the globe faster for a moment; decays in animate().
+      spinBoost = Math.min(0.05, spinBoost + Math.abs(y - lastY) * 0.00012);
+      lastY = y;
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("scroll", onScrollFx, { passive: true });
@@ -135,8 +142,12 @@ export function Hero3D() {
       }
       geo.attributes.position.needsUpdate = true;
       if (frame++ % 6 === 0) connect();
-      cluster.rotation.y += 0.0022;
+      cluster.rotation.y += 0.0022 + spinBoost;
       cluster.rotation.x += 0.0009;
+      spinBoost *= 0.94;
+      // Lean toward the cursor (or phone tilt), eased.
+      rig.rotation.y += (mx * 0.7 - rig.rotation.y) * 0.05;
+      rig.rotation.x += (my * 0.5 - rig.rotation.x) * 0.05;
       cluster.children.forEach((m, i) => { m.rotation.x += 0.002 + i * 0.001; m.rotation.z += 0.0015; });
       camera.position.x += (mx * 1.6 - camera.position.x) * 0.04;
       camera.position.y += (-my * 1.1 - camera.position.y) * 0.04;

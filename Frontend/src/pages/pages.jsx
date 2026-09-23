@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import {
-  Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, REDUCED,
+  Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, legal,
@@ -12,6 +12,21 @@ import { submitContact, getCourses, getCourse, getServices, hasBackend } from ".
 // Skeleton cards show while live lists load from the backend — but never for
 // longer than this; after it the static fallback list shows instead.
 const LOADING_CAP_MS = 4000;
+
+// "On this page" dot rail (SectionIndex) entries for the two long pages.
+const PROGRAMS_INDEX = [
+  { id: "internships", label: "Internships" },
+  { id: "courses", label: "Courses" },
+  { id: "how-it-works", label: "How it works" },
+  { id: "benefits", label: "Benefits" },
+];
+const ABOUT_INDEX = [
+  { id: "overview", label: "Overview" },
+  { id: "company-info", label: "Company info" },
+  { id: "why-crix", label: "Why Crix" },
+  { id: "partner", label: "Why partner with us" },
+  { id: "tech-stack", label: "Technologies" },
+];
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
@@ -85,7 +100,13 @@ export function Home() {
               {hero.titleEnd.map((w) => <span className="w" key={w}>{w}</span>)}
             </span>
           </h1>
-          <p>{hero.subtitle}</p>
+          {/* Words brighten one after another (upgrade.css .hw); screen readers get the plain sentence. */}
+          <p className="hero-sub">
+            <span className="sr-only">{hero.subtitle}</span>
+            <span aria-hidden="true">
+              {hero.subtitle.split(" ").map((w, i) => <span className="hw" key={i} style={{ "--w": i }}>{w} </span>)}
+            </span>
+          </p>
           <div className="hero-ctas">
             <Link className="btn btn-solid" to="/programs#internships">Explore internships</Link>
             <Link className="btn btn-ghost" to="/services">Our IT services</Link>
@@ -98,6 +119,7 @@ export function Home() {
       </header>
 
       <Marquee />
+      <TrustStrip />
 
       <section className="section" style={{ paddingBottom: 30 }}>
         <div className="wrap">
@@ -226,11 +248,24 @@ export function Programs() {
     }
   }, [params, liveCourses, liveInternships, setParams]);
 
+  // All / Internships / Courses filter. Any nav jump (#internships, #courses)
+  // resets it to "all", so an anchor never points at a hidden section.
+  const { hash } = useLocation();
+  const [filter, setFilter] = useState("all");
+  useEffect(() => { setFilter("all"); }, [hash]);
+  const indexItems = PROGRAMS_INDEX.filter((s) => !(filter === "courses" && s.id === "internships") && !(filter === "internships" && s.id === "courses"));
+
   return (
     <>
       <PageHead eyebrow="Programs" title="Industry-ready courses, delivered pan-India and globally."
         text="Fully virtual — join from anywhere, pan-India or globally. Pick a track, pay securely, and start building; every course ships with mentor support and a certificate." />
-      <section id="internships" className="section section--internships anchor-section" style={{ paddingTop: 20 }}>
+      <SectionIndex items={indexItems} />
+      <div className="wrap program-filter" role="group" aria-label="Show programs">
+        {[["all", "All programs"], ["internships", "Internships"], ["courses", "Courses"]].map(([v, label]) => (
+          <button key={v} type="button" className={filter === v ? "active" : ""} aria-pressed={filter === v} onClick={() => setFilter(v)}>{label}</button>
+        ))}
+      </div>
+      <section id="internships" className="section section--internships anchor-section" style={{ paddingTop: 20 }} hidden={filter === "courses"}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Internships</Reveal>
           <Reveal as="h2" variant="reveal-l">Paid virtual internships.</Reveal>
@@ -239,7 +274,7 @@ export function Programs() {
             certificate and Letter of Recommendation at the end — ready to submit for your college's
             final-year internship requirement.
           </Reveal>
-          <div className="grid3 stagger" style={{ marginTop: 24 }}>
+          <div className="grid3 stagger" style={{ marginTop: 24 }} key={`i-${filter}`}>
             {loadingInternships ? <SkeletonCards count={internships.length} /> : liveInternships.map((it, i) => (
               <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship"
                 onInquire={(item) => setInquire({ item, kind: "internship" })} onDetail={setDetailData} />
@@ -247,7 +282,7 @@ export function Programs() {
           </div>
         </div>
       </section>
-      <section id="courses" className="section section--courses anchor-section" style={{ paddingTop: 20 }}>
+      <section id="courses" className="section section--courses anchor-section" style={{ paddingTop: 20 }} hidden={filter === "internships"}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Courses</Reveal>
           <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
@@ -255,7 +290,7 @@ export function Programs() {
             Self-paced training with mentor support — you get a certificate of completion, and
             outstanding performers get considered for our paid internship program.
           </Reveal>
-          <div className="grid3 stagger" style={{ marginTop: 24 }}>
+          <div className="grid3 stagger" style={{ marginTop: 24 }} key={`c-${filter}`}>
             {loadingCourses ? <SkeletonCards count={courses.length} /> : liveCourses.map((it, i) => (
               <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="course"
                 onInquire={(item) => setInquire({ item, kind: "course" })} onDetail={setDetailData} />
@@ -267,7 +302,7 @@ export function Programs() {
       <InquiryModal item={inquire?.item} kind={inquire?.kind} onClose={() => setInquire(null)} />
       <DetailModal data={detailData} onClose={() => setDetailData(null)}
         onInquire={(item) => setInquire({ item, kind: detailData?.kind })} />
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="how-it-works" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
           <Reveal as="h2" variant="reveal-l">4 simple steps to get started.</Reveal>
@@ -282,7 +317,7 @@ export function Programs() {
           </div>
         </div>
       </section>
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="benefits" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-top" className="eyebrow">What You Get</Reveal>
           <Reveal as="h2" variant="reveal-top">Benefits of joining Crix.</Reveal>
@@ -579,8 +614,9 @@ export function About() {
   return (
     <>
       <PageHead eyebrow="About Crix" title={about.heading} text={about.body} />
+      <SectionIndex items={ABOUT_INDEX} />
 
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="overview" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap" style={{ maxWidth: 820 }}>
           <Reveal as="span" variant="reveal-top" className="eyebrow">Who We Are</Reveal>
           <Reveal as="h2" variant="reveal-top">Overview of the company.</Reveal>
@@ -593,7 +629,7 @@ export function About() {
         </div>
       </section>
 
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="company-info" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap" style={{ maxWidth: 820 }}>
           <Reveal as="span" variant="reveal-l" className="eyebrow">Company Information</Reveal>
           <Reveal as="h2" variant="reveal-l">Legal &amp; registration details.</Reveal>
@@ -607,12 +643,20 @@ export function About() {
               ["Udyam (MSME) registration", company.udyam],
               ["Registered office", company.registeredOffice],
               ["Jurisdiction", company.jurisdiction],
-            ].filter(([, v]) => v).map(([k, v], i) => (
-              <Reveal key={k} variant="reveal" className="ci-row" style={{ "--i": i }}>
-                <dt>{k}</dt>
-                <dd className={/CIN|Udyam/.test(k) ? "mono" : undefined}>{v}</dd>
-              </Reveal>
-            ))}
+            ].filter(([, v]) => v).map(([k, v], i) => {
+              const isId = /CIN|Udyam/.test(k);
+              const copyable = isId || k === "Registered office";
+              return (
+                <Reveal key={k} variant="reveal" className="ci-row" style={{ "--i": i }}>
+                  <dt>{k}</dt>
+                  <dd className={isId ? "mono" : undefined}>
+                    {/* Registration numbers type themselves out as they reveal. */}
+                    <span data-typewriter={isId ? "" : undefined}>{v}</span>
+                    {copyable && <CopyButton value={v} label={k} />}
+                  </dd>
+                </Reveal>
+              );
+            })}
           </dl>
           {company.note && (
             <Reveal variant="reveal" className="form-note" style={{ marginTop: 16 }}>{company.note}</Reveal>
@@ -620,7 +664,7 @@ export function About() {
         </div>
       </section>
 
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="why-crix" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal variant="reveal-zoom" className="band">
             <div>
@@ -637,7 +681,7 @@ export function About() {
         </div>
       </section>
 
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="partner" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-r" className="eyebrow">Why Partner With Us</Reveal>
           <Reveal as="h2" variant="reveal-r">What sets our client work apart.</Reveal>
@@ -652,7 +696,7 @@ export function About() {
         </div>
       </section>
 
-      <section className="section" style={{ paddingTop: 20 }}>
+      <section id="tech-stack" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">What We Build With</Reveal>
           <Reveal as="h2" variant="reveal-l">Technologies we work with.</Reveal>
@@ -689,6 +733,7 @@ export function Contact() {
   const onSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (sending) return; // already in flight — ignore a repeat click/Enter
+    const formEl = e && e.currentTarget; // captured now: React clears currentTarget after the await below
     const phone = form.phone.trim();
     const problems = [
       !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
@@ -714,6 +759,7 @@ export function Contact() {
     setSending(false);
     setKind(res.ok ? "success" : "error");
     setStatus(res.ok ? "Message sent. We'll reply within two working days." : res.error);
+    if (res.ok) burstConfetti(formEl && formEl.querySelector ? formEl.querySelector("button[type=submit]") : null);
     // Clear everything that was sent (the "interested in" choice back to its default too),
     // so pressing the button again can't quietly post the same message twice.
     if (res.ok) setForm({ name: "", email: "", phone: "", interest: "Internship", message: "" });
@@ -751,12 +797,15 @@ export function Contact() {
             <Alert kind={kind || "info"}>{status}</Alert>
           </Reveal>
           <Reveal variant="reveal-r">
-            <div className="info-row"><span className="ic">✉</span><div><span className="info-label">Email</span><a href={`mailto:${site.email}`}>{site.email}</a></div></div>
+            <div className="info-row"><span className="ic">✉</span><div><span className="info-label">Email</span>
+              <div className="contact-line"><a href={`mailto:${site.email}`}>{site.email}</a><CopyButton value={site.email} label="email address" /></div></div></div>
             <div className="info-row"><span className="ic">✆</span><div><span className="info-label">Phone</span>
               <div className="contact-line"><a href={`tel:${site.phone.replace(/\s/g, "")}`}>{site.phone}</a>
+                <CopyButton value={site.phone} label="phone number" />
                 <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
               {site.phoneAlt && (
                 <div className="contact-line"><a href={`tel:${site.phoneAlt.replace(/\s/g, "")}`}>{site.phoneAlt}</a>
+                  <CopyButton value={site.phoneAlt} label="second phone number" />
                   <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
               )}
             </div></div>
@@ -770,6 +819,36 @@ export function Contact() {
 }
 
 /* ================= shared page pieces ================= */
+// Credentials strip under the home hero — only facts already published on
+// the About page's company information (content.js `company`).
+const TRUST_ICONS = {
+  shield: <path d="M12 3 5 6v5c0 4.4 3 8.3 7 9.5 4-1.2 7-5.1 7-9.5V6z M9 12l2 2 4-4" />,
+  badge: <path d="M12 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10z M9 12.5 8 21l4-2 4 2-1-8.5" />,
+  pin: <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z M12 8.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z" />,
+  globe: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M3 12h18 M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" />,
+};
+function TrustStrip() {
+  const items = [
+    { icon: "shield", label: "Registered Pvt. Ltd. company", sub: `CIN ${company.cin}` },
+    { icon: "badge", label: "MSME (Udyam) registered", sub: company.udyam },
+    { icon: "pin", label: "Headquartered in Ahmedabad", sub: "Gujarat, India" },
+    { icon: "globe", label: "Serving pan-India & globally", sub: "Virtual-first delivery" },
+  ];
+  return (
+    <section className="trust-strip" aria-label="Company credentials">
+      <div className="wrap trust-in">
+        {items.map((t, i) => (
+          <Reveal key={t.label} variant="reveal" className="trust-item" style={{ "--i": i }}>
+            <span className="trust-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{TRUST_ICONS[t.icon]}</svg>
+            </span>
+            <span><b>{t.label}</b><small>{t.sub}</small></span>
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+}
 function PageHead({ eyebrow, title, text }) {
   return (
     <header className="page-head" style={{ position: "relative", overflow: "hidden" }}>

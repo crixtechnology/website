@@ -14,7 +14,7 @@ export function Flag({ iso, className = "" }) {
   if (broken) return <span className={`flag flag--fallback ${className}`} aria-hidden="true">{iso}</span>;
   return (
     <img
-      className={`flag ${className}`}
+      className={`flag blur-up ${className}`}
       src={`${process.env.PUBLIC_URL || ""}/flags/${iso}.svg`}
       alt=""
       width="24"

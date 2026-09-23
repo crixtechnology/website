@@ -1,5 +1,5 @@
 import { Suspense, lazy, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import {
@@ -11,6 +11,7 @@ import { IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
 import ErrorBoundary from "./ErrorBoundary.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { trackEvent } from "../utils/analytics.js";
+import { prefetchRoute } from "../utils/prefetch.js";
 import { isValidName, emailFormatError } from "../utils/validators.js";
 import { phoneError, compactPhone } from "../utils/phone.js";
 import PhoneInput from "./PhoneInput.jsx";
@@ -148,6 +149,7 @@ export function useModalFocus(active) {
 const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&*/<>";
 function scrambleEyebrows(root) {
   if (REDUCED) return;
+  typeOut(root);
   const els = root.matches(".eyebrow") ? [root] : root.querySelectorAll(".eyebrow");
   els.forEach((el) => {
     const node = el.childNodes.length === 1 && el.firstChild.nodeType === 3 ? el.firstChild : null;
@@ -165,6 +167,113 @@ function scrambleEyebrows(root) {
     };
     requestAnimationFrame(tick);
   });
+}
+
+// [data-typewriter] text (e.g. the CIN on About) types itself out, character
+// by character, when its Reveal comes into view. Same text-node-only approach.
+function typeOut(root) {
+  root.querySelectorAll("[data-typewriter]").forEach((el) => {
+    const node = el.childNodes.length === 1 && el.firstChild.nodeType === 3 ? el.firstChild : null;
+    if (!node || el.dataset.typed) return;
+    el.dataset.typed = "1";
+    const text = node.nodeValue;
+    const t0 = performance.now(), dur = Math.min(1400, text.length * 55);
+    el.classList.add("is-typing");
+    const tick = (t) => {
+      const k = Math.min((t - t0) / dur, 1);
+      node.nodeValue = text.slice(0, Math.max(1, Math.round(text.length * k)));
+      if (k < 1) requestAnimationFrame(tick);
+      else { node.nodeValue = text; el.classList.remove("is-typing"); }
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+/* ---------- SectionIndex: "on this page" dot rail for long pages ----------
+   Fixed to the left edge on wide screens only (upgrade.css hides it below
+   1200px); highlights the section currently in the middle of the screen. */
+export function SectionIndex({ items }) {
+  const [active, setActive] = useState(items[0]?.id);
+  const ids = items.map((i) => i.id).join(",");
+  useEffect(() => {
+    const els = ids.split(",").map((id) => document.getElementById(id)).filter(Boolean);
+    const io = new IntersectionObserver(
+      (es) => es.forEach((e) => { if (e.isIntersecting) setActive(e.target.id); }),
+      { rootMargin: "-45% 0px -50% 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [ids]);
+  return (
+    <nav className="section-index" aria-label="On this page">
+      <ul>
+        {items.map((it) => (
+          <li key={it.id}>
+            <a href={`#${it.id}`} className={active === it.id ? "active" : ""} aria-current={active === it.id ? "true" : undefined}
+              onClick={(e) => { e.preventDefault(); document.getElementById(it.id)?.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "start" }); }}>
+              <span className="si-dot" aria-hidden="true"></span><span className="si-label">{it.label}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/* ---------- CopyButton: copies a value (email, phone, CIN...) ---------- */
+export function CopyButton({ value, label }) {
+  const [done, setDone] = useState(false);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch (e) {
+      // Older browsers / non-secure contexts: fall back to a hidden textarea.
+      const ta = document.createElement("textarea");
+      ta.value = value; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (err) { /* nothing else to try */ }
+      ta.remove();
+    }
+    setDone(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setDone(false), 1800);
+  };
+  return (
+    <button type="button" className={`copy-btn${done ? " is-done" : ""}`} onClick={copy}
+      aria-label={done ? `${label} copied` : `Copy ${label}`} title={done ? "Copied" : `Copy ${label}`}>
+      {done ? <span>Copied ✓</span> : (
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+/* ---------- burstConfetti: a small celebratory burst from an element ----------
+   Plain DOM, removed after the animation; skipped for reduced motion. */
+export function burstConfetti(fromEl) {
+  if (REDUCED || typeof document === "undefined") return;
+  const r = fromEl ? fromEl.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+  const box = document.createElement("div");
+  box.className = "confetti";
+  box.style.left = r.left + r.width / 2 + "px";
+  box.style.top = r.top + r.height / 2 + "px";
+  const colors = ["#14C9C9", "#7FE8E0", "#F2B44C", "#E8EEF7", "#1EBE5D"];
+  for (let n = 0; n < 28; n++) {
+    const s = document.createElement("i");
+    const a = (Math.PI * 2 * n) / 28 + Math.random() * 0.4;
+    const d = 70 + Math.random() * 90;
+    s.style.setProperty("--dx", Math.cos(a) * d + "px");
+    s.style.setProperty("--dy", Math.sin(a) * d - 40 + "px");
+    s.style.setProperty("--r", Math.random() * 720 - 360 + "deg");
+    s.style.background = colors[n % colors.length];
+    box.appendChild(s);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 1400);
 }
 
 export function Reveal({ as: Tag = "div", variant = "reveal", className = "", children, style, ...rest }) {
@@ -337,7 +446,17 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
           {closed && <span className="closed-badge">Currently closed</span>}
         </div>
         <h3>{item.title}</h3>
-        <p className="card-benefit">{item.desc}</p>
+        <div className="card-peek-wrap">
+          <p className="card-benefit">{item.desc}</p>
+          {/* Desktop hover: the program's first key points fade in over the
+              description (mouse only — see upgrade.css). Decorative; the
+              same points are on the course page / popup. */}
+          {isProgram && Array.isArray(item.points) && item.points.length ? (
+            <ul className="card-peek" aria-hidden="true">
+              {item.points.slice(0, 3).map((pt, n) => <li key={n}>{String(pt)}</li>)}
+            </ul>
+          ) : null}
+        </div>
         {item.durationDays ? <span className="duration-chip">{item.durationDays} days</span> : null}
         {deliverables?.length ? (
           <div className="deliverable-row">
@@ -1077,6 +1196,7 @@ export function InquiryModal({ item, kind, onClose }) {
     setSent({ name: form.name.trim(), email: form.email.trim(), phone });
     setForm({ name: "", email: "", phone: "", college: "" });
     setDone(true);
+    burstConfetti();
   };
 
   const verb = kind === "internship" ? "apply for" : "enrol in";
@@ -1276,6 +1396,7 @@ export function ServiceInquiryModal({ item, onClose }) {
     setSentName(form.name.trim());
     setForm({ company: "", name: "", phone: "", email: "", message: "" });
     setDone(true);
+    burstConfetti();
   };
 
   return (
@@ -1665,11 +1786,32 @@ function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   const label = isDark ? "Switch to light mode" : "Switch to dark mode";
+  // The new theme spreads out as a circle from this button (View Transitions
+  // API). Browsers without it, and reduced-motion users, just switch.
+  const onToggle = (e) => {
+    if (REDUCED || !document.startViewTransition) { toggleTheme(); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    const transition = document.startViewTransition(() => {
+      // Apply the attribute right here too: ThemeProvider sets it in an effect,
+      // which may land after the transition has captured the new state.
+      if (isDark) document.documentElement.setAttribute("data-theme", "light");
+      else document.documentElement.removeAttribute("data-theme");
+      flushSync(toggleTheme);
+    });
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+        { duration: 600, easing: "cubic-bezier(.2,.7,.2,1)", pseudoElement: "::view-transition-new(root)" }
+      );
+    }).catch(() => {});
+  };
   return (
     <button
       type="button"
       className="theme-toggle"
-      onClick={toggleTheme}
+      onClick={onToggle}
       aria-label={label}
       title={label}
     >
@@ -1944,6 +2086,42 @@ export function Chrome() {
   // and a 3D tilt + shine on benefit tiles and plan cards (program cards
   // already tilt through TiltCard). Skipped for touch and reduced motion.
   const spotRef = useRef(null);
+  const ringRef = useRef(null);
+
+  // Blur-up images: any <img class="blur-up"> starts blurred/faded and
+  // sharpens once loaded (upgrade.css). Capture-phase listener, since load
+  // and error events don't bubble.
+  useEffect(() => {
+    const onDone = (e) => {
+      const img = e.target;
+      if (img instanceof HTMLImageElement && img.classList.contains("blur-up")) img.classList.add("is-loaded");
+    };
+    document.addEventListener("load", onDone, true);
+    document.addEventListener("error", onDone, true);
+    return () => {
+      document.removeEventListener("load", onDone, true);
+      document.removeEventListener("error", onDone, true);
+    };
+  }, []);
+
+  // Prefetch a lazily-loaded page's code as soon as a link to it is hovered,
+  // focused or touched, so the click itself feels instant (utils/prefetch.js).
+  useEffect(() => {
+    const onIntent = (e) => {
+      const a = e.target instanceof Element ? e.target.closest("a[href]") : null;
+      if (!a || a.origin !== window.location.origin) return;
+      prefetchRoute(a.pathname);
+    };
+    document.addEventListener("pointerover", onIntent, { passive: true });
+    document.addEventListener("focusin", onIntent);
+    document.addEventListener("touchstart", onIntent, { passive: true });
+    return () => {
+      document.removeEventListener("pointerover", onIntent);
+      document.removeEventListener("focusin", onIntent);
+      document.removeEventListener("touchstart", onIntent);
+    };
+  }, []);
+
   useEffect(() => {
     if (REDUCED || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     let raf = 0, last = null, active = null, magnet = null;
@@ -1957,6 +2135,15 @@ export function Chrome() {
         spot.style.setProperty("--sx", e.clientX + "px");
         spot.style.setProperty("--sy", e.clientY + "px");
         spot.classList.add("on");
+      }
+      // Cursor ring: follows the pointer (the real cursor stays visible) and
+      // grows over anything clickable.
+      const ring = ringRef.current;
+      if (ring) {
+        ring.style.translate = `${e.clientX}px ${e.clientY}px`;
+        ring.classList.add("on");
+        const hot = e.target instanceof Element && e.target.closest("a,button,summary,label,select,input,textarea,[role=button]");
+        ring.classList.toggle("is-hot", !!hot);
       }
       // Magnetic buttons: the primary pills drift toward the cursor while hovered.
       const btn = e.target instanceof Element ? e.target.closest(".btn-solid, .nav-cta") : null;
@@ -1982,6 +2169,7 @@ export function Chrome() {
     const onOut = (e) => {
       if (e.relatedTarget) return; // still inside the window
       spotRef.current?.classList.remove("on");
+      ringRef.current?.classList.remove("on");
       if (active) { reset(active); active = null; }
       if (magnet) { release(magnet); magnet = null; }
     };
@@ -2052,6 +2240,7 @@ export function Chrome() {
       </div>
       <div id="progress" ref={progressRef}></div>
       <div id="spotlight" ref={spotRef} aria-hidden="true"></div>
+      <div id="cursor-ring" ref={ringRef} aria-hidden="true"></div>
       <a id="wa" className={waPeek ? "peek" : ""} href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer"
         aria-label="Chat on WhatsApp — available 24×7">
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.6.9 5 2.3 7L4 29l7.3-2.2c1.9 1 3.6 1.5 5.7 1.5 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm6.6 16.9c-.3.8-1.6 1.5-2.3 1.6-.6.1-1.3.2-2.2-.1-.5-.2-1.1-.4-1.9-.7-3.4-1.5-5.6-4.9-5.8-5.1-.2-.2-1.4-1.8-1.4-3.5s.9-2.5 1.2-2.8c.3-.3.7-.4.9-.4h.7c.2 0 .5-.1.8.6.3.8 1 2.6 1.1 2.8.1.2.2.4 0 .7-.1.3-.2.4-.4.7-.2.2-.4.5-.6.7-.2.2-.4.4-.2.8s1 1.7 2.2 2.7c1.5 1.3 2.8 1.7 3.2 1.9.4.2.6.2.8-.1.2-.2.9-1.1 1.2-1.5.2-.4.5-.3.8-.2.3.1 2.1 1 2.4 1.2.4.2.6.3.7.4.1.3.1.9-.2 1.7z"/></svg>

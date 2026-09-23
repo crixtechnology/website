@@ -5,6 +5,24 @@ import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, 
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
+// One line icon per dashboard tile (keyed by the tile's label).
+const TILE_ICONS = {
+  Revenue: <path d="M4 19h16 M7 16V11 M12 16V7 M17 16v-3" />,
+  Courses: <path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z M20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z" />,
+  Internships: <path d="M3 8h18v12H3z M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M3 13h18" />,
+  Users: <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6 M16 4.5a3.5 3.5 0 0 1 0 6.5 M18 14c2 .7 3.5 2.8 3.5 6" />,
+  Subscriptions: <path d="M3 6h18v12H3z M3 10h18 M7 15h4" />,
+  "Live class schedule": <path d="M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4 M9 14l2 2 4-4" />,
+  "Course videos": <path d="M3 5h18v14H3z M10 9.5v5l4.5-2.5z" />,
+  Services: <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M12 2v3 M12 19v3 M4.9 4.9 7 7 M17 17l2.1 2.1 M2 12h3 M19 12h3 M4.9 19.1 7 17 M17 7l2.1-2.1" />,
+  "Offer codes": <path d="M3 12V4h8l10 10-8 8z M7.5 7.5h.01" />,
+  Referrals: <path d="M16 3h5v5 M21 3l-7 7 M8 21H3v-5 M3 21l7-7" />,
+  "Campus ambassadors": <path d="M12 3 2 8l10 5 10-5z M6 10.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-5.5" />,
+  Messages: <path d="M4 5h16v11H8l-4 4z" />,
+  Applications: <path d="M7 3h7l4 4v14H7z M14 3v4h4 M9.5 13h5 M9.5 16.5h5" />,
+  default: <path d="M5 12h14" />,
+};
+
 export default function AdminDashboard() {
   usePageMeta({ title: "Admin Dashboard | Crix Technology" });
   const { user, logout } = useContext(UserContext);
@@ -92,11 +110,17 @@ export default function AdminDashboard() {
         {loading ? (
           <p style={{ color: "var(--muted)" }}>Loading...</p>
         ) : (
-          <div className="grid3 stagger" style={{ marginTop: 0 }}>
-            {cards.map((c) => (
-              <Link to={c.to} key={c.label} className="card" style={{ display: "block", textDecoration: "none" }}>
-                <span className="tag">{c.label}</span>
-                <h3 style={{ margin: "14px 0 4px", fontSize: "2rem" }}>{c.value}</h3>
+          <div className="grid3 stagger admin-tiles" style={{ marginTop: 0 }}>
+            {cards.map((c, i) => (
+              <Link to={c.to} key={c.label} className="card admin-tile" style={{ display: "block", textDecoration: "none", "--i": i }}>
+                <span className="admin-tile-top">
+                  <span className="admin-tile-ic" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{TILE_ICONS[c.label] || TILE_ICONS.default}</svg>
+                  </span>
+                  <span className="tag">{c.label}</span>
+                  <span className="admin-tile-arrow" aria-hidden="true">→</span>
+                </span>
+                <h3 className="admin-tile-value">{c.value}</h3>
                 <p className="card-benefit">{c.sub}</p>
               </Link>
             ))}

@@ -6,6 +6,7 @@ import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, 
 import AdminGuard from "./pages/admin/AdminGuard.jsx";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
 import { captureReferralFromUrl } from "./utils/referral.js";
+import { registerPrefetch } from "./utils/prefetch.js";
 
 // Called at module load (not inside a useEffect) deliberately: React fires
 // child effects before parent effects, so ScrollToTop's own effect (which
@@ -25,9 +26,32 @@ initAnalytics();
 // Public marketing/legal pages (pages.jsx) stay eagerly imported above —
 // they're what most visitors actually came for and where load speed/SEO
 // matters most, so there's no Suspense flash on the paths that matter most.
-const MyCourses = lazy(() => import("./pages/student/MyCourses.jsx"));
-const Learn = lazy(() => import("./pages/student/Learn.jsx"));
-const Profile = lazy(() => import("./pages/student/Profile.jsx"));
+// Each lazy route's loader, keyed by path (a trailing "/" means "starts with"); also
+// registered for hover prefetching (utils/prefetch.js).
+const ROUTE_LOADERS = {
+  "/dashboard": () => import("./pages/student/MyCourses.jsx"),
+  "/learn/": () => import("./pages/student/Learn.jsx"),
+  "/profile": () => import("./pages/student/Profile.jsx"),
+  "/admin": () => import("./pages/admin/AdminDashboard.jsx"),
+  "/admin/revenue": () => import("./pages/admin/AdminRevenue.jsx"),
+  "/admin/courses": () => import("./pages/admin/AdminCourses.jsx"),
+  "/admin/lectures": () => import("./pages/admin/AdminLectures.jsx"),
+  "/admin/videos": () => import("./pages/admin/AdminVideos.jsx"),
+  "/admin/students": () => import("./pages/admin/AdminStudents.jsx"),
+  "/admin/users": () => import("./pages/admin/AdminUsers.jsx"),
+  "/admin/messages": () => import("./pages/admin/AdminMessages.jsx"),
+  "/admin/applications": () => import("./pages/admin/AdminApplications.jsx"),
+  "/admin/services": () => import("./pages/admin/AdminServices.jsx"),
+  "/admin/referrals": () => import("./pages/admin/AdminReferrals.jsx"),
+  "/admin/coupons": () => import("./pages/admin/AdminCoupons.jsx"),
+  "/admin/ambassadors": () => import("./pages/admin/AdminAmbassadors.jsx"),
+  "/ambassador": () => import("./pages/Ambassador.jsx"),
+};
+registerPrefetch(ROUTE_LOADERS);
+
+const MyCourses = lazy(ROUTE_LOADERS["/dashboard"]);
+const Learn = lazy(ROUTE_LOADERS["/learn/"]);
+const Profile = lazy(ROUTE_LOADERS["/profile"]);
 
 // AdminGuard itself stays eager (imported above, not lazy): it wraps EVERY
 // admin route, so lazy-loading it too meant React couldn't start fetching
@@ -36,20 +60,20 @@ const Profile = lazy(() => import("./pages/student/Profile.jsx"));
 // page became interactive. It's small, so bundling it with the main app
 // costs little; the actual weight (each admin page's own code) still only
 // loads on demand.
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.jsx"));
-const AdminRevenue = lazy(() => import("./pages/admin/AdminRevenue.jsx"));
-const AdminCourses = lazy(() => import("./pages/admin/AdminCourses.jsx"));
-const AdminLectures = lazy(() => import("./pages/admin/AdminLectures.jsx"));
-const AdminVideos = lazy(() => import("./pages/admin/AdminVideos.jsx"));
-const AdminStudents = lazy(() => import("./pages/admin/AdminStudents.jsx"));
-const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.jsx"));
-const AdminMessages = lazy(() => import("./pages/admin/AdminMessages.jsx"));
-const AdminApplications = lazy(() => import("./pages/admin/AdminApplications.jsx"));
-const AdminServices = lazy(() => import("./pages/admin/AdminServices.jsx"));
-const AdminReferrals = lazy(() => import("./pages/admin/AdminReferrals.jsx"));
-const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons.jsx"));
-const AdminAmbassadors = lazy(() => import("./pages/admin/AdminAmbassadors.jsx"));
-const Ambassador = lazy(() => import("./pages/Ambassador.jsx"));
+const AdminDashboard = lazy(ROUTE_LOADERS["/admin"]);
+const AdminRevenue = lazy(ROUTE_LOADERS["/admin/revenue"]);
+const AdminCourses = lazy(ROUTE_LOADERS["/admin/courses"]);
+const AdminLectures = lazy(ROUTE_LOADERS["/admin/lectures"]);
+const AdminVideos = lazy(ROUTE_LOADERS["/admin/videos"]);
+const AdminStudents = lazy(ROUTE_LOADERS["/admin/students"]);
+const AdminUsers = lazy(ROUTE_LOADERS["/admin/users"]);
+const AdminMessages = lazy(ROUTE_LOADERS["/admin/messages"]);
+const AdminApplications = lazy(ROUTE_LOADERS["/admin/applications"]);
+const AdminServices = lazy(ROUTE_LOADERS["/admin/services"]);
+const AdminReferrals = lazy(ROUTE_LOADERS["/admin/referrals"]);
+const AdminCoupons = lazy(ROUTE_LOADERS["/admin/coupons"]);
+const AdminAmbassadors = lazy(ROUTE_LOADERS["/admin/ambassadors"]);
+const Ambassador = lazy(ROUTE_LOADERS["/ambassador"]);
 
 // Matches the "Loading..." convention every data-fetching page here already
 // uses (MyCourses, every Admin list, etc.) rather than a full-screen splash
