@@ -1891,6 +1891,75 @@ export function Chrome() {
     return () => { clearTimeout(show); clearTimeout(hide); };
   }, []);
 
+  // Mouse-only effects, one shared listener: the page-wide cursor spotlight,
+  // and a 3D tilt + shine on benefit tiles and plan cards (program cards
+  // already tilt through TiltCard). Skipped for touch and reduced motion.
+  const spotRef = useRef(null);
+  useEffect(() => {
+    if (REDUCED || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    let raf = 0, last = null, active = null;
+    const reset = (el) => { el.style.transform = ""; el.classList.remove("is-tilting"); };
+    const frame = () => {
+      raf = 0;
+      const e = last;
+      const spot = spotRef.current;
+      if (spot) {
+        spot.style.setProperty("--sx", e.clientX + "px");
+        spot.style.setProperty("--sy", e.clientY + "px");
+        spot.classList.add("on");
+      }
+      const el = e.target instanceof Element ? e.target.closest(".benefit, .plan-card") : null;
+      if (active && active !== el) reset(active);
+      active = el;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      el.classList.add("is-tilting");
+      el.style.transform = `perspective(800px) rotateY(${(x - 0.5) * 8}deg) rotateX(${(0.5 - y) * 8}deg) translateY(-3px)`;
+      el.style.setProperty("--tx", x * 100 + "%");
+      el.style.setProperty("--ty", y * 100 + "%");
+    };
+    const onMove = (e) => { last = e; if (!raf) raf = requestAnimationFrame(frame); };
+    const onOut = (e) => {
+      if (e.relatedTarget) return; // still inside the window
+      spotRef.current?.classList.remove("on");
+      if (active) { reset(active); active = null; }
+    };
+    document.addEventListener("pointermove", onMove, { passive: true });
+    document.addEventListener("pointerout", onOut);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerout", onOut);
+      if (active) reset(active);
+    };
+  }, []);
+
+  // Section headings fill with colour as they scroll up into view: sets
+  // --fill (0 → 1) on each `.section h2`, read by upgrade.css. Headings never
+  // touched here (reduced motion) keep the CSS default of fully filled.
+  useEffect(() => {
+    if (REDUCED) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const vh = window.innerHeight;
+      document.querySelectorAll(".section h2").forEach((h) => {
+        const top = h.getBoundingClientRect().top;
+        const p = Math.min(1, Math.max(0, (vh * 0.95 - top) / (vh * 0.4)));
+        h.style.setProperty("--fill", p.toFixed(3));
+      });
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), REDUCED ? 0 : 550);
     let lastY = window.scrollY;
@@ -1921,6 +1990,7 @@ export function Chrome() {
         <div className="ld"><Logo /></div>
       </div>
       <div id="progress" ref={progressRef}></div>
+      <div id="spotlight" ref={spotRef} aria-hidden="true"></div>
       <a id="wa" className={waPeek ? "peek" : ""} href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer"
         aria-label="Chat on WhatsApp — available 24×7">
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.6.9 5 2.3 7L4 29l7.3-2.2c1.9 1 3.6 1.5 5.7 1.5 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm6.6 16.9c-.3.8-1.6 1.5-2.3 1.6-.6.1-1.3.2-2.2-.1-.5-.2-1.1-.4-1.9-.7-3.4-1.5-5.6-4.9-5.8-5.1-.2-.2-1.4-1.8-1.4-3.5s.9-2.5 1.2-2.8c.3-.3.7-.4.9-.4h.7c.2 0 .5-.1.8.6.3.8 1 2.6 1.1 2.8.1.2.2.4 0 .7-.1.3-.2.4-.4.7-.2.2-.4.5-.6.7-.2.2-.4.4-.2.8s1 1.7 2.2 2.7c1.5 1.3 2.8 1.7 3.2 1.9.4.2.6.2.8-.1.2-.2.9-1.1 1.2-1.5.2-.4.5-.3.8-.2.3.1 2.1 1 2.4 1.2.4.2.6.3.7.4.1.3.1.9-.2 1.7z"/></svg>
@@ -1938,12 +2008,30 @@ export function Chrome() {
 }
 
 /* ---------- Marquee ---------- */
+// Brand marks for the tech strip (Simple Icons, CC0 — saved in public/tech-icons).
+// Anything without a mark here keeps the plain ◆ bullet.
+const TECH_ICONS = {
+  "React": "react", "Next.js": "nextdotjs", "Node.js": "nodedotjs", "Express": "express",
+  "TypeScript": "typescript", "Python": "python", "MongoDB": "mongodb", "PostgreSQL": "postgresql",
+  "MySQL": "mysql", "LangChain": "langchain", "OpenAI & LLM APIs": "openai", "Gemini API": "googlegemini",
+  "React Native": "react", "Flutter": "flutter", "JWT Auth": "jsonwebtokens", "Docker": "docker", "CI/CD": "githubactions",
+};
 export function Marquee() {
   const items = [...marquee, ...marquee];
   return (
     <div className="marquee" aria-hidden="true">
       <div className="track">
-        {items.map((t, i) => <span key={i}><i>◆</i>{t}</span>)}
+        {items.map((t, i) => {
+          const icon = TECH_ICONS[t];
+          return (
+            <span key={i}>
+              {icon
+                ? <i className="tech-logo" style={{ "--logo": `url(/tech-icons/${icon}.svg)` }}></i>
+                : <i>◆</i>}
+              {t}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

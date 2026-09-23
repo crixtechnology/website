@@ -218,6 +218,73 @@ footer::before{content:"";position:absolute;top:-1px;left:0;right:0;height:1px;p
 [data-theme="light"] .page-head::before{background-image:radial-gradient(rgba(16,27,51,.12) 1px,transparent 1px)}
 [data-theme="light"] ::-webkit-scrollbar-thumb{border-color:var(--ink)}
 
+/* =====================================================================
+   Modern elements
+   ===================================================================== */
+
+/* 1. Cursor spotlight: a soft glow that follows the mouse (Chrome in ui.jsx
+      moves it; mouse-only, never on touch or reduced motion). */
+#spotlight{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .5s;mix-blend-mode:screen;
+  background:radial-gradient(560px circle at var(--sx,50%) var(--sy,50%),rgba(var(--teal-rgb),.075),transparent 62%)}
+#spotlight.on{opacity:1}
+[data-theme="light"] #spotlight{mix-blend-mode:multiply;background:radial-gradient(560px circle at var(--sx,50%) var(--sy,50%),rgba(var(--teal-rgb),.07),transparent 62%)}
+
+/* 2. Bento grid: "Benefits of joining Crix" — first tile is a large feature tile. */
+@media(min-width:921px){
+  .grid4.bento{grid-auto-flow:dense}
+  .bento>:first-child{grid-column:span 2;grid-row:span 2}
+}
+@media(min-width:561px) and (max-width:920px){.bento>:first-child{grid-column:span 2}}
+.bento>:first-child{display:flex;flex-direction:column;padding:clamp(24px,3vw,34px);border-color:rgba(var(--teal-rgb),.3);overflow:hidden;
+  background:radial-gradient(110% 90% at 100% 0%,rgba(var(--teal-rgb),.2),transparent 55%),radial-gradient(80% 70% at 0% 100%,rgba(var(--amber-rgb),.08),transparent 60%),linear-gradient(160deg,rgba(var(--text-rgb),.04),rgba(var(--text-rgb),.01))}
+.bento>:first-child .benefit-icon{width:58px;height:58px;border-radius:16px;margin-bottom:auto}
+.bento>:first-child .benefit-icon svg{width:28px;height:28px}
+.bento>:first-child h3{font-size:clamp(1.25rem,2.2vw,1.7rem);margin:28px 0 10px;line-height:1.2}
+.bento>:first-child p{font-size:.95rem;max-width:34ch}
+/* concentric decorative rings in the feature tile's corner */
+.bento>:first-child::before{content:"";position:absolute;right:-70px;top:-70px;width:240px;height:240px;border-radius:50%;pointer-events:none;
+  background:repeating-radial-gradient(circle,transparent 0 22px,rgba(var(--teal-rgb),.13) 23px 24px);
+  -webkit-mask-image:radial-gradient(circle,#000 30%,transparent 70%);mask-image:radial-gradient(circle,#000 30%,transparent 70%)}
+
+/* 3. Tech strip: brand logos, tinted to the theme through a CSS mask. */
+.track .tech-logo{display:inline-block;width:1.25em;height:1.25em;vertical-align:-.28em;margin-right:12px;background:var(--cyan);text-shadow:none;
+  -webkit-mask:var(--logo) center/contain no-repeat;mask:var(--logo) center/contain no-repeat}
+.track span{display:inline-flex;align-items:center}
+
+/* 4. Stats: a sparkline under each number that draws itself in. */
+.spark{display:block;width:62%;max-width:130px;height:22px;margin:14px auto 0;overflow:visible}
+.spark path{fill:none;stroke:var(--teal);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.6s cubic-bezier(.2,.7,.2,1) .3s;
+  filter:drop-shadow(0 0 4px rgba(var(--teal-rgb),.7))}
+.stats.in .spark path{stroke-dashoffset:0}
+.stat:nth-child(2) .spark path{transition-delay:.45s}
+.stat:nth-child(3) .spark path{transition-delay:.6s}
+.stat:nth-child(4) .spark path{transition-delay:.75s}
+[data-theme="light"] .spark path{filter:none}
+
+/* 5. Section headings fill with colour as they scroll into view.
+      --fill (0→1) is set per heading by Chrome in ui.jsx; without it
+      (touch-less JS off, reduced motion) headings simply stay fully filled. */
+.section h2{background-image:linear-gradient(90deg,var(--text) 0 46%,var(--cyan) 50%,rgba(var(--text-rgb),.26) 54% 100%);
+  background-size:220% 100%;background-position:calc((1 - var(--fill,1)) * 100%) 0}
+
+/* 6. 3D tilt + shine on benefit tiles and plan cards (tilt set in ui.jsx). */
+.benefit,.plan-card{position:relative}
+.benefit.is-tilting,.plan-card.is-tilting{transition:transform .12s ease-out,border-color .3s,box-shadow .3s}
+.plan-card{transition:transform .6s cubic-bezier(.2,.7,.2,1),border-color .3s,box-shadow .3s}
+.benefit::after,.plan-card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s,background-position 0s .35s;
+  background:radial-gradient(260px circle at var(--tx,50%) var(--ty,50%),rgba(255,255,255,.09),transparent 50%),
+    linear-gradient(115deg,transparent 35%,rgba(255,255,255,.1) 48%,rgba(255,255,255,.02) 52%,transparent 62%);
+  background-size:100% 100%,250% 100%;background-position:0 0,120% 0;background-repeat:no-repeat}
+.benefit.is-tilting::after,.plan-card.is-tilting::after{opacity:1;background-position:0 0,-20% 0;transition:opacity .35s,background-position .9s ease}
+[data-theme="light"] .benefit::after,[data-theme="light"] .plan-card::after{
+  background:radial-gradient(260px circle at var(--tx,50%) var(--ty,50%),rgba(var(--teal-rgb),.08),transparent 50%),
+    linear-gradient(115deg,transparent 35%,rgba(255,255,255,.7) 48%,rgba(255,255,255,.2) 52%,transparent 62%);
+  background-size:100% 100%,250% 100%;background-position:0 0,120% 0;background-repeat:no-repeat}
+[data-theme="light"] .benefit.is-tilting::after,[data-theme="light"] .plan-card.is-tilting::after{background-position:0 0,-20% 0}
+
 @media (prefers-reduced-motion:reduce){
   .card:hover ul li::before,.benefit:hover .benefit-icon,.foot-links a:hover{transform:none}
+  .spark path{stroke-dashoffset:0}
+  #spotlight{display:none}
 }

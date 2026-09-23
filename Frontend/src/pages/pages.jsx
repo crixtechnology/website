@@ -25,6 +25,14 @@ const tierFromParams = (params) => {
 };
 
 /* ================= HOME ================= */
+// Upward-trending sparkline shapes under the home stats (purely decorative).
+const SPARKS = [
+  "M0 20 L14 17 L28 18 L42 12 L56 14 L70 8 L84 9 L100 3",
+  "M0 21 L12 19 L26 14 L40 16 L54 10 L68 11 L82 5 L100 4",
+  "M0 18 L16 19 L30 13 L44 14 L58 9 L72 10 L86 6 L100 2",
+  "M0 22 L14 18 L28 19 L42 15 L56 11 L70 12 L84 7 L100 5",
+];
+
 export function Home() {
   const heroRef = useRef(null);
   const [liveInternships, setLiveInternships] = useState(internships);
@@ -115,10 +123,14 @@ export function Home() {
       <section className="section" style={{ paddingTop: 0, paddingBottom: 20 }}>
         <div className="wrap">
           <Reveal variant="reveal-zoom" className="stats">
-            {stats.map((s) => (
+            {stats.map((s, i) => (
               <div className="stat" key={s.label}>
                 <Counter value={s.value} suffix={s.suffix} />
                 <span>{s.label}</span>
+                {/* Decorative trend line; draws itself in when the panel reveals. */}
+                <svg className="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+                  <path pathLength="1" d={SPARKS[i % SPARKS.length]} />
+                </svg>
               </div>
             ))}
           </Reveal>
@@ -259,7 +271,7 @@ export function Programs() {
         <div className="wrap">
           <Reveal as="span" variant="reveal-top" className="eyebrow">What You Get</Reveal>
           <Reveal as="h2" variant="reveal-top">Benefits of joining Crix.</Reveal>
-          <div className="grid4 stagger">
+          <div className="grid4 bento stagger">
             {benefits.map((b, i) => (
               <Reveal key={b.title} variant="reveal" className="benefit" style={{ "--i": i }}>
                 <span className="benefit-icon"><BenefitIcon name={b.icon} /></span>
