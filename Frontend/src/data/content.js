@@ -21,6 +21,8 @@ export const site = {
   legalName: "Crix Technology Private Limited",
   registeredAddress: "G-403, Jalaram Vatika, Nr. Sadguru Bunglows, New Maninagar, Ramol, Daskroi, Ahmedabad – 382449, Gujarat",
   year: 2026,
+  linkedin: "https://www.linkedin.com/company/crix-technology/",
+  instagram: "https://www.instagram.com/crix_technology?igsh=MWI4aWZmY2IzaXhobw==",
 };
 
 // Statutory / registration details shown in the "Company Information" block on
