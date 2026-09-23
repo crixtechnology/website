@@ -9,6 +9,8 @@ import { site } from "../data/content.js";
 import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 
 const API = process.env.REACT_APP_API_URL || "";
+// Lets pages show a loading state only when there is actually a backend to wait for.
+export const hasBackend = !!API;
 
 // One unified login for everyone (student or admin — role comes back in the
 // user object / JWT payload). Same token key is used for every authFetch

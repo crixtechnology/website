@@ -155,7 +155,7 @@ function ScrollToTop() {
 // across a new deploy, which has since replaced the file it asks for). Reloading fixes both.
 function PageError() {
   return (
-    <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
+    <section className="section error-page" style={{ paddingTop: 140, minHeight: "60vh" }}>
       <div className="wrap" style={{ maxWidth: 560 }}>
         <span className="eyebrow">Something went wrong</span>
         <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>This page hit a problem.</h1>
@@ -181,6 +181,9 @@ export default function App() {
       <main>
         {/* Keyed by the address, so moving to another page starts with a clean slate. */}
         <ErrorBoundary key={location.pathname} fallback={<PageError />}>
+        {/* Remounts with the ErrorBoundary on every page change, replaying the
+            fade/slide-in in upgrade.css (.page-enter). */}
+        <div className="page-enter">
         <Suspense fallback={<RouteLoading />}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -227,6 +230,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </div>
         </ErrorBoundary>
       </main>
       <Footer />

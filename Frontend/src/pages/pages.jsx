@@ -1,13 +1,17 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
-  Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, REDUCED,
+  Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, REDUCED,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables, fallbackPrograms,
 } from "../data/content.js";
-import { submitContact, getCourses, getCourse, getServices } from "../services/api.js";
+import { submitContact, getCourses, getCourse, getServices, hasBackend } from "../services/api.js";
+
+// Skeleton cards show while live lists load from the backend — but never for
+// longer than this; after it the static fallback list shows instead.
+const LOADING_CAP_MS = 4000;
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
@@ -36,6 +40,7 @@ const SPARKS = [
 export function Home() {
   const heroRef = useRef(null);
   const [liveInternships, setLiveInternships] = useState(internships);
+  const [loadingInternships, setLoadingInternships] = useState(hasBackend);
   const [inquireItem, setInquireItem] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [serviceInquiryItem, setServiceInquiryItem] = useState(null);
@@ -57,10 +62,13 @@ export function Home() {
   }, []);
   useEffect(() => {
     let alive = true;
+    const cap = setTimeout(() => setLoadingInternships(false), LOADING_CAP_MS);
     getCourses("internship").then((res) => {
-      if (alive && res.ok && res.courses && res.courses.length) setLiveInternships(res.courses);
+      if (!alive) return;
+      if (res.ok && res.courses && res.courses.length) setLiveInternships(res.courses);
+      setLoadingInternships(false);
     });
-    return () => { alive = false; };
+    return () => { alive = false; clearTimeout(cap); };
   }, []);
 
   return (
@@ -107,7 +115,7 @@ export function Home() {
           <Reveal as="span" variant="reveal-l" className="eyebrow">Internships</Reveal>
           <Reveal as="h2" variant="reveal-l">Real projects. Real experience. Real pay.</Reveal>
           <div className="grid3 stagger">
-            {liveInternships.map((it, i) => (
+            {loadingInternships ? <SkeletonCards count={internships.length} /> : liveInternships.map((it, i) => (
               <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem} onDetail={setDetailData} />
             ))}
           </div>
@@ -167,6 +175,8 @@ export function Programs() {
   // anything in it.
   const [liveInternships, setLiveInternships] = useState(internships);
   const [liveCourses, setLiveCourses] = useState(courses);
+  const [loadingInternships, setLoadingInternships] = useState(hasBackend);
+  const [loadingCourses, setLoadingCourses] = useState(hasBackend);
   const [buyItem, setBuyItem] = useState(null);
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on, if one was already clicked
   const [inquire, setInquire] = useState(null); // { item, kind } | null
@@ -180,13 +190,18 @@ export function Programs() {
 
   useEffect(() => {
     let alive = true;
+    const cap = setTimeout(() => { setLoadingInternships(false); setLoadingCourses(false); }, LOADING_CAP_MS);
     getCourses("internship").then((res) => {
-      if (alive && res.ok && res.courses && res.courses.length) setLiveInternships(res.courses);
+      if (!alive) return;
+      if (res.ok && res.courses && res.courses.length) setLiveInternships(res.courses);
+      setLoadingInternships(false);
     });
     getCourses("course").then((res) => {
-      if (alive && res.ok && res.courses && res.courses.length) setLiveCourses(res.courses);
+      if (!alive) return;
+      if (res.ok && res.courses && res.courses.length) setLiveCourses(res.courses);
+      setLoadingCourses(false);
     });
-    return () => { alive = false; };
+    return () => { alive = false; clearTimeout(cap); };
   }, []);
 
   // Landed here as ?buy=<slug> — the user just finished their profile and is
@@ -225,7 +240,7 @@ export function Programs() {
             final-year internship requirement.
           </Reveal>
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
-            {liveInternships.map((it, i) => (
+            {loadingInternships ? <SkeletonCards count={internships.length} /> : liveInternships.map((it, i) => (
               <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship"
                 onInquire={(item) => setInquire({ item, kind: "internship" })} onDetail={setDetailData} />
             ))}
@@ -241,7 +256,7 @@ export function Programs() {
             outstanding performers get considered for our paid internship program.
           </Reveal>
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
-            {liveCourses.map((it, i) => (
+            {loadingCourses ? <SkeletonCards count={courses.length} /> : liveCourses.map((it, i) => (
               <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="course"
                 onInquire={(item) => setInquire({ item, kind: "course" })} onDetail={setDetailData} />
             ))}
@@ -451,6 +466,7 @@ export function NotFound() {
     <section className="section notfound" style={{ paddingTop: 140, minHeight: "60vh" }}>
       <div className="wrap" style={{ maxWidth: 640 }}>
         <div className="notfound-logo"><Link to="/" aria-label="Crix Technology — home"><Logo /></Link></div>
+        <div className="notfound-code" aria-hidden="true" data-text="404">404</div>
         <span className="eyebrow">Error 404</span>
         <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>We can't find that page.</h1>
         <p style={{ color: "var(--muted)", marginBottom: 28, lineHeight: 1.7 }}>
@@ -476,14 +492,18 @@ export function Services() {
   // `services` array from content.js stays only as the fallback for when
   // the backend isn't configured or the DB has nothing seeded yet.
   const [liveServices, setLiveServices] = useState(services);
+  const [loadingServices, setLoadingServices] = useState(hasBackend);
   const [detailData, setDetailData] = useState(null);
   const [serviceInquiryItem, setServiceInquiryItem] = useState(null);
   useEffect(() => {
     let alive = true;
+    const cap = setTimeout(() => setLoadingServices(false), LOADING_CAP_MS);
     getServices().then((res) => {
-      if (alive && res.ok && res.services && res.services.length) setLiveServices(res.services);
+      if (!alive) return;
+      if (res.ok && res.services && res.services.length) setLiveServices(res.services);
+      setLoadingServices(false);
     });
-    return () => { alive = false; };
+    return () => { alive = false; clearTimeout(cap); };
   }, []);
   return (
     <>
@@ -493,7 +513,7 @@ export function Services() {
         <div className="wrap">
           <h2 className="sr-only">Our services</h2>
           <div className="grid3 stagger" style={{ marginTop: 0 }}>
-            {liveServices.map((it, i) => (
+            {loadingServices ? <SkeletonCards count={services.length} /> : liveServices.map((it, i) => (
               <InfoCard key={it.title} item={it} i={i} onDetail={setDetailData} onServiceInquire={setServiceInquiryItem} />
             ))}
           </div>
@@ -756,7 +776,7 @@ function PageHead({ eyebrow, title, text }) {
       <Aurora />
       <Reveal variant="reveal-top" style={{ position: "relative", zIndex: 2 }} className="wrap">
         <span className="eyebrow">{eyebrow}</span>
-        <h1 style={{ fontSize: "clamp(1.9rem,4vw,3rem)", margin: "14px 0 18px" }}>{title}</h1>
+        <h1 style={{ fontSize: "clamp(1.6rem,4vw + .6rem,3rem)", margin: "14px 0 18px" }}>{title}</h1>
         <p>{text}</p>
       </Reveal>
     </header>

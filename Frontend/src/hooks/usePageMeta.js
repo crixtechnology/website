@@ -23,7 +23,7 @@ function setMetaTag(attrName, attrValue, content) {
 // same title/description — previously every shared link (WhatsApp, Slack,
 // Twitter) showed the homepage's own OG tags regardless of which page was
 // actually shared, since nothing per-route ever updated them. `image`
-// is optional; defaults to the site logo when a page doesn't have anything
+// is optional; defaults to the branded share card (public/og-image.png) when a page doesn't have anything
 // more specific to show.
 // Callers that pass neither title nor description (e.g. AdminGuard's
 // logged-in-and-authorized state, which explicitly wants a no-op so it
@@ -50,7 +50,7 @@ export function usePageMeta({ title, description, image } = {}) {
       setMetaTag("property", "og:description", description);
       setMetaTag("name", "twitter:description", description);
     }
-    const ogImage = image || `${window.location.origin}/crix-logo.png`;
+    const ogImage = image || `${window.location.origin}/og-image.png`;
     setMetaTag("property", "og:image", ogImage);
     setMetaTag("name", "twitter:image", ogImage);
     setMetaTag("property", "og:url", window.location.href);

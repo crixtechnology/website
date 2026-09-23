@@ -142,6 +142,31 @@ export function useModalFocus(active) {
 // content gets the "in" class before its first paint — the browser never
 // draws the blurred frame, so no transition is visible — while content
 // that's genuinely below the fold still animates in on scroll as before.
+// Section labels (.eyebrow) briefly "decode" from random characters when they
+// reveal. Only edits the label's existing text node (never replaces it), so
+// React still owns the node, and always ends on the exact original text.
+const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&*/<>";
+function scrambleEyebrows(root) {
+  if (REDUCED) return;
+  const els = root.matches(".eyebrow") ? [root] : root.querySelectorAll(".eyebrow");
+  els.forEach((el) => {
+    const node = el.childNodes.length === 1 && el.firstChild.nodeType === 3 ? el.firstChild : null;
+    if (!node || el.dataset.scrambled) return;
+    el.dataset.scrambled = "1";
+    const text = node.nodeValue;
+    const t0 = performance.now(), dur = 650;
+    const tick = (t) => {
+      const k = Math.min((t - t0) / dur, 1);
+      const shown = Math.floor(text.length * k);
+      node.nodeValue = k < 1
+        ? text.slice(0, shown) + text.slice(shown).replace(/\S/g, () => SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0])
+        : text;
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
 export function Reveal({ as: Tag = "div", variant = "reveal", className = "", children, style, ...rest }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
@@ -150,10 +175,11 @@ export function Reveal({ as: Tag = "div", variant = "reveal", className = "", ch
     const r = el.getBoundingClientRect();
     if (r.top < window.innerHeight && r.bottom > 0) {
       el.classList.add("in");
+      scrambleEyebrows(el);
       return;
     }
     const io = new IntersectionObserver(
-      (es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
+      (es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); scrambleEyebrows(e.target); io.unobserve(e.target); } }),
       { threshold: 0.15 }
     );
     io.observe(el);
@@ -174,11 +200,34 @@ export function TiltCard({ children, style, className }) {
     card.style.setProperty("--my", y * 100 + "%");
   };
   const onLeave = () => { if (ref.current) ref.current.style.transform = "perspective(900px)"; };
+  // "lit" while on screen: a light travels around the border (upgrade.css).
+  // Off-screen cards drop it so the animation doesn't run where nobody sees it.
+  useEffect(() => {
+    const card = ref.current;
+    if (REDUCED || !card) return;
+    const io = new IntersectionObserver((es) => es.forEach((e) => card.classList.toggle("lit", e.isIntersecting)), { threshold: 0.3 });
+    io.observe(card);
+    return () => io.disconnect();
+  }, []);
   return (
     <article ref={ref} className={`card${className ? ` ${className}` : ""}`} style={style} onPointerMove={onMove} onPointerLeave={onLeave}>
       {children}
     </article>
   );
+}
+
+/* ---------- SkeletonCards: shimmering stand-ins while live cards load ---------- */
+export function SkeletonCards({ count = 3 }) {
+  return Array.from({ length: count }, (_, i) => (
+    <article key={i} className="card skeleton-card" aria-hidden="true">
+      <span className="sk sk-pill"></span>
+      <span className="sk sk-title"></span>
+      <span className="sk sk-line"></span>
+      <span className="sk sk-line"></span>
+      <span className="sk sk-line sk-short"></span>
+      <span className="sk sk-btn"></span>
+    </article>
+  ));
 }
 
 // A course/internship not yet open for buying (no price set yet, or the
@@ -1897,8 +1946,9 @@ export function Chrome() {
   const spotRef = useRef(null);
   useEffect(() => {
     if (REDUCED || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-    let raf = 0, last = null, active = null;
+    let raf = 0, last = null, active = null, magnet = null;
     const reset = (el) => { el.style.transform = ""; el.classList.remove("is-tilting"); };
+    const release = (el) => { el.style.translate = ""; };
     const frame = () => {
       raf = 0;
       const e = last;
@@ -1907,6 +1957,15 @@ export function Chrome() {
         spot.style.setProperty("--sx", e.clientX + "px");
         spot.style.setProperty("--sy", e.clientY + "px");
         spot.classList.add("on");
+      }
+      // Magnetic buttons: the primary pills drift toward the cursor while hovered.
+      const btn = e.target instanceof Element ? e.target.closest(".btn-solid, .nav-cta") : null;
+      if (magnet && magnet !== btn) release(magnet);
+      magnet = btn;
+      if (btn && !btn.disabled) {
+        const b = btn.getBoundingClientRect();
+        const dx = e.clientX - (b.left + b.width / 2), dy = e.clientY - (b.top + b.height / 2);
+        btn.style.translate = `${(dx * 0.18).toFixed(1)}px ${(dy * 0.3).toFixed(1)}px`;
       }
       const el = e.target instanceof Element ? e.target.closest(".benefit, .plan-card") : null;
       if (active && active !== el) reset(active);
@@ -1924,6 +1983,7 @@ export function Chrome() {
       if (e.relatedTarget) return; // still inside the window
       spotRef.current?.classList.remove("on");
       if (active) { reset(active); active = null; }
+      if (magnet) { release(magnet); magnet = null; }
     };
     document.addEventListener("pointermove", onMove, { passive: true });
     document.addEventListener("pointerout", onOut);
@@ -1932,6 +1992,7 @@ export function Chrome() {
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerout", onOut);
       if (active) reset(active);
+      if (magnet) release(magnet);
     };
   }, []);
 

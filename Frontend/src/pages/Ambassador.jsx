@@ -66,7 +66,7 @@ export default function Ambassador() {
         <Aurora />
         <Reveal variant="reveal-top" style={{ position: "relative", zIndex: 2 }} className="wrap">
           <span className="eyebrow">Campus Ambassador</span>
-          <h1 style={{ fontSize: "clamp(1.9rem,4vw,3rem)", margin: "14px 0 18px" }}>Represent Crix on your campus.</h1>
+          <h1 style={{ fontSize: "clamp(1.6rem,4vw + .6rem,3rem)", margin: "14px 0 18px" }}>Represent Crix on your campus.</h1>
           <p>
             Bring fellow students to Crix's internships and courses — get recognised with a certificate and a welcome kit,
             and earn a commission on every student who joins through you.
