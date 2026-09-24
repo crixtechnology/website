@@ -4,7 +4,33 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#060B1A" />
-  <link rel="icon" type="image/png" href="/logo-icon.png" />
+  <!-- Tab / bookmark / search-result icon, in every size browsers and Google
+       ask for (Google wants a square multiple of 48px). favicon.ico sits at
+       the site root because many browsers and crawlers request it there
+       directly, whatever the tags below say. -->
+  <link rel="icon" href="/favicon.ico" sizes="48x48" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+  <link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <!-- Organization details for search engines: lets Google show the Crix
+       logo beside the site's name/link in results. -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Crix Technology Private Limited",
+      "alternateName": "Crix Technology",
+      "url": "https://crixtechnology.in/",
+      "logo": "https://crixtechnology.in/icon-512.png",
+      "email": "crixtechnology@gmail.com",
+      "address": { "@type": "PostalAddress", "addressLocality": "Ahmedabad", "addressRegion": "Gujarat", "postalCode": "382449", "addressCountry": "IN" },
+      "sameAs": ["https://www.linkedin.com/company/crix-technology/", "https://www.instagram.com/crix_technology"]
+    }
+  </script>
   <title>Crix Technology | Virtual Internships, IT Services & Online Courses — Ahmedabad</title>
   <meta name="description" content="Crix Technology — India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses. Structured, hands-on programs in MERN stack and AI Agentic Systems. Based in Ahmedabad, serving all of India." />
   <meta name="keywords" content="virtual internship India, IT services Ahmedabad, online courses, web development internship, AI ML internship, MERN stack training" />

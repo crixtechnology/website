@@ -1,0 +1,14 @@
+{
+  "name": "Crix Technology",
+  "short_name": "Crix",
+  "description": "Virtual internships, IT services and online courses — Ahmedabad, serving pan-India and globally.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#060B1A",
+  "theme_color": "#060B1A",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
