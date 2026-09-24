@@ -194,8 +194,6 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
      "Log in" pill) that must stay visible here. */
   .nav-in>.nav-cta{display:none}
   .nav-account{display:none}
-  /* The header keeps just the logo and the burger; the theme switch moves into the menu. */
-  .nav-in>.theme-toggle{display:none}
   /* .nav-cta/.nav-account above are the desktop pill — this is the same
      login/account controls, shown inside the mobile dropdown instead. */
   .nav-links-mobile-account{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding-top:18px;margin-top:-2px;border-top:1px solid var(--line);width:100%}

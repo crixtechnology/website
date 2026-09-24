@@ -1932,10 +1932,6 @@ export function Navbar() {
               // down rather than covering it).
               <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
             )}
-            {/* Mobile only (the header's own icon is hidden there): sits right
-                beside Log in, and the menu stays open after a tap so the
-                change is visible straight away. */}
-            <ThemeToggle />
           </li>
         </ul>
         {isLoggedIn ? (
@@ -1954,6 +1950,8 @@ export function Navbar() {
         ) : (
           <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
         )}
+        {/* Always in the header, on phones too — right beside the menu button
+            (same arrangement as freeweb.co.in), not inside the menu. */}
         <ThemeToggle />
         <button className="burger" aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open} aria-controls="primary-nav"
