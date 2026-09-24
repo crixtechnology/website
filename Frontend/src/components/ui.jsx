@@ -1934,6 +1934,10 @@ export function Navbar() {
             )}
           </li>
         </ul>
+        {/* Always in the header, before Log in / the account links on desktop,
+            and right beside the menu button on phones and tablets (same
+            arrangement as freeweb.co.in) — never inside the menu. */}
+        <ThemeToggle />
         {isLoggedIn ? (
           <span className="nav-account">
             <NavLink className="nav-account-link" to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
@@ -1950,9 +1954,6 @@ export function Navbar() {
         ) : (
           <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
         )}
-        {/* Always in the header, on phones too — right beside the menu button
-            (same arrangement as freeweb.co.in), not inside the menu. */}
-        <ThemeToggle />
         <button className="burger" aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open} aria-controls="primary-nav"
           onClick={() => setOpen(!open)}>{open ? "✕" : "☰"}</button>

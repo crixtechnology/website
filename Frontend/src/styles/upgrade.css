@@ -83,7 +83,7 @@ nav.topbar .nav-in{justify-content:flex-start;gap:8px}
 /* Phones/tablets: logo on the left; theme switch + menu button grouped on the right. */
 @media(max-width:980px){
   .nav-in>.theme-toggle{margin-left:auto}
-  .nav-in>.theme-toggle+.burger{margin-left:0}
+  .nav-in>.theme-toggle~.burger{margin-left:0}
 }
 @media(max-width:980px){
   /* Mobile menu: its own floating panel under the capsule, like FreeWeb's. */
