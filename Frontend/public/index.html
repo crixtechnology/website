@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -18,41 +18,60 @@
   <!-- Safari pinned tabs / Touch Bar: a one-colour vector of the emblem, tinted with the brand teal. -->
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#14C9C9" />
   <link rel="manifest" href="/site.webmanifest" />
-  <!-- Organization details for search engines: lets Google show the Crix
-       logo beside the site's name/link in results. -->
+  <!-- Search-engine structured data. WebSite: the site name Google shows
+       above results. Organization: the company, its logo and contact
+       details (lets Google show the Crix logo beside the site's name). -->
   <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Crix Technology Private Limited",
-      "alternateName": "Crix Technology",
-      "url": "https://crixtechnology.in/",
-      "logo": "https://crixtechnology.in/icon-512.png",
-      "email": "crixtechnology@gmail.com",
-      "address": { "@type": "PostalAddress", "addressLocality": "Ahmedabad", "addressRegion": "Gujarat", "postalCode": "382449", "addressCountry": "IN" },
-      "sameAs": ["https://www.linkedin.com/company/crix-technology/", "https://www.instagram.com/crix_technology"]
-    }
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Crix Technology",
+        "alternateName": ["Crix Technology Private Limited", "Crix"],
+        "url": "https://www.crixtechnology.in/",
+        "inLanguage": "en-IN"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": "https://www.crixtechnology.in/#organization",
+        "name": "Crix Technology Private Limited",
+        "alternateName": "Crix Technology",
+        "url": "https://www.crixtechnology.in/",
+        "logo": "https://www.crixtechnology.in/icon-512.png",
+        "image": "https://www.crixtechnology.in/og-image.png",
+        "email": "crixtechnology@gmail.com",
+        "telephone": "+91-97232-23588",
+        "contactPoint": [
+          { "@type": "ContactPoint", "telephone": "+91-97232-23588", "contactType": "customer service", "areaServed": "IN", "availableLanguage": "English" }
+        ],
+        "address": { "@type": "PostalAddress", "streetAddress": "G-403, Jalaram Vatika, Nr. Sadguru Bunglows, New Maninagar, Ramol", "addressLocality": "Ahmedabad", "addressRegion": "Gujarat", "postalCode": "382449", "addressCountry": "IN" },
+        "sameAs": ["https://www.linkedin.com/company/crix-technology/", "https://www.instagram.com/crix_technology"]
+      }
+    ]
   </script>
-  <title>Crix Technology | Virtual Internships, IT Services & Online Courses — Ahmedabad</title>
-  <meta name="description" content="Crix Technology — India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses. Structured, hands-on programs in MERN stack and AI Agentic Systems. Based in Ahmedabad, serving all of India." />
-  <meta name="keywords" content="virtual internship India, IT services Ahmedabad, online courses, web development internship, AI ML internship, MERN stack training" />
-  <link rel="canonical" href="https://crixtechnology.in/" />
-  <!-- Static baseline for link-preview bots that don't execute JS (WhatsApp,
-       Slack, iMessage, etc.) — src/hooks/usePageMeta.js overwrites these
-       per-route for everything else, including real browsers/crawlers. -->
+  <!-- Home page defaults. scripts/prerender-meta.js rewrites the title,
+       description, canonical and social tags below into a separate HTML file
+       for every public page after each build (from src/data/seo.json), and
+       src/hooks/usePageMeta.js keeps them in sync while browsing. -->
+  <title>Virtual Internships, Courses & IT Services | Crix Technology</title>
+  <meta name="description" content="Paid virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack & AI programs with certificates." />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://www.crixtechnology.in/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Crix Technology" />
-  <meta property="og:url" content="https://crixtechnology.in/" />
-  <meta property="og:title" content="Crix Technology | Virtual Internships, IT Services & Online Courses — Ahmedabad" />
-  <meta property="og:description" content="Crix Technology — India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses. Structured, hands-on programs in MERN stack and AI Agentic Systems. Based in Ahmedabad, serving all of India." />
-  <meta property="og:image" content="https://crixtechnology.in/og-image.png" />
+  <meta property="og:locale" content="en_IN" />
+  <meta property="og:url" content="https://www.crixtechnology.in/" />
+  <meta property="og:title" content="Virtual Internships, Courses & IT Services | Crix Technology" />
+  <meta property="og:description" content="Paid virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack & AI programs with certificates." />
+  <meta property="og:image" content="https://www.crixtechnology.in/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Crix Technology — virtual internships, IT services and online courses" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Crix Technology | Virtual Internships, IT Services & Online Courses — Ahmedabad" />
-  <meta name="twitter:description" content="Crix Technology — India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses." />
-  <meta name="twitter:image" content="https://crixtechnology.in/og-image.png" />
+  <meta name="twitter:title" content="Virtual Internships, Courses & IT Services | Crix Technology" />
+  <meta name="twitter:description" content="Paid virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack & AI programs with certificates." />
+  <meta name="twitter:image" content="https://www.crixtechnology.in/og-image.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -73,7 +92,17 @@
   </script>
 </head>
 <body>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <!-- For visitors and crawlers without JavaScript: the page's heading,
+       summary and the main links (prerender-meta.js fills these per page). -->
+  <noscript>
+    <h1 id="seo-h1">Crix Technology — virtual internships, online courses &amp; IT services</h1>
+    <p id="seo-desc">Paid virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack &amp; AI programs with certificates.</p>
+    <nav>
+      <a href="/">Home</a> · <a href="/programs">Internships &amp; Courses</a> · <a href="/services">IT Services</a> ·
+      <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/ambassador">Campus Ambassador</a>
+    </nav>
+    <p>JavaScript is needed for the full site.</p>
+  </noscript>
   <div id="root"></div>
 </body>
 </html>

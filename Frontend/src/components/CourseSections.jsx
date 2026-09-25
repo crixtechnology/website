@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getCourses } from "../services/api.js";
 import { site } from "../data/content.js";
 import { offeredTiers, planPrice, formatINR, isOpenForBuy } from "../utils/tiers.js";
+import { useJsonLd, canonicalUrl, SITE_URL } from "../hooks/usePageMeta.js";
 
 // The extra sections of a course / internship page (CourseDetail in pages/pages.jsx).
 // Everything the admin types in (what you'll learn, who it's for, prerequisites, FAQs) is
@@ -185,25 +186,24 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
 // schema.org "Course" for the page (what it's called, who provides it, that it runs online, how
 // long, and what it teaches when the admin has said). Added while the page is on screen, removed after.
 export function useCourseJsonLd(course) {
-  useEffect(() => {
-    if (!course || !course.title) return undefined;
-    const data = {
-      "@context": "https://schema.org",
-      "@type": "Course",
-      name: course.title,
-      description: course.desc || course.title,
-      url: window.location.href.split("#")[0],
-      provider: { "@type": "Organization", name: "Crix Technology", url: window.location.origin, ...(site.email ? { email: site.email } : {}) },
-      hasCourseInstance: { "@type": "CourseInstance", courseMode: "online", ...(course.durationDays ? { courseWorkload: `P${course.durationDays}D` } : {}) },
-    };
-    const learn = list(course.outcomes);
-    if (learn.length) data.teaches = learn;
-    const script = document.createElement("script");
-    script.type = "application/ld+json";
-    script.id = "course-jsonld";
-    // `<` is escaped so nothing in an admin-entered text can close the tag early.
-    script.textContent = JSON.stringify(data).replace(/</g, "\\u003c");
-    document.head.appendChild(script);
-    return () => { if (script.parentNode) script.parentNode.removeChild(script); };
-  }, [course]);
+  const ok = !!(course && course.title);
+  const learn = ok ? list(course.outcomes) : [];
+  // Course: canonical address (no ?ref=/?buy= query), full provider details.
+  useJsonLd("course-jsonld", ok ? {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: course.title,
+    description: course.desc || course.title,
+    url: canonicalUrl(),
+    provider: { "@type": "Organization", name: "Crix Technology", url: SITE_URL, ...(site.email ? { email: site.email } : {}) },
+    hasCourseInstance: { "@type": "CourseInstance", courseMode: "online", ...(course.durationDays ? { courseWorkload: `P${course.durationDays}D` } : {}) },
+    ...(learn.length ? { teaches: learn } : {}),
+  } : null);
+  // The page's FAQs, as FAQPage markup (eligible for expandable Q&A in results).
+  const faqs = ok ? (Array.isArray(course.faqs) ? course.faqs : []).filter((f) => f && typeof f.q === "string" && f.q.trim() && typeof f.a === "string" && f.a.trim()) : [];
+  useJsonLd("faq-jsonld", faqs.length ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q.trim(), acceptedAnswer: { "@type": "Answer", text: f.a.trim() } })),
+  } : null);
 }

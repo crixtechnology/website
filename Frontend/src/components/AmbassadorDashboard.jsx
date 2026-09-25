@@ -86,22 +86,6 @@ export default function AmbassadorDashboard({ data, reload }) {
     else setSaveMsg({ kind: "error", text: res.error });
   };
 
-  // ---- certificate (PDF built in the browser, loaded only when asked for) ----
-  const [certBusy, setCertBusy] = useState(false);
-  const downloadCertificate = async () => {
-    if (!data.certificate || certBusy) return;
-    setCertBusy(true);
-    try {
-      const { downloadAmbassadorCertificate } = await import("../utils/ambassadorCertificate.js");
-      await downloadAmbassadorCertificate({
-        name: data.userName || "", college: data.application.college, city: data.application.city,
-        number: data.certificate.number, issuedAt: data.certificate.issuedAt,
-      });
-    } finally {
-      setCertBusy(false);
-    }
-  };
-
   return (
     <div className="amb-dash">
       <div className="ref-card">
@@ -162,14 +146,14 @@ export default function AmbassadorDashboard({ data, reload }) {
 
         <section className="amb-panel">
           <h3>Your perks</h3>
+          {/* Certificates are handed over personally by the Crix team, not
+              downloaded from the site — this row just shows its number/status. */}
           <div className="amb-perk">
             <div>
               <b>Ambassador certificate</b>
-              <span>{data.certificate ? `No. ${data.certificate.number} · issued ${day(data.certificate.issuedAt)}` : "Being prepared"}</span>
+              <span>{data.certificate ? `No. ${data.certificate.number} · issued ${day(data.certificate.issuedAt)}` : "Being prepared"} · sent to you personally by the Crix team</span>
             </div>
-            <button className="btn btn-ghost" onClick={downloadCertificate} disabled={!data.certificate || certBusy}>
-              {certBusy ? "Preparing…" : "Download PDF"}
-            </button>
+            <span className={`ref-pill${data.certificate ? " ref-pill--paid" : ""}`}>{data.certificate ? "Issued" : "Pending"}</span>
           </div>
           <div className="amb-perk">
             <div>

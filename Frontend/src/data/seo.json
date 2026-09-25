@@ -1,0 +1,53 @@
+{
+  "_comment": "Single source for page titles/descriptions. Read by the app (usePageMeta) AND by scripts/prerender-meta.js after each build, which writes a per-page HTML file with these tags baked in for crawlers that don't run JavaScript. Keep titles under ~60 characters and descriptions under ~160 so search results don't cut them off. siteUrl is the canonical address every page points to.",
+  "siteUrl": "https://www.crixtechnology.in",
+  "siteName": "Crix Technology",
+  "image": "/og-image.png",
+  "routes": {
+    "/": {
+      "title": "Virtual Internships, Courses & IT Services | Crix Technology",
+      "description": "Paid virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack & AI programs with certificates.",
+      "priority": "1.0", "changefreq": "weekly"
+    },
+    "/programs": {
+      "title": "Virtual Internships & Online Courses | Crix Technology",
+      "description": "Paid virtual internships and online courses in MERN stack, AI agents, Android and more. Offer letter, certificate & LOR — join from anywhere in India.",
+      "priority": "0.9", "changefreq": "weekly", "crumb": "Internships & Courses"
+    },
+    "/services": {
+      "title": "IT Services: Websites, Apps & AI | Crix Technology",
+      "description": "Websites, web and mobile apps, AI solutions, automation and digital marketing for growing businesses — delivered virtual-first from Ahmedabad, India.",
+      "priority": "0.8", "changefreq": "monthly", "crumb": "IT Services"
+    },
+    "/about": {
+      "title": "About Us | Crix Technology, Ahmedabad",
+      "description": "Crix Technology Private Limited is an Ahmedabad-based IT services and training company offering virtual internships, online courses and custom software.",
+      "priority": "0.7", "changefreq": "monthly", "crumb": "About"
+    },
+    "/contact": {
+      "title": "Contact Us | Crix Technology",
+      "description": "Contact Crix Technology about internships, online courses or IT services. Call or WhatsApp +91 97232 23588 or email us — we reply within two working days.",
+      "priority": "0.7", "changefreq": "monthly", "crumb": "Contact"
+    },
+    "/ambassador": {
+      "title": "Campus Ambassador Program | Crix Technology",
+      "description": "Become a Crix Technology campus ambassador: get a certificate and welcome kit, share your code with fellow students and earn commission when they join.",
+      "priority": "0.6", "changefreq": "monthly", "crumb": "Campus Ambassador"
+    },
+    "/privacy-policy": {
+      "title": "Privacy Policy | Crix Technology",
+      "description": "How Crix Technology Private Limited collects, uses and protects your personal information across our website, internship programs and online courses.",
+      "priority": "0.3", "changefreq": "yearly", "crumb": "Privacy Policy"
+    },
+    "/terms-of-service": {
+      "title": "Terms of Service | Crix Technology",
+      "description": "The terms for using the Crix Technology website and enrolling in our virtual internships and online courses, including accounts, payments and certificates.",
+      "priority": "0.3", "changefreq": "yearly", "crumb": "Terms of Service"
+    },
+    "/client-terms": {
+      "title": "Client Services Terms | Crix Technology",
+      "description": "The terms under which Crix Technology Private Limited provides software, web/app development, IT consulting and related digital services to clients.",
+      "priority": "0.3", "changefreq": "yearly", "crumb": "Client Services Terms"
+    }
+  }
+}

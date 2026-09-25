@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { Reveal, Aurora, BenefitIcon, Alert } from "../components/ui.jsx";
 import AmbassadorDashboard from "../components/AmbassadorDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
-import { usePageMeta } from "../hooks/usePageMeta.js";
+import { usePageMeta, routeMeta } from "../hooks/usePageMeta.js";
 import { getAmbassadorProgram, getMyAmbassador, applyAmbassador } from "../services/api.js";
 
 const PERK_ICONS = ["award", "gift", "briefcase", "star", "document", "home"];
@@ -18,10 +18,7 @@ const STEPS = [
 // The Campus Ambassador programme: what it is, an application form, and — once
 // approved — the ambassador's own dashboard (AmbassadorDashboard).
 export default function Ambassador() {
-  usePageMeta({
-    title: "Campus Ambassador Program | Crix Technology",
-    description: "Represent Crix Technology on your campus: get a certificate and welcome kit, share your code with fellow students, and earn a commission on every student who joins.",
-  });
+  usePageMeta(routeMeta("/ambassador"));
   const { isLoggedIn, openAuthModal } = useContext(UserContext);
   const [program, setProgram] = useState(null);
   const [mine, setMine] = useState(undefined); // undefined = loading, null = couldn't load, else /me/ambassador

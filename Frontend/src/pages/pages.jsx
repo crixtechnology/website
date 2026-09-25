@@ -28,7 +28,7 @@ const ABOUT_INDEX = [
   { id: "tech-stack", label: "Technologies" },
 ];
 import { UserContext } from "../context/UserContext.jsx";
-import { usePageMeta } from "../hooks/usePageMeta.js";
+import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
 import { useNoIndex } from "../hooks/useNoIndex.js";
 import { isValidName, emailFormatError } from "../utils/validators.js";
@@ -59,10 +59,7 @@ export function Home() {
   const [inquireItem, setInquireItem] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [serviceInquiryItem, setServiceInquiryItem] = useState(null);
-  usePageMeta({
-    title: "Crix Technology | Virtual Internships, IT Services & Online Courses — Ahmedabad",
-    description: "Crix Technology — India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses. Structured, hands-on programs in MERN stack and AI Agentic Systems. Based in Ahmedabad, serving all of India.",
-  });
+  usePageMeta(routeMeta("/"));
   useEffect(() => {
     const onScroll = () => {
       if (REDUCED || !heroRef.current) return;
@@ -205,10 +202,7 @@ export function Programs() {
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
   const { user } = useContext(UserContext);
-  usePageMeta({
-    title: "Internships & Courses | Crix Technology",
-    description: "Explore paid virtual internships and industry-ready online courses in MERN stack, AI Agentic Systems, Android development and more — delivered virtually, pan-India and globally.",
-  });
+  usePageMeta(routeMeta("/programs"));
 
   useEffect(() => {
     let alive = true;
@@ -254,6 +248,16 @@ export function Programs() {
   const [filter, setFilter] = useState("all");
   useEffect(() => { setFilter("all"); }, [hash]);
   const indexItems = PROGRAMS_INDEX.filter((s) => !(filter === "courses" && s.id === "internships") && !(filter === "internships" && s.id === "courses"));
+
+  // Search engines: the programs on this page as an ItemList pointing at each
+  // one's own page (only live entries have a slug/page to point at).
+  const listed = [...liveInternships, ...liveCourses].filter((p) => p.slug && p.title);
+  useJsonLd("programs-jsonld", listed.length ? {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Crix Technology internships and courses",
+    itemListElement: listed.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: canonicalUrl(`/programs/${p.slug}`), name: p.title })),
+  } : null);
 
   return (
     <>
@@ -360,6 +364,7 @@ export function CourseDetail() {
   usePageMeta({
     title: course ? `${course.title} | Crix Technology` : "Programs | Crix Technology",
     description: course ? course.desc : undefined,
+    crumbs: course ? [{ name: "Home", path: "/" }, { name: "Internships & Courses", path: "/programs" }, { name: course.title, path: `/programs/${slug}` }] : null,
   });
 
   useEffect(() => {
@@ -519,14 +524,30 @@ export function NotFound() {
 
 /* ================= SERVICES ================= */
 export function Services() {
-  usePageMeta({
-    title: "IT Services | Crix Technology",
-    description: "Websites, web apps, AI assistants and automation — delivered virtual-first to clients pan-India and globally, by the same team that trains India's next engineers.",
-  });
+  usePageMeta(routeMeta("/services"));
   // Admin-managed now (AdminServices.jsx, /api/services) — the static
   // `services` array from content.js stays only as the fallback for when
   // the backend isn't configured or the DB has nothing seeded yet.
   const [liveServices, setLiveServices] = useState(services);
+  // Search engines: each service offered, provided by the Organization
+  // described in public/index.html.
+  useJsonLd("services-jsonld", {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "IT services by Crix Technology",
+    itemListElement: liveServices.filter((s) => s.title).map((s, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Service",
+        name: s.title,
+        ...(s.desc ? { description: s.desc } : {}),
+        serviceType: s.title,
+        areaServed: "IN",
+        provider: { "@id": `${SITE_URL}/#organization` },
+      },
+    })),
+  });
   const [loadingServices, setLoadingServices] = useState(hasBackend);
   const [detailData, setDetailData] = useState(null);
   const [serviceInquiryItem, setServiceInquiryItem] = useState(null);
@@ -610,7 +631,7 @@ export function Services() {
 
 /* ================= ABOUT ================= */
 export function About() {
-  usePageMeta({ title: "About Us | Crix Technology", description: about.body });
+  usePageMeta(routeMeta("/about"));
   return (
     <>
       <PageHead eyebrow="About Crix" title={about.heading} text={about.body} />
@@ -720,10 +741,7 @@ export function About() {
 
 /* ================= CONTACT ================= */
 export function Contact() {
-  usePageMeta({
-    title: "Contact Us | Crix Technology",
-    description: "Get in touch with Crix Technology for internships, online courses, or IT services — we reply within two working days.",
-  });
+  usePageMeta(routeMeta("/contact"));
   const [form, setForm] = useState({ name: "", email: "", phone: "", interest: "Internship", message: "" });
   const [status, setStatus] = useState("");
   const [kind, setKind] = useState(""); // "error" | "success" | "info"
@@ -883,8 +901,8 @@ function CtaBand({ title = "Ready to build your first AI-powered product?",
 }
 
 /* ================= LEGAL (Privacy Policy / Terms of Service) ================= */
-function LegalPage({ eyebrow, title, doc }) {
-  usePageMeta({ title: `${title} | Crix Technology`, description: doc.intro });
+function LegalPage({ eyebrow, title, doc, path }) {
+  usePageMeta(routeMeta(path));
   return (
     <>
       <PageHead eyebrow={eyebrow} title={title} text={legal.updated} />
@@ -909,13 +927,13 @@ function LegalPage({ eyebrow, title, doc }) {
 }
 
 export function PrivacyPolicy() {
-  return <LegalPage eyebrow="Legal" title="Privacy Policy" doc={legal.privacy} />;
+  return <LegalPage eyebrow="Legal" title="Privacy Policy" doc={legal.privacy} path="/privacy-policy" />;
 }
 
 export function TermsOfService() {
-  return <LegalPage eyebrow="Legal" title="Terms of Service" doc={legal.terms} />;
+  return <LegalPage eyebrow="Legal" title="Terms of Service" doc={legal.terms} path="/terms-of-service" />;
 }
 
 export function ClientTerms() {
-  return <LegalPage eyebrow="Legal" title="Client Services Terms" doc={legal.clientTerms} />;
+  return <LegalPage eyebrow="Legal" title="Client Services Terms" doc={legal.clientTerms} path="/client-terms" />;
 }
