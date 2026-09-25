@@ -43,7 +43,7 @@ export const hero = {
   rotatingWords: ["AI-native engineers", "full-stack developers", "agent builders", "AI-first capstone builders", "Pan-India virtual cohorts"],
   titleEnd: ["of", "tomorrow."],
   subtitle:
-    "Crix Technology is India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses — with structured, hands-on programs in MERN stack development and AI Agentic Systems.",
+    "Crix Technology brings together a virtual Internship Program, industry-ready online courses and IT services — learn MERN stack, AI agents, Android and more from working industry professionals, or have us build your website, mobile app, AI solution or digital marketing.",
   meta: [
     { big: "Structured", small: "virtual internships" },
     { big: "100%", small: "hands-on labs" },
