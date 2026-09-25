@@ -1,6 +1,11 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "build",
+  "redirects": [
+    { "source": "/internships", "destination": "/programs#internships", "permanent": true },
+    { "source": "/courses", "destination": "/programs#courses", "permanent": true },
+    { "source": "/payment", "destination": "/programs", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/:page(programs|services|about|contact|ambassador|privacy-policy|terms-of-service|client-terms)", "destination": "/:page/index.html" },
