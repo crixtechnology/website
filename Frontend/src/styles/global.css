@@ -881,3 +881,8 @@ p,li,td,h1,h2,h3,h4,.admin-row-meta,.info-row a{overflow-wrap:break-word}
 .user-picker-who b{font-size:.9rem}
 .user-picker-who span{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .user-picker-change{flex:none;padding:7px 14px;font-size:.78rem}
+
+/* ---------- Copy protection (hooks/useCopyProtection.js) ---------- */
+body.no-copy{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.no-copy :is(input,textarea,select,[contenteditable="true"],a[href^="mailto:"],a[href^="tel:"],.allow-copy){-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+body.no-copy img{-webkit-user-drag:none}

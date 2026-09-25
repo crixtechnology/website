@@ -43,7 +43,7 @@ export const hero = {
   rotatingWords: ["AI-native engineers", "full-stack developers", "agent builders", "AI-first capstone builders", "Pan-India virtual cohorts"],
   titleEnd: ["of", "tomorrow."],
   subtitle:
-    "Crix Technology is India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses — with structured, hands-on programs in MERN stack development and AI Agentic Systems.",
+    "Crix Technology brings together a virtual Internship Program, industry-ready online courses and IT services — learn MERN stack, AI agents, Android and more from working industry professionals, or have us build your website, mobile app, AI solution or digital marketing.",
   meta: [
     { big: "Structured", small: "virtual internships" },
     { big: "100%", small: "hands-on labs" },
@@ -297,7 +297,7 @@ export const legal = {
 • Account credentials — either a password, stored as a secure one-way hash and never in plain text, or, if you choose "Continue with Google", the name, email address, and account identifier provided to us by Google
 • Any messages or project submissions you send us
 
-Payment for a course is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Payment arrangements for the paid internship program, where applicable, are communicated separately during the application process.`,
+Payment for a course is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Our Internship Program includes both free and paid internships. No payment details are collected for a free internship; for a paid internship, payment is collected through Razorpay in the same way as for a course, or as otherwise communicated to you during the application process.`,
       },
       {
         title: "2. How We Use Your Information",
@@ -408,7 +408,7 @@ You are responsible for all activity that occurs under your account. Crix Techno
       },
       {
         title: "4. Internship Program",
-        content: `Crix Technology offers a paid virtual internship program. By enrolling you agree to:
+        content: `Crix Technology offers a virtual Internship Program that includes both free and paid internships — whether a particular internship is free or paid, and its fee where applicable, is shown on its page or communicated to you before you enroll (see section 6). Whichever you join, by enrolling you agree to:
 • Complete assigned tasks honestly and on time
 • Submit original work — plagiarism will result in immediate disqualification
 • Maintain professional conduct in all communications
