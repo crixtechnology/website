@@ -4,6 +4,7 @@ import { UserContext } from "../../context/UserContext.jsx";
 import { getMyEnrollments, getMyReceipts, getReceipt } from "../../services/api.js";
 import { UpgradeModal } from "../../components/ui.jsx";
 import ReferralCard from "../../components/ReferralCard.jsx";
+import PaymentRequests from "../../components/PaymentRequests.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { downloadReceiptPdf } from "../../utils/receiptPdf.js";
 import { tierLabel } from "../../utils/tiers.js";
@@ -97,6 +98,7 @@ export default function MyCourses() {
           </div>
         </div>
 
+        {!isAdmin && <PaymentRequests onPaid={load} />}
         <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>{isAdmin ? "All courses & internships" : "My courses"}</h2>
         {loading ? (
           <p style={{ color: "var(--muted)" }}>Loading...</p>

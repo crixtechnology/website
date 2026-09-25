@@ -54,6 +54,7 @@ model User {
   creditEntries CreditEntry[]
   ambassador    Ambassador?
   emailOtps     EmailOtp[]
+  paymentRequests PaymentRequest[]
 
   @@map("users")
 }
@@ -123,6 +124,7 @@ model Course {
   enrollments  Enrollment[]
   applications Application[]
   payments     Payment[]
+  paymentRequests PaymentRequest[]
 
   @@map("courses")
 }
@@ -329,6 +331,11 @@ model Payment {
   receiptDiscountAmount         Float         @default(0)
   receiptTotalPaid              Float         @default(0)
   receiptPaymentMode            String        @default("Razorpay (Online)")
+  // Set only on a payment made against an admin's PaymentRequest (see that
+  // model) — such a payment has no Application, and is ordered, verified and
+  // granted by routes/paymentRequests.js instead of the normal checkout.
+  paymentRequestId              String?
+  paymentRequest                PaymentRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
   createdAt                     DateTime      @default(now())
   updatedAt                     DateTime      @updatedAt
 
@@ -336,6 +343,41 @@ model Payment {
   enrollments           Enrollment[]
 
   @@map("payments")
+}
+
+enum PaymentRequestStatus {
+  pending
+  paid
+  cancelled
+}
+
+// An admin asking one specific student to pay a set amount for one course or
+// internship. Separate from the normal checkout (no plan pricing, offer codes,
+// referral discounts or credit, and it works whether the course is open or
+// closed): the student sees it on their dashboard, pays it, and gets access.
+// Each pay attempt is its own Payment row (paymentRequestId) so the paid one
+// carries a normal receipt; paidPaymentId points at that one.
+model PaymentRequest {
+  id            String               @id @default(cuid())
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId      String
+  course        Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  // The plan the access counts as, if any — descriptive, like everywhere else.
+  tier          Tier?
+  // Paise.
+  amount        Int
+  note          String               @default("")
+  status        PaymentRequestStatus @default(pending)
+  paidPaymentId String?
+  paidAt        DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  payments Payment[]
+
+  @@index([userId, status])
+  @@map("payment_requests")
 }
 
 enum ContactStatus {

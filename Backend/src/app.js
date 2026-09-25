@@ -26,6 +26,7 @@ const referralRoutes = require("./routes/referrals");
 const ambassadorRoutes = require("./routes/ambassadors");
 const receiptRoutes = require("./routes/receipts");
 const adminPaymentRoutes = require("./routes/adminPayments");
+const paymentRequestRoutes = require("./routes/paymentRequests");
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use("/api", adminUserRoutes);
 app.use("/api", serviceRoutes);
 app.use("/api", receiptRoutes);
 app.use("/api", adminPaymentRoutes);
+app.use("/api", paymentRequestRoutes);
 app.use("/api", referralRoutes);
 app.use("/api", couponRoutes);
 app.use("/api", ambassadorRoutes);

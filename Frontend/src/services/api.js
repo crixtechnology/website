@@ -953,3 +953,77 @@ export async function adminDeleteService(id) {
     return { ok: false, error: "Could not delete service" };
   }
 }
+
+// ---------- Payment requests (admin asks a student to pay for a course/internship) ----------
+// Separate from the normal checkout above: its own order + verify endpoints.
+async function jsonOr(res, fallback) {
+  if (res.status === 401) adminLogout();
+  const data = await res.json();
+  if (!res.ok) return { ok: false, error: data.error || fallback };
+  return data;
+}
+
+export async function adminGetPaymentRequests({ q, status } = {}) {
+  try {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (status) params.set("status", status);
+    const qs = params.toString();
+    return await jsonOr(await authFetch(`/admin/payment-requests${qs ? `?${qs}` : ""}`), "Could not load payment requests");
+  } catch (e) {
+    return { ok: false, error: "Could not load payment requests" };
+  }
+}
+
+export async function adminCreatePaymentRequest(payload) {
+  try {
+    return await jsonOr(await authFetch("/admin/payment-requests", { method: "POST", body: JSON.stringify(payload) }), "Could not send the request");
+  } catch (e) {
+    return { ok: false, error: "Could not send the request" };
+  }
+}
+
+export async function adminCancelPaymentRequest(id) {
+  try {
+    return await jsonOr(await authFetch(`/admin/payment-requests/${id}/cancel`, { method: "POST" }), "Could not cancel the request");
+  } catch (e) {
+    return { ok: false, error: "Could not cancel the request" };
+  }
+}
+
+export async function getMyPaymentRequests() {
+  if (!API) return { ok: false, error: "Backend not configured yet." };
+  try {
+    return await jsonOr(await authFetch("/me/payment-requests"), "Could not load your payment requests");
+  } catch (e) {
+    return { ok: false, error: "Could not load your payment requests" };
+  }
+}
+
+// Same response shape as createRazorpayOrder.
+export async function createPaymentRequestOrder(id) {
+  try {
+    const res = await authFetch(`/me/payment-requests/${id}/create-order`, { method: "POST" });
+    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not start payment" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not start payment right now." };
+  }
+}
+
+export async function verifyPaymentRequest({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
+  try {
+    const res = await fetch(`${API}/payment-requests/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not confirm payment" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not confirm your payment right now." };
+  }
+}
