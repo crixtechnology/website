@@ -70,6 +70,14 @@ describe("UserPicker (admin: choose a student)", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("doesn't match phone numbers on the digits of a name/email search", () => {
+    act(() => root.render(<Harness onPick={() => {}} />));
+    type("asha1");
+    expect(container.textContent).toContain("No account matches that.");
+    type("98765");
+    expect(options()).toHaveLength(1);
+  });
+
   it("says so when nothing matches", () => {
     act(() => root.render(<Harness onPick={() => {}} />));
     type("zzz");

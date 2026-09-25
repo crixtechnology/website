@@ -14,7 +14,7 @@ const crypto = require("crypto");
 const { prisma } = require("../db");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate } = require("../utils/enrollmentAccess");
-const { isTier } = require("../utils/tiers");
+const { isTier, tierRank } = require("../utils/tiers");
 const { requireAuth } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { publicWriteLimiter } = require("../utils/rateLimit");
@@ -91,9 +91,12 @@ async function grantAccessForRequestPayment(payment, razorpayPaymentId) {
   const where = { userId_courseId: { userId: request.userId, courseId: request.courseId } };
   const existing = await prisma.enrollment.findUnique({ where });
   if (hasValidAccess(existing)) {
+    // Never move a student DOWN a plan: a request's plan only applies when it's
+    // higher than the one they already hold (or they hold none).
+    const raise = request.tier && (!existing.tier || tierRank(request.tier) > tierRank(existing.tier));
     await prisma.enrollment.update({
       where: { id: existing.id },
-      data: { paymentId: payment.id, status: "active", ...(request.tier ? { tier: request.tier } : {}) },
+      data: { paymentId: payment.id, status: "active", ...(raise ? { tier: request.tier } : {}) },
     });
   } else {
     const startDate = new Date();

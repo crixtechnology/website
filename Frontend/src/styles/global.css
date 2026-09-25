@@ -168,9 +168,10 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .theme-toggle:hover{border-color:var(--cyan);color:var(--cyan);transform:translateY(-1px)}
 .burger{display:none;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;width:44px;height:44px;align-items:center;justify-content:center;margin-right:-10px}
 .nav-links-mobile-account{display:none}
-/* 980px, not narrower: a logged-in student's desktop nav (5 links + Profile + My Dashboard + Log out + theme toggle)
-   needs about 950px, so below that it collapses into the burger menu instead of overflowing. */
-@media(max-width:980px){
+/* 1100px, not narrower: a logged-in account's desktop nav (5 links + Profile + My Dashboard, or an admin's
+   All Courses + Admin, + Log out + theme toggle) needs about 1020px, so below that it collapses into the
+   burger menu instead of overflowing. */
+@media(max-width:1100px){
   /* gap is smaller than desktop's list here on purpose — each link's own
      padding (from .nav-links a above) already provides the ~44px tap
      target, so a big extra gap on top of that would make the menu
@@ -862,15 +863,22 @@ p,li,td,h1,h2,h3,h4,.admin-row-meta,.info-row a{overflow-wrap:break-word}
 .preq-banner-link{flex:none;color:var(--teal);font-weight:600;text-decoration:none;white-space:nowrap}
 .preq-banner-link:hover{text-decoration:underline}
 .preq-banner-close{flex:none;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:4px 6px;line-height:1}
-@media (max-width:900px){
-  .preq-banner{left:16px;bottom:16px;max-width:calc(100% - 96px)}
-  body.has-enroll-bar .preq-banner{bottom:90px}
+/* Phones: a full-width card above the WhatsApp button, text allowed to wrap,
+   so the course name and amount are actually readable. */
+@media (max-width:640px){
+  .preq-banner{left:12px;right:12px;bottom:88px;max-width:none;flex-wrap:wrap;row-gap:6px}
+  .preq-banner-text{white-space:normal;flex:1 1 calc(100% - 60px)}
+  .preq-banner-link{margin-left:21px}
+  .preq-banner-close{position:absolute;top:6px;right:6px}
+  .preq-banner{padding-right:34px}
+  body.has-enroll-bar .preq-banner{bottom:152px}
 }
+.burger.has-due[aria-expanded="true"]::after{display:none}
 
 /* ---------- UserPicker: searchable account select (admin forms) ---------- */
 .user-picker{position:relative}
 .user-picker input{width:100%}
-.user-picker-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;max-height:300px;overflow-y:auto;margin:0;padding:6px;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.3)}
+.user-picker-list{position:absolute;left:0;min-width:100%;width:max-content;max-width:min(420px,calc(100vw - 32px));top:calc(100% + 6px);z-index:30;max-height:300px;overflow-y:auto;margin:0;padding:6px;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.3)}
 .user-picker-list li{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:8px;cursor:pointer}
 .user-picker-list li b{font-weight:600;font-size:.9rem;color:var(--text)}
 .user-picker-list li span{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -886,3 +894,15 @@ p,li,td,h1,h2,h3,h4,.admin-row-meta,.info-row a{overflow-wrap:break-word}
 body.no-copy{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 body.no-copy :is(input,textarea,select,[contenteditable="true"],a[href^="mailto:"],a[href^="tel:"],.allow-copy){-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 body.no-copy img{-webkit-user-drag:none}
+
+/* Navbar: never wrap a link onto two lines, and tighten spacing just above
+   the burger breakpoint (1100px), where a logged-in account's extra links
+   (Profile, All Courses / My Dashboard, Log out) are otherwise a tight fit. */
+.nav-links a,.nav-account-link{white-space:nowrap}
+@media (min-width:1101px) and (max-width:1180px){
+  .nav-links a{padding:8px 9px;font-size:.84rem}
+  .nav-account{gap:6px}
+  .nav-account-link{padding:8px 8px}
+  .nav-account .nav-cta{padding:10px 12px}
+  .nav-account .nav-logout{padding:9px 12px}
+}

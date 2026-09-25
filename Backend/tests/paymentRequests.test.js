@@ -112,6 +112,22 @@ describe("payment requests", () => {
     expect(list.body.requests.map((r) => r._id)).toContain(id);
   });
 
+  it("never moves a student down a plan they already hold", async () => {
+    const course = await createClosedInternship();
+    const { user, token } = await createStudent("preq-pro@example.com");
+    const userId = user.id || user._id;
+    await prisma.enrollment.create({ data: { userId, courseId: course.id, tier: "pro", status: "active" } });
+
+    const created = await authed(request(app).post("/api/admin/payment-requests"), adminToken)
+      .send({ email: "preq-pro@example.com", courseId: course.id, amount: 500, tier: "basic" });
+    const order = await authed(request(app).post(`/api/me/payment-requests/${created.body.request._id}/create-order`), token);
+    const verified = await request(app).post("/api/payment-requests/verify").send(signedConfirmation(order.body.orderId));
+    expect(verified.body.ok).toBe(true);
+
+    const enrollment = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: course.id } } });
+    expect(enrollment.tier).toBe("pro");
+  });
+
   it("validates the admin's input and is admin-only", async () => {
     const course = await createClosedInternship();
     const { token } = await createStudent("preq-val@example.com");

@@ -150,16 +150,16 @@ export default function AdminPaymentRequests() {
           <button className="btn btn-solid" type="submit" disabled={sending}>{sending ? "Sending..." : "Send payment request"}</button>
         </form>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 40, flexWrap: "wrap" }}>
+        <div className="admin-filters" style={{ marginTop: 40 }}>
           <input
             className="admin-search"
             type="search"
-            style={{ flex: "1 1 260px", margin: 0 }}
+            style={{ margin: 0 }}
             placeholder="Search by student name/email or course title..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
+          <select className="admin-select" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
             <option value="">All statuses</option>
             <option value="pending">Pending</option>
             <option value="paid">Paid</option>
@@ -182,7 +182,7 @@ export default function AdminPaymentRequests() {
                   <span className="admin-row-meta">{r.user?.email} {r.user?.phone ? `· ${r.user.phone}` : ""}</span>
                 </div>
                 <div className="admin-row-main">
-                  <b>{r.course?.title || "Course"}</b>{r.tier && <> <span className="plan-pill">{tierLabel(r.tier)}</span></>}
+                  <b>{r.course?.title || "Course"}{r.tier && <> <span className="plan-pill">{tierLabel(r.tier)}</span></>}</b>
                   <span className="admin-row-meta">
                     {formatINR(r.amount)} · sent {fmtDate(r.createdAt)}
                     {r.paidAt ? ` · paid ${fmtDate(r.paidAt)}` : ""}
