@@ -1,14 +1,15 @@
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getAdminToken, adminGetCourses, adminGetPaymentRequests, adminCreatePaymentRequest, adminCancelPaymentRequest,
+  getAdminToken, adminGetCourses, adminGetUsers, adminGetPaymentRequests, adminCreatePaymentRequest, adminCancelPaymentRequest,
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
+import UserPicker from "../../components/UserPicker.jsx";
 import { tierLabel, offeredTiers, planPrice, formatINR, TIER_ORDER } from "../../utils/tiers.js";
 
-const EMPTY = { email: "", courseId: "", tier: "", amount: "", note: "" };
+const EMPTY = { user: null, courseId: "", tier: "", amount: "", note: "" };
 const STATUS_PILL = { pending: "new", paid: "lifetime", cancelled: "read" };
 
 function fmtDate(d) {
@@ -24,6 +25,8 @@ export default function AdminPaymentRequests() {
   const { logout } = useContext(UserContext);
   const [requests, setRequests] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
@@ -45,7 +48,15 @@ export default function AdminPaymentRequests() {
     }
   };
 
-  useEffect(() => { adminGetCourses().then((res) => { if (res.ok) setCourses(res.courses || []); }); }, []);
+  useEffect(() => {
+    adminGetCourses().then((res) => { if (res.ok) setCourses(res.courses || []); });
+    // Every student account, newest first, for the searchable picker (admins
+    // can't be sent a request — they already have access to everything).
+    adminGetUsers().then((res) => {
+      setStudentsLoading(false);
+      if (res.ok) setStudents((res.users || []).filter((u) => u.role !== "admin"));
+    });
+  }, []);
   // Keyed on both, so a search keystroke or a status change reloads once.
   useDebouncedLoad(() => load(q), `${status}|${q}`);
 
@@ -62,14 +73,14 @@ export default function AdminPaymentRequests() {
     e.preventDefault();
     if (sending) return;
     setFormOk("");
-    if (!form.email.trim() || !form.courseId || !form.amount) {
-      setFormError("Email, course/internship and amount are required.");
+    if (!form.user || !form.courseId || !form.amount) {
+      setFormError("Student, course/internship and amount are required.");
       return;
     }
     setSending(true);
     setFormError("");
     const res = await adminCreatePaymentRequest({
-      email: form.email.trim(),
+      userId: form.user._id,
       courseId: form.courseId,
       tier: form.tier || null,
       amount: Number(form.amount),
@@ -107,8 +118,9 @@ export default function AdminPaymentRequests() {
             and get access as soon as they pay — whether the course/internship is open or closed. This is separate from normal checkout: no offer codes or referral discounts apply.
           </p>
           <div className="admin-form-grid">
-            <div className="field"><label>Student email</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="student@example.com" /></div>
+            <div className="field"><label>Student</label>
+              <UserPicker users={students} loading={studentsLoading} value={form.user}
+                onChange={(user) => setForm((f) => ({ ...f, user }))} /></div>
             <div className="field"><label>Course / internship</label>
               <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value, tier: "" })}>
                 <option value="">Choose a course or internship...</option>

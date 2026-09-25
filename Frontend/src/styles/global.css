@@ -866,3 +866,18 @@ p,li,td,h1,h2,h3,h4,.admin-row-meta,.info-row a{overflow-wrap:break-word}
   .preq-banner{left:16px;bottom:16px;max-width:calc(100% - 96px)}
   body.has-enroll-bar .preq-banner{bottom:90px}
 }
+
+/* ---------- UserPicker: searchable account select (admin forms) ---------- */
+.user-picker{position:relative}
+.user-picker input{width:100%}
+.user-picker-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;max-height:300px;overflow-y:auto;margin:0;padding:6px;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.3)}
+.user-picker-list li{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:8px;cursor:pointer}
+.user-picker-list li b{font-weight:600;font-size:.9rem;color:var(--text)}
+.user-picker-list li span{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-picker-list li.active{background:rgba(20,201,201,.12)}
+.user-picker-list li.user-picker-empty{cursor:default;color:var(--muted);font-size:.82rem}
+.user-picker-chosen{display:flex;align-items:center;gap:12px;padding:8px 8px 8px 14px;border:1px solid rgba(20,201,201,.4);background:rgba(20,201,201,.08);border-radius:10px;min-height:46px}
+.user-picker-who{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.user-picker-who b{font-size:.9rem}
+.user-picker-who span{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-picker-change{flex:none;padding:7px 14px;font-size:.78rem}
