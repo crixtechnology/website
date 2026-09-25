@@ -2019,6 +2019,7 @@ const FOOT_COLS = [
     links: [
       ["Web & App Development", "/services"],
       ["AI & Automation", "/services"],
+      ["Chatbot Development", "/services"],
       ["Digital Marketing", "/services"],
       ["IT Consulting", "/services"],
     ],

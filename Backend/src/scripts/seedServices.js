@@ -25,6 +25,12 @@ const services = [
   },
   {
     tag: "For businesses",
+    title: "Chatbot Development",
+    desc: "Chatbots for your website and WhatsApp — from simple rule-based FAQ and lead-capture bots to AI-powered assistants that answer customers from your own content, 24×7.",
+    points: ["Rule-based FAQ & lead-capture bots", "AI chatbots (Gemini / ChatGPT) trained on your website, FAQs & documents", "Website chat widget & WhatsApp integration", "Hand-off to your team when a human is needed"],
+  },
+  {
+    tag: "For businesses",
     title: "Website Upgrade & Redesign",
     desc: "Refresh, modernize or re-platform an existing site — from a cosmetic update to a full rebuild on a modern stack.",
     points: ["Responsive redesign", "Performance & SEO fixes", "Content / data migration with redirects preserved"],
@@ -45,7 +51,7 @@ const services = [
     tag: "For businesses",
     title: "AI / ML Solutions",
     desc: "Applied machine learning, automation and data-driven features built into existing products or delivered as standalone tools.",
-    points: ["Currently offering: small, rule-based chatbots", "FAQ automation for websites & support workflows", "Data-driven features layered into existing products"],
+    points: ["AI chatbots & virtual assistants (see Chatbot Development)", "FAQ automation for websites & support workflows", "Data-driven features layered into existing products"],
   },
   {
     tag: "For businesses",
