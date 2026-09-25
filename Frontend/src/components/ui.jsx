@@ -2026,7 +2026,7 @@ const FOOT_COLS = [
   {
     heading: "For Students",
     links: [
-      ["Virtual Internships", "/programs#internships"],
+      ["Internship Program", "/programs#internships"],
       ["Web Development Track", "/programs#courses"],
       ["Android Development", "/programs#internships"],
       ["Online Courses", "/programs#courses"],
