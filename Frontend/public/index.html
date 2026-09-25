@@ -75,6 +75,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* The pre-app splash in #root (see <body>): brand colours, centred. */
+    .seo-shell{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:#060B1A;color:#E8EEF7;font-family:Sora,system-ui,sans-serif}
+    .seo-shell h1{margin:0;font-family:Unbounded,Sora,sans-serif;font-size:clamp(1.2rem,3vw,1.8rem);line-height:1.25;max-width:26ch}
+    .seo-shell p{margin:0;max-width:60ch;color:#93A3BC;font-size:.95rem;line-height:1.6}
+    .seo-shell nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;font-size:.85rem}
+    .seo-shell a{color:#7FE8E0;text-decoration:none}
+    [data-theme="light"] .seo-shell{background:#F5F7FB;color:#101B33}
+    [data-theme="light"] .seo-shell p{color:#55627A}
+    [data-theme="light"] .seo-shell a{color:#0A7A74}
+  </style>
   <script>
     // Applies a saved light-mode preference before the page paints, so
     // there's no flash of the (default) dark theme on load for someone who
@@ -92,17 +103,20 @@
   </script>
 </head>
 <body>
-  <!-- For visitors and crawlers without JavaScript: the page's heading,
-       summary and the main links (prerender-meta.js fills these per page). -->
-  <noscript>
-    <h1 id="seo-h1">Crix Technology — virtual internships, online courses &amp; IT services</h1>
-    <p id="seo-desc">Paid virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack &amp; AI programs with certificates.</p>
-    <nav>
-      <a href="/">Home</a> · <a href="/programs">Internships &amp; Courses</a> · <a href="/services">IT Services</a> ·
-      <a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/ambassador">Campus Ambassador</a>
-    </nav>
-    <p>JavaScript is needed for the full site.</p>
-  </noscript>
-  <div id="root"></div>
+  <!-- The page's real heading, summary and main links, as plain HTML inside
+       #root, for crawlers that don't run JavaScript (Bing flags pages whose
+       only <h1> comes from the app). prerender-meta.js fills these per page.
+       The app replaces all of it the moment it starts (createRoot), so
+       visitors only see it as a brief splash while the script loads. -->
+  <div id="root">
+    <div class="seo-shell">
+      <h1 id="seo-h1">Crix Technology — virtual internships, online courses &amp; IT services</h1>
+      <p id="seo-desc">Paid virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack &amp; AI programs with certificates.</p>
+      <nav aria-label="Main">
+        <a href="/">Home</a> <a href="/programs">Internships &amp; Courses</a> <a href="/services">IT Services</a>
+        <a href="/about">About</a> <a href="/contact">Contact</a> <a href="/ambassador">Campus Ambassador</a>
+      </nav>
+    </div>
+  </div>
 </body>
 </html>
