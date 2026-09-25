@@ -45,6 +45,7 @@ const ROUTE_LOADERS = {
   "/admin/referrals": () => import("./pages/admin/AdminReferrals.jsx"),
   "/admin/coupons": () => import("./pages/admin/AdminCoupons.jsx"),
   "/admin/ambassadors": () => import("./pages/admin/AdminAmbassadors.jsx"),
+  "/admin/payment-requests": () => import("./pages/admin/AdminPaymentRequests.jsx"),
   "/ambassador": () => import("./pages/Ambassador.jsx"),
 };
 registerPrefetch(ROUTE_LOADERS);
@@ -73,6 +74,7 @@ const AdminServices = lazy(ROUTE_LOADERS["/admin/services"]);
 const AdminReferrals = lazy(ROUTE_LOADERS["/admin/referrals"]);
 const AdminCoupons = lazy(ROUTE_LOADERS["/admin/coupons"]);
 const AdminAmbassadors = lazy(ROUTE_LOADERS["/admin/ambassadors"]);
+const AdminPaymentRequests = lazy(ROUTE_LOADERS["/admin/payment-requests"]);
 const Ambassador = lazy(ROUTE_LOADERS["/ambassador"]);
 
 // Matches the "Loading..." convention every data-fetching page here already
@@ -249,6 +251,7 @@ export default function App() {
             <Route path="/admin/referrals" element={<AdminGuard><AdminReferrals /></AdminGuard>} />
             <Route path="/admin/coupons" element={<AdminGuard><AdminCoupons /></AdminGuard>} />
             <Route path="/admin/ambassadors" element={<AdminGuard><AdminAmbassadors /></AdminGuard>} />
+            <Route path="/admin/payment-requests" element={<AdminGuard><AdminPaymentRequests /></AdminGuard>} />
 
             {/* Any other address: a real "not found" page, not the home page under a wrong URL. */}
             <Route path="*" element={<NotFound />} />

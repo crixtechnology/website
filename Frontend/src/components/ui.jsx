@@ -8,6 +8,7 @@ import {
 } from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
+import { usePendingPaymentRequests } from "../hooks/usePendingPaymentRequests.js";
 import ErrorBoundary from "./ErrorBoundary.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { trackEvent } from "../utils/analytics.js";
@@ -572,7 +573,7 @@ export function Alert({ kind = "info", inline = false, children }) {
 
 // Loads Razorpay's Checkout script on first use; resolves false if it can't.
 // Shared by BuyModal and UpgradeModal.
-const loadRazorpayScript = () =>
+export const loadRazorpayScript = () =>
   new Promise((resolve) => {
     if (window.Razorpay) return resolve(true);
     const script = document.createElement("script");
@@ -1836,6 +1837,14 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isLoggedIn, isAdmin, logout, openAuthModal } = useContext(UserContext);
+  // Payment requests the admin sent this student — a count on "My Dashboard"
+  // and a banner on every other page until they're paid.
+  const pendingRequests = usePendingPaymentRequests(isLoggedIn && !isAdmin);
+  const dueBadge = pendingRequests.length > 0 && (
+    <span className="nav-due-badge" aria-label={`${pendingRequests.length} payment request${pendingRequests.length === 1 ? "" : "s"} due`}>
+      {pendingRequests.length}
+    </span>
+  );
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -1920,7 +1929,7 @@ export function Navbar() {
                 <NavLink to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
                 {isAdmin && <NavLink to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>}
                 <NavLink to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
-                  {isAdmin ? "Admin" : "My Dashboard"}
+                  {isAdmin ? "Admin" : "My Dashboard"}{!isAdmin && dueBadge}
                 </NavLink>
                 <button className="btn btn-ghost nav-logout" onClick={() => { logout(); setOpen(false); navigate("/"); }}>Log out</button>
               </>
@@ -1945,7 +1954,7 @@ export function Navbar() {
               <NavLink className="nav-account-link" to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>
             )}
             <Link className="nav-cta" to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
-              {isAdmin ? "Admin" : "My Dashboard"}
+              {isAdmin ? "Admin" : "My Dashboard"}{!isAdmin && dueBadge}
             </Link>
             <button className="btn btn-ghost nav-logout" onClick={() => { logout(); setOpen(false); navigate("/"); }}>
               Log out
@@ -1954,11 +1963,40 @@ export function Navbar() {
         ) : (
           <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
         )}
-        <button className="burger" aria-label={open ? "Close menu" : "Open menu"}
+        <button className={`burger${dueBadge ? " has-due" : ""}`} aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open} aria-controls="primary-nav"
           onClick={() => setOpen(!open)}>{open ? "✕" : "☰"}</button>
       </div>
+      {location.pathname !== "/dashboard" && <PaymentRequestBanner requests={pendingRequests} />}
     </nav>
+  );
+}
+
+// A small floating reminder, on every page but the dashboard itself, that the
+// admin has asked this student to pay for something. Dismissible for the rest
+// of the tab's session; a new request brings it back.
+function PaymentRequestBanner({ requests }) {
+  const key = requests.map((r) => r._id).sort().join(",");
+  const [dismissed, setDismissed] = useState(() => {
+    try { return window.sessionStorage.getItem("crix_preq_dismissed") || ""; } catch (e) { return ""; }
+  });
+  if (!requests.length || dismissed === key) return null;
+  const dismiss = () => {
+    setDismissed(key);
+    try { window.sessionStorage.setItem("crix_preq_dismissed", key); } catch (e) { /* storage blocked */ }
+  };
+  const first = requests[0];
+  const text = requests.length === 1
+    ? `Payment requested: ${first.course?.title || "a course"} — ${formatINR(first.amount)}`
+    : `You have ${requests.length} payment requests waiting`;
+  return createPortal(
+    <div className="preq-banner" role="status">
+      <span className="preq-banner-dot" aria-hidden="true" />
+      <span className="preq-banner-text">{text}</span>
+      <Link className="preq-banner-link" to="/dashboard">Pay now →</Link>
+      <button className="preq-banner-close" onClick={dismiss} aria-label="Dismiss">✕</button>
+    </div>,
+    document.body
   );
 }
 

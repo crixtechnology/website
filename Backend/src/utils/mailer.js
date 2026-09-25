@@ -331,6 +331,38 @@ async function sendPasswordChangedEmail({ to, name }) {
   return deliver({ to, subject: "Your Crix Technology password was changed", text, html });
 }
 
+// ---------- payment request from the admin ----------
+// Sent when an admin asks a student to pay for a course/internship
+// (routes/paymentRequests.js). Best-effort: the request is on their dashboard
+// whether or not this arrives.
+async function sendPaymentRequestEmail({ to, name, itemTitle, itemType, tier, amount, note }) {
+  if (!to) return { sent: false, reason: "No email" };
+  const kindLabel = itemType === "internship" ? "internship" : "course";
+  const planLabel = tierLabel(tier);
+  const planText = planLabel ? ` (${planLabel} plan)` : "";
+  const link = `${siteOrigin()}/dashboard`;
+  const html = layout(`
+      <h2 style="color:#0f1f3d;margin-bottom:4px">Hi ${escapeHtml(name || "there")},</h2>
+      <p>Crix Technology has sent you a payment request for the ${kindLabel} <strong>${escapeHtml(itemTitle || "")}</strong>${escapeHtml(planText)}.</p>
+      <p>Amount: <strong>${fmtRupees(amount)}</strong></p>
+      ${note ? `<p>Note: ${escapeHtml(note)}</p>` : ""}
+      <p>Log in and open My Dashboard to pay — you'll get access as soon as the payment goes through:
+      <a href="${link}">${link}</a></p>`);
+  const text =
+    `Hi ${name || "there"},
+
+Crix Technology has sent you a payment request for the ${kindLabel} ${itemTitle || ""}${planText}.
+` +
+    `Amount: ${fmtRupees(amount)}
+${note ? `Note: ${note}
+` : ""}
+` +
+    `Log in and open My Dashboard to pay — you'll get access as soon as the payment goes through: ${link}
+
+Crix Technology Private Limited`;
+  return deliver({ to, subject: `Payment request — ${itemTitle || "Crix Technology"}`, text, html });
+}
+
 module.exports = {
   sendContactEmail,
   sendApplicationEmail,
@@ -338,4 +370,5 @@ module.exports = {
   sendAccountExistsEmail,
   sendOtpEmail,
   sendPasswordChangedEmail,
+  sendPaymentRequestEmail,
 };

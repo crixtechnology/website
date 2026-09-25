@@ -564,7 +564,8 @@ router.post("/verify", async (req, res, next) => {
     if (!valid) return res.status(400).json({ ok: false, error: "Payment could not be verified." });
 
     const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: razorpay_order_id } });
-    if (!payment) return res.status(404).json({ ok: false, error: "Payment record not found" });
+    // Payments for admin requests are confirmed at /payment-requests/verify.
+    if (!payment || payment.paymentRequestId) return res.status(404).json({ ok: false, error: "Payment record not found" });
 
     const application = await grantAccessForPayment(payment, razorpay_payment_id);
 
@@ -604,7 +605,10 @@ router.post("/webhook", async (req, res, next) => {
 
     if (entity && event.event === "payment.captured") {
       const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: entity.order_id } });
-      if (payment) await grantAccessForPayment(payment, entity.id);
+      // A payment an admin requested (routes/paymentRequests.js) has its own
+      // grant path; required here, not at the top, since that file requires this one.
+      if (payment && payment.paymentRequestId) await require("./paymentRequests").grantAccessForRequestPayment(payment, entity.id);
+      else if (payment) await grantAccessForPayment(payment, entity.id);
     } else if (entity && event.event === "payment.failed") {
       const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: entity.order_id } });
       if (payment && payment.status !== "paid") {
