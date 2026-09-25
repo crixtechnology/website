@@ -82,7 +82,7 @@ export const techStack = [
 // CourseDetail get correct chips regardless of whether the data came from
 // this static fallback or the live API. See [[crix-saas-course-platform]].
 export const programDeliverables = {
-  internship: ["Offer letter on day one", "Completion certificate", "Letter of Recommendation"],
+  internship: ["Offer letter on day one", "Joining kit", "Completion certificate", "Letter of Recommendation"],
   // Courses are training, not employment — a completion certificate only
   // (no offer letter / LOR, those are internship-only, see above).
   course: ["Certificate of completion"],
@@ -239,21 +239,21 @@ export const courses = [
 
 export const process = [
   { n: "01", title: "Choose Your Domain", desc: "Pick from Web Dev, Android, AI/ML, Data Science, Cybersecurity, or Cloud Computing." },
-  { n: "02", title: "Register & Pay", desc: "Fill in your details and complete the payment. Selection is open to all eligible students." },
+  { n: "02", title: "Register", desc: "Fill in your details and complete your enrollment. Selection is open to all eligible students." },
   { n: "03", title: "Complete Tasks", desc: "Receive project tasks via email. Build real applications with mentor guidance." },
   { n: "04", title: "Get Certified", desc: "Submit your work and receive your certificate — internships also include an offer letter and Letter of Recommendation." },
 ];
 
 export const benefits = [
-  { icon: "gift", title: "Paid Internship Program", desc: "Affordable fee with real industry experience and mentorship." },
+  { icon: "gift", title: "Internship Program", desc: "Real industry experience and mentorship — plus a joining kit to welcome you on board." },
   { icon: "award", title: "Verified Certificate", desc: "Industry-recognized digital certificate on completion." },
   { icon: "home", title: "Work from Home", desc: "Fully virtual — join from anywhere, pan-India or globally." },
   { icon: "document", title: "Offer Letter + LOR", desc: "Official offer letter and Letter of Recommendation — issued to internship program graduates." },
   { icon: "linkedin", title: "LinkedIn Recognition", desc: "Official LinkedIn recommendation added to your profile." },
   { icon: "briefcase", title: "Resume Boost", desc: "Real project experience to impress top recruiters." },
-  { icon: "mentor", title: "Mentor Support", desc: "Dedicated mentor guidance throughout the program." },
+  { icon: "mentor", title: "Learn from Industry Experts", desc: "Taught and mentored by working industry professionals throughout the program." },
   { icon: "tasks", title: "Real Tasks", desc: "Industry-level project tasks — not just theory." },
-  { icon: "star", title: "Path to Internship", desc: "Outstanding performers in any course may be invited into our paid internship program." },
+  { icon: "star", title: "Path to Internship", desc: "Outstanding performers in any course may be invited into our Internship Program." },
 ];
 
 export const stats = [
@@ -267,9 +267,9 @@ export const about = {
   heading: "Built in Ahmedabad. Serving pan-India and globally.",
   body: "Crix Technology Private Limited is a technology and training company with three pillars: structured virtual internships, IT services for growing businesses, and industry-ready online courses. Our curricula and products are built by working developers — so students learn, and clients get, what industry actually uses in production.",
   overview:
-    "Crix Technology Private Limited is an Ahmedabad-based technology company offering IT services, custom software development, and industry-ready training programs, including paid virtual internships and online courses. We're virtual-first — delivered remotely from our Ahmedabad base to clients pan-India and globally — working with businesses that need dependable engineering support and with learners who want hands-on, real-world project experience, particularly in web development and AI/ML.",
+    "Crix Technology Private Limited is an Ahmedabad-based technology company offering IT services, custom software development, and industry-ready training programs, including virtual internships and online courses. We're virtual-first — delivered remotely from our Ahmedabad base to clients pan-India and globally — working with businesses that need dependable engineering support and with learners who want hands-on, real-world project experience, particularly in web development and AI/ML.",
   history:
-    "Registered as a private limited company in Gujarat (CIN U63122GJ2026PTC179737), Crix Technology was built around two connected ideas: giving businesses a dependable extended engineering team for software and web work, and giving learners a paid, mentor-led route into real project experience in web development and AI/ML — a model in which the training arm also feeds a talent pipeline for client delivery work.",
+    "Registered as a private limited company in Gujarat (CIN U63122GJ2026PTC179737), Crix Technology was built around two connected ideas: giving businesses a dependable extended engineering team for software and web work, and giving learners a mentor-led route into real project experience in web development and AI/ML — a model in which the training arm also feeds a talent pipeline for client delivery work.",
   facts: [
     { title: "Pan-India & globally", desc: "Virtual-first delivery, from Ahmedabad to clients globally" },
     { title: "Production-first", desc: "Every module ends in something deployed" },

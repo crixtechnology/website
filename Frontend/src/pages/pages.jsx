@@ -262,7 +262,7 @@ export function Programs() {
   return (
     <>
       <PageHead eyebrow="Programs" title="Industry-ready courses, delivered pan-India and globally."
-        text="Fully virtual — join from anywhere, pan-India or globally. Pick a track, pay securely, and start building; every course ships with mentor support and a certificate." />
+        text="Fully virtual — join from anywhere, pan-India or globally. Pick a track, enroll, and start building; you learn from working industry professionals, and every course ships with mentor support and a certificate." />
       <SectionIndex items={indexItems} />
       <div className="wrap program-filter" role="group" aria-label="Show programs">
         {[["all", "All programs"], ["internships", "Internships"], ["courses", "Courses"]].map(([v, label]) => (
@@ -272,9 +272,9 @@ export function Programs() {
       <section id="internships" className="section section--internships anchor-section" style={{ paddingTop: 20 }} hidden={filter === "courses"}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Internships</Reveal>
-          <Reveal as="h2" variant="reveal-l">Paid virtual internships.</Reveal>
+          <Reveal as="h2" variant="reveal-l">Virtual Internship Program.</Reveal>
           <Reveal as="p" variant="reveal-l" className="section-lede">
-            A paid, mentor-led work experience: you get an offer letter on day one, then a completion
+            A work experience taught and mentored by industry professionals: you get an offer letter and a joining kit when you start, then a completion
             certificate and Letter of Recommendation at the end — ready to submit for your college's
             final-year internship requirement.
           </Reveal>
@@ -291,8 +291,8 @@ export function Programs() {
           <Reveal as="span" variant="reveal-l" className="eyebrow">Courses</Reveal>
           <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
           <Reveal as="p" variant="reveal-l" className="section-lede">
-            Self-paced training with mentor support — you get a certificate of completion, and
-            outstanding performers get considered for our paid internship program.
+            Self-paced training from industry professionals, with mentor support — you get a certificate of completion, and
+            outstanding performers get considered for our Internship Program.
           </Reveal>
           <div className="grid3 stagger" style={{ marginTop: 24 }} key={`c-${filter}`}>
             {loadingCourses ? <SkeletonCards count={courses.length} /> : liveCourses.map((it, i) => (
