@@ -4,6 +4,7 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
 import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
 import AdminGuard from "./pages/admin/AdminGuard.jsx";
+import { useCopyProtection } from "./hooks/useCopyProtection.js";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
 import { captureReferralFromUrl } from "./utils/referral.js";
 import { registerPrefetch } from "./utils/prefetch.js";
@@ -199,6 +200,8 @@ function PageError() {
 
 export default function App() {
   const location = useLocation();
+  // No copying the site's text — except on the admin pages (hooks/useCopyProtection.js).
+  useCopyProtection(!location.pathname.startsWith("/admin"));
   return (
     <>
       <ScrollToTop />

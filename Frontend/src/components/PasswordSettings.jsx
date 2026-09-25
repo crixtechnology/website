@@ -176,7 +176,7 @@ export default function PasswordSettings() {
 
             {phase === "shown" && (
               <div>
-                <code style={{
+                <code className="allow-copy" style={{
                   display: "block", padding: "14px 16px", borderRadius: 10, fontSize: "1.1rem", letterSpacing: ".08em",
                   background: "rgba(var(--teal-rgb),.08)", borderLeft: "3px solid var(--teal)", userSelect: "all", wordBreak: "break-all",
                 }}>{revealed}</code>

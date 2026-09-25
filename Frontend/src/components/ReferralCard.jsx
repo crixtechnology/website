@@ -66,7 +66,7 @@ export default function ReferralCard() {
       </div>
 
       <div className="ref-code-row">
-        <div className="ref-code" aria-label="Your referral code">{data.displayCode}</div>
+        <div className="ref-code allow-copy" aria-label="Your referral code">{data.displayCode}</div>
         <div className="ref-actions">
           <button className="btn btn-solid" onClick={() => copy("code", data.displayCode)}>
             {copied === "code" ? "Copied ✓" : "Copy code"}

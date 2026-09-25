@@ -96,7 +96,7 @@ export default function AmbassadorDashboard({ data, reload }) {
           You earn <b>{data.commissionPercent}%</b> of what each of them pays.
         </p>
         <div className="ref-code-row">
-          <div className="ref-code" aria-label="Your ambassador code">{data.displayCode}</div>
+          <div className="ref-code allow-copy" aria-label="Your ambassador code">{data.displayCode}</div>
           <div className="ref-actions">
             <button className="btn btn-solid" onClick={() => copy("code", data.displayCode)}>{copied === "code" ? "Copied ✓" : "Copy code"}</button>
             <button className="btn btn-ghost" onClick={() => copy("link", link)}>{copied === "link" ? "Link copied ✓" : "Copy link"}</button>
