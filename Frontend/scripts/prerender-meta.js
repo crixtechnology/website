@@ -28,6 +28,17 @@ const ldScript = (id, data) => `<script type="application/ld+json" id="${id}">${
 // Meta descriptions over ~160 characters get cut off in results: trim at a word boundary.
 const clip = (s, n = 158) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length <= n ? s : s.slice(0, s.lastIndexOf(" ", n - 1)).replace(/[,;:\s—–-]+$/, "") + "…"; };
 
+// Keywords for a course/internship page from its own content — must match
+// programKeywords() in src/hooks/usePageMeta.js, which the app uses.
+function programKeywords(c) {
+  const kind = c.type === "internship" ? "internship" : "course";
+  const topics = (Array.isArray(c.points) ? c.points : [])
+    .filter((p) => typeof p === "string" && p.trim() && p.length <= 60)
+    .map((p) => p.replace(/^Capstone:\s*/i, "").trim())
+    .slice(0, 6);
+  return [...new Set([c.title, `${c.title} ${kind}`, `online ${kind}`, ...topics, "Crix Technology"])];
+}
+
 // Replace one tag's attribute value, failing loudly if the tag is missing
 // (so a template change can't silently ship pages with the home page's tags).
 function setAttr(html, tagRegex, attr, value, label) {
@@ -51,6 +62,10 @@ function pageHtml(pg) {
   html = setAttr(html, /<meta property="og:description"[^>]*>/, "content", pg.description, "og:description");
   html = setAttr(html, /<meta name="twitter:title"[^>]*>/, "content", pg.title, "twitter:title");
   html = setAttr(html, /<meta name="twitter:description"[^>]*>/, "content", pg.description, "twitter:description");
+  // Page-specific keywords, or no tag at all (never the home page's list).
+  html = pg.keywords && pg.keywords.length
+    ? setAttr(html, /<meta name="keywords"[^>]*>/, "content", pg.keywords.join(", "), "meta keywords")
+    : html.replace(/\s*<meta name="keywords"[^>]*>/, "");
   if (!/<h1 id="seo-h1">/.test(html)) throw new Error("prerender-meta: seo-h1 not found in build/index.html");
   html = html.replace(/<h1 id="seo-h1">[\s\S]*?<\/h1>/, `<h1 id="seo-h1">${esc(pg.h1)}</h1>`);
   html = html.replace(/<p id="seo-desc">[\s\S]*?<\/p>/, `<p id="seo-desc">${esc(pg.description)}</p>`);
@@ -109,6 +124,7 @@ async function livePrograms() {
       title: r.title,
       description: r.description,
       h1: r.title.replace(/\s*\|\s*Crix Technology.*$/, ""),
+      keywords: r.keywords,
       crumbs: r.crumb ? [{ name: "Home", path: "/" }, { name: r.crumb, path: p }] : null,
     });
     written++;
@@ -125,6 +141,7 @@ async function livePrograms() {
       title: `${c.title} | Crix Technology`,
       description,
       h1: `${c.title} — ${kind}`,
+      keywords: programKeywords(c),
       crumbs: [{ name: "Home", path: "/" }, { name: "Internships & Courses", path: "/programs" }, { name: c.title, path: p }],
       ld: [{
         id: "course-jsonld", // same id as useCourseJsonLd in the app
@@ -136,6 +153,7 @@ async function livePrograms() {
           url: url(p),
           provider: { "@type": "Organization", name: "Crix Technology", url: seo.siteUrl },
           hasCourseInstance: { "@type": "CourseInstance", courseMode: "online", ...(c.durationDays ? { courseWorkload: `P${c.durationDays}D` } : {}) },
+          keywords: programKeywords(c).join(", "),
         },
       }],
     });
@@ -147,7 +165,8 @@ async function livePrograms() {
   //    duplicate of the home page. The app sets the right ones once it runs.
   const appHtml = template
     .replace(/\s*<link rel="canonical"[^>]*>/, "")
-    .replace(/\s*<meta property="og:url"[^>]*>/, "");
+    .replace(/\s*<meta property="og:url"[^>]*>/, "")
+    .replace(/\s*<meta name="keywords"[^>]*>/, "");
   if (/rel="canonical"|property="og:url"/.test(appHtml)) throw new Error("prerender-meta: couldn't strip canonical/og:url from app.html");
   fs.writeFileSync(path.join(buildDir, "app.html"), appHtml);
 

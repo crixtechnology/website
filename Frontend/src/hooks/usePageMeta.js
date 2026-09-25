@@ -31,8 +31,22 @@ export function routeMeta(path) {
   return {
     title: r.title,
     description: r.description,
+    keywords: r.keywords || null,
     crumbs: r.crumb ? [{ name: "Home", path: "/" }, { name: r.crumb, path }] : null,
   };
+}
+
+// Keywords for one course/internship page, taken only from its own content:
+// its name, what kind of program it is, and its listed topics. Kept short.
+// (scripts/prerender-meta.js builds the same list for the prebuilt pages.)
+export function programKeywords(course) {
+  if (!course || !course.title) return [];
+  const kind = course.type === "internship" ? "internship" : "course";
+  const topics = (Array.isArray(course.points) ? course.points : [])
+    .filter((p) => typeof p === "string" && p.trim() && p.length <= 60)
+    .map((p) => p.replace(/^Capstone:\s*/i, "").trim())
+    .slice(0, 6);
+  return [...new Set([course.title, `${course.title} ${kind}`, `online ${kind}`, ...topics, "Crix Technology"])];
 }
 
 // Adds (and on unmount removes) one JSON-LD structured-data block. `<` is
@@ -77,12 +91,17 @@ export function useJsonLd(id, data) {
 // which per React's child-before-parent effect order runs AFTER the
 // wrapped page's own usePageMeta) would reset those straight back to the
 // site defaults right after the child page set its own.
-export function usePageMeta({ title, description, image, crumbs } = {}) {
+export function usePageMeta({ title, description, image, crumbs, keywords } = {}) {
+  const keywordText = Array.isArray(keywords) && keywords.length ? keywords.join(", ") : "";
   useEffect(() => {
     if (!title && !description) return;
 
     if (title) document.title = title;
     if (description) setMetaTag("name", "description", description);
+    // A short page-specific list (seo.json / course topics). A page without
+    // one drops the tag, so the previous page's keywords never linger.
+    if (keywordText) setMetaTag("name", "keywords", keywordText);
+    else document.querySelector('meta[name="keywords"]')?.remove();
 
     if (title) {
       setMetaTag("property", "og:title", title);
@@ -107,7 +126,7 @@ export function usePageMeta({ title, description, image, crumbs } = {}) {
       document.head.appendChild(canonical);
     }
     canonical.setAttribute("href", url);
-  }, [title, description, image]);
+  }, [title, description, image, keywordText]);
 
   useJsonLd("breadcrumb-jsonld", crumbs && crumbs.length > 1 ? {
     "@context": "https://schema.org",

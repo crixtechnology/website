@@ -28,7 +28,7 @@ const ABOUT_INDEX = [
   { id: "tech-stack", label: "Technologies" },
 ];
 import { UserContext } from "../context/UserContext.jsx";
-import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL } from "../hooks/usePageMeta.js";
+import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
 import { useNoIndex } from "../hooks/useNoIndex.js";
 import { isValidName, emailFormatError } from "../utils/validators.js";
@@ -365,6 +365,7 @@ export function CourseDetail() {
     title: course ? `${course.title} | Crix Technology` : "Programs | Crix Technology",
     description: course ? course.desc : undefined,
     crumbs: course ? [{ name: "Home", path: "/" }, { name: "Internships & Courses", path: "/programs" }, { name: course.title, path: `/programs/${slug}` }] : null,
+    keywords: course ? programKeywords(course) : null,
   });
 
   useEffect(() => {

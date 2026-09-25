@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { getCourses } from "../services/api.js";
 import { site } from "../data/content.js";
 import { offeredTiers, planPrice, formatINR, isOpenForBuy } from "../utils/tiers.js";
-import { useJsonLd, canonicalUrl, SITE_URL } from "../hooks/usePageMeta.js";
+import { useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/usePageMeta.js";
 
 // The extra sections of a course / internship page (CourseDetail in pages/pages.jsx).
 // Everything the admin types in (what you'll learn, who it's for, prerequisites, FAQs) is
@@ -198,6 +198,7 @@ export function useCourseJsonLd(course) {
     provider: { "@type": "Organization", name: "Crix Technology", url: SITE_URL, ...(site.email ? { email: site.email } : {}) },
     hasCourseInstance: { "@type": "CourseInstance", courseMode: "online", ...(course.durationDays ? { courseWorkload: `P${course.durationDays}D` } : {}) },
     ...(learn.length ? { teaches: learn } : {}),
+    keywords: programKeywords(course).join(", "),
   } : null);
   // The page's FAQs, as FAQPage markup (eligible for expandable Q&A in results).
   const faqs = ok ? (Array.isArray(course.faqs) ? course.faqs : []).filter((f) => f && typeof f.q === "string" && f.q.trim() && typeof f.a === "string" && f.a.trim()) : [];
