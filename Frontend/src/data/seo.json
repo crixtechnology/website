@@ -6,12 +6,12 @@
   "routes": {
     "/": {
       "title": "Virtual Internships, Courses & IT Services | Crix Technology",
-      "description": "Paid virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack & AI programs with certificates.",
+      "description": "Virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack & AI programs with certificates.",
       "priority": "1.0",
       "changefreq": "weekly",
       "keywords": [
         "virtual internship India",
-        "paid virtual internship",
+        "virtual internship program",
         "online courses with certificate",
         "IT services Ahmedabad",
         "software company Ahmedabad",
@@ -24,13 +24,13 @@
     },
     "/programs": {
       "title": "Virtual Internships & Online Courses | Crix Technology",
-      "description": "Paid virtual internships and online courses in MERN stack, AI agents, Android and more. Offer letter, certificate & LOR — join from anywhere in India.",
+      "description": "Virtual internships and online courses in MERN stack, AI agents, Android and more. Offer letter, certificate & LOR — join from anywhere in India.",
       "priority": "0.9",
       "changefreq": "weekly",
       "crumb": "Internships & Courses",
       "keywords": [
         "virtual internship",
-        "paid internship India",
+        "internship program India",
         "internship with certificate and LOR",
         "final year internship",
         "MERN stack internship",
