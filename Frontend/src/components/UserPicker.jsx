@@ -15,11 +15,15 @@ export default function UserPicker({ users, value, onChange, loading, placeholde
   const listId = useId();
 
   const q = query.trim().toLowerCase();
+  // Phone numbers are matched on digits only, and only when the search looks
+  // like a number (no letters, 3+ digits) — otherwise "asha1" would match
+  // every phone containing a 1.
+  const qDigits = /[a-z@]/.test(q) ? "" : q.replace(/\D/g, "");
   const matches = (q
     ? users.filter((u) =>
         (u.name || "").toLowerCase().includes(q) ||
         (u.email || "").toLowerCase().includes(q) ||
-        (u.phone || "").replace(/\D/g, "").includes(q.replace(/\D/g, "") || "\u0000"))
+        (qDigits.length >= 3 && (u.phone || "").replace(/\D/g, "").includes(qDigits)))
     : users
   ).slice(0, MAX_SHOWN);
 

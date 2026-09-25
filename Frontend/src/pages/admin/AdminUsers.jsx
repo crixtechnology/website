@@ -226,7 +226,7 @@ export default function AdminUsers() {
                       {detail.enrollments.map((en) => (
                         <div className="admin-row" key={en._id}>
                           <div className="admin-row-main">
-                            <b>{en.course?.title}</b>{en.tier && <> <span className="plan-pill">{tierLabel(en.tier)}</span></>}
+                            <b>{en.course?.title}{en.tier && <> <span className="plan-pill">{tierLabel(en.tier)}</span></>}</b>
                             <span className="admin-row-meta">
                               Since {fmtDate(en.startDate)} ·{" "}
                               {en.endDate ? (

@@ -15,10 +15,19 @@ export function usePendingPaymentRequests(enabled) {
     if (!enabled) { setPending([]); return undefined; }
     let alive = true;
     const pick = (list) => (list || []).filter((r) => r.status === "pending");
-    getMyPaymentRequests().then((res) => { if (alive && res.ok) setPending(pick(res.requests)); });
+    const refresh = () => getMyPaymentRequests().then((res) => { if (alive && res.ok) setPending(pick(res.requests)); });
+    refresh();
     const onChange = (e) => { if (alive) setPending(pick(e.detail)); };
+    // Re-check when the student comes back to the tab, so a request the admin
+    // sent meanwhile shows up without a reload.
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
     window.addEventListener(PAYMENT_REQUESTS_EVENT, onChange);
-    return () => { alive = false; window.removeEventListener(PAYMENT_REQUESTS_EVENT, onChange); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      alive = false;
+      window.removeEventListener(PAYMENT_REQUESTS_EVENT, onChange);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [enabled]);
 
   return pending;

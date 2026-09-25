@@ -151,7 +151,7 @@ export default function AdminStudents() {
                   <span className="admin-row-meta">{en.user?.email} {en.user?.phone ? `· ${en.user.phone}` : ""}</span>
                 </div>
                 <div className="admin-row-main">
-                  <b>{en.course?.title || "Course"}</b>{en.tier && <> <span className="plan-pill">{tierLabel(en.tier)}</span></>}
+                  <b>{en.course?.title || "Course"}{en.tier && <> <span className="plan-pill">{tierLabel(en.tier)}</span></>}</b>
                   <span className="admin-row-meta">
                     {en.endDate ? (
                       <span className={`admin-pill ${en.expired ? "expired" : "new"}`}>

@@ -6,7 +6,7 @@
 
 export const site = {
   name: "Crix Technology",
-  tagline: "India's platform for virtual internships, cutting-edge IT services, and industry-ready online courses.",
+  tagline: "Virtual Internship Program, industry-ready online courses and IT services — taught and built by working industry professionals.",
   city: "Ahmedabad, Gujarat, India",
   eyebrow: "Ahmedabad · Serving pan-India & globally",
   email: "crixtechnology@gmail.com",
@@ -256,11 +256,12 @@ export const benefits = [
   { icon: "star", title: "Path to Internship", desc: "Outstanding performers in any course may be invited into our Internship Program." },
 ];
 
+// Counted from the lists above, so these can't drift from what the site shows.
 export const stats = [
-  { value: 3, suffix: "", label: "Learning tracks" },
+  { value: internships.length, suffix: "", label: "Internship tracks" },
+  { value: courses.length, suffix: "", label: "Online courses" },
   { value: 12, suffix: "+", label: "Technologies taught" },
   { value: 100, suffix: "%", label: "Hands-on labs" },
-  { value: 1, suffix: "", label: "Deployed capstone" },
 ];
 
 export const about = {
@@ -290,14 +291,18 @@ export const legal = {
     sections: [
       {
         title: "1. Information We Collect",
-        content: `When you create an account, apply for an internship, enroll in or purchase a course, or contact us, we collect:
+        content: `When you create an account, apply for an internship, enroll in or purchase a course, join our referral or Campus Ambassador program, or contact us, we collect:
 • Full name, email address, phone number
 • College/university name and year of study (where applicable)
 • Internship or course preference
 • Account credentials — either a password, stored as a secure one-way hash and never in plain text, or, if you choose "Continue with Google", the name, email address, and account identifier provided to us by Google
+• Postal address — when you join an internship, so we can ship your joining kit (and, for campus ambassadors, the ambassador welcome kit)
+• Purchase records — what you bought or upgraded, the plan, the amount paid, any offer code or referral discount used, and your receipt details
+• Referral activity — your referral code, whose code you used, and the referral credit you earn and spend
+• If you apply to be a Campus Ambassador — your college, city, year of study, branch, social media handle and application answers, and the payout details you choose to give us (a UPI ID, or a bank account holder name, account number and IFSC) so we can pay your commission
 • Any messages or project submissions you send us
 
-Payment for a course is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Our Internship Program includes both free and paid internships. No payment details are collected for a free internship; for a paid internship, payment is collected through Razorpay in the same way as for a course, or as otherwise communicated to you during the application process.`,
+Payment for a course, a paid internship, a plan upgrade or a payment request sent to your account is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Our Internship Program includes both free and paid internships; no payment details are collected for a free internship.`,
       },
       {
         title: "2. How We Use Your Information",
@@ -306,6 +311,9 @@ Payment for a course is collected and processed securely on this website through
 • Process your internship application or course purchase
 • Grant and manage access to purchased course content, live-class schedules, and recordings
 • Send you tasks, updates, and certificates via email
+• Send account and transaction emails — one-time verification codes, receipts, payment requests, and security notices such as a password change
+• Ship your internship joining kit, or your ambassador welcome kit, to the address you give us
+• Run the referral and Campus Ambassador programs — apply referral discounts and credit, calculate ambassador commissions, and pay commissions to the payout details you provide
 • Respond to your queries and support requests
 • Improve our programs and website experience
 • Send relevant announcements about new batches or courses (you may opt out anytime)`,
@@ -313,29 +321,35 @@ Payment for a course is collected and processed securely on this website through
       {
         title: "3. Information Sharing",
         content: `We do not sell, trade, or rent your personal information to third parties. We may share information only in these limited circumstances:
-• With service providers who assist in operating our website — for example, Razorpay for payment processing, and Google for "Sign in with Google" authentication
+• With service providers who assist in operating our website — for example, Razorpay for payment processing, Google for "Sign in with Google" authentication and (where enabled) Google Analytics for aggregate site-usage statistics, and our email provider for sending account and transaction emails
+• With courier or delivery partners — only your name, phone number and postal address, to deliver a joining kit or welcome kit
+• With your bank or UPI provider and ours, when we pay a campus ambassador's commission to the payout details they have given us
 • If required by law or to protect the rights and safety of Crix Technology or its users
 • With your explicit consent`,
       },
       {
         title: "4. Payment Processing",
-        content: `All payments for courses are processed through Razorpay, a licensed payment aggregator regulated by the Reserve Bank of India. When you make a payment, your card, UPI, net-banking, or wallet details are entered directly into Razorpay's secure payment interface and are never transmitted to or stored on Crix Technology's own servers — we receive only a payment status, an order/transaction reference, and the amount paid. Please refer to Razorpay's own privacy policy for details on how it handles your payment data.`,
+        content: `All payments on this website — for courses, paid internships, plan upgrades and payment requests — are processed through Razorpay, a licensed payment aggregator regulated by the Reserve Bank of India. When you make a payment, your card, UPI, net-banking, or wallet details are entered directly into Razorpay's secure payment interface and are never transmitted to or stored on Crix Technology's own servers — we receive only a payment status, an order/transaction reference, and the amount paid. Please refer to Razorpay's own privacy policy for details on how it handles your payment data.
+
+Campus ambassador commissions are paid by Crix Technology by UPI or bank transfer to the payout details the ambassador saves in their dashboard. Those details are visible only to the ambassador and to Crix Technology staff who process payouts; the ambassador's own dashboard shows the bank account number masked.`,
       },
       {
         title: "5. Data Storage & Security",
-        content: `Your data is stored securely and we take reasonable technical and organizational measures to protect it from unauthorized access, loss, or misuse — including hashing passwords and never storing payment card details ourselves. However, no method of transmission over the internet is 100% secure.`,
+        content: `Your data is stored securely and we take reasonable technical and organizational measures to protect it from unauthorized access, loss, or misuse — including hashing passwords, never storing payment card or UPI PIN details ourselves, and limiting access to ambassador payout details to the staff who process payouts. However, no method of transmission over the internet is 100% secure.`,
       },
       {
         title: "6. Data Retention",
-        content: `We retain your account and course-related information for as long as your account remains active, and for a reasonable period afterward to respond to queries, resolve disputes, and comply with our legal obligations. Financial and transaction records related to course payments are retained for the period required under applicable Indian tax and accounting law. You may request deletion of your account at any time, subject to these retention requirements.`,
+        content: `We retain your account and course-related information for as long as your account remains active, and for a reasonable period afterward to respond to queries, resolve disputes, and comply with our legal obligations. Financial and transaction records — course and internship payments, receipts, referral credit, and ambassador commissions and payouts — are retained for the period required under applicable Indian tax and accounting law. You may request deletion of your account at any time, subject to these retention requirements.`,
       },
       {
         title: "7. Cookies & Similar Technologies",
-        content: `Our website uses browser local storage to keep you signed in between visits, by storing an authentication token after you log in. We may also use cookies or similar technologies to analyze site traffic and improve the browsing experience. Clearing your browser's site data will sign you out, and disabling storage or cookies may affect some features of the website.`,
+        content: `When you log in, an authentication token is kept in your browser's session storage for that tab only: it is cleared when you close the tab, and you are signed out automatically after 30 minutes of inactivity. For security, an account can be signed in on only one device at a time — signing in on a new device ends the earlier session.
+
+We also use your browser's local storage for a few small conveniences: your light/dark theme choice, and a referral code from a link you followed, so it can be pre-filled when you sign up. Where enabled, Google Analytics uses cookies to collect aggregate usage statistics (such as pages viewed and checkout steps reached) to help us improve the website. You can block or clear cookies and site data in your browser settings; doing so will sign you out and may affect some features.`,
       },
       {
         title: "8. Third-Party Links & Services",
-        content: `Our website may contain links to third-party websites, and integrates third-party services such as Razorpay (payments), Google (sign-in), and WhatsApp (contact and course inquiries). We are not responsible for the privacy practices or content of these third parties. We encourage you to review their respective privacy policies before using them.`,
+        content: `Our website may contain links to third-party websites, and integrates third-party services such as Razorpay (payments), Google (sign-in and, where enabled, Google Analytics), and WhatsApp (contact and course inquiries), and uses courier partners to deliver kits. We are not responsible for the privacy practices or content of these third parties. We encourage you to review their respective privacy policies before using them.`,
       },
       {
         title: "9. Your Rights",
@@ -404,6 +418,8 @@ By applying, you confirm that you meet the eligibility criteria.`,
 • Notify us immediately of any unauthorized use of your account
 • Register with a permanent, valid email address — disposable or temporary email services are not accepted
 
+For your security, an account can be signed in on only one device at a time — signing in on a new device ends the earlier session — and you are signed out automatically after 30 minutes of inactivity.
+
 You are responsible for all activity that occurs under your account. Crix Technology reserves the right to suspend or terminate accounts registered with false information or used in violation of these Terms. Admin accounts are provisioned only by Crix Technology and are not available through public registration.`,
       },
       {
@@ -413,6 +429,8 @@ You are responsible for all activity that occurs under your account. Crix Techno
 • Submit original work — plagiarism will result in immediate disqualification
 • Maintain professional conduct in all communications
 • Not share confidential task materials with third parties
+
+Every internship includes an offer letter when you join and a physical joining kit, shipped to the postal address you give us. Delivery times depend on your location and the courier; please make sure your address is complete and correct — Crix Technology is not responsible for a kit that is delayed or lost because of an incorrect or incomplete address, or for delays caused by the courier.
 
 Certificates and Letters of Recommendation are issued only upon satisfactory completion of all assigned tasks.`,
       },
@@ -427,12 +445,36 @@ Certificates and Letters of Recommendation are issued only upon satisfactory com
         title: "6. Course & Internship Purchases, Payment & Cancellations",
         content: `Most internship slots are apply-only, and applying never requires payment — but some internship slots, like courses, do carry a real price and are sold the same way. Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A course or internship is available for online purchase only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
 
+Plans and upgrades: a course or internship may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and offer codes, referral discounts and referral credit do not apply to upgrades.
+
+Payment requests: Crix Technology may also send a payment request to a specific registered account for a particular course or internship, at an amount and (where applicable) plan set by us — including for a program that is currently closed or has no listed price. A payment request appears under "Payment requests" in your My Dashboard, is personal to your account, and can be paid only by you through Razorpay. Paying it grants you access to that course or internship on the same terms as a regular purchase, and a receipt is issued in the same way. Crix Technology may cancel a payment request that has not yet been paid; a request is not an offer to anyone else, and no online discounts, offer codes or referral credit apply to it.
+
 Access to a purchased course or internship's live-class schedule and recorded lectures is granted upon confirmed payment and remains tied to your account. Crix Technology may reschedule live sessions, substitute mentors, or make reasonable changes to program content and delivery format, provided the overall quality and scope is not materially reduced.
 
-All course and internship purchases are final. Crix Technology does not offer refunds or cancellations once payment has been completed, regardless of whether materials, recordings, or live sessions have been accessed. Please review the program's details and use the "Request to apply" or "Request to enroll" option on its page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
+All course and internship purchases, including plan upgrades and payments made against a payment request, are final. Crix Technology does not offer refunds or cancellations once payment has been completed, regardless of whether materials, recordings, or live sessions have been accessed. Please review the program's details and use the "Request to apply" or "Request to enroll" option on its page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
       },
       {
-        title: "7. User Conduct",
+        title: "7. Referral Program & Offer Codes",
+        content: `Every registered student has a personal referral code. A new student may apply a friend's code once — when signing up, or at checkout before their first purchase — and receives a discount on that first purchase. You cannot use your own code, and a student can be referred only once.
+
+When a referred friend's first course or internship payment is confirmed, the student who referred them earns referral credit (an approved Campus Ambassador earns a commission instead — see section 8). Referral credit is added to your account and applied automatically to your next purchase at checkout. It has no cash value, cannot be withdrawn, transferred or exchanged, and never reduces an order below ₹1.
+
+Offer codes are issued by Crix Technology, usually to individual students, and may be limited to particular programs, dates, a number of uses, or a maximum discount. Only one offer code can be used per order, and an offer code cannot be exchanged for cash.
+
+The referral discount, the referral reward, and each offer code's terms are set by Crix Technology and may be changed, suspended or withdrawn at any time; a change does not affect a referral discount already applied to your account. Crix Technology may refuse, withhold or reverse any discount, credit or reward obtained through fake or duplicate accounts, self-referral, or other misuse.`,
+      },
+      {
+        title: "8. Campus Ambassador Program",
+        content: `Students may apply to become a Crix Campus Ambassador. Crix Technology decides at its discretion whether to approve an application, and may suspend or end an ambassador's role at any time for breach of these Terms or misuse of the program.
+
+An approved ambassador shares their referral code. Friends who use it receive the usual first-purchase discount, and the ambassador earns a commission — a percentage of what that friend actually pays for their first purchase — instead of referral credit. The applicable commission rate is shown in the ambassador dashboard and is the rate in effect when the friend applied the code.
+
+Each commission is held for a holding period after the purchase before it becomes payable, and may be voided if the purchase is reversed or found to be fraudulent, self-referred or otherwise in breach of these Terms. Once your payable balance reaches the minimum payout amount shown in your dashboard, you may request a payout; Crix Technology pays it by UPI or bank transfer to the payout details you have saved. You are responsible for keeping those details correct, and for any tax payable on your earnings; Crix Technology may deduct any tax it is required by law to deduct. The holding period and minimum payout are shown in your dashboard and may be changed by Crix Technology.
+
+Approved ambassadors receive an official ambassador certificate and a welcome kit shipped to the address they provide. Ambassadors must describe Crix Technology and its programs honestly — no false claims about prices, placements or guaranteed jobs, no spam, and no fake or paid sign-ups. The ambassador role is not employment, and ambassadors are not authorised to make any commitment on Crix Technology's behalf.`,
+      },
+      {
+        title: "9. User Conduct",
         content: `When using our website or services, you agree not to:
 • Provide false or misleading information during registration
 • Engage in any activity that disrupts or interferes with our services
@@ -440,31 +482,31 @@ All course and internship purchases are final. Crix Technology does not offer re
 • Use our platform for any unlawful or harmful purpose`,
       },
       {
-        title: "8. Intellectual Property",
+        title: "10. Intellectual Property",
         content: `All content on this website — including text, graphics, logos, icons, and course material — is the property of Crix Technology and is protected by applicable intellectual property laws. You may not use, copy, or distribute any content without our prior written consent.`,
       },
       {
-        title: "9. Certificates & Credentials",
+        title: "11. Certificates & Credentials",
         content: `Certificates of completion are issued to students who meet the attendance, assessment, and project/assignment requirements specified for the respective course, and who have no outstanding fee dues or unresolved disciplinary action. Certification reflects successful completion of the course and does not constitute a guarantee of employment, salary, or any specific career outcome. Crix Technology reserves the right to withhold or revoke a certificate in cases of academic dishonesty, non-payment of fees, or breach of these Terms. Misrepresenting the nature of a Crix Technology certificate (e.g., claiming it is a government-issued credential) is strictly prohibited.`,
       },
       {
-        title: "10. Code of Conduct",
+        title: "12. Code of Conduct",
         content: `Students are expected to maintain discipline, punctuality, and respectful behaviour towards trainers, staff, and fellow students at all times, whether in-person or online. Crix Technology maintains a zero-tolerance policy towards harassment, discrimination, cheating, plagiarism, or disruptive behaviour. Violations may result in warnings, suspension, or termination of enrollment without refund. Students must not record, reproduce, distribute, or resell course materials or live sessions without prior written permission.`,
       },
       {
-        title: "11. Placement Assistance Disclaimer",
+        title: "13. Placement Assistance Disclaimer",
         content: `Where Crix Technology offers placement assistance, interview preparation, or job-referral support as part of a course, this is provided on a best-effort basis only. Crix Technology does not guarantee job placement, interviews, or employment outcomes for any student, as these depend on factors including market conditions, employer requirements, and individual performance.`,
       },
       {
-        title: "12. Student Work",
+        title: "14. Student Work",
         content: `Any code, projects, or assignments created solely by a student as part of coursework ("Student Work") remain the intellectual property of that student. By submitting Student Work for evaluation, or agreeing to feature it as a showcase/portfolio project, the student grants Crix Technology a non-exclusive, royalty-free, worldwide licence to use, reproduce, and display such Student Work for promotional, marketing, and educational purposes, unless the student opts out in writing.`,
       },
       {
-        title: "13. Data Privacy",
+        title: "15. Data Privacy",
         content: `Personal data collected through your account and during enrollment is processed in accordance with the Digital Personal Data Protection Act, 2023 ("DPDP Act") and used solely for administration of your account and courses, communication, certification, payment processing, and (where applicable) placement assistance. Students may, by written request, access, correct, or request erasure of their personal data, or withdraw consent, subject to Crix Technology's legal and administrative record-keeping requirements. Crix Technology will not sell student personal data to third parties without consent. See our Privacy Policy for full details, including our designated Grievance Officer's contact information.`,
       },
       {
-        title: "14. Limitation of Liability",
+        title: "16. Limitation of Liability",
         content: `Crix Technology provides its services "as is" without warranties of any kind. We are not liable for:
 • Any indirect, incidental, or consequential damages arising from use of our services
 • Loss of data, income, or missed employment opportunities resulting from technical issues
@@ -473,31 +515,31 @@ All course and internship purchases are final. Crix Technology does not offer re
 Our total liability in any matter shall not exceed the amount you paid for our services.`,
       },
       {
-        title: "15. Force Majeure",
+        title: "17. Force Majeure",
         content: `Crix Technology shall not be liable for any delay, cancellation, or change in course delivery caused by circumstances beyond its reasonable control, including natural disasters, government restrictions, internet outages, or public health emergencies. In such cases, Crix Technology will make reasonable efforts to reschedule or provide alternate arrangements.`,
       },
       {
-        title: "16. Termination",
+        title: "18. Termination",
         content: `We reserve the right to terminate or suspend access to our services, including your account, at our discretion for conduct that we believe violates these Terms or is harmful to other users, us, or third parties. Upon termination, your right to use our services immediately ceases.`,
       },
       {
-        title: "17. Changes to Terms",
+        title: "19. Changes to Terms",
         content: `We may revise these Terms of Service at any time. Changes will be posted on this page with an updated effective date. Continued use of our services after changes constitutes acceptance of the revised terms.`,
       },
       {
-        title: "18. Governing Law & Dispute Resolution",
+        title: "20. Governing Law & Dispute Resolution",
         content: `These Terms shall be governed by and construed in accordance with the laws of India. The parties shall first attempt to resolve any dispute amicably through good-faith discussion. If unresolved, the dispute shall be referred to arbitration under the Arbitration and Conciliation Act, 1996 (as amended), before a sole arbitrator, with the seat and venue of arbitration at Ahmedabad, Gujarat, India, and proceedings conducted in English. Subject to this clause, the courts at Ahmedabad, Gujarat, India shall have exclusive jurisdiction.`,
       },
       {
-        title: "19. Third-Party Services",
-        content: `Our website integrates third-party services, including Razorpay for payment processing and Google for sign-in, and links to WhatsApp for inquiries and support. Your use of these services is also subject to their own terms and privacy policies, over which Crix Technology has no control. Crix Technology is not responsible for the availability, content, security, or practices of these third-party services.`,
+        title: "21. Third-Party Services",
+        content: `Our website integrates third-party services, including Razorpay for payment processing, Google for sign-in and (where enabled) Google Analytics, and courier partners for delivering kits, and links to WhatsApp for inquiries and support. Your use of these services is also subject to their own terms and privacy policies, over which Crix Technology has no control. Crix Technology is not responsible for the availability, content, security, or practices of these third-party services.`,
       },
       {
-        title: "20. General Provisions",
+        title: "22. General Provisions",
         content: `If any provision of these Terms is found invalid or unenforceable by a court or arbitrator of competent jurisdiction, that provision shall be limited or eliminated to the minimum extent necessary, and the remaining provisions shall continue in full force and effect. No failure or delay by Crix Technology in exercising any right under these Terms shall operate as a waiver of that right. You may not assign or transfer your rights or obligations under these Terms without our prior written consent; Crix Technology may assign these Terms in connection with a merger, acquisition, or sale of assets. These Terms, together with any policies referenced herein, constitute the entire agreement between you and Crix Technology regarding your use of our services.`,
       },
       {
-        title: "21. Contact Us",
+        title: "23. Contact Us",
         content: `For any questions regarding these Terms of Service, please contact us:
 
 Email: crixtechnology@gmail.com
