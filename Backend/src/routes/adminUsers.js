@@ -3,6 +3,9 @@ const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { serializeEnrollment } = require("../utils/enrollmentAccess");
 const { serialize } = require("../utils/serialize");
+const bcrypt = require("bcryptjs");
+const { generateDefaultPassword } = require("../utils/passwordVault");
+const { clearOtps } = require("../utils/otp");
 
 const { queryText } = require("../utils/validators");
 const router = express.Router();
@@ -86,6 +89,41 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res, next) => {
       .catch(() => null);
     if (!user) return res.status(404).json({ ok: false, error: "User not found" });
     res.json({ ok: true, user: serialize(user) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------- admin: reset a student's password ----------
+// For when "Forgot password" can't help (the reset email never arrives): the
+// admin confirms who they're talking to, resets here, and passes on the
+// temporary password this returns — shown once, never stored in readable form.
+// The account is logged out everywhere and asked to choose its own password at
+// the next login. Not for admin accounts (use scripts/resetAdminPassword.js).
+router.post("/admin/users/:id/reset-password", requireAdmin, async (req, res, next) => {
+  try {
+    const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!target) return res.status(404).json({ ok: false, error: "User not found" });
+    if (target.role === "admin") {
+      return res.status(400).json({ ok: false, error: "Admin passwords can't be reset here." });
+    }
+
+    const tempPassword = generateDefaultPassword();
+    await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        passwordHash: await bcrypt.hash(tempPassword, 10),
+        defaultPasswordEnc: null,
+        mustChangePassword: true,
+        activeSessionId: null,
+        activeSessionLastSeenAt: null,
+      },
+    });
+    await clearOtps(target.id);
+    console.log(`[admin] ${req.admin.sub} reset the password of user ${target.id}`);
+
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true, tempPassword });
   } catch (e) {
     next(e);
   }

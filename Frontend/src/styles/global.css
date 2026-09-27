@@ -906,3 +906,7 @@ body.no-copy img{-webkit-user-drag:none}
   .nav-account .nav-cta{padding:10px 12px}
   .nav-account .nav-logout{padding:9px 12px}
 }
+
+/* Admin → Users: the one-time temporary password after a reset. */
+.temp-pw-box{border:1px solid rgba(20,201,201,.4);background:rgba(20,201,201,.08);border-radius:12px;padding:14px 16px}
+.temp-pw-code{font-family:'JetBrains Mono',monospace;font-size:1.1rem;letter-spacing:.08em;padding:6px 12px;border-radius:8px;background:var(--panel);border:1px solid var(--line);user-select:all}

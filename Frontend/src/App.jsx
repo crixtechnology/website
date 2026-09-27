@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigationType } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import SetNewPassword from "./components/SetNewPassword.jsx";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
 import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
 import AdminGuard from "./pages/admin/AdminGuard.jsx";
@@ -262,6 +263,7 @@ export default function App() {
       </main>
       <Footer />
       <AuthModal />
+      <SetNewPassword />
     </>
   );
 }

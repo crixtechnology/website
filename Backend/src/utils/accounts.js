@@ -16,6 +16,7 @@ function publicUser(user) {
     hasPassword: !!user.passwordHash,
     hasDefaultPassword: !!user.defaultPasswordEnc,
     isGoogleAccount: !!user.googleId,
+    mustChangePassword: !!user.mustChangePassword,
   };
 }
 
