@@ -364,7 +364,7 @@ describe("POST /api/payments/create-order with an offer code", () => {
     expect(del.status).toBe(409);
     expect(del.body.error).toMatch(/Switch it off/);
 
-    const txns = await authed(request(app).get("/api/admin/payments"), adminToken);
-    expect(txns.body.payments.find((p2) => p2.paymentId === payment.id)).toMatchObject({ couponCode: c.code, couponDiscount: 1000 });
+    // The order records how much the code took off (paise).
+    expect(paid.couponDiscount).toBe(100000);
   });
 });

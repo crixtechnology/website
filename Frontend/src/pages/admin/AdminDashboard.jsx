@@ -1,13 +1,12 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetRevenueSummary, adminGetReferrals, adminGetAmbassadors } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetAmbassadors } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
 // One line icon per dashboard tile (keyed by the tile's label).
 const TILE_ICONS = {
-  Revenue: <path d="M4 19h16 M7 16V11 M12 16V7 M17 16v-3" />,
   Courses: <path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z M20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z" />,
   Internships: <path d="M3 8h18v12H3z M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M3 13h18" />,
   Users: <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6 M16 4.5a3.5 3.5 0 0 1 0 6.5 M18 14c2 .7 3.5 2.8 3.5 6" />,
@@ -31,14 +30,14 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     courses: 0, openCourses: 0, internships: 0, openInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
-    totalRevenue: 0, referrals: 0, referralsRewarded: 0, ambassadorApplications: 0, ambassadorPayouts: 0,
+    referrals: 0, referralsRewarded: 0, ambassadorApplications: 0, ambassadorPayouts: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, revenueRes, referralsRes, ambassadorsRes] = await Promise.all([
-        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetRevenueSummary(), adminGetReferrals(), adminGetAmbassadors(),
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, ambassadorsRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(), adminGetAmbassadors(),
       ]);
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
       const courses = entries.filter((c) => c.type !== "internship");
@@ -67,7 +66,6 @@ export default function AdminDashboard() {
         users: users.length,
         newMessages: contacts.filter((c) => c.status === "new").length,
         newApplications: applications.filter((a) => !a.contacted).length,
-        totalRevenue: revenueRes.ok ? revenueRes.summary.totalRevenue : 0,
         referrals: referralsRes.ok ? referralsRes.summary.total : 0,
         referralsRewarded: referralsRes.ok ? referralsRes.summary.rewarded : 0,
         ambassadorApplications: ambassadorsRes.ok ? ambassadorsRes.summary.applied : 0,
@@ -78,10 +76,6 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    {
-      label: "Revenue", value: `₹${stats.totalRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
-      sub: "total, all-time", to: "/admin/revenue",
-    },
     { label: "Courses", value: stats.courses, sub: `${stats.openCourses} open`, to: "/admin/courses" },
     { label: "Internships", value: stats.internships, sub: `${stats.openInternships} open`, to: "/admin/courses" },
     { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },
