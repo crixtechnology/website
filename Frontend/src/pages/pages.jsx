@@ -90,7 +90,7 @@ export function Home() {
         <Hero3D />
         <div className="wrap hero-in" ref={heroRef}>
           <span className="eyebrow">{site.eyebrow}</span>
-          <h1 className="hl" aria-label={`${hero.titleParts.join(" ")} ${hero.rotatingWords[0]} ${hero.titleEnd.join(" ")}`}>
+          <h1 className="hl" aria-label={hero.titleLabel || `${hero.titleParts.join(" ")} ${hero.rotatingWords[0]} ${hero.titleEnd.join(" ")}`}>
             <span className="hl-inner" aria-hidden="true">
               {hero.titleParts.map((w) => <span className="w" key={w}>{w}</span>)}
               <em className="w"><RotatingWord words={hero.rotatingWords} /></em>
