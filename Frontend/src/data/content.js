@@ -39,8 +39,13 @@ export const company = {
 };
 
 export const hero = {
-  titleParts: ["We", "train", "the"],
-  rotatingWords: ["AI-native engineers", "full-stack developers", "agent builders", "AI-first capstone builders", "Pan-India virtual cohorts"],
+  // "build" covers both halves of the business: the developers we train and
+  // the products we build for clients — the rotating words alternate the two.
+  titleParts: ["We", "build", "the"],
+  rotatingWords: ["full-stack developers", "websites & apps", "AI engineers", "AI chatbots", "agent builders", "digital products"],
+  // What screen readers and search engines read as the heading (the rotating
+  // word would otherwise only ever give them the first one).
+  titleLabel: "We build the developers and digital products of tomorrow.",
   titleEnd: ["of", "tomorrow."],
   subtitle:
     "Crix Technology brings together a virtual Internship Program, industry-ready online courses and IT services — learn MERN stack, AI agents, Android and more from working industry professionals, or have us build your website, mobile app, AI solution or digital marketing.",
