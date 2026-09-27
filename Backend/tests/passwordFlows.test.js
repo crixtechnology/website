@@ -257,7 +257,7 @@ describe("purchase receipt over SMTP", () => {
     expect(mail.to).toBe("asha@example.com");
     expect(mail.from).toBe("Crix <no-reply@test.local>");
     expect(mail.subject).toContain("CRX-2026-00042");
-    expect(mail.html).toContain(itemType);
+    expect(mail.html.toLowerCase()).toContain(itemType); // shown as the "Course"/"Internship" label
     expect(mail.attachments[0]).toMatchObject({ filename: "Receipt-CRX-2026-00042.pdf", contentType: "application/pdf", content: pdf });
   });
 

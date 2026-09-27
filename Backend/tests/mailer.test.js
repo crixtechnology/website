@@ -52,6 +52,38 @@ describe("mailer via Brevo's HTTP API", () => {
     await expect(sendPasswordChangedEmail({ to: "a@example.com", name: "A" })).rejects.toThrow(/Brevo API error 400: .*sender not valid/);
   });
 
+  it("puts a customer's email in the branded layout, with a text version too", async () => {
+    global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
+    const { sendPaymentRequestEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "" });
+    await sendPaymentRequestEmail({ to: "a@example.com", name: "A", itemTitle: "Android <b>Dev</b>", itemType: "internship", tier: "plus", amount: 3999, note: "" });
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.htmlContent).toContain("crix-logo.png");
+    expect(body.htmlContent).toContain("Pay now");
+    expect(body.htmlContent).toContain("₹3,999");
+    // Program titles come from admin/visitor input — escaped in the HTML.
+    expect(body.htmlContent).toContain("Android &lt;b&gt;Dev&lt;/b&gt;");
+    expect(body.textContent).toContain("Amount: ₹3,999");
+  });
+
+  it("sends the owner's new-application ping through Brevo when it's set up, without the applicant's details", async () => {
+    global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
+    const prevEnv = process.env.NODE_ENV;
+    const { sendApplicationEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "", CONTACT_TO_EMAIL: "owner@example.com" });
+    process.env.NODE_ENV = "production";
+    try {
+      await sendApplicationEmail({ type: "internship", refTitle: "AI Agentic Systems" });
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+      delete process.env.CONTACT_TO_EMAIL;
+    }
+    const [url, init] = global.fetch.mock.calls[0];
+    expect(url).toContain("api.brevo.com");
+    const body = JSON.parse(init.body);
+    expect(body.to).toEqual([{ email: "owner@example.com" }]);
+    expect(body.subject).toBe("New Internship application — AI Agentic Systems");
+    expect(body.htmlContent).toContain("/admin/applications");
+  });
+
   it("sends nothing when no email service is configured", async () => {
     global.fetch = jest.fn();
     const { sendPasswordChangedEmail } = loadMailer({ BREVO_API_KEY: "", SMTP_HOST: "", MAIL_DEV_LOG: "" });
