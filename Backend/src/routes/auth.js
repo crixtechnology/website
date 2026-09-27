@@ -46,7 +46,9 @@ const authLimiter = rateLimit({
 function signToken(user, sessionId) {
   const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
   if (sessionId) payload.sid = sessionId;
-  return signJwt(payload, { expiresIn: "7d" });
+  // Admin tokens aren't tied to a device session the server can end, so they
+  // get a short life: a copied admin token stops working within the day.
+  return signJwt(payload, { expiresIn: user.role === "admin" ? "12h" : "7d" });
 }
 
 // Single-device-login enforcement is student-only (see requireAuth.js) — an
@@ -243,6 +245,13 @@ router.post("/google", authLimiter, async (req, res, next) => {
 
     const email = String(payload.email).toLowerCase().trim();
     let user = await prisma.user.findFirst({ where: { OR: [{ googleId: payload.sub }, { email }] } });
+
+    // Admin accounts log in with their email and password only — Google
+    // sign-in would skip the password entirely (and would link the Google
+    // account to the admin by email alone).
+    if (user && user.role === "admin") {
+      return res.status(403).json({ ok: false, error: "Admin accounts sign in with email and password." });
+    }
 
     if (!user) {
       user = await prisma.user.create({

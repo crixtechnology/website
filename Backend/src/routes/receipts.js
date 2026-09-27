@@ -1,6 +1,7 @@
 const express = require("express");
 const { prisma } = require("../db");
 const { requireAuth } = require("../middleware/requireAuth");
+const { isAdminUser } = require("../utils/enrollmentAccess");
 
 const router = express.Router();
 
@@ -51,7 +52,9 @@ router.get("/receipts/:paymentId", requireAuth, async (req, res, next) => {
       return res.status(404).json({ ok: false, error: "Receipt not found" });
     }
     const isOwner = payment.userId && payment.userId === req.user.sub;
-    if (!isOwner && req.user.role !== "admin") {
+    // Admin status comes from the database, like every other admin check — not
+    // from the token's own role claim.
+    if (!isOwner && !(await isAdminUser(req.user))) {
       return res.status(403).json({ ok: false, error: "Not your receipt" });
     }
 
