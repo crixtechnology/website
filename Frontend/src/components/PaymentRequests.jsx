@@ -4,6 +4,7 @@ import { getMyPaymentRequests, createPaymentRequestOrder, verifyPaymentRequest, 
 import { loadRazorpayScript, Alert } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdf.js";
 import { tierLabel, formatINR } from "../utils/tiers.js";
+import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { PAYMENT_REQUESTS_EVENT } from "../hooks/usePendingPaymentRequests.js";
 
 // Payment requests the admin sent this student: pay a pending one here
@@ -114,7 +115,9 @@ export default function PaymentRequests({ onPaid }) {
                 </button>
               ) : (
                 <>
-                  {r.course?.slug && <Link className="btn btn-ghost" to={`/learn/${r.course.slug}`}>Go to course →</Link>}
+                  {startsInFuture(r.course)
+                    ? <span style={{ color: "var(--muted)", fontSize: ".85rem" }}>Starts on {formatStartDate(r.course.startsAt)}</span>
+                    : r.course?.slug && <Link className="btn btn-ghost" to={`/learn/${r.course.slug}`}>Go to course →</Link>}
                   {r.paidPaymentId && (
                     <button className="btn btn-ghost" disabled={!!busy} onClick={() => receipt(r)}>
                       {busy === `rc-${r._id}` ? "Preparing…" : "Download Receipt"}

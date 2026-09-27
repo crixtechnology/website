@@ -18,6 +18,7 @@ import { phoneError, compactPhone } from "../utils/phone.js";
 import PhoneInput from "./PhoneInput.jsx";
 import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
+import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -902,6 +903,11 @@ export function BuyModal({ item, user, initialTier, onClose }) {
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <span className="eyebrow">Enroll</span>
         <h3 id="buy-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
+        {startsInFuture(item) && (
+          <Alert inline kind="info">
+            Starts on {formatStartDate(item.startsAt)}. You can buy now and get your receipt straight away — the course opens on the start date.
+          </Alert>
+        )}
 
         {plans.length === 0 ? (
           <>

@@ -30,6 +30,7 @@ export default function Learn() {
   const { isLoggedIn, openAuthModal } = useContext(UserContext);
   const [data, setData] = useState(undefined); // undefined = loading
   const [error, setError] = useState("");
+  const [notStarted, setNotStarted] = useState(false); // bought, but it begins later
   // Ticks once a minute so the Join button's appear/disappear window (and a
   // class that just ended) updates live without the student refreshing.
   const [now, setNow] = useState(() => Date.now());
@@ -49,7 +50,7 @@ export default function Learn() {
     getLearnData(slug).then((res) => {
       if (!alive) return;
       if (res.ok) setData(res);
-      else { setData(null); setError(res.error || "Could not load this course."); }
+      else { setData(null); setNotStarted(res.code === "NOT_STARTED"); setError(res.error || "Could not load this course."); }
     });
     return () => { alive = false; };
   }, [slug, isLoggedIn]);
@@ -97,8 +98,13 @@ export default function Learn() {
     return (
       <section className="section" style={{ paddingTop: 140 }}>
         <div className="wrap">
-          <span className="eyebrow">Not available</span>
+          <span className="eyebrow">{notStarted ? "Starting soon" : "Not available"}</span>
           <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>{error}</h1>
+          {notStarted && (
+            <p style={{ color: "var(--muted)", margin: "0 0 24px", maxWidth: 560, lineHeight: 1.7 }}>
+              You're enrolled — your receipt is in My Dashboard. The videos and live classes open here on the start date.
+            </p>
+          )}
           <Link className="btn btn-solid" to="/dashboard">← Dashboard</Link>
         </div>
       </section>

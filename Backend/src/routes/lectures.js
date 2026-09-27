@@ -2,7 +2,7 @@ const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
-const { hasValidAccess, isAdminUser } = require("../utils/enrollmentAccess");
+const { hasValidAccess, isAdminUser, hasStarted, notStartedResponse } = require("../utils/enrollmentAccess");
 const { serialize } = require("../utils/serialize");
 const { isValidHttpUrl } = require("../utils/validators");
 
@@ -127,6 +127,7 @@ router.get("/learn/:courseSlug", requireAuth, async (req, res, next) => {
       if (!hasValidAccess(enrollment)) {
         return res.status(403).json({ ok: false, error: "Your access to this course has expired" });
       }
+      if (!hasStarted(course)) return res.status(403).json(notStartedResponse(course));
     }
 
     // "Upcoming" means "hasn't ended yet" — not "hasn't started yet", so a
