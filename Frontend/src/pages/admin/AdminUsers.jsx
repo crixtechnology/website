@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getAdminToken, adminGetUsers, adminGetUser, adminUpdateUser, adminDeleteUser,
+  getAdminToken, adminGetUsers, adminGetUser, adminUpdateUser, adminDeleteUser, adminResetUserPassword,
   adminGetCourses, adminGrantSubscription, adminUpdateSubscription, adminRemoveSubscription,
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
@@ -10,6 +10,7 @@ import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 import { tierLabel } from "../../utils/tiers.js";
 import { phoneError } from "../../utils/phone.js";
 import PhoneInput from "../../components/PhoneInput.jsx";
+import { CopyButton } from "../../components/ui.jsx";
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString("en-IN") : "—";
@@ -38,6 +39,10 @@ export default function AdminUsers() {
   const [detailError, setDetailError] = useState("");
   const [editForm, setEditForm] = useState({ name: "", phone: "", role: "student" });
   const [savingUser, setSavingUser] = useState(false);
+  // { userId, password } — the temporary password from a reset, shown once
+  // for the user it was made for, gone as soon as another user is opened.
+  const [tempPw, setTempPw] = useState(null);
+  const [resetting, setResetting] = useState(false);
 
   const [courses, setCourses] = useState([]);
   const [grantForm, setGrantForm] = useState({ courseId: "", endDate: "" });
@@ -87,7 +92,20 @@ export default function AdminUsers() {
     }
   };
 
-  const closeDetail = () => { setSelectedId(null); setDetail(null); setGrantForm({ courseId: "", endDate: "" }); };
+  const closeDetail = () => { setSelectedId(null); setDetail(null); setTempPw(null); setGrantForm({ courseId: "", endDate: "" }); };
+
+  const resetPassword = async () => {
+    if (resetting) return;
+    if (!window.confirm(`Reset ${detail.user.name}'s password?
+
+Only do this after confirming it's really them (WhatsApp or phone). Their current password stops working, they're logged out everywhere, and they'll choose a new one after logging in with the temporary password.`)) return;
+    setResetting(true);
+    setDetailError("");
+    const res = await adminResetUserPassword(selectedId);
+    setResetting(false);
+    if (res.ok) setTempPw({ userId: selectedId, password: res.tempPassword });
+    else setDetailError(res.error || "Could not reset the password.");
+  };
 
   const saveUser = async (e) => {
     e.preventDefault();
@@ -217,6 +235,35 @@ export default function AdminUsers() {
                       {!isSelf && <button type="button" className="btn btn-ghost admin-danger" onClick={removeUser}>Delete account</button>}
                     </div>
                   </form>
+
+                  {detail.user.role !== "admin" && (
+                    <div style={{ marginBottom: 28 }}>
+                      <h3 style={{ margin: "0 0 8px" }}>Password</h3>
+                      {tempPw && tempPw.userId === detail.user._id ? (
+                        <div className="temp-pw-box">
+                          <p className="form-note" style={{ margin: "0 0 10px" }}>
+                            Temporary password — send it to {detail.user.name} now. It won't be shown again.
+                          </p>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <code className="temp-pw-code">{tempPw.password}</code>
+                            <CopyButton value={tempPw.password} label="temporary password" />
+                          </div>
+                          <p className="form-note" style={{ margin: "10px 0 0" }}>
+                            They log in with {detail.user.email} and this password, then choose their own.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="form-note" style={{ margin: "0 0 12px" }}>
+                            If they can't reset it themselves, give them a temporary password. They'll choose a new one at their next login.
+                          </p>
+                          <button type="button" className="btn btn-ghost" onClick={resetPassword} disabled={resetting}>
+                            {resetting ? "Resetting..." : "Reset password"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   <h3 style={{ margin: "0 0 16px" }}>Subscriptions</h3>
                   {detail.enrollments.length === 0 ? (

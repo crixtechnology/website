@@ -42,6 +42,10 @@ model User {
   // and never written for a password the user chose — those exist only as the
   // bcrypt `passwordHash` and can't be shown to anyone.
   defaultPasswordEnc       String?   @db.Text
+  // Set when an admin resets this account's password (Admin → Users) and hands
+  // the owner a temporary one: the site then asks them to choose their own at
+  // the next login. Cleared as soon as they change or reset it.
+  mustChangePassword       Boolean   @default(false)
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 

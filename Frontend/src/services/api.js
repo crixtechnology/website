@@ -835,6 +835,20 @@ export async function adminUpdateUser(id, patch) {
   }
 }
 
+// Gives a student a new temporary password (returned once) and asks them to
+// choose their own at the next login — for when the reset email can't arrive.
+export async function adminResetUserPassword(id) {
+  try {
+    const res = await authFetch(`/admin/users/${id}/reset-password`, { method: "POST" });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not reset the password" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not reset the password" };
+  }
+}
+
 export async function adminDeleteUser(id) {
   try {
     const res = await authFetch(`/admin/users/${id}`, { method: "DELETE" });

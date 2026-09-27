@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getAdminToken, getStoredUser, adminLogout, logoutSession, setLastActivity, AUTH_CLEARED_EVENT,
   login as loginRequest, signup as signupRequest, googleAuth as googleAuthRequest,
@@ -25,6 +25,7 @@ export const UserContext = createContext({
   loginWithGoogle: async () => ({ ok: false }),
   updateProfile: async () => ({ ok: false }),
   refreshUser: async () => {},
+  takeTempPassword: () => "",
   logout: () => {},
   sessionExpired: false,
   clearSessionExpired: () => {},
@@ -47,9 +48,22 @@ export function UserProvider({ children }) {
   // { mode: "login" | "signup", onSuccess?: (user) => void } | null
   const [authModal, setAuthModal] = useState(null);
 
+  // After logging in with a temporary password an admin handed out, the
+  // "choose your own password" step (SetNewPassword.jsx) needs it as the
+  // current password. Held in memory only for that one step — never stored.
+  const tempPasswordRef = useRef("");
+  const takeTempPassword = useCallback(() => {
+    const p = tempPasswordRef.current;
+    tempPasswordRef.current = "";
+    return p;
+  }, []);
+
   const login = useCallback(async (email, password) => {
     const res = await loginRequest(email, password);
-    if (res.ok) { setUser(res.user); setToken(res.token); setSessionExpired(false); setLastActivity(); }
+    if (res.ok) {
+      tempPasswordRef.current = res.user && res.user.mustChangePassword ? password : "";
+      setUser(res.user); setToken(res.token); setSessionExpired(false); setLastActivity();
+    }
     return res;
   }, []);
 
@@ -79,6 +93,7 @@ export function UserProvider({ children }) {
     // immediately (see Backend's sessionPolicy) instead of leaving it to
     // expire on its own after 30 minutes idle. Not awaited: logging out
     // locally must never wait on the network.
+    tempPasswordRef.current = "";
     logoutSession();
     adminLogout();
     setUser(null);
@@ -137,11 +152,11 @@ export function UserProvider({ children }) {
       isLoggedIn: !!user && !!token,
       isAdmin: user?.role === "admin",
       profileComplete: isProfileComplete(user),
-      login, signup, loginWithGoogle, updateProfile, refreshUser, logout,
+      login, signup, loginWithGoogle, updateProfile, refreshUser, takeTempPassword, logout,
       sessionExpired, clearSessionExpired,
       authModal, openAuthModal, closeAuthModal,
     }),
-    [user, token, login, signup, loginWithGoogle, updateProfile, refreshUser, logout, sessionExpired, clearSessionExpired, authModal, openAuthModal, closeAuthModal]
+    [user, token, login, signup, loginWithGoogle, updateProfile, refreshUser, takeTempPassword, logout, sessionExpired, clearSessionExpired, authModal, openAuthModal, closeAuthModal]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

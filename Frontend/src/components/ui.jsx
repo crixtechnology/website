@@ -1686,6 +1686,14 @@ export function AuthModal() {
                   ? "Enter your account email and we'll send you a 6-digit code."
                   : `Enter the code we emailed to ${form.email.trim()} and choose a new password.`}
               </p>
+              {/* The reset email can fail to arrive (the server can't always send
+                  mail) — never leave anyone stuck waiting on it. */}
+              {resetStep === 2 && <p className="form-note" style={{ marginTop: 0 }}>
+                Didn't get the code?{" "}
+                <a href={`https://wa.me/${site.whatsapp}?text=${encodeURIComponent("Hi Crix Technology! I can't log in — please help me reset my password.")}`}
+                  target="_blank" rel="noopener noreferrer">Message us on WhatsApp</a>{" "}
+                and we'll reset it for you.
+              </p>}
               <div className="field"><label htmlFor="auth-email">Email</label>
                 <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com"
                   autoComplete="username" disabled={loading || resetStep === 2} /></div>

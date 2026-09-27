@@ -112,6 +112,7 @@ router.post("/reset-password", resetLimiter, async (req, res, next) => {
         // They've now chosen their own — the encrypted starter copy must go,
         // and can never be shown again.
         defaultPasswordEnc: null,
+        mustChangePassword: false,
         // Sign every device out: whoever knew the old password (or had the
         // account open) has to log in again with the new one.
         activeSessionId: null,
@@ -156,7 +157,7 @@ router.post("/change-password", requireAuth, changeLimiter, async (req, res, nex
       where: { id: user.id },
       // Their own password from here on; drop the encrypted starter copy.
       // The active session is left alone — this is the person using it.
-      data: { passwordHash: await bcrypt.hash(newPassword, 10), defaultPasswordEnc: null },
+      data: { passwordHash: await bcrypt.hash(newPassword, 10), defaultPasswordEnc: null, mustChangePassword: false },
     });
     notifyPasswordChanged(user);
     res.json({ ok: true, message: "Password changed." });
