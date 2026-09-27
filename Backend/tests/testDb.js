@@ -24,6 +24,7 @@ async function setupTestDb() {
   // no-op cleanly when unset/unreachable, so this doesn't change what's
   // being tested, just removes an external network dependency from the run.
   process.env.SMTP_HOST = "";
+  process.env.BREVO_API_KEY = "";
   process.env.MAIL_DEV_LOG = "";
   process.env.CONTACT_TO_EMAIL = "";
 
