@@ -64,6 +64,9 @@ function siteOrigin() {
 // for an internship/course application, so the two don't misrepresent each
 // other if formsubmit.co ever keys anything off the referring path.
 async function sendViaFormSubmit({ subject, text, path }) {
+  // The test suite submits real applications/contact messages; those must
+  // never turn into real notifications in the support inbox.
+  if (process.env.NODE_ENV === "test") return { sent: false, reason: "test run" };
   const to = process.env.CONTACT_TO_EMAIL || "support@crixtechnology.com";
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -176,14 +179,72 @@ function smtpConfig() {
     port,
     secure,
     auth: user && pass ? { user, pass } : undefined,
-    from: process.env.SMTP_FROM || process.env.RECEIPT_FROM_EMAIL || "Crix Technology <no-reply@crixtechnology.in>",
+    from: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.RECEIPT_FROM_EMAIL || DEFAULT_FROM,
   };
 }
 
-if (!smtpConfig()) {
+// ---------- Brevo's HTTP API (preferred) ----------
+// Render's free tier drops outbound SMTP, but an HTTPS request to Brevo's API
+// goes out like any other API call (Razorpay, Google), so with BREVO_API_KEY
+// set every customer email goes this way instead of SMTP.
+//
+// It connected fine the first time it was tried here (see .env.example); what
+// failed was the SENDER — a plain @gmail.com address, which Gmail/Yahoo/
+// Outlook reject when sent by another service (DMARC). The sender must be on a
+// domain authenticated in Brevo (Senders, Domains & Dedicated IPs → Domains:
+// its DKIM/DMARC DNS records added), and itself added as a sender.
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+const DEFAULT_FROM = "Crix Technology <support@crixtechnology.com>";
+
+function brevoApiKey() {
+  const key = process.env.BREVO_API_KEY;
+  return looksUnset(key) ? null : key;
+}
+
+// "Crix Technology <support@crixtechnology.com>" -> { name, email }.
+function parseFrom(value) {
+  const m = /^\s*(.*?)\s*<\s*([^>\s]+)\s*>\s*$/.exec(value || "");
+  if (m) return { name: m[1].replace(/^"|"$/g, "") || undefined, email: m[2] };
+  return { email: String(value || "").trim() };
+}
+
+async function sendViaBrevoApi(apiKey, { to, subject, text, html, attachments }) {
+  const sender = parseFrom(process.env.MAIL_FROM || DEFAULT_FROM);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: { "api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: to }],
+        subject,
+        textContent: text,
+        ...(html ? { htmlContent: html } : {}),
+        // nodemailer-style { filename, content: Buffer } -> Brevo's base64 form.
+        ...(attachments && attachments.length
+          ? { attachment: attachments.map((a) => ({ name: a.filename, content: Buffer.from(a.content).toString("base64") })) }
+          : {}),
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Brevo API error ${res.status}: ${body.slice(0, 300)}`);
+  }
+  const data = await res.json().catch(() => ({}));
+  return { sent: true, id: data.messageId };
+}
+
+if (!brevoApiKey() && !smtpConfig()) {
   console.warn(
-    "⚠ SMTP_HOST is not set in Backend/.env — receipt emails, password OTP emails and account notices will not be sent " +
-    "(the in-app \"Download Receipt\" button still works). Set the SMTP_* variables on the server that can reach an SMTP host."
+    "⚠ Neither BREVO_API_KEY nor SMTP_HOST is set in Backend/.env — receipt emails, password OTP emails and account notices " +
+    "will not be sent (the in-app \"Download Receipt\" button still works). Set BREVO_API_KEY (works on Render's free tier)."
   );
 }
 
@@ -209,18 +270,21 @@ function getTransporter(cfg) {
   return cached.transporter;
 }
 
-// Returns { sent: true, id } | { sent: false, reason }. Throws only when SMTP
-// IS configured and the send itself fails (bad credentials, host unreachable…)
-// — callers decide whether that's fatal (OTP request: yes) or just logged
-// (receipt: it must never undo a payment).
+// Returns { sent: true, id } | { sent: false, reason }. Throws only when a
+// sender (Brevo or SMTP) IS configured and the send itself fails (bad key,
+// unverified sender, host unreachable…) — callers decide whether that's fatal
+// (OTP request: yes) or just logged (receipt: it must never undo a payment).
 async function deliver({ to, subject, text, html, attachments }) {
+  const apiKey = brevoApiKey();
+  if (apiKey) return sendViaBrevoApi(apiKey, { to, subject, text, html, attachments });
+
   const cfg = smtpConfig();
   if (!cfg) {
     if (process.env.MAIL_DEV_LOG === "true") {
-      console.log(`[mail:dev] SMTP not configured — would send:\n  To: ${to}\n  Subject: ${subject}\n  ${String(text).replace(/\n/g, "\n  ")}`);
-      return { sent: false, dev: true, reason: "SMTP not configured (logged to console)" };
+      console.log(`[mail:dev] Email not configured — would send:\n  To: ${to}\n  Subject: ${subject}\n  ${String(text).replace(/\n/g, "\n  ")}`);
+      return { sent: false, dev: true, reason: "Email not configured (logged to console)" };
     }
-    return { sent: false, reason: "SMTP not configured" };
+    return { sent: false, reason: "Email not configured" };
   }
   const info = await getTransporter(cfg).sendMail({ from: cfg.from, to, subject, text, html, attachments });
   return { sent: true, id: info.messageId };
