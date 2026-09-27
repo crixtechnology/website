@@ -8,6 +8,7 @@ import PaymentRequests from "../../components/PaymentRequests.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { downloadReceiptPdf } from "../../utils/receiptPdf.js";
 import { tierLabel } from "../../utils/tiers.js";
+import { startsInFuture, formatStartDate } from "../../utils/startDate.js";
 
 export default function MyCourses() {
   usePageMeta({ title: "My Dashboard | Crix Technology" });
@@ -111,7 +112,8 @@ export default function MyCourses() {
             {enrollments.map((en) => (
               <div className="admin-row" key={en._id}>
                 <div className="admin-row-main">
-                  <b>{en.course?.title || "Course"} {en.tier && <span className="plan-pill">{tierLabel(en.tier)}</span>} {en.expired && <span className="admin-pill expired">expired</span>}</b>
+                  <b>{en.course?.title || "Course"} {en.tier && <span className="plan-pill">{tierLabel(en.tier)}</span>} {en.expired && <span className="admin-pill expired">expired</span>}
+                    {!en.adminAccess && startsInFuture(en.course) && <span className="admin-pill new">starts {formatStartDate(en.course.startsAt)}</span>}</b>
                   <span className="admin-row-meta">
                     {en.adminAccess
                       ? `${en.course?.type === "internship" ? "Internship" : "Course"} · admin access, no purchase needed`
@@ -119,7 +121,12 @@ export default function MyCourses() {
                   </span>
                 </div>
                 <div className="admin-row-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  {en.expired ? (
+                  {!en.adminAccess && startsInFuture(en.course) ? (
+                    // Bought ahead of the start date: the content opens that day.
+                    <span style={{ color: "var(--muted)", fontSize: ".85rem" }}>
+                      Starts on {formatStartDate(en.course.startsAt)} — you'll get access then.
+                    </span>
+                  ) : en.expired ? (
                     // The server 403s /learn/:slug once access has lapsed
                     // (see requireEnrollment.js) — show that up front instead
                     // of a "Go to course" link that would just dead-end.

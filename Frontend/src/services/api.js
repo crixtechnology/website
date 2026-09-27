@@ -414,7 +414,7 @@ export async function getLearnData(slug) {
   try {
     const res = await authFetch(`/learn/${slug}`);
     const data = await res.json();
-    if (!res.ok) return { ok: false, status: res.status, error: data.error || "Could not load this course." };
+    if (!res.ok) return { ok: false, status: res.status, code: data.code, startsAt: data.startsAt, error: data.error || "Could not load this course." };
     return data;
   } catch (e) {
     return { ok: false, error: "Could not load this course." };

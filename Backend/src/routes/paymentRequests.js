@@ -13,7 +13,7 @@ const express = require("express");
 const crypto = require("crypto");
 const { prisma } = require("../db");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
-const { hasValidAccess, computeEndDate } = require("../utils/enrollmentAccess");
+const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
 const { isTier, tierRank } = require("../utils/tiers");
 const { requireAuth } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
@@ -30,13 +30,13 @@ const MAX_PAISE = 10000000 * 100;
 const MAX_NOTE = 190;
 
 const USER_SUMMARY = { id: true, name: true, email: true, phone: true };
-const COURSE_SUMMARY = { id: true, title: true, slug: true, type: true, status: true };
+const COURSE_SUMMARY = { id: true, title: true, slug: true, type: true, status: true, startsAt: true };
 
 function shape(r) {
   return {
     _id: r.id,
     user: r.user ? { _id: r.user.id, name: r.user.name, email: r.user.email, phone: r.user.phone } : undefined,
-    course: r.course ? { _id: r.course.id, title: r.course.title, slug: r.course.slug, type: r.course.type } : undefined,
+    course: r.course ? { _id: r.course.id, title: r.course.title, slug: r.course.slug, type: r.course.type, startsAt: r.course.startsAt || null } : undefined,
     tier: r.tier,
     amount: r.amount / 100,
     note: r.note,
@@ -73,7 +73,7 @@ async function grantAccessForRequestPayment(payment, razorpayPaymentId) {
   const request = payment.paymentRequestId
     ? await prisma.paymentRequest.findUnique({
         where: { id: payment.paymentRequestId },
-        include: { user: true, course: { select: { id: true, durationDays: true } } },
+        include: { user: true, course: { select: { id: true, durationDays: true, startsAt: true } } },
       })
     : null;
   if (!request || !request.user || !request.course) return null;
@@ -99,7 +99,7 @@ async function grantAccessForRequestPayment(payment, razorpayPaymentId) {
       data: { paymentId: payment.id, status: "active", ...(raise ? { tier: request.tier } : {}) },
     });
   } else {
-    const startDate = new Date();
+    const startDate = accessStartFor(request.course);
     const endDate = computeEndDate(startDate, request.course.durationDays);
     await prisma.enrollment.upsert({
       where,

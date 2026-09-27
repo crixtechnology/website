@@ -4,6 +4,7 @@ const { requireAdmin } = require("../middleware/requireAdmin");
 const { serialize } = require("../utils/serialize");
 const { WITH_TIERS, parseTiers } = require("../utils/tiers");
 const { parseCourseContent } = require("../utils/courseContent");
+const { accessStartFor, computeEndDate } = require("../utils/enrollmentAccess");
 
 const router = express.Router();
 
@@ -18,6 +19,18 @@ function slugify(title) {
 // Blank / null means "no fixed duration" (lifetime access); anything else must
 // be a positive whole number of days — a stray string would otherwise reach the
 // database and come back as a 500.
+// The admin form sends a start DATE ("2026-11-01"); it means the start of that
+// day in India. A full ISO timestamp is taken as-is. "" / null clears it.
+// Returns { ok, value } — value is a Date or null, or undefined if not sent.
+function parseStartsAt(raw) {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (raw === null || raw === "") return { ok: true, value: null };
+  if (typeof raw !== "string") return { ok: false, error: "startsAt must be a date" };
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00+05:30`) : new Date(raw);
+  if (Number.isNaN(date.getTime())) return { ok: false, error: "startsAt must be a valid date" };
+  return { ok: true, value: date };
+}
+
 function validDuration(value) {
   if (value === undefined || value === null || value === "" || value === 0) return true;
   const n = Number(value);
@@ -77,6 +90,8 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
   try {
     const { type, title, tag, desc, points, tiers, durationDays, status } = req.body || {};
     const entryType = type === "internship" ? "internship" : "course";
+    const start = parseStartsAt((req.body || {}).startsAt);
+    if (!start.ok) return res.status(400).json({ ok: false, error: start.error });
     if (!title || !String(title).trim()) {
       return res.status(400).json({ ok: false, error: "title is required" });
     }
@@ -116,6 +131,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
           // are sold, some are free/discounted promos decided case-by-case.
           tiers: { create: parsed.tiers },
           durationDays: durationDays ? Number(durationDays) : null,
+          startsAt: start.value || null,
           // Always starts closed, even with plans already set — saving a
           // price is not the same action as publishing it for sale. The admin
           // list's separate Open/Closed toggle is the actual trigger; opening
@@ -155,7 +171,11 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
     const content = parseCourseContent(req.body);
     if (!content.ok) return res.status(400).json({ ok: false, error: content.error });
 
+    const start = parseStartsAt((req.body || {}).startsAt);
+    if (!start.ok) return res.status(400).json({ ok: false, error: start.error });
+
     const update = { type: effectiveType, ...content.data };
+    if (start.value !== undefined) update.startsAt = start.value;
     if (title !== undefined) {
       if (!String(title).trim()) return res.status(400).json({ ok: false, error: "title can't be empty" });
       update.title = title;
@@ -231,8 +251,23 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
       }
     }
     ops.push(prisma.course.update({ where: { id: existing.id }, data: update, include: WITH_TIERS }));
+
+    // Start date moved (postponed, brought forward or cleared): students who
+    // bought it and are still waiting for it to begin move with it, so their
+    // access period still counts from the day it actually starts. Anyone whose
+    // access has already begun is left alone.
+    const startChanged = start.value !== undefined &&
+      (start.value ? start.value.getTime() : null) !== (existing.startsAt ? existing.startsAt.getTime() : null);
+    if (startChanged) {
+      const newStart = accessStartFor({ startsAt: start.value });
+      const days = update.durationDays !== undefined ? update.durationDays : existing.durationDays;
+      ops.push(prisma.enrollment.updateMany({
+        where: { courseId: existing.id, status: "active", startDate: { gt: new Date() } },
+        data: { startDate: newStart, endDate: computeEndDate(newStart, days) },
+      }));
+    }
     const results = await prisma.$transaction(ops);
-    const course = results[results.length - 1];
+    const course = results[startChanged ? results.length - 2 : results.length - 1];
 
     res.json({ ok: true, course: serialize(course) });
   } catch (e) {

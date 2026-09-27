@@ -6,10 +6,11 @@ import {
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, formatINR } from "../../utils/tiers.js";
+import { startsInFuture, formatStartDate, toStartDateInput } from "../../utils/startDate.js";
 
 const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", discountPercent: "0", features: "" }]));
 // outcomes / audience / prerequisites are typed one per line; faqs is a list of { q, a } rows.
-const EMPTY_FORM = { type: "course", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", plans: emptyPlans() };
+const EMPTY_FORM = { type: "course", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "", plans: emptyPlans() };
 const MAX_FAQS = 15;
 const lines = (text) => text.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -27,6 +28,7 @@ function courseToForm(c) {
     prerequisites: (c.prerequisites || []).join("\n"),
     faqs: (c.faqs || []).map((f) => ({ q: f.q || "", a: f.a || "" })),
     durationDays: c.durationDays ? String(c.durationDays) : "",
+    startsAt: toStartDateInput(c.startsAt),
     plans,
   };
 }
@@ -139,6 +141,8 @@ export default function AdminCourses() {
       faqs: form.faqs.filter((f) => f.q.trim() && f.a.trim()).map((f) => ({ q: f.q.trim(), a: f.a.trim() })),
       tiers,
       durationDays: form.durationDays ? Number(form.durationDays) : null,
+      // Empty clears it: content opens as soon as it's bought.
+      startsAt: form.startsAt || "",
     };
     const res = editingId ? await adminUpdateCourse(editingId, payload) : await adminCreateCourse(payload);
     setSaving(false);
@@ -181,6 +185,7 @@ export default function AdminCourses() {
               ? <>{plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from {formatINR(cheapest)} · {c.tag}</>
               : <>Apply-only · {c.tag}</>}
             {c.durationDays ? ` · ${c.durationDays} days` : ""}
+            {c.startsAt ? ` · ${startsInFuture(c) ? "starts" : "started"} ${formatStartDate(c.startsAt)}` : ""}
           </span>
         </div>
         <div className="admin-row-actions">
@@ -228,6 +233,8 @@ export default function AdminCourses() {
               <input value={form.tag} onChange={set("tag")} placeholder="Beginner friendly" /></div>
             <div className="field"><label>Duration (days)</label>
               <input type="number" min="1" value={form.durationDays} onChange={set("durationDays")} placeholder="30" /></div>
+            <div className="field"><label>Starts on (optional)</label>
+              <input type="date" value={form.startsAt} onChange={set("startsAt")} /></div>
           </div>
           <div className="field"><label>Description</label>
             <textarea rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>

@@ -13,6 +13,36 @@ function computeEndDate(startDate, durationDays) {
   return new Date(new Date(startDate).getTime() + durationDays * DAY_MS);
 }
 
+// When a new grant's access period begins: now, or the course's start date
+// if that's still ahead — buying early must not use up the access period
+// before the course has even begun.
+function accessStartFor(course, now = new Date()) {
+  const startsAt = course && course.startsAt ? new Date(course.startsAt) : null;
+  return startsAt && startsAt.getTime() > now.getTime() ? startsAt : now;
+}
+
+// Has the course begun? Content (videos, live classes) stays locked until then.
+// Checked against the course's CURRENT start date, so postponing it re-locks.
+function hasStarted(course, now = new Date()) {
+  return !(course && course.startsAt) || new Date(course.startsAt).getTime() <= now.getTime();
+}
+
+// "1 Nov 2026" in India time — what students see for a course's start date.
+function formatStartDate(date) {
+  return new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+}
+
+// The 403 a student gets for a course they own that hasn't started yet.
+function notStartedResponse(course) {
+  const kind = course.type === "internship" ? "internship" : "course";
+  return {
+    ok: false,
+    code: "NOT_STARTED",
+    startsAt: course.startsAt,
+    error: `This ${kind} starts on ${formatStartDate(course.startsAt)}. You'll get access then.`,
+  };
+}
+
 // Single place that decides whether an Enrollment still grants access, so
 // requireEnrollment.js (videos) and routes/lectures.js's /learn/:slug (live
 // schedule) can't drift out of sync on what "expired" means.
@@ -51,4 +81,7 @@ function serializeEnrollment(enrollment) {
   return { ...serialize(enrollment, "enrollment"), expired: isExpired(enrollment) };
 }
 
-module.exports = { hasValidAccess, isExpired, isAdminUser, serializeEnrollment, computeEndDate };
+module.exports = {
+  hasValidAccess, isExpired, isAdminUser, serializeEnrollment, computeEndDate,
+  accessStartFor, hasStarted, formatStartDate, notStartedResponse,
+};

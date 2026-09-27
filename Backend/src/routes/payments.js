@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { prisma } = require("../db");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
-const { hasValidAccess, computeEndDate } = require("../utils/enrollmentAccess");
+const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
 const { nextSequence } = require("../utils/counter");
 const { round2 } = require("../utils/money");
 const { WITH_TIERS, isTier, tierRank, tierTotal } = require("../utils/tiers");
@@ -97,9 +97,10 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
       // no durationDays set means lifetime access.
       const course = await prisma.course.findUnique({
         where: { id: application.courseId },
-        select: { durationDays: true },
+        select: { durationDays: true, startsAt: true },
       });
-      const startDate = new Date();
+      // From the course's start date if it hasn't begun yet, else now.
+      const startDate = accessStartFor(course);
       const endDate = computeEndDate(startDate, course && course.durationDays);
       await prisma.enrollment.upsert({
         where: { userId_courseId: { userId: application.userId, courseId: application.courseId } },

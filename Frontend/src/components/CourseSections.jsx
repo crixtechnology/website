@@ -1,3 +1,4 @@
+import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCourses } from "../services/api.js";
@@ -22,6 +23,7 @@ export function CourseFacts({ course }) {
   const facts = [["Type", kindLabel(course)], ["Format", "Online"]];
   if (course.durationDays) facts.push(["Duration", `${course.durationDays} days`]);
   else if (course.type !== "internship" && plans.length) facts.push(["Access", "Lifetime"]);
+  if (startsInFuture(course)) facts.push(["Starts", formatStartDate(course.startsAt)]);
   if (plans.length && isOpenForBuy(course)) facts.push(["From", formatINR(Math.min(...plans.map(planPrice)))]);
   return (
     <dl className="course-facts">

@@ -118,6 +118,11 @@ model Course {
   prerequisites   Json         @default("[]")
   faqs            Json         @default("[]")
   durationDays    Int?
+  // When the course/internship begins. Students can buy (and get their
+  // receipt) before it, but its content — videos, live classes — stays locked
+  // until this moment, and their access period (durationDays) counts from it
+  // rather than from the purchase. Null = starts as soon as it's bought.
+  startsAt        DateTime?
   status          CourseStatus @default(open)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
