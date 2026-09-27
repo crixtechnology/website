@@ -7,7 +7,7 @@
 // Application, no plan pricing, no offer codes, referral discount or credit,
 // no referral reward — and it works whether the course is open or closed. The
 // two share only the Payment table (so a paid request gets the same receipt,
-// shows in "My Receipts" and counts as revenue) and the Razorpay webhook,
+// shows in "My Receipts") and the Razorpay webhook,
 // which hands payments carrying a paymentRequestId over to this file.
 const express = require("express");
 const crypto = require("crypto");

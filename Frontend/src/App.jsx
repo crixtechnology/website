@@ -34,7 +34,6 @@ const ROUTE_LOADERS = {
   "/learn/": () => import("./pages/student/Learn.jsx"),
   "/profile": () => import("./pages/student/Profile.jsx"),
   "/admin": () => import("./pages/admin/AdminDashboard.jsx"),
-  "/admin/revenue": () => import("./pages/admin/AdminRevenue.jsx"),
   "/admin/courses": () => import("./pages/admin/AdminCourses.jsx"),
   "/admin/lectures": () => import("./pages/admin/AdminLectures.jsx"),
   "/admin/videos": () => import("./pages/admin/AdminVideos.jsx"),
@@ -63,7 +62,6 @@ const Profile = lazy(ROUTE_LOADERS["/profile"]);
 // costs little; the actual weight (each admin page's own code) still only
 // loads on demand.
 const AdminDashboard = lazy(ROUTE_LOADERS["/admin"]);
-const AdminRevenue = lazy(ROUTE_LOADERS["/admin/revenue"]);
 const AdminCourses = lazy(ROUTE_LOADERS["/admin/courses"]);
 const AdminLectures = lazy(ROUTE_LOADERS["/admin/lectures"]);
 const AdminVideos = lazy(ROUTE_LOADERS["/admin/videos"]);
@@ -242,7 +240,6 @@ export default function App() {
                 below); AdminGuard shows an inline login prompt if you land
                 here logged out or without admin access, no dedicated page. */}
             <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-            <Route path="/admin/revenue" element={<AdminGuard><AdminRevenue /></AdminGuard>} />
             <Route path="/admin/courses" element={<AdminGuard><AdminCourses /></AdminGuard>} />
             <Route path="/admin/lectures" element={<AdminGuard><AdminLectures /></AdminGuard>} />
             <Route path="/admin/videos" element={<AdminGuard><AdminVideos /></AdminGuard>} />

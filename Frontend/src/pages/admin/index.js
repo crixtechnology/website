@@ -1,5 +1,4 @@
 export { default as AdminDashboard } from "./AdminDashboard.jsx";
-export { default as AdminRevenue } from "./AdminRevenue.jsx";
 export { default as AdminCourses } from "./AdminCourses.jsx";
 export { default as AdminLectures } from "./AdminLectures.jsx";
 export { default as AdminVideos } from "./AdminVideos.jsx";
