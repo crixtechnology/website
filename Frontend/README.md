@@ -47,10 +47,8 @@ Frontend ko backend se connect karne ke liye, root mein `.env`:
 abhi apne Razorpay dashboard ke **Test Mode** keys daalo. Jab live jaana ho, sirf yeh
 teen values live keys se badal do — code mein kahin kuch change nahi karna padega.
 
-### Admin panel (Courses)
-`/admin/login` pe apne `ADMIN_EMAIL` / `ADMIN_PASSWORD` se login karo, phir `/admin/courses`
-pe naya course banao, price/discount set karo, aur status open/closed toggle karo — sab
-turant public `/programs` page pe reflect hota hai.
+### Admin panel
+The admin panel is a separate app in `../Admin` with its own Vercel deployment (see `Admin/README.md`); it is no longer part of this site.
 
 ## Structure
 src/

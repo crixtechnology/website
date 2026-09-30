@@ -1,15 +1,13 @@
 # Crix Technology — crawler rules (https://www.crixtechnology.in/robots.txt)
 #
 # Everything public is open to all search engines. Private/app-only areas
-# (student accounts, course player, admin panel) have no SEO value and show
+# (student accounts, course player) have no SEO value and show
 # personal data once logged in, so they're kept out of the index.
 User-agent: *
 Allow: /
 Disallow: /dashboard
 Disallow: /profile
 Disallow: /learn/
-Disallow: /admin
-Disallow: /admin/
 
 # Full list of pages to index (rebuilt on every deploy).
 Sitemap: https://www.crixtechnology.in/sitemap.xml
