@@ -1,0 +1,912 @@
+:root{
+  --ink:#060B1A; --ink-rgb:6,11,26; --panel:#0C1530; --panel-2:#101B3E;
+  --teal:#14C9C9; --teal-rgb:20,201,201; --cyan:#7FE8E0; --amber:#F2B44C;
+  --text:#E8EEF7; --muted:#93A3BC;
+  --line:rgba(127,232,224,.14); --radius:18px;
+  /* Internships vs Courses each get one fixed accent, reused everywhere
+     that needs to signal which category something belongs to (section
+     eyebrow, card type pill, card border-on-hover, deliverable chips) so
+     the grouping reads visually, not just from copy. */
+  --internship: var(--teal); --internship-rgb: 20,201,201;
+  --course: var(--amber); --course-rgb: 242,180,76;
+  /* Same salmon/error color reused across closed-badges, admin danger
+     actions, expired pills and form errors — one token so light theme
+     below only has to redefine it once. -rgb companion mirrors the
+     --internship/--course pattern above, for the low-alpha tint/border
+     variants of the same color used alongside the solid one. */
+  --danger:#f0997b; --danger-rgb:224,120,90;
+}
+
+/* ---------- Light theme ----------
+   Toggled by ThemeContext (see src/context/ThemeContext.jsx), which sets
+   data-theme="light" on <html> and persists the choice to localStorage; an
+   inline script in public/index.html applies it before first paint so
+   there's no flash of the wrong theme. Everything below is ONLY color
+   token overrides — no layout, spacing, or component rule changes — so the
+   dark theme above (still the default with no data-theme attribute) is
+   completely untouched by this block.
+   --teal/--cyan/--amber/--danger are deepened here, not just carried over
+   from dark: the dark-mode values (e.g. --cyan:#7FE8E0, a pale mint) are
+   tuned for contrast against the near-black --ink and would be nearly
+   invisible as text on a light background — same brand hue family, just
+   shifted enough to stay legible on white. */
+:root[data-theme="light"]{
+  --ink:#F5F7FB; --ink-rgb:245,247,251; --panel:#FFFFFF; --panel-2:#F0F3F9;
+  --teal:#0A7A74; --teal-rgb:10,122,116; --cyan:#0E7490; --amber:#9A4508;
+  --text:#101B33; --muted:#55627A;
+  --line:rgba(16,27,51,.12);
+  --danger:#C0392B; --danger-rgb:192,57,43;
+  --internship-rgb:10,122,116; --course-rgb:154,69,8;
+}
+/* Decorative blurred background blobs (see .aurora below) read as a heavy
+   gray smudge at full opacity on a light page — soften rather than hide. */
+[data-theme="light"] .aurora{opacity:.4}
+/* These three use a low-opacity WHITE tint to lighten a dark surface —
+   inverted to a low-opacity dark tint so they still read as "subtly
+   recessed from the panel behind them" on a light background instead of
+   as a faint white smudge. */
+[data-theme="light"] .benefit,
+[data-theme="light"] .tech-tags span,
+[data-theme="light"] .detail-fact{background:rgba(16,27,51,.035)}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:hidden;width:100%}
+body{background:var(--ink);color:var(--text);font-family:'Sora',sans-serif;font-weight:300;line-height:1.7;overflow-x:hidden;width:100%}
+::selection{background:var(--teal);color:var(--ink)}
+a{color:inherit}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(18px,5vw,28px)}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.28em;text-transform:uppercase;color:var(--cyan);display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--teal)}
+/* Even line lengths: no single stray word left alone on the last line of a heading, label or paragraph. */
+h1,h2,h3,.eyebrow,.title-lg{text-wrap:balance}
+p,li{text-wrap:pretty}
+h1,h2,h3{font-family:'Unbounded',sans-serif;font-weight:600;line-height:1.15}
+h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
+.section{padding:clamp(56px,10vw,110px) 0;position:relative;overflow-x:clip}
+/* Nav-link targets (/programs#internships, #courses) — offset so the fixed
+   68px navbar never covers the section heading when scrolled/jumped to. */
+.anchor-section{scroll-margin-top:88px}
+.page-head{padding:clamp(112px,22vw,160px) 0 clamp(28px,6vw,40px)}
+.page-head p{color:var(--muted);max-width:60ch}
+
+.reveal,.reveal-l,.reveal-r,.reveal-zoom,.reveal-top{opacity:0;filter:blur(8px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.7,.2,1),filter .9s ease;will-change:transform,opacity,filter}
+.reveal{transform:translateY(46px)}
+.reveal-l{transform:translateX(-72px) rotate(-1.5deg)}
+.reveal-r{transform:translateX(72px) rotate(1.5deg)}
+.reveal-top{transform:translateY(-56px)}
+.reveal-zoom{transform:scale(.9)}
+.in{opacity:1;transform:none;filter:blur(0)}
+.stagger>*{transition-delay:calc(var(--i,0)*.12s)}
+
+/* subtle tech grid backdrop, runs behind every section for a persistent "advanced tech" feel while scrolling.
+   It lives on a pseudo-element so the top/bottom fade masks ONLY the grid: a mask on the section itself also
+   faded — and clipped — anything hanging outside the section's box (e.g. the phone country list opening on
+   the Profile page's last field) and text near the section edges. */
+.section{position:relative}
+.section::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(127,232,224,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(127,232,224,.05) 1px,transparent 1px);
+  background-size:64px 64px;
+  background-position:center top;
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 8%,#000 92%,transparent);
+  mask-image:linear-gradient(to bottom,transparent,#000 8%,#000 92%,transparent)}
+/* text-heavy pages (legal): drop the decorative grid + top/bottom fade so copy never looks washed out or blurred */
+.section--plain::before{display:none}
+.section--plain .reveal,.section--plain .reveal-l,.section--plain .reveal-r,.section--plain .reveal-zoom,.section--plain .reveal-top{opacity:1;filter:none;transform:none}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0%;z-index:99;background:linear-gradient(90deg,var(--teal),var(--cyan),var(--amber));box-shadow:0 0 12px rgba(20,201,201,.6)}
+
+#toTop{position:fixed;right:30px;bottom:92px;z-index:60;width:46px;height:46px;border-radius:50%;background:linear-gradient(120deg,var(--teal),var(--cyan));color:var(--ink);border:none;cursor:pointer;font-size:1.1rem;opacity:0;pointer-events:none;transform:translateY(16px);transition:opacity .35s,transform .35s}
+#toTop.show{opacity:1;pointer-events:auto;transform:none}
+
+#loader{position:fixed;inset:0;background:var(--ink);z-index:200;display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,visibility .6s}
+#loader.done{opacity:0;visibility:hidden}
+#loader .ld{animation:pulse 1.3s ease-in-out infinite}
+#loader .ld .logo{gap:14px}
+#loader .ld .logo img{height:54px}
+#loader .ld .logo-top{font-size:1.55rem}
+#loader .ld .logo-bottom{font-size:.72rem;letter-spacing:.34em}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+
+.aurora{position:absolute;inset:0;z-index:0;overflow:hidden;filter:blur(80px);pointer-events:none}
+.aurora span{position:absolute;border-radius:50%;will-change:transform}
+.a1{width:560px;height:560px;background:#0E4D5E;opacity:.55;top:-12%;left:-10%;animation:drift1 16s ease-in-out infinite alternate}
+.a2{width:460px;height:460px;background:#12336E;opacity:.5;bottom:-18%;right:2%;animation:drift2 21s ease-in-out infinite alternate}
+.a3{width:340px;height:340px;background:#6B4E10;opacity:.28;top:26%;right:-8%;animation:drift3 26s ease-in-out infinite alternate}
+.a4{width:300px;height:300px;background:#0FB5AA;opacity:.22;top:55%;left:22%;animation:drift1 24s ease-in-out infinite alternate-reverse}
+@keyframes drift1{to{transform:translate(140px,90px) scale(1.18)}}
+@keyframes drift2{to{transform:translate(-120px,-70px) scale(1.12)}}
+@keyframes drift3{to{transform:translate(-90px,110px) scale(1.25)}}
+
+.hl .w{display:inline-block;margin-right:.22em;opacity:0;transform:translateY(34px);animation:wordUp .85s cubic-bezier(.2,.7,.2,1) forwards}
+.hl .w:nth-child(1){animation-delay:.15s}.hl .w:nth-child(2){animation-delay:.25s}
+.hl .w:nth-child(3){animation-delay:.35s}.hl .w:nth-child(4){animation-delay:.5s}
+.hl .w:nth-child(5){animation-delay:.65s}.hl .w:nth-child(6){animation-delay:.75s}
+@keyframes wordUp{to{opacity:1;transform:none}}
+.rotator{display:inline-block;transition:opacity .35s,transform .35s}
+.rotator.swap{opacity:0;transform:translateY(14px)}
+
+nav.topbar{position:fixed;top:0;left:0;right:0;z-index:50;height:68px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(var(--ink-rgb),.55);border-bottom:1px solid var(--line);transition:background .35s ease,box-shadow .35s ease,border-color .35s ease,height .35s ease}
+nav.topbar.scrolled{height:58px;background:rgba(var(--ink-rgb),.88);box-shadow:0 12px 34px rgba(0,0,0,.35);border-bottom-color:rgba(127,232,224,.32)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:100%}
+.logo{position:relative;z-index:2;display:inline-flex;align-items:center;gap:10px;min-height:44px;text-decoration:none;vertical-align:middle}
+.logo img{height:32px;width:auto;display:block;transition:height .35s ease}
+nav.topbar.scrolled .logo img{height:27px}
+.logo-text{display:flex;flex-direction:column;justify-content:center;gap:4px}
+.logo-top{font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.02rem;line-height:1;letter-spacing:.03em;color:var(--text)}
+.logo-bottom{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.58rem;line-height:1;letter-spacing:.22em;color:var(--cyan)}
+.foot-logo img{height:26px}
+.foot-logo .logo-top{font-size:.92rem}
+/* The 404 page: the header's logo lockup, scaled up, with everything centred. */
+.notfound{text-align:center}
+.notfound-logo{margin-bottom:26px}
+.notfound .eyebrow::after{content:"";width:26px;height:1px;background:var(--teal)}
+.notfound .logo img{height:60px}
+.notfound .logo-top{font-size:1.7rem}
+.notfound .logo-bottom{font-size:.78rem;letter-spacing:.32em}
+.nav-links{display:flex;gap:30px;list-style:none}
+/* Vertical padding turns the link into a real ~44px-tall tap target (was
+   just the text's own line-height, ~22px) without changing its font size
+   or the navbar's fixed height — the extra space is invisible on desktop,
+   just a more comfortable hover/click zone. */
+.nav-links a{display:inline-block;color:var(--muted);text-decoration:none;font-size:.86rem;transition:color .25s;position:relative;padding:12px 2px}
+.nav-links a::after{content:"";position:absolute;left:2px;bottom:6px;height:1px;width:0;background:var(--cyan);transition:width .3s}
+.nav-links a:hover,.nav-links a.active{color:var(--cyan)}
+.nav-links a:hover::after,.nav-links a.active::after{width:100%}
+a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
+.nav-cta{font-family:'Sora',sans-serif;font-size:.82rem;font-weight:500;color:var(--ink);text-decoration:none;background:linear-gradient(120deg,var(--teal),var(--cyan));padding:10px 20px;border-radius:100px;border:none;cursor:pointer;transition:transform .25s,box-shadow .25s;white-space:nowrap;display:inline-block}
+.nav-cta:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(20,201,201,.35)}
+.nav-account{display:flex;align-items:center;gap:12px}
+.nav-account .nav-logout,.nav-links-mobile-account .nav-logout{padding:9px 16px;font-size:.78rem}
+.nav-account-link{font-family:'Sora',sans-serif;font-size:.82rem;font-weight:500;color:var(--muted);text-decoration:none;white-space:nowrap;transition:color .2s}
+.nav-account-link:hover,.nav-account-link.active{color:var(--text)}
+/* Always visible (unlike .burger, which only shows under the mobile
+   breakpoint below) — sits between the desktop nav-account/nav-cta pill
+   and the burger, so it doesn't get lost inside either one. */
+.theme-toggle{flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:transparent;border:1px solid var(--line);color:var(--text);cursor:pointer;transition:border-color .25s,color .25s,transform .25s}
+.theme-toggle:hover{border-color:var(--cyan);color:var(--cyan);transform:translateY(-1px)}
+.burger{display:none;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;width:44px;height:44px;align-items:center;justify-content:center;margin-right:-10px}
+.nav-links-mobile-account{display:none}
+/* 1100px, not narrower: a logged-in account's desktop nav (5 links + Profile + My Dashboard, or an admin's
+   All Courses + Admin, + Log out + theme toggle) needs about 1020px, so below that it collapses into the
+   burger menu instead of overflowing. */
+@media(max-width:1100px){
+  /* gap is smaller than desktop's list here on purpose — each link's own
+     padding (from .nav-links a above) already provides the ~44px tap
+     target, so a big extra gap on top of that would make the menu
+     needlessly long. */
+  .nav-links{display:none;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 68px);overflow-y:auto;background:var(--ink);flex-direction:column;padding:22px 28px 28px;gap:4px;border-bottom:1px solid var(--line);box-shadow:0 26px 44px rgba(0,0,0,.55);z-index:1}
+  .nav-links.open{display:flex}
+  /* The dropdown's own height only ever fits its content (5 links + the
+     account row), never the full screen — without this, whatever the page
+     happens to be scrolled to underneath just continues right below the
+     menu with nothing separating the two, reading as a cut-off/broken
+     panel rather than an open menu. Mirrors the same dimmed, blurred
+     .modal-backdrop treatment used everywhere else in the app an overlay
+     needs to visually "own" the rest of the screen. Portaled to <body>
+     (see Navbar in ui.jsx) so top:68px/bottom:0 resolve against the real
+     viewport, not nav.topbar's own 68px-tall box. */
+  .nav-backdrop{position:fixed;top:68px;left:0;right:0;bottom:0;background:rgba(6,11,26,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:fadeIn .25s ease;z-index:49}
+  .nav-links a{padding:13px 2px}
+  .burger{display:flex}
+  /* Direct-child selector — the .nav-in > .nav-cta is the desktop-only
+     button; .nav-links-mobile-account also has a button.nav-cta (the mobile
+     "Log in" pill) that must stay visible here. */
+  .nav-in>.nav-cta{display:none}
+  .nav-account{display:none}
+  /* .nav-cta/.nav-account above are the desktop pill — this is the same
+     login/account controls, shown inside the mobile dropdown instead. */
+  .nav-links-mobile-account{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding-top:18px;margin-top:-2px;border-top:1px solid var(--line);width:100%}
+  .nav-links-mobile-account a,.nav-links-mobile-account .link-btn{font-size:.86rem;display:inline-block;padding:9px 2px}
+}
+
+.hero{min-height:100vh;display:flex;align-items:center;position:relative;overflow:hidden}
+@supports (height:100svh){.hero{min-height:100svh}}
+@media(max-width:640px){
+  /* On phones, centering content in the full screen height left a big
+     empty band above the heading, and forcing 100svh left another big
+     empty band below the CTAs. Anchor content near the top and let the
+     hero size to its content instead of forcing full-screen height. */
+  .hero{align-items:flex-start;min-height:0}
+  .hero-in{padding-top:78px;padding-bottom:48px}
+}
+.bg3d{position:absolute;inset:0;z-index:0}
+/* Two-layer scrim: a left-anchored wash keeps the hero copy readable over the
+   3D constellation while the right side (the globe) stays visible. */
+.hero::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:
+  linear-gradient(90deg,rgba(var(--ink-rgb),.82) 0%,rgba(var(--ink-rgb),.6) 34%,rgba(var(--ink-rgb),.15) 60%,transparent 80%),
+  radial-gradient(80% 72% at 28% 44%,transparent 0%,rgba(var(--ink-rgb),.5) 72%,var(--ink) 100%)}
+@media(max-width:860px){
+  /* narrower viewport = text spans the whole width, so wash the whole hero */
+  .hero::after{background:
+    linear-gradient(180deg,rgba(var(--ink-rgb),.55) 0%,rgba(var(--ink-rgb),.72) 55%,var(--ink) 100%)}
+}
+.hero-in{position:relative;z-index:2;padding-top:clamp(90px,20vw,110px);padding-bottom:clamp(78px,10vw,100px);will-change:transform,opacity}
+.hero h1 span.w{text-shadow:0 2px 34px rgba(var(--ink-rgb),.6)}
+.hero-in>p{text-shadow:0 1px 16px rgba(var(--ink-rgb),.75)}
+.hero h1{font-size:clamp(2rem,5.6vw,4.3rem);max-width:15ch;margin:20px 0 22px;line-height:1.15}
+/* The rotating word ranges from 3 to 5 wrapped lines depending on which
+   word is showing, at every breakpoint — reserve height for the longest
+   one (in em, so it scales with the heading's own font-size) so the
+   heading, and everything stacked under it, never jumps as the word
+   swaps every ~3.4s. */
+.hero h1{display:flex;flex-direction:column;justify-content:center;min-height:5.75em}
+.hl-inner{display:block}
+.hero h1 em{font-style:normal;color:transparent;background:linear-gradient(110deg,var(--teal),var(--cyan) 60%,var(--amber));-webkit-background-clip:text;background-clip:text}
+.hero p{max-width:52ch;color:var(--muted);font-size:clamp(.92rem,2.4vw,1.02rem)}
+.hero-ctas{display:flex;gap:14px;margin-top:32px;flex-wrap:wrap}
+.btn{font-family:'Sora',sans-serif;font-size:.9rem;font-weight:500;padding:14px 26px;border-radius:100px;text-decoration:none;cursor:pointer;transition:transform .25s,box-shadow .25s;border:none;display:inline-block;white-space:nowrap}
+.btn-solid{background:linear-gradient(120deg,var(--teal),var(--cyan));color:var(--ink);position:relative;overflow:hidden}
+.btn-solid::after{content:"";position:absolute;top:0;left:-90%;width:45%;height:100%;background:rgba(255,255,255,.35);transform:skewX(-25deg);transition:left .6s ease}
+.btn-solid:hover{transform:translateY(-3px);box-shadow:0 12px 34px rgba(20,201,201,.4)}
+.btn-solid:hover::after{left:140%}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn-ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+.hero-meta{display:flex;gap:clamp(18px,5vw,34px);margin-top:clamp(36px,8vw,64px);margin-bottom:8px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--muted);letter-spacing:.08em}
+.hero-meta b{display:block;color:var(--text);font-family:'Unbounded',sans-serif;font-size:1.15rem;font-weight:600;letter-spacing:0;margin-bottom:4px}
+@media(max-width:640px){.hero-meta{display:none}}
+
+.scroll-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.3em;color:var(--muted)}
+.scroll-hint .wheel{width:22px;height:36px;border:1px solid var(--muted);border-radius:12px;position:relative}
+.scroll-hint .wheel::after{content:"";position:absolute;left:50%;top:7px;width:3px;height:7px;border-radius:3px;background:var(--cyan);transform:translateX(-50%);animation:drop 1.8s infinite}
+@keyframes drop{0%{opacity:0;top:6px}30%{opacity:1}100%{opacity:0;top:20px}}
+@media(max-width:640px){.scroll-hint{display:none}}
+
+.marquee{border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:16px 0;background:rgba(12,21,48,.4)}
+.track{display:flex;gap:clamp(28px,7vw,56px);width:max-content;animation:scrollX 30s linear infinite}
+.track span{font-family:'JetBrains Mono',monospace;font-size:clamp(.75rem,2.4vw,.8rem);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.track span i{color:var(--teal);font-style:normal;margin-right:14px}
+@keyframes scrollX{to{transform:translateX(-50%)}}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:54px}
+@media(max-width:920px){.grid3{grid-template-columns:repeat(2,1fr);gap:20px}}
+@media(max-width:640px){.grid3{grid-template-columns:1fr}}
+/* A card list whose length isn't a clean multiple of the column count (e.g.
+   4 internships or 7 courses) otherwise leaves one lone card stranded at
+   the left of an empty final row. Center it instead, at each breakpoint
+   that still has more than one column. */
+@media(min-width:921px){.grid3>:nth-child(3n+1):last-child{grid-column:2}}
+@media(min-width:641px) and (max-width:920px){
+  .grid3>:nth-child(2n+1):last-child{grid-column:1/-1;max-width:calc(50% - 10px);margin:0 auto}
+}
+.card{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:clamp(24px,6vw,36px) clamp(20px,5vw,30px);position:relative;transform-style:preserve-3d;transition:border-color .3s;will-change:transform;display:flex;flex-direction:column;height:100%}
+.card::before{content:"";position:absolute;inset:0;border-radius:var(--radius);background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(127,232,224,.10),transparent 42%);pointer-events:none}
+.card:hover{border-color:rgba(127,232,224,.4)}
+.card .tag{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;color:var(--amber)}
+.card h3{font-size:1.18rem;margin:14px 0 12px;min-height:2.6em}
+.card p{color:var(--muted);font-size:.92rem}
+.card-benefit{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:4.2em}
+.duration-chip{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:10px}
+.deliverable-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.deliverable-chip{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;color:var(--teal);background:rgba(20,201,201,.10);border:1px solid rgba(20,201,201,.25);padding:3px 9px;border-radius:20px}
+.card-type-course .deliverable-chip{color:var(--course);background:rgba(var(--course-rgb),.10);border-color:rgba(var(--course-rgb),.25)}
+/* --course is aliased to the same --amber the topic `tag` already used
+   site-wide (see :root) — on a course card that put the vivid "Course"
+   type pill and the plain-text topic tag ("In demand", "Beginner
+   friendly"...) in the exact same color right next to each other,
+   undoing the "tag stays a secondary badge" hierarchy the pill exists to
+   create. Muting just the tag here (not the shared `.card .tag` rule,
+   which Services cards and internship cards still rely on unchanged)
+   fixes the one case where they actually collide. */
+.card-type-course .tag{color:var(--muted)}
+.section-lede{color:var(--muted);max-width:60ch;margin-top:10px}
+
+/* Card-top-left groups the new type pill with the existing topic tag so
+   card-top's space-between still only has two flex children (this group,
+   and the optional closed-badge on the far right). */
+.card-top-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.type-pill{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;line-height:1}
+.type-pill--internship{color:var(--internship);background:rgba(var(--internship-rgb),.14);border:1px solid rgba(var(--internship-rgb),.35)}
+.type-pill--course{color:var(--course);background:rgba(var(--course-rgb),.14);border:1px solid rgba(var(--course-rgb),.35)}
+.card-type-internship:hover{border-color:rgba(var(--internship-rgb),.4)}
+.card-type-course:hover{border-color:rgba(var(--course-rgb),.4)}
+
+/* Section-level accent so the Internships/Courses grouping on /programs
+   (and the matching Home sections) reads even before you get to a card. */
+.section--internships .eyebrow{color:var(--internship)}
+.section--internships .eyebrow::before{background:var(--internship)}
+.section--courses .eyebrow{color:var(--course)}
+.section--courses .eyebrow::before{background:var(--course)}
+.card ul{list-style:none;margin-top:20px}
+.card ul li{font-size:.85rem;color:var(--text);padding:7px 0;border-top:1px dashed rgba(147,163,188,.18)}
+.card ul li::before{content:"→";color:var(--teal);margin-right:10px}
+.card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.closed-badge{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);background:rgba(var(--danger-rgb),.12);border:1px solid rgba(var(--danger-rgb),.3);padding:3px 9px;border-radius:20px}
+.price-row{display:flex;align-items:baseline;gap:10px;margin-top:20px;padding-top:16px;border-top:1px dashed rgba(147,163,188,.18);flex-wrap:wrap}
+.price-old{font-size:.82rem;color:var(--muted);text-decoration:line-through}
+.price-now{font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.2rem;color:var(--text)}
+.price-off{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.08em;color:var(--teal);background:rgba(20,201,201,.12);padding:3px 8px;border-radius:20px}
+.buy-btn{width:100%;text-align:center;font-size:.86rem;padding:12px 20px}
+.buy-btn:disabled{opacity:.5;cursor:not-allowed;transform:none !important;box-shadow:none !important}
+.card-btn-row{display:flex;gap:10px;margin-top:auto;padding-top:20px;flex-wrap:wrap}
+/* flex-basis:auto (not the 0% an unqualified `flex:1` implies) so each
+   button's own text sets its minimum width first — an equal 50/50 split
+   was clipping longer labels ("Request to enroll", "Inquire to enroll")
+   inside their own pill, since a same-size sibling ("See more →") forced
+   them below their content's natural width. Any row too narrow for both at
+   once now wraps to its own line (`.card-btn-row` already does) instead of
+   silently truncating. `.buy-btn`'s own `width:100%` (correct for its other
+   context — alone, full-width, inside BuyModal's form) becomes the used
+   flex-basis once basis is `auto` instead of `0`, which forced a wrap on
+   every card regardless of how short its label was; overriding it back to
+   `auto` here restores content-based sizing in this side-by-side context. */
+.card-btn-row .buy-btn,.card-btn-row .see-more-btn{flex:1 1 auto;min-width:120px;width:auto;margin-top:0}
+.see-more-btn{width:100%;text-align:center}
+
+.modal-backdrop{position:fixed;inset:0;z-index:100;background:rgba(6,11,26,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:12px;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{position:relative;max-width:420px;width:100%;background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:26px 30px;max-height:96vh;overflow-y:auto;overflow-x:hidden}
+/* 96vh is measured against the LARGEST possible viewport (as if a mobile
+   browser's address bar were already hidden), so a modal sized/centered off
+   it can claim more room than is actually visible right now — leaving a
+   blank band above the box and pushing its bottom off-screen until the
+   user scrolls and the chrome collapses to reveal the rest. Same bug class
+   .hero already hit and fixed with svh (see its own comment above) — 96svh
+   is measured against the smallest/guaranteed-visible viewport instead, so
+   the box always fits what's actually on screen from the first paint. */
+@supports (max-height:96svh){.modal-box{max-height:96svh}}
+.modal-box .field{margin-bottom:12px}
+/* ServiceInquiryModal — the one form here with 5 fields (every other modal
+   has 4 or fewer) — was tall enough to need .modal-box's own scroll
+   fallback on an ordinary ~650-700px browser viewport (common once you
+   subtract real browser chrome from a laptop screen, not just an edge
+   case). Scoped here rather than tightening .field/.field label globally,
+   which every other modal's spacing also depends on and already fits fine
+   as-is. */
+.compact-form .field{margin-bottom:8px}
+.compact-form .field label{margin-bottom:4px;font-size:.75rem}
+.compact-form .field input,.compact-form .field textarea{padding:10px 14px}
+/* DetailModal (InfoCard's "See more") carries a full description + points
+   list, sometimes deliverable chips and a price row too — noticeably more
+   content than the compact Buy/Auth/Inquire modals sharing .modal-box, so
+   it gets a bit more width instead of everything else being cramped. */
+.detail-modal-box{max-width:540px}
+.modal-close{position:absolute;top:10px;right:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:50%;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;padding:0}
+.modal-close:hover{background:rgba(147,163,188,.14)}
+/* A long title must not run underneath the (larger) close button. */
+.modal-box h3{padding-right:28px}
+/* Focus moves onto the dialog itself when a popup opens (useModalFocus); it
+   isn't a control, so it shouldn't wear a focus ring. */
+.modal-box:focus{outline:none}
+.modal-close:hover{color:var(--text)}
+.modal-box--video{max-width:880px}
+.modal-box--video .lecture-embed{margin-top:0}
+.detail-box{max-width:480px}
+.detail-fact{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);border-radius:10px;padding:10px 14px;margin:14px 0}
+.detail-fact span{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
+.detail-fact b{color:var(--text);font-family:'Unbounded',sans-serif;font-size:.92rem}
+.detail-points{list-style:none;margin:16px 0 4px}
+.detail-points li{font-size:.88rem;color:var(--text);padding:8px 0;border-top:1px dashed rgba(147,163,188,.18)}
+.detail-points li::before{content:"→";color:var(--teal);margin-right:10px}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:54px 0}
+@media(max-width:820px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{text-align:center}
+.stat b{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(1.9rem,4vw,2.9rem);color:transparent;background:linear-gradient(120deg,var(--teal),var(--cyan));-webkit-background-clip:text;background-clip:text;display:block}
+.stat span{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+
+.process{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:54px}
+@media(max-width:920px){.process{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.process{grid-template-columns:1fr}}
+.step{text-align:center;padding:0}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--cyan));color:var(--ink);font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.05rem;box-shadow:0 10px 26px rgba(20,201,201,.32);margin-bottom:16px}
+.step h3{font-size:.98rem;margin:0 0 8px}
+.step p{color:var(--muted);font-size:.86rem;line-height:1.6}
+
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:54px}
+@media(max-width:920px){.grid4{grid-template-columns:repeat(2,1fr);gap:18px}}
+@media(max-width:560px){.grid4{grid-template-columns:1fr}}
+
+.benefit{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:14px;padding:22px 20px;transition:border-color .3s}
+.benefit:hover{border-color:rgba(127,232,224,.35)}
+.benefit-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(20,201,201,.12);color:var(--teal);margin-bottom:14px}
+.benefit h3{font-size:.95rem;margin:0 0 8px}
+.benefit p{color:var(--muted);font-size:.82rem;line-height:1.55}
+
+/* ---------- Admin panel (course management) ---------- */
+.admin-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:32px}
+.admin-form{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:28px}
+.admin-form-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0 16px}
+@media(max-width:820px){.admin-form-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.admin-form-grid{grid-template-columns:1fr}}
+.admin-list{display:flex;flex-direction:column;gap:10px}
+.admin-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 20px}
+.admin-row-main{display:flex;flex-direction:column;gap:4px}
+.admin-row-main b{font-size:.98rem}
+.admin-row-meta{font-size:.8rem;color:var(--muted)}
+.admin-row-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.admin-row-actions .btn{padding:9px 16px;font-size:.82rem}
+.admin-danger{border-color:rgba(var(--danger-rgb),.4);color:var(--danger)}
+.admin-danger:hover{border-color:var(--danger);color:var(--danger)}
+.admin-search{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;color:var(--text);font-family:'Sora',sans-serif;font-size:.88rem;margin-bottom:20px}
+.admin-search:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(20,201,201,.22)}
+.admin-pill{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:4px 10px;border:1px solid;white-space:nowrap}
+.admin-pill.new{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-pill.read{color:var(--muted);border-color:var(--line);background:transparent}
+.admin-pill.expired{color:var(--danger);border-color:rgba(var(--danger-rgb),.4);background:rgba(var(--danger-rgb),.1)}
+.admin-pill.lifetime{color:var(--teal);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-pill.admin-role{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-link{color:var(--cyan);text-decoration:none;border-bottom:1px dashed rgba(127,232,224,.4)}
+.admin-link:hover{color:var(--text);border-bottom-color:var(--text)}
+.admin-tabs{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.admin-tabs button{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:8px 16px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;transition:opacity .2s}
+.admin-tabs button.active{color:var(--cyan);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.admin-row-main.admin-row-message{flex:1 1 100%}
+.admin-row-message p{font-size:.85rem;color:var(--text);margin:4px 0 0;white-space:pre-wrap}
+
+/* ---------- recorded-lecture preview box (Drive / YouTube / Vimeo / video file) ---------- */
+.lecture-embed{position:relative;margin-top:10px;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--line)}
+.lecture-embed-close{position:absolute;top:10px;right:10px;z-index:2;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(6,11,26,.82);color:#fff;border:1px solid rgba(255,255,255,.18);font-size:1rem;line-height:1;cursor:pointer;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);transition:background .2s,transform .2s}
+.lecture-embed-close:hover{background:rgba(6,11,26,.96);transform:scale(1.06)}
+.lecture-embed iframe,.lecture-embed video{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+.lecture-embed-poster{display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;margin:0;position:relative;cursor:pointer;background:linear-gradient(135deg,var(--panel),var(--panel-2)) center/cover no-repeat;transition:filter .2s}
+.lecture-embed-poster:hover{filter:brightness(1.08)}
+.lecture-embed-open-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:9px;padding:13px 24px;border-radius:100px;background:linear-gradient(120deg,var(--teal),var(--cyan));color:var(--ink);font-family:'Sora',sans-serif;font-weight:600;font-size:.86rem;white-space:nowrap;box-shadow:0 10px 30px rgba(20,201,201,.4);transition:transform .2s}
+.lecture-embed-open-btn svg{width:16px;height:16px;flex-shrink:0}
+.lecture-embed-poster:hover .lecture-embed-open-btn{transform:translate(-50%,-50%) scale(1.05)}
+.lecture-embed-tag{position:absolute;left:12px;bottom:10px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:rgba(6,11,26,.55);padding:4px 10px;border-radius:100px;backdrop-filter:blur(4px)}
+.status-toggle{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;border-radius:20px;padding:8px 14px;border:1px solid;cursor:pointer;transition:opacity .2s}
+.status-toggle:hover{opacity:.85}
+.status-toggle.open{color:var(--teal);border-color:rgba(20,201,201,.4);background:rgba(20,201,201,.1)}
+.status-toggle.closed{color:var(--danger);border-color:rgba(var(--danger-rgb),.4);background:rgba(var(--danger-rgb),.1)}
+
+.band{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:26px;padding:clamp(28px,7vw,64px) clamp(22px,6vw,58px);display:grid;grid-template-columns:1.2fr .8fr;gap:clamp(28px,6vw,60px);align-items:center;position:relative;overflow:hidden}
+.band::after{content:"";position:absolute;right:-140px;top:-140px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(20,201,201,.16),transparent 65%)}
+@media(max-width:880px){.band{grid-template-columns:1fr;border-radius:20px}}
+.band p{color:var(--muted)}
+.band .facts{display:grid;gap:20px}
+.fact{border-left:2px solid var(--teal);padding-left:18px}
+.fact b{font-family:'Unbounded',sans-serif;font-size:1.3rem;display:block;font-weight:600}
+.fact span{color:var(--muted);font-size:.84rem}
+
+.quote-mark{font-family:'Unbounded',sans-serif;font-size:2rem;color:var(--teal);line-height:1}
+.quote-who{margin-top:18px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.16em;color:var(--cyan);text-transform:uppercase}
+
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px}
+@media(max-width:820px){.contact-grid{grid-template-columns:1fr}}
+.field{margin-bottom:18px}
+.field label{display:block;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px;cursor:pointer}
+.field input,.field textarea,.field select{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:var(--text);font-family:'Sora',sans-serif;font-size:.9rem}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(20,201,201,.22)}
+.field input:disabled,.field textarea:disabled,.field select:disabled{opacity:.55;cursor:not-allowed}
+/* Country picker + number (components/PhoneInput.jsx) */
+.phone-field{position:relative;display:flex;gap:8px;align-items:stretch}
+.phone-cc{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;padding:0 12px;min-height:44px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--text);font-family:'Sora',sans-serif;font-size:.9rem;cursor:pointer;transition:border-color .2s}
+.phone-cc:hover:not(:disabled){border-color:rgba(var(--teal-rgb),.55)}
+.phone-cc:focus-visible{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(20,201,201,.22)}
+.phone-cc:disabled{opacity:.6;cursor:not-allowed}
+.phone-cc-caret{color:var(--muted);transition:transform .2s}
+.phone-cc[aria-expanded="true"] .phone-cc-caret{transform:rotate(180deg)}
+.phone-field .phone-num{flex:1 1 0;min-width:0}
+.flag{display:inline-block;flex:none;width:24px;height:16px;border-radius:3px;object-fit:cover;background:rgba(127,127,127,.15);box-shadow:0 0 0 1px rgba(127,127,127,.35)}
+.flag--fallback{display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--muted)}
+.phone-pop{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;max-width:380px;background:var(--panel-2);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.5);overflow:hidden}
+[data-theme="light"] .phone-pop{box-shadow:0 14px 34px rgba(16,27,51,.2)}
+.field .phone-pop .phone-search{width:calc(100% - 16px);margin:8px;padding:10px 12px;font-size:.85rem;border-radius:10px}
+.phone-list{list-style:none;position:relative;max-height:min(240px,40vh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0 4px 6px}
+.phone-group{display:block;padding:10px 10px 4px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.phone-opt{display:flex;align-items:center;gap:10px;min-height:38px;padding:7px 10px;border-radius:8px;font-size:.86rem;line-height:1.3;cursor:pointer}
+.phone-opt.is-active{background:rgba(var(--teal-rgb),.16)}
+.phone-opt.is-selected .phone-opt-name{color:var(--cyan);font-weight:600}
+.phone-opt-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phone-opt-dial{flex:none;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted)}
+.phone-empty{padding:14px 12px;font-size:.84rem;color:var(--muted)}
+@media(pointer:coarse){.phone-opt{min-height:44px}}
+.form-note{font-size:.8rem;color:var(--muted);margin-top:14px}
+.form-error{font-size:.8rem;color:var(--danger);margin:0 0 12px;line-height:1.4}
+/* Floats top-center over the whole page (above modals too — see z-index)
+   instead of sitting inline after whichever button triggered it, so it
+   reads as one consistent "here's what just happened" surface no matter
+   which of the site's many forms produced it. */
+.alert{position:fixed;top:84px;left:50%;transform:translateX(-50%);z-index:150;
+  display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:12px;
+  font-size:.85rem;line-height:1.5;max-width:min(92vw,480px);width:max-content;
+  background:var(--panel);box-shadow:0 16px 40px rgba(0,0,0,.5);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  animation:alertIn .3s ease}
+@keyframes alertIn{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
+/* The same message, in the flow of a popup's form instead of floating over the page. */
+.alert-inline{position:static;transform:none;z-index:auto;width:auto;max-width:none;margin:0 0 14px;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;animation:alertInline .25s ease}
+@keyframes alertInline{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.alert-icon{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;line-height:1}
+.alert-success{background:rgba(20,201,201,.22);border:1px solid rgba(20,201,201,.45)}
+.alert-success .alert-icon{background:var(--teal);color:var(--ink)}
+.alert-error{background:rgba(240,153,123,.22);border:1px solid rgba(240,153,123,.5)}
+.alert-error .alert-icon{background:var(--danger);color:var(--ink)}
+.alert-info{background:rgba(127,232,224,.18);border:1px solid rgba(127,232,224,.4)}
+.alert-info .alert-icon{background:var(--cyan);color:var(--ink)}
+@media(max-width:640px){.alert{top:74px}}
+.link-btn{background:none;border:none;padding:0;margin:0;font:inherit;color:var(--cyan);cursor:pointer;text-decoration:underline}
+.link-btn:hover{color:var(--teal)}
+.google-btn-wrap{display:flex;justify-content:center;min-height:44px;max-width:100%;border-radius:999px;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease}
+.google-btn-wrap:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(6,11,26,.35)}
+.google-btn-wrap iframe{border-radius:999px!important}
+.auth-divider{display:flex;align-items:center;gap:14px;margin:12px 0;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.info-row{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px dashed rgba(147,163,188,.18)}
+.info-row .ic{width:40px;height:40px;border-radius:11px;background:rgba(20,201,201,.12);color:var(--teal);font-size:1.05rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.info-row a{color:var(--cyan);text-decoration:none}
+.info-row .info-label{display:block;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.info-row .contact-line{display:flex;align-items:center;flex-wrap:wrap}
+
+.orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(60px);z-index:-1;will-change:transform}
+.orb-1{width:380px;height:380px;background:rgba(20,201,201,.10);top:8%;left:-140px}
+.orb-2{width:300px;height:300px;background:rgba(242,180,76,.07);top:40%;right:-120px}
+@media(max-width:640px){
+  .orb-1{width:200px;height:200px;left:-80px}
+  .orb-2{width:170px;height:170px;right:-70px}
+}
+
+/* extra bottom room so the fixed WhatsApp / back-to-top buttons never rest on
+   top of the last footer row */
+footer{border-top:1px solid var(--line);padding:44px 0 96px;margin-top:40px}
+.foot{display:flex;justify-content:space-between;gap:44px;flex-wrap:wrap;color:var(--muted);font-size:.8rem}
+.foot .mono{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.06em}
+.foot-links{display:flex;gap:20px;list-style:none;font-size:.8rem}
+.foot-links a{display:inline-block;padding:5px 0;color:var(--muted);text-decoration:none}
+.foot-links a:hover{color:var(--cyan)}
+
+.foot-brand{max-width:320px;display:flex;flex-direction:column;gap:14px}
+.foot-desc{color:var(--muted);font-size:.8rem;line-height:1.75}
+.foot-contact{display:flex;flex-direction:column;gap:2px;font-size:.8rem}
+.foot-contact a{display:inline-block;padding:7px 0;color:var(--cyan);text-decoration:none}
+.foot-contact a:hover{color:var(--teal)}
+.foot-contact span:has(.wa-pill){display:inline-flex;align-items:center;flex-wrap:wrap}
+a.wa-pill{margin-left:10px;color:#1EBE5D;font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(30,190,93,.12);border:1px solid rgba(30,190,93,.28);padding:6px 16px;border-radius:20px;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap;transition:background .2s ease,color .2s ease,border-color .2s ease,transform .15s ease}
+a.wa-pill:hover,a.wa-pill:focus-visible{background:#1EBE5D;color:#04170c;border-color:#1EBE5D;transform:translateY(-1px)}
+a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
+.foot-hours{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.06em}
+.foot-social{display:flex;gap:10px;margin-top:2px}
+.foot-social a{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.06);color:var(--muted);transition:background .2s ease,color .2s ease}
+.foot-social a:hover,.foot-social a:focus-visible{background:var(--cyan);color:#04170c}
+[data-theme="light"] .foot-social a{background:rgba(0,0,0,.05)}
+.foot-cols{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:28px;flex:1;min-width:min(100%,420px);max-width:560px}
+/* Visible only to screen readers — gives a page section a real heading without changing how it looks. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.foot-cols h4{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+.foot-cols .foot-links{flex-direction:column;gap:2px}
+.foot-base{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:36px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.75rem}
+.foot-base .mono{font-family:'JetBrains Mono',monospace;letter-spacing:.06em}
+@media(max-width:640px){.foot-cols{grid-template-columns:repeat(2,1fr);max-width:none}}
+
+/* ---------- Tech stack (About page) ---------- */
+.tech-stack{display:flex;flex-direction:column;gap:0;margin-top:40px}
+.tech-row{display:grid;grid-template-columns:200px 1fr;gap:24px;padding:20px 0;border-top:1px dashed rgba(147,163,188,.18)}
+.tech-row:last-child{border-bottom:1px dashed rgba(147,163,188,.18)}
+.tech-row h4{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);padding-top:4px}
+.tech-tags{display:flex;flex-wrap:wrap;gap:8px}
+.tech-tags span{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.04em;color:var(--text);background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:20px;padding:5px 12px}
+@media(max-width:640px){.tech-row{grid-template-columns:1fr;gap:12px}}
+
+/* ---------- Company information (About page) ---------- */
+.company-info{margin-top:40px}
+.ci-row{display:grid;grid-template-columns:220px 1fr;gap:24px;padding:16px 0;border-top:1px dashed rgba(147,163,188,.18)}
+.ci-row:last-child{border-bottom:1px dashed rgba(147,163,188,.18)}
+.ci-row dt{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);padding-top:2px}
+.ci-row dd{color:var(--text);font-size:.9rem;line-height:1.7}
+.ci-row dd.mono{font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
+@media(max-width:640px){.ci-row{grid-template-columns:1fr;gap:6px}}
+
+/* ---------- LiveDevice: laptop mockup with a live-updating screen ---------- */
+.device-rig{position:relative;max-width:600px;margin:0 auto;padding:clamp(14px,4vw,30px) 0 clamp(26px,6vw,44px)}
+.device{position:relative;background:linear-gradient(160deg,#16223f,#0a1224);border:1px solid rgba(127,232,224,.22);border-radius:16px;padding:clamp(6px,1.6vw,10px);box-shadow:0 24px 50px rgba(0,0,0,.45)}
+.device-inner{position:relative;background:linear-gradient(155deg,#0e1c38,#081221);border-radius:9px;overflow:hidden}
+.device-topbar{display:flex;align-items:center;gap:6px;padding:9px clamp(10px,3vw,14px);background:rgba(10,18,36,.6)}
+.device-topbar i{width:6px;height:6px;border-radius:50%;display:block;flex:none}
+.device-topbar i:nth-child(1){background:var(--teal)}
+.device-topbar i:nth-child(2){background:var(--amber)}
+.device-topbar i:nth-child(3){background:#4a5875}
+.device-topbar span{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;color:#5f7191;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.particle-stage{position:relative;height:min(46vw,270px);min-height:190px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,rgba(20,201,201,.22),transparent 70%)}
+.particle-stage canvas{display:block}
+.particle-label{position:absolute;left:14px;bottom:12px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);background:rgba(10,18,36,.55);border:1px solid rgba(127,232,224,.25);padding:5px 10px;border-radius:20px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.device-sheen{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,0) 45%);pointer-events:none}
+.device-deck{width:calc(100% - 40px);height:18px;margin:0 auto;background:linear-gradient(180deg,#223258,#0c1730);border-radius:0 0 10px 10px;transform:perspective(200px) rotateX(-18deg);transform-origin:top;box-shadow:0 14px 24px rgba(0,0,0,.4)}
+.device-cable-svg{position:absolute;right:2%;bottom:-6px;width:48%;max-width:280px;height:80px;overflow:visible;pointer-events:none}
+.device-cable-line{fill:none;stroke:url(#deviceCableGrad);stroke-width:4;stroke-linecap:round;opacity:.9}
+.device-cable-flow{fill:none;stroke:#7FE8E0;stroke-width:2;stroke-linecap:round;stroke-dasharray:2 14;animation:cableFlow 1.3s linear infinite}
+@keyframes cableFlow{to{stroke-dashoffset:-120}}
+.device-node{fill:none;stroke:#7FE8E0;stroke-width:1.3;opacity:.7;animation:nodeRing 2.2s ease-out infinite}
+@keyframes nodeRing{0%{r:5;opacity:.8}100%{r:20;opacity:0}}
+@media(max-width:640px){.device-cable-svg{display:none}}
+@media(max-width:460px){.device-deck{width:calc(100% - 24px)}}
+
+#wa{position:fixed;right:26px;bottom:26px;z-index:60;width:50px;height:50px;border-radius:50%;background:#1EBE5D;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(30,190,93,.4);transition:transform .25s}
+#wa:hover{transform:translateY(-3px) scale(1.06)}
+#wa svg{width:26px;height:26px;fill:#fff}
+
+@media (prefers-reduced-motion:reduce){
+  .reveal,.reveal-l,.reveal-r,.reveal-zoom,.reveal-top{opacity:1;transform:none;filter:none;transition:none}
+  .hl .w{opacity:1;transform:none;animation:none}
+  .aurora,#loader{display:none}
+  *{animation:none!important;transition:none!important}
+}
+
+/* ---------- Plans: Basic / Plus / Pro ---------- */
+.plan-price{display:inline-flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.plan-pill{font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);background:rgba(var(--teal-rgb),.12);border:1px solid rgba(var(--teal-rgb),.3);padding:2px 8px;border-radius:20px;vertical-align:middle;white-space:nowrap}
+
+/* Full comparison: See more popup and the standalone detail page. */
+.plans-block{margin-top:26px;scroll-margin-top:88px}
+
+/* ---------- the richer course / internship page ---------- */
+.course-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:24px 0 4px}
+.course-facts>div{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.course-facts dt{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
+.course-facts dd{margin:5px 0 0;color:var(--text);font-family:'Unbounded',sans-serif;font-size:.92rem}
+.course-block{margin-top:38px}
+.course-block h2{font-family:'Unbounded',sans-serif;font-size:1.05rem;line-height:1.3;margin:0 0 14px}
+.course-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 32px}
+.check-list,.dash-list{list-style:none;margin:0;padding:0}
+.check-list li,.dash-list li{position:relative;padding:8px 0 8px 28px;font-size:.92rem;line-height:1.6;color:var(--text);border-top:1px dashed rgba(147,163,188,.18)}
+.check-list li:first-child,.dash-list li:first-child{border-top:none}
+.check-list li::before{content:"✓";position:absolute;left:2px;top:8px;color:var(--teal);font-weight:700}
+.dash-list li::before{content:"–";position:absolute;left:6px;top:8px;color:var(--teal)}
+.faq-list{border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.faq{border-top:1px solid var(--line)}
+.faq:first-child{border-top:none}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px;min-height:44px;font-weight:600;font-size:.95rem;line-height:1.45;color:var(--text)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";flex:none;font-size:1.3rem;line-height:1;color:var(--cyan);transition:transform .2s ease}
+.faq[open] summary::after{transform:rotate(45deg)}
+.faq p{margin:0;padding:0 18px 18px;font-size:.92rem;line-height:1.75;color:var(--muted);white-space:pre-line}
+.related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.related-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);text-decoration:none;color:var(--text);transition:border-color .2s ease,transform .2s ease}
+.related-card:hover{border-color:var(--cyan);transform:translateY(-2px)}
+.related-card h3{font-family:'Unbounded',sans-serif;font-size:.95rem;line-height:1.35;margin:0}
+.related-card p{margin:0;font-size:.85rem;line-height:1.6;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.related-more{margin-top:auto;font-size:.85rem;font-weight:600;color:var(--cyan)}
+.enroll-bar{display:none}
+@media(max-width:700px){
+  .enroll-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;position:fixed;left:0;right:0;bottom:0;z-index:55;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(0,0,0,.35);transform:translateY(110%);transition:transform .25s ease}
+  .enroll-bar.show{transform:none}
+  .enroll-bar-text{min-width:0;display:flex;flex-direction:column;gap:2px}
+  .enroll-bar-text b{font-size:.9rem;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .enroll-bar-text span{font-size:.78rem;color:var(--muted)}
+  .enroll-bar .btn{flex:none;padding:12px 18px}
+  /* the floating buttons ride above the bar instead of sitting on it */
+  body.has-enroll-bar #wa{bottom:90px}
+  body.has-enroll-bar #toTop{bottom:148px}
+}
+.plans-heading{font-family:'Unbounded',sans-serif;font-size:.95rem;margin-bottom:14px}
+.plan-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.plan-card{display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.03)}
+[data-theme="light"] .plan-card{background:rgba(16,27,51,.035)}
+.plan-card--plus{border-color:rgba(var(--teal-rgb),.5)}
+.plan-card-name{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--teal)}
+.plan-card .price-now{font-size:1.35rem}
+.plan-features{list-style:none;margin:4px 0 8px;flex:1}
+.plan-features li{font-size:.84rem;color:var(--text);padding:6px 0;border-top:1px dashed rgba(147,163,188,.18)}
+.plan-features li::before{content:"✓";color:var(--teal);margin-right:8px}
+.plan-card .buy-btn{margin-top:auto}
+
+/* BuyModal: pick the plan being bought. */
+.plan-picker{border:0;padding:0;margin:0 0 14px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.plan-picker legend{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:0;margin-bottom:8px}
+.plan-option{position:relative;display:block;padding:12px 14px;border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .2s,background .2s}
+.plan-option input{position:absolute;opacity:0;pointer-events:none}
+.plan-option:hover{border-color:rgba(var(--teal-rgb),.5)}
+.plan-option.is-selected{border-color:var(--teal);background:rgba(var(--teal-rgb),.08)}
+.plan-option:focus-within{outline:2px solid var(--teal);outline-offset:2px}
+.plan-option-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.plan-option-head b{font-family:'Unbounded',sans-serif;font-size:.9rem}
+.plan-option .price-now{font-size:1rem}
+.plan-option .plan-features{margin:8px 0 0;flex:none}
+.plan-option .plan-features li{font-size:.8rem;padding:4px 0}
+
+/* Admin: the three plan rows in the course form. */
+.plan-editor-set{border:1px solid var(--line);border-radius:14px;padding:18px;margin:6px 0 18px;min-width:0}
+.faq-editor-row{display:grid;grid-template-columns:1fr auto;gap:8px 10px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed var(--line)}
+.faq-editor-row input{grid-column:1 / -1}
+.faq-editor-row textarea{min-width:0}
+.faq-editor-row .btn{align-self:start}
+.plan-editor-set legend{padding:0 8px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
+.plan-editors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media(max-width:820px){.plan-editors{grid-template-columns:1fr}}
+.plan-editor h4{font-family:'Unbounded',sans-serif;font-size:.9rem;margin-bottom:12px;color:var(--teal)}
+
+/* ---------- Plan ownership & upgrades ---------- */
+/* Replaces the plan button on a card when the viewer already holds that plan
+   (or a higher one). Same pill shape as the button it stands in for. */
+.plan-owned{display:block;margin-top:auto;padding:12px 10px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);border:1px dashed rgba(var(--teal-rgb),.45);border-radius:100px}
+.plan-owned--muted{color:var(--muted);border-color:var(--line)}
+/* Second line inside a plan option: how the upgrade price is worked out. */
+.plan-option-sub{display:block;margin-top:4px;font-size:.75rem;color:var(--muted)}
+
+
+
+/* ---------- Touch targets & light-theme contrast (bug sweep) ---------- */
+/* Footer links, contact links, WhatsApp pills and the inline "Create an
+   account" button measured 22-32px tall on phones; 44px is the comfortable
+   minimum for a thumb (WCAG 2.5.8 requires at least 24px). Padding only —
+   no visual change on desktop, where these stay compact. */
+@media(max-width:820px),(pointer:coarse){
+  .foot-links a{padding:11px 0}
+  .foot-contact a{padding:11px 0}
+  a.wa-pill{padding:11px 18px}
+  .modal-box .link-btn{padding:12px 6px;margin:-12px -6px}
+  .info-row a:not(.wa-pill){display:inline-block;padding:9px 0}
+}
+/* #1EBE5D on the light page was 2.1:1. */
+[data-theme="light"] a.wa-pill{color:#0F7A3B;border-color:rgba(15,122,59,.4);background:rgba(15,122,59,.1)}
+/* Teal text on its own 10-14% teal tint only reached 4.0-4.5:1 in the light theme. */
+[data-theme="light"] .type-pill--internship,
+[data-theme="light"] .deliverable-chip{color:#075E59}
+[data-theme="light"] .card-type-course .deliverable-chip,
+[data-theme="light"] .type-pill--course{color:#8A3F06}
+
+/* ---------- WhatsApp float: "24x7 available" popup ---------- */
+/* Slides out to the LEFT of the button (it sits at the right edge) on hover or
+   keyboard focus; on touch screens Chrome() shows it once via the .peek class. */
+#wa{overflow:visible}
+#wa::before{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(30,190,93,.5);animation:waPulse 2.6s ease-out infinite;pointer-events:none}
+@keyframes waPulse{0%{box-shadow:0 0 0 0 rgba(30,190,93,.45)}70%,100%{box-shadow:0 0 0 14px rgba(30,190,93,0)}}
+#wa .wa-tip{position:absolute;right:calc(100% + 14px);top:50%;display:flex;align-items:center;gap:10px;padding:9px 16px 9px 10px;border-radius:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);box-shadow:0 12px 32px rgba(0,0,0,.35);white-space:nowrap;opacity:0;visibility:hidden;pointer-events:none;transform:translate(10px,-50%);transition:opacity .2s,transform .2s,visibility .2s}
+#wa .wa-tip::after{content:"";position:absolute;top:50%;right:-6px;width:10px;height:10px;background:var(--panel);border-top:1px solid var(--line);border-right:1px solid var(--line);transform:translateY(-50%) rotate(45deg)}
+#wa:hover .wa-tip,#wa:focus-visible .wa-tip,#wa.peek .wa-tip{opacity:1;visibility:visible;transform:translate(0,-50%)}
+#wa .wa-tip-badge{flex:none;width:32px;height:32px;border-radius:50%;background:#1EBE5D;display:flex;align-items:center;justify-content:center}
+#wa .wa-tip-badge svg{width:18px;height:18px;fill:#fff}
+#wa .wa-tip-text b{display:block;font-family:'Sora',sans-serif;font-size:.84rem;font-weight:600;line-height:1.2}
+#wa .wa-tip-text small{display:block;font-size:.75rem;color:var(--muted);margin-top:2px}
+#wa:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+@media(max-width:640px){
+  #wa{right:14px;bottom:14px;width:46px;height:46px}
+  #toTop{right:16px;bottom:72px;width:42px;height:42px}
+}
+/* Page titles that are an <h1> for structure but keep the section-heading size. */
+.title-lg{font-size:clamp(1.6rem,3.4vw,2.6rem)}
+
+/* ---------- Referrals ---------- */
+.ref-card{margin-top:44px;background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:clamp(20px,4vw,32px)}
+.ref-title{margin:12px 0 8px}
+.ref-lede{color:var(--muted);max-width:62ch;font-size:.92rem;line-height:1.7}
+.ref-lede b{color:var(--text)}
+.ref-code-row{margin-top:22px}
+.ref-code{display:inline-block;max-width:100%;font-family:'JetBrains Mono',monospace;font-size:clamp(1.15rem,4.4vw,1.6rem);font-weight:600;letter-spacing:.14em;color:var(--teal);background:rgba(var(--teal-rgb),.1);border:1px dashed rgba(var(--teal-rgb),.5);border-radius:14px;padding:12px 22px;user-select:all;overflow-wrap:anywhere}
+.ref-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.ref-actions .btn{padding:11px 20px;font-size:.84rem}
+.ref-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:24px}
+.ref-stats--admin{grid-template-columns:repeat(6,minmax(0,1fr))}
+.ref-stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+[data-theme="light"] .ref-stat{background:rgba(16,27,51,.035)}
+.ref-stat b{display:block;font-family:'Unbounded',sans-serif;font-size:clamp(1.05rem,3vw,1.4rem);color:var(--text);overflow-wrap:anywhere}
+.ref-stat span{display:block;margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ref-stat--accent{border-color:rgba(var(--teal-rgb),.5)}
+.ref-stat--accent b{color:var(--teal)}
+@media(max-width:900px){.ref-stats--admin{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.ref-stats,.ref-stats--admin{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ref-list{list-style:none;margin:20px 0 0;border-top:1px dashed rgba(147,163,188,.18)}
+.ref-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 0;border-bottom:1px dashed rgba(147,163,188,.18);font-size:.9rem}
+.ref-list small{color:var(--muted)}
+.ref-pill{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:3px 10px;white-space:nowrap;font-weight:400}
+.ref-pill--paid{color:var(--teal);border-color:rgba(var(--teal-rgb),.5);background:rgba(var(--teal-rgb),.1)}
+.ref-note{margin-top:18px;color:var(--muted);font-size:.86rem}
+.ref-ok{color:var(--teal);font-size:.84rem;margin:8px 0 0}
+.ref-apply label{display:block;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+.ref-apply-row{display:flex;gap:8px}
+.ref-apply-row input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 14px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase}
+.ref-apply-row input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(20,201,201,.22)}
+.ref-apply-row .btn{padding:10px 18px;font-size:.84rem;flex:none}
+.ref-apply--card{margin-top:22px;padding-top:20px;border-top:1px dashed rgba(147,163,188,.18);max-width:460px}
+/* Checkout: code box + itemised total, between the plan picker and the pay button. */
+.checkout-extras{margin:0 0 14px}
+.ref-toggle{font-size:.86rem}
+.order-summary{margin:10px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:.86rem}
+.order-summary>div{display:flex;justify-content:space-between;gap:12px;padding:4px 0}
+.order-summary dt{color:var(--muted)}
+.order-summary dd{color:var(--text);font-variant-numeric:tabular-nums}
+.order-summary .is-off dd{color:var(--teal)}
+.order-summary .is-total{margin-top:6px;padding-top:9px;border-top:1px dashed rgba(147,163,188,.25)}
+.order-summary .is-total dt,.order-summary .is-total dd{color:var(--text);font-weight:600}
+/* Admin referrals: rules checkbox, search + status filter row. */
+.check-row{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:.92rem}
+.check-row input{margin-top:3px;width:18px;height:18px;flex:none;accent-color:var(--teal)}
+.admin-filters{display:flex;gap:12px;flex-wrap:wrap}
+.admin-filters .admin-search{flex:1 1 260px}
+.admin-select{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;color:var(--text);font-family:'Sora',sans-serif;font-size:.88rem}
+
+/* ---------- Campus ambassador ---------- */
+.ref-stats--six{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:1000px){.ref-stats--six{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.ref-stats--six{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.amb-dash{display:flex;flex-direction:column;gap:22px}
+.amb-dash .ref-card{margin-top:0}
+.amb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+@media(max-width:820px){.amb-grid{grid-template-columns:1fr}}
+.amb-panel{background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:clamp(18px,3.5vw,26px);min-width:0}
+.amb-panel h3{margin:0 0 12px;font-size:1.05rem}
+.amb-hint{color:var(--muted);font-size:.84rem;line-height:1.65;margin:10px 0}
+.amb-perk{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 0;border-top:1px dashed rgba(147,163,188,.18)}
+.amb-perk b{display:block;font-size:.92rem}
+.amb-perk span{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
+.amb-perk .ref-pill{margin-top:0}
+.amb-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+@media(max-width:640px){.amb-form-grid{grid-template-columns:1fr}}
+.amb-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.amb-table{width:100%;border-collapse:collapse;font-size:.86rem}
+.amb-table th{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:8px 12px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.amb-table td{padding:11px 12px 11px 0;border-bottom:1px dashed rgba(147,163,188,.18);vertical-align:top}
+.amb-table small{color:var(--muted)}
+.amb-teaser{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;margin-top:22px}
+.amb-teaser .btn{flex:none}
+.amb-admin-item{display:flex;flex-direction:column}
+.amb-admin-item>.admin-row{border-radius:12px}
+.amb-admin-detail{background:var(--panel);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;padding:18px 20px;margin-top:-6px}
+.amb-why{color:var(--muted);font-size:.86rem;line-height:1.6;margin:0 0 12px;overflow-wrap:anywhere}
+.amb-why b{color:var(--text)}
+.amb-payto{font-family:'JetBrains Mono',monospace;user-select:all;overflow-wrap:anywhere}
+
+/* ---------- Responsive fixes (layout audit) ---------- */
+.back-link{display:inline-flex;align-items:center;min-height:44px;padding-right:10px}
+/* Buttons keep to one line, but a long label on a very narrow screen wraps instead of spilling out. */
+@media(max-width:400px){.btn{white-space:normal;text-align:center;line-height:1.35}}
+/* Admin: list + detail side by side on wide screens, stacked on tablets and phones. */
+.admin-split{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start}
+.admin-split.has-detail{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}
+.admin-detail-panel{position:sticky;top:100px;min-width:0;overflow-wrap:anywhere}
+@media(max-width:900px){.admin-split.has-detail{grid-template-columns:minmax(0,1fr)}.admin-detail-panel{position:static;scroll-margin-top:84px}}
+.admin-form-grid--2{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:480px){.admin-form-grid--2{grid-template-columns:minmax(0,1fr)}}
+.admin-actions{display:flex;flex-wrap:wrap;gap:12px}
+/* Long unbroken strings (emails, URLs, pasted text) wrap instead of pushing the layout wider. */
+p,li,td,h1,h2,h3,h4,.admin-row-meta,.info-row a{overflow-wrap:break-word}
+.admin-row>*{min-width:0}
+
+/* ---------- Payment requests: navbar count + floating reminder ---------- */
+.nav-due-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:7px;border-radius:9px;background:var(--danger);color:#fff;font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:600;line-height:1;vertical-align:1px}
+.burger.has-due{position:relative}
+.burger.has-due::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
+.preq-banner{position:fixed;left:26px;bottom:26px;z-index:60;display:flex;align-items:center;gap:12px;max-width:min(460px,calc(100% - 118px));padding:12px 12px 12px 16px;border-radius:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);box-shadow:0 12px 32px rgba(0,0,0,.3);font-size:.86rem}
+.preq-banner-dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--danger)}
+.preq-banner-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preq-banner-link{flex:none;color:var(--teal);font-weight:600;text-decoration:none;white-space:nowrap}
+.preq-banner-link:hover{text-decoration:underline}
+.preq-banner-close{flex:none;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:4px 6px;line-height:1}
+/* Phones: a full-width card above the WhatsApp button, text allowed to wrap,
+   so the course name and amount are actually readable. */
+@media (max-width:640px){
+  .preq-banner{left:12px;right:12px;bottom:88px;max-width:none;flex-wrap:wrap;row-gap:6px}
+  .preq-banner-text{white-space:normal;flex:1 1 calc(100% - 60px)}
+  .preq-banner-link{margin-left:21px}
+  .preq-banner-close{position:absolute;top:6px;right:6px}
+  .preq-banner{padding-right:34px}
+  body.has-enroll-bar .preq-banner{bottom:152px}
+}
+.burger.has-due[aria-expanded="true"]::after{display:none}
+
+/* ---------- UserPicker: searchable account select (admin forms) ---------- */
+.user-picker{position:relative}
+.user-picker input{width:100%}
+.user-picker-list{position:absolute;left:0;min-width:100%;width:max-content;max-width:min(420px,calc(100vw - 32px));top:calc(100% + 6px);z-index:30;max-height:300px;overflow-y:auto;margin:0;padding:6px;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.3)}
+.user-picker-list li{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:8px;cursor:pointer}
+.user-picker-list li b{font-weight:600;font-size:.9rem;color:var(--text)}
+.user-picker-list li span{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-picker-list li.active{background:rgba(20,201,201,.12)}
+.user-picker-list li.user-picker-empty{cursor:default;color:var(--muted);font-size:.82rem}
+.user-picker-chosen{display:flex;align-items:center;gap:12px;padding:8px 8px 8px 14px;border:1px solid rgba(20,201,201,.4);background:rgba(20,201,201,.08);border-radius:10px;min-height:46px}
+.user-picker-who{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.user-picker-who b{font-size:.9rem}
+.user-picker-who span{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-picker-change{flex:none;padding:7px 14px;font-size:.78rem}
+
+/* ---------- Copy protection (hooks/useCopyProtection.js) ---------- */
+body.no-copy{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.no-copy :is(input,textarea,select,[contenteditable="true"],a[href^="mailto:"],a[href^="tel:"],.allow-copy){-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+body.no-copy img{-webkit-user-drag:none}
+
+/* Navbar: never wrap a link onto two lines, and tighten spacing just above
+   the burger breakpoint (1100px), where a logged-in account's extra links
+   (Profile, All Courses / My Dashboard, Log out) are otherwise a tight fit. */
+.nav-links a,.nav-account-link{white-space:nowrap}
+@media (min-width:1101px) and (max-width:1180px){
+  .nav-links a{padding:8px 9px;font-size:.84rem}
+  .nav-account{gap:6px}
+  .nav-account-link{padding:8px 8px}
+  .nav-account .nav-cta{padding:10px 12px}
+  .nav-account .nav-logout{padding:9px 12px}
+}
+
+/* Admin → Users: the one-time temporary password after a reset. */
+.temp-pw-box{border:1px solid rgba(20,201,201,.4);background:rgba(20,201,201,.08);border-radius:12px;padding:14px 16px}
+.temp-pw-code{font-family:'JetBrains Mono',monospace;font-size:1.1rem;letter-spacing:.08em;padding:6px 12px;border-radius:8px;background:var(--panel);border:1px solid var(--line);user-select:all}

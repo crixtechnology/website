@@ -4,7 +4,6 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import SetNewPassword from "./components/SetNewPassword.jsx";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
 import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
-import AdminGuard from "./pages/admin/AdminGuard.jsx";
 import { useCopyProtection } from "./hooks/useCopyProtection.js";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
 import { captureReferralFromUrl } from "./utils/referral.js";
@@ -19,8 +18,8 @@ import { registerPrefetch } from "./utils/prefetch.js";
 // side-effect-safe to call at import time (a no-op with no GA ID set).
 initAnalytics();
 
-// The student and admin areas are only ever reached by someone already
-// logged in as a student/admin — lazy-loading them keeps their code out of
+// The student area is only ever reached by someone already
+// logged in as a student — lazy-loading them keeps their code out of
 // the bundle every anonymous visitor downloads just to browse the public
 // marketing pages. MyCourses in particular pulls in jsPDF + jspdf-autotable
 // (receipt generation) purely for its own "Download Receipt" button; those
@@ -34,19 +33,6 @@ const ROUTE_LOADERS = {
   "/dashboard": () => import("./pages/student/MyCourses.jsx"),
   "/learn/": () => import("./pages/student/Learn.jsx"),
   "/profile": () => import("./pages/student/Profile.jsx"),
-  "/admin": () => import("./pages/admin/AdminDashboard.jsx"),
-  "/admin/courses": () => import("./pages/admin/AdminCourses.jsx"),
-  "/admin/lectures": () => import("./pages/admin/AdminLectures.jsx"),
-  "/admin/videos": () => import("./pages/admin/AdminVideos.jsx"),
-  "/admin/students": () => import("./pages/admin/AdminStudents.jsx"),
-  "/admin/users": () => import("./pages/admin/AdminUsers.jsx"),
-  "/admin/messages": () => import("./pages/admin/AdminMessages.jsx"),
-  "/admin/applications": () => import("./pages/admin/AdminApplications.jsx"),
-  "/admin/services": () => import("./pages/admin/AdminServices.jsx"),
-  "/admin/referrals": () => import("./pages/admin/AdminReferrals.jsx"),
-  "/admin/coupons": () => import("./pages/admin/AdminCoupons.jsx"),
-  "/admin/ambassadors": () => import("./pages/admin/AdminAmbassadors.jsx"),
-  "/admin/payment-requests": () => import("./pages/admin/AdminPaymentRequests.jsx"),
   "/ambassador": () => import("./pages/Ambassador.jsx"),
 };
 registerPrefetch(ROUTE_LOADERS);
@@ -55,30 +41,10 @@ const MyCourses = lazy(ROUTE_LOADERS["/dashboard"]);
 const Learn = lazy(ROUTE_LOADERS["/learn/"]);
 const Profile = lazy(ROUTE_LOADERS["/profile"]);
 
-// AdminGuard itself stays eager (imported above, not lazy): it wraps EVERY
-// admin route, so lazy-loading it too meant React couldn't start fetching
-// an admin page's own chunk until AdminGuard's chunk had first loaded and
-// rendered — two sequential round-trips instead of one before any admin
-// page became interactive. It's small, so bundling it with the main app
-// costs little; the actual weight (each admin page's own code) still only
-// loads on demand.
-const AdminDashboard = lazy(ROUTE_LOADERS["/admin"]);
-const AdminCourses = lazy(ROUTE_LOADERS["/admin/courses"]);
-const AdminLectures = lazy(ROUTE_LOADERS["/admin/lectures"]);
-const AdminVideos = lazy(ROUTE_LOADERS["/admin/videos"]);
-const AdminStudents = lazy(ROUTE_LOADERS["/admin/students"]);
-const AdminUsers = lazy(ROUTE_LOADERS["/admin/users"]);
-const AdminMessages = lazy(ROUTE_LOADERS["/admin/messages"]);
-const AdminApplications = lazy(ROUTE_LOADERS["/admin/applications"]);
-const AdminServices = lazy(ROUTE_LOADERS["/admin/services"]);
-const AdminReferrals = lazy(ROUTE_LOADERS["/admin/referrals"]);
-const AdminCoupons = lazy(ROUTE_LOADERS["/admin/coupons"]);
-const AdminAmbassadors = lazy(ROUTE_LOADERS["/admin/ambassadors"]);
-const AdminPaymentRequests = lazy(ROUTE_LOADERS["/admin/payment-requests"]);
 const Ambassador = lazy(ROUTE_LOADERS["/ambassador"]);
 
 // Matches the "Loading..." convention every data-fetching page here already
-// uses (MyCourses, every Admin list, etc.) rather than a full-screen splash
+// uses (MyCourses etc.) rather than a full-screen splash
 // — this only ever shows for the fraction of a second a lazy chunk takes to
 // download, so it should read as consistent with the rest of the app, not
 // like a separate, heavier loading state.
@@ -199,8 +165,8 @@ function PageError() {
 
 export default function App() {
   const location = useLocation();
-  // No copying the site's text — except on the admin pages (hooks/useCopyProtection.js).
-  useCopyProtection(!location.pathname.startsWith("/admin"));
+  // No copying the site's text (hooks/useCopyProtection.js).
+  useCopyProtection(true);
   return (
     <>
       <ScrollToTop />
@@ -236,23 +202,6 @@ export default function App() {
             <Route path="/dashboard" element={<MyCourses />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/learn/:slug" element={<Learn />} />
-
-            {/* Admin — logs in through the same popup as students (AuthModal
-                below); AdminGuard shows an inline login prompt if you land
-                here logged out or without admin access, no dedicated page. */}
-            <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-            <Route path="/admin/courses" element={<AdminGuard><AdminCourses /></AdminGuard>} />
-            <Route path="/admin/lectures" element={<AdminGuard><AdminLectures /></AdminGuard>} />
-            <Route path="/admin/videos" element={<AdminGuard><AdminVideos /></AdminGuard>} />
-            <Route path="/admin/students" element={<AdminGuard><AdminStudents /></AdminGuard>} />
-            <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
-            <Route path="/admin/messages" element={<AdminGuard><AdminMessages /></AdminGuard>} />
-            <Route path="/admin/applications" element={<AdminGuard><AdminApplications /></AdminGuard>} />
-            <Route path="/admin/services" element={<AdminGuard><AdminServices /></AdminGuard>} />
-            <Route path="/admin/referrals" element={<AdminGuard><AdminReferrals /></AdminGuard>} />
-            <Route path="/admin/coupons" element={<AdminGuard><AdminCoupons /></AdminGuard>} />
-            <Route path="/admin/ambassadors" element={<AdminGuard><AdminAmbassadors /></AdminGuard>} />
-            <Route path="/admin/payment-requests" element={<AdminGuard><AdminPaymentRequests /></AdminGuard>} />
 
             {/* Any other address: a real "not found" page, not the home page under a wrong URL. */}
             <Route path="*" element={<NotFound />} />

@@ -106,10 +106,13 @@ async function sendViaFormSubmit({ subject, text, path }) {
   return { sent: true };
 }
 
-// Points the "check the admin panel" link at the actual site instead of a
-// bare path.
+// Points the "check the admin panel" link at the admin panel, which is its own
+// deployment (ADMIN_ORIGIN, e.g. https://crix-admin.vercel.app) and no longer
+// lives on the public site. Falls back to the site's origin only so a missing
+// variable still yields a well-formed URL.
 function adminLink(path) {
-  return `${siteOrigin()}${path}`;
+  const origin = (process.env.ADMIN_ORIGIN || "").trim().replace(/\/+$/, "");
+  return `${origin || siteOrigin()}${path}`;
 }
 
 // The "something came in" ping to the site owner. With BREVO_API_KEY set it

@@ -1,0 +1,3 @@
+# Private admin panel — nothing here should ever be indexed.
+User-agent: *
+Disallow: /

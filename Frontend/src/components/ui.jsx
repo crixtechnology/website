@@ -1942,8 +1942,8 @@ export function Navbar() {
               <>
                 <NavLink to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
                 {isAdmin && <NavLink to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>}
-                <NavLink to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
-                  {isAdmin ? "Admin" : "My Dashboard"}{!isAdmin && dueBadge}
+                <NavLink to="/dashboard" onClick={() => setOpen(false)}>
+                  My Dashboard{!isAdmin && dueBadge}
                 </NavLink>
                 <button className="btn btn-ghost nav-logout" onClick={() => { logout(); setOpen(false); navigate("/"); }}>Log out</button>
               </>
@@ -1967,8 +1967,8 @@ export function Navbar() {
             {isAdmin && (
               <NavLink className="nav-account-link" to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>
             )}
-            <Link className="nav-cta" to={isAdmin ? "/admin" : "/dashboard"} onClick={() => setOpen(false)}>
-              {isAdmin ? "Admin" : "My Dashboard"}{!isAdmin && dueBadge}
+            <Link className="nav-cta" to="/dashboard" onClick={() => setOpen(false)}>
+              My Dashboard{!isAdmin && dueBadge}
             </Link>
             <button className="btn btn-ghost nav-logout" onClick={() => { logout(); setOpen(false); navigate("/"); }}>
               Log out
