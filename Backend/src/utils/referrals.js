@@ -164,15 +164,17 @@ async function applyReferralCode(userId, rawCode) {
 }
 
 // ---------- credit ----------
-async function creditBalance(userId) {
-  const sum = await prisma.creditEntry.aggregate({ where: { userId }, _sum: { amount: true } });
+// `db` is the Prisma client to read through — pass a transaction client to read
+// inside a transaction (the wallet's pay-in-full path does, under a row lock).
+async function creditBalance(userId, db = prisma) {
+  const sum = await db.creditEntry.aggregate({ where: { userId }, _sum: { amount: true } });
   return sum._sum.amount || 0;
 }
 
 // Credit tied up by this student's unpaid, recently-started orders.
-async function reservedCredit(userId) {
+async function reservedCredit(userId, db = prisma) {
   const since = new Date(Date.now() - RESERVATION_WINDOW_MS);
-  const sum = await prisma.payment.aggregate({
+  const sum = await db.payment.aggregate({
     where: { status: "created", createdAt: { gte: since }, application: { userId } },
     _sum: { creditApplied: true },
   });
@@ -188,7 +190,7 @@ async function reservedCredit(userId) {
 // `couponPaise` is an admin offer code's discount (utils/coupons.js), already
 // checked by the caller and already capped to leave at least ₹1. It comes off
 // FIRST; the referral % is then a share of what's left, not of the full price.
-async function priceOrder(userId, planRupees, couponPaise = 0) {
+async function priceOrder(userId, planRupees, couponPaise = 0, db = prisma) {
   const planPaise = planRupees * 100;
   const afterCoupon = planPaise - couponPaise;
   let referralPercent = 0;
@@ -196,13 +198,13 @@ async function priceOrder(userId, planRupees, couponPaise = 0) {
   let availableCredit = 0;
 
   if (userId) {
-    const referral = await prisma.referral.findUnique({ where: { refereeId: userId } });
+    const referral = await db.referral.findUnique({ where: { refereeId: userId } });
     if (referral && referral.status === "pending" && referral.refereeDiscountPercent > 0) {
       referralPercent = referral.refereeDiscountPercent;
       referralDiscount = Math.round((afterCoupon / 100 * referralPercent) / 100) * 100;
       referralDiscount = Math.min(referralDiscount, Math.max(0, afterCoupon - MIN_CHARGE_PAISE));
     }
-    const [balance, reserved] = await Promise.all([creditBalance(userId), reservedCredit(userId)]);
+    const [balance, reserved] = await Promise.all([creditBalance(userId, db), reservedCredit(userId, db)]);
     availableCredit = Math.max(0, balance - reserved);
   }
 
@@ -219,6 +221,10 @@ async function priceOrder(userId, planRupees, couponPaise = 0) {
     availableCredit,
     creditApplied,
     payablePaise: afterReferral - creditApplied,
+    // What the order costs before any wallet credit, and whether the wallet
+    // alone can cover all of it (paid for without Razorpay — routes/payments.js).
+    totalDuePaise: afterReferral,
+    walletCoversAll: afterReferral > 0 && availableCredit >= afterReferral,
   };
 }
 
@@ -292,6 +298,7 @@ module.exports = {
   checkCode,
   applyReferralCode,
   creditBalance,
+  reservedCredit,
   priceOrder,
   rewardReferrerForPurchase,
   redeemCreditForPurchase,

@@ -781,6 +781,21 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 .ref-list small{color:var(--muted)}
 .ref-pill{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:3px 10px;white-space:nowrap;font-weight:400}
 .ref-pill--paid{color:var(--teal);border-color:rgba(var(--teal-rgb),.5);background:rgba(var(--teal-rgb),.1)}
+/* ---------- Wallet (Profile) ---------- */
+.wallet-card{margin:0 0 32px;background:linear-gradient(160deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);padding:clamp(20px,4vw,28px)}
+.wallet-balance{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin:12px 0 8px}
+.wallet-amount{margin:0;font-family:'Unbounded',sans-serif;font-size:clamp(1.8rem,6vw,2.6rem);line-height:1.1;color:var(--teal);overflow-wrap:anywhere}
+.wallet-muted{color:var(--muted);font-size:.85rem}
+.wallet-lede{color:var(--muted);font-size:.9rem;line-height:1.7;margin:0}
+.wallet-note{margin:14px 0 0;padding:12px 14px;font-size:.84rem;line-height:1.6;border-left:3px solid var(--teal);border-radius:10px;background:rgba(var(--teal-rgb),.08)}
+.wallet-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wallet-empty{margin:18px 0 0;line-height:1.7}
+.wallet-history-title{margin:22px 0 0;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.wallet-history{margin-top:8px}
+.wallet-history b{font-weight:600;white-space:nowrap}
+.wallet-in{color:var(--teal)}
+.wallet-out{color:var(--text)}
+.wallet-browse{margin-top:22px;width:100%;text-align:center}
 .ref-note{margin-top:18px;color:var(--muted);font-size:.86rem}
 .ref-ok{color:var(--teal);font-size:.84rem;margin:8px 0 0}
 .ref-apply label{display:block;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}

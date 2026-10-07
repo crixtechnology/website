@@ -23,6 +23,7 @@ const videoRoutes = require("./routes/videos");
 const adminUserRoutes = require("./routes/adminUsers");
 const serviceRoutes = require("./routes/services");
 const referralRoutes = require("./routes/referrals");
+const walletRoutes = require("./routes/wallet");
 const ambassadorRoutes = require("./routes/ambassadors");
 const receiptRoutes = require("./routes/receipts");
 const paymentRequestRoutes = require("./routes/paymentRequests");
@@ -85,6 +86,7 @@ app.use("/api", serviceRoutes);
 app.use("/api", receiptRoutes);
 app.use("/api", paymentRequestRoutes);
 app.use("/api", referralRoutes);
+app.use("/api", walletRoutes);
 app.use("/api", couponRoutes);
 app.use("/api", ambassadorRoutes);
 

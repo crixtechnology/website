@@ -4,7 +4,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import {
   submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder,
-  getMyReferral, applyReferral, getPriceQuote, forgotPassword, resetPassword,
+  getMyReferral, applyReferral, getPriceQuote, payWithWallet, forgotPassword, resetPassword,
 } from "../services/api.js";
 import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
 import { IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
@@ -588,7 +588,7 @@ export const loadRazorpayScript = () =>
 // hasn't been referred and hasn't bought anything), and the itemised total —
 // plan price, referral discount, referral credit — as the server will charge it.
 // `onPayable` tells the buy button what to show as the amount.
-function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
+function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onCoupon }) {
   const [quote, setQuote] = useState(null);
   // The offer-code box (an admin-made code, separate from the referral code below).
   // Offer codes are handed to individual students personally by the admin, so the
@@ -618,6 +618,7 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
   useEffect(() => {
     let alive = true;
     onPayable(null);
+    onWalletCovers(null);
     getPriceQuote(item.slug, tier, couponCode).then((res) => {
       if (!alive) return;
       // An applied code that no longer works for this plan (or has just run out)
@@ -628,9 +629,10 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
       }
       setQuote(res.ok ? res : null);
       onPayable(res.ok ? res.payable : null);
+      onWalletCovers(res.ok && res.walletCoversAll ? res.walletPayable : null);
     });
     return () => { alive = false; };
-  }, [item.slug, tier, requote, couponCode, onPayable, onCoupon]);
+  }, [item.slug, tier, requote, couponCode, onPayable, onWalletCovers, onCoupon]);
 
   const applyOffer = async () => {
     if (offerBusy || !offerInput.trim()) return;
@@ -668,7 +670,13 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
     }
   };
 
-  const hasBreakdown = quote && (quote.couponDiscount > 0 || quote.referralDiscount > 0 || quote.creditApplied > 0);
+  // When the wallet pays in full (BuyModal's "Pay with wallet"), the summary shows
+  // that — the whole price from wallet credit, nothing left to pay — not the ₹1
+  // Razorpay would leave if the credit were applied as a discount.
+  const walletAll = !!(quote && quote.walletCoversAll);
+  const creditShown = walletAll ? quote.walletPayable : quote && quote.creditApplied;
+  const payShown = walletAll ? 0 : quote && quote.payable;
+  const hasBreakdown = quote && (quote.couponDiscount > 0 || quote.referralDiscount > 0 || creditShown > 0);
   return (
     <div className="checkout-extras">
       {couponCode ? (
@@ -719,10 +727,10 @@ function CheckoutExtras({ item, tier, onPayable, couponCode, onCoupon }) {
           {quote.referralDiscount > 0 && (
             <div className="is-off"><dt>Referral discount ({quote.referralPercent}%)</dt><dd>−{formatINR(quote.referralDiscount)}</dd></div>
           )}
-          {quote.creditApplied > 0 && (
-            <div className="is-off"><dt>Referral credit</dt><dd>−{formatINR(quote.creditApplied)}</dd></div>
+          {creditShown > 0 && (
+            <div className="is-off"><dt>Wallet credit</dt><dd>−{formatINR(creditShown)}</dd></div>
           )}
-          <div className="is-total"><dt>You pay</dt><dd>{formatINR(quote.payable)}</dd></div>
+          <div className="is-total"><dt>You pay</dt><dd>{formatINR(payShown)}</dd></div>
         </dl>
       )}
     </div>
@@ -748,6 +756,8 @@ export function BuyModal({ item, user, initialTier, onClose }) {
   // What the server will actually charge for the chosen plan (after any referral
   // discount / credit); null until CheckoutExtras has priced it.
   const [payable, setPayable] = useState(null);
+  // The price (rupees) when the wallet alone can pay for the chosen plan, else null.
+  const [walletPays, setWalletPays] = useState(null);
   // An admin offer code the buyer has applied (already checked by the server);
   // the server checks it again when the order is created.
   const [couponCode, setCouponCode] = useState("");
@@ -797,8 +807,12 @@ export function BuyModal({ item, user, initialTier, onClose }) {
     navigate(`/profile?reason=complete&next=${encodeURIComponent(back)}`);
   };
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  // When the wallet alone covers the price, the one button pays from it (no Razorpay);
+  // otherwise it goes on to the Razorpay checkout, with any credit taken off the price.
+  const onSubmit = (e) => { e.preventDefault(); submit(walletPays != null); };
+
+  // useWallet: settle the whole price from wallet credit instead of paying online.
+  const submit = async (useWallet) => {
     if (loading) return; // already in flight — avoid double-submitting a payment order
     if (!plan) { setError("Choose a plan to continue."); return; }
     const missing = [
@@ -832,6 +846,25 @@ export function BuyModal({ item, user, initialTier, onClose }) {
     if (!appRes.ok || !appRes.application) {
       setLoading(false);
       setError(appRes.error || "Could not start right now. Please try again.");
+      return;
+    }
+
+    if (useWallet) {
+      setInfo("Paying from your wallet...");
+      const paid = await payWithWallet(appRes.application._id, item.slug, plan.tier, couponCode);
+      if (stale()) return;
+      setLoading(false);
+      if (!paid.ok) { setError(paid.error || "Could not pay from your wallet right now."); return; }
+      clearStoredReferral();
+      trackEvent("purchase", {
+        transaction_id: `wallet_${appRes.application._id}`, currency: "INR", value: walletPays || 0,
+        items: [{ item_id: item.slug, item_name: item.title, item_category: item.type, item_variant: plan.tier }],
+      });
+      setInfo("Paid from your wallet — opening your course...");
+      setTimeout(() => {
+        onClose();
+        navigate(paid.courseSlug ? `/learn/${paid.courseSlug}` : "/dashboard");
+      }, 900);
       return;
     }
 
@@ -959,9 +992,11 @@ export function BuyModal({ item, user, initialTier, onClose }) {
                   </label>
                 ))}
               </fieldset>
-              {plan && <CheckoutExtras key={item.slug} item={item} tier={plan.tier} onPayable={setPayable} couponCode={couponCode} onCoupon={setCouponCode} />}
+              {plan && <CheckoutExtras key={item.slug} item={item} tier={plan.tier} onPayable={setPayable} onWalletCovers={setWalletPays} couponCode={couponCode} onCoupon={setCouponCode} />}
               <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
-                {loading ? "Please wait..." : plan ? `Continue to payment · ${formatINR(payable != null ? payable : planPrice(plan))}` : "Continue to payment"}
+                {loading ? "Please wait..."
+                  : walletPays != null ? `Pay ${formatINR(walletPays)} with wallet`
+                  : plan ? `Continue to payment · ${formatINR(payable != null ? payable : planPrice(plan))}` : "Continue to payment"}
               </button>
               <Alert inline kind={status.kind}>{status.text}</Alert>
             </form>

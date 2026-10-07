@@ -11,6 +11,7 @@ import { tierLabel } from "../../utils/tiers.js";
 import { phoneError } from "../../utils/phone.js";
 import PhoneInput from "../../components/PhoneInput.jsx";
 import { CopyButton } from "../../components/ui.jsx";
+import WalletPanel from "../../components/WalletPanel.jsx";
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString("en-IN") : "—";
@@ -262,6 +263,14 @@ Only do this after confirming it's really them (WhatsApp or phone). Their curren
                           </button>
                         </>
                       )}
+                    </div>
+                  )}
+
+                  {detail.user.role !== "admin" && detail.wallet && (
+                    <div style={{ marginBottom: 28 }}>
+                      <h3 style={{ margin: "0 0 8px" }}>Wallet</h3>
+                      <WalletPanel key={detail.user._id} userId={detail.user._id} userName={detail.user.name} wallet={detail.wallet}
+                        onChange={(wallet) => setDetail((d) => (d ? { ...d, wallet } : d))} />
                     </div>
                   )}
 

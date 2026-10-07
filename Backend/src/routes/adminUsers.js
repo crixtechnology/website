@@ -6,6 +6,7 @@ const { serialize } = require("../utils/serialize");
 const bcrypt = require("bcryptjs");
 const { generateDefaultPassword } = require("../utils/passwordVault");
 const { clearOtps } = require("../utils/otp");
+const { getWallet } = require("../utils/wallet");
 
 const { queryText } = require("../utils/validators");
 const router = express.Router();
@@ -37,7 +38,8 @@ router.get("/admin/users/:id", requireAdmin, async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: SAFE_FIELDS });
     if (!user) return res.status(404).json({ ok: false, error: "User not found" });
 
-    const [enrollments, applications] = await Promise.all([
+    const [wallet, enrollments, applications] = await Promise.all([
+      getWallet(user.id, 20),
       prisma.enrollment.findMany({
         where: { userId: user.id, status: "active" },
         include: { course: { select: { id: true, title: true, slug: true, type: true } } },
@@ -53,6 +55,7 @@ router.get("/admin/users/:id", requireAdmin, async (req, res, next) => {
     res.json({
       ok: true,
       user: serialize(user),
+      wallet,
       enrollments: enrollments.map((e) => serializeEnrollment(e)),
       applications: serialize(applications),
     });

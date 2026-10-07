@@ -5,6 +5,7 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { Alert } from "../../components/ui.jsx";
 import PhoneInput from "../../components/PhoneInput.jsx";
 import PasswordSettings from "../../components/PasswordSettings.jsx";
+import WalletCard from "../../components/WalletCard.jsx";
 import { phoneError } from "../../utils/phone.js";
 
 export default function Profile() {
@@ -119,6 +120,8 @@ export default function Profile() {
 
           <Alert kind={status.kind}>{status.text}</Alert>
         </form>
+
+        <div style={{ marginTop: 40 }}><WalletCard /></div>
 
         <PasswordSettings />
       </div>
