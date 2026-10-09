@@ -297,7 +297,7 @@ export const about = {
 // on /privacy-policy and /terms-of-service.
 // ============================================================
 export const legal = {
-  updated: "Effective date: September 2026 · Last updated: September 2026",
+  updated: "Effective date: October 2026 · Last updated: October 2026",
   privacy: {
     intro:
       "At Crix Technology, we are committed to protecting your privacy. This policy explains how we collect, use, and safeguard your personal information when you use our website, internship programs, and courses.",
