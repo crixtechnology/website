@@ -81,6 +81,7 @@ export default function AdminDashboard() {
     { label: "Course videos", value: "Manage", sub: "recorded lectures", to: "/admin/videos" },
     { label: "Services", value: "Manage", sub: "public /services page", to: "/admin/services" },
     { label: "Payment requests", value: "Manage", sub: "ask a student to pay for a course or internship", to: "/admin/payment-requests" },
+    { label: "Wallet credit", value: "Manage", sub: "add credit to a student's wallet", to: "/admin/wallet" },
     { label: "Offer codes", value: "Manage", sub: "discount codes for courses & internships", to: "/admin/coupons" },
     { label: "Referrals", value: stats.referrals, sub: `${stats.referralsRewarded} led to a purchase · rules & credit`, to: "/admin/referrals" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },

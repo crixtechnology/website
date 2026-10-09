@@ -461,6 +461,20 @@ export async function adminResetUserPassword(id) {
   }
 }
 
+// Adds (positive) or takes away (negative) whole rupees of wallet credit.
+// Resolves with the student's updated wallet: { ok, wallet }.
+export async function adminAdjustWallet(id, rupees, note) {
+  try {
+    const res = await authFetch(`/admin/users/${id}/wallet`, { method: "POST", body: JSON.stringify({ rupees, ...(note ? { note } : {}) }) });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not update the wallet" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not update the wallet" };
+  }
+}
+
 export async function adminDeleteUser(id) {
   try {
     const res = await authFetch(`/admin/users/${id}`, { method: "DELETE" });

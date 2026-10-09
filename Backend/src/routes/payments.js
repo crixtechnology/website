@@ -11,6 +11,7 @@ const { getUpgradeOptions } = require("../utils/upgrades");
 const { requireAuth } = require("../middleware/requireAuth");
 const { priceOrder, rewardReferrerForPurchase, redeemCreditForPurchase } = require("../utils/referrals");
 const { checkCoupon, overLimitAfterReserving } = require("../utils/coupons");
+const { WALLET_ORDER_PREFIX, isWalletPayment, lockUser } = require("../utils/wallet");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
 const { publicWriteLimiter } = require("../utils/rateLimit");
@@ -157,7 +158,10 @@ async function attachReceipt(payment, application) {
   // actually charged, with no discount.
   const basePrice = round2(payment.orderSnapshotBasePrice != null ? payment.orderSnapshotBasePrice : (payment.amount || 0) / 100);
   const discountPercent = payment.orderSnapshotDiscountPercent != null ? payment.orderSnapshotDiscountPercent : 0;
-  const totalPaid = round2((payment.amount || 0) / 100); // paise -> rupees, what was actually charged
+  // A purchase settled from the wallet took no Razorpay money — what the buyer
+  // paid is the credit it spent, and the receipt says so.
+  const fromWallet = isWalletPayment(payment);
+  const totalPaid = round2(((payment.amount || 0) + (fromWallet ? payment.creditApplied || 0 : 0)) / 100); // paise -> rupees, what was actually charged
   // Derived from what was really charged rather than recomputed from the
   // percentage, so the receipt always adds up (base - discount = total) even
   // though the charge is rounded to whole rupees.
@@ -182,7 +186,7 @@ async function attachReceipt(payment, application) {
     discountPercent: effectiveDiscountPercent,
     discountAmount,
     totalPaid,
-    paymentMode: "Razorpay (Online)",
+    paymentMode: fromWallet ? "Wallet credit" : "Razorpay (Online)",
   };
 
   const affected = await prisma.$executeRaw`
@@ -226,7 +230,7 @@ async function attachReceipt(payment, application) {
       discountAmount,
       totalPaid,
       paymentMode: receipt.paymentMode,
-      razorpay_payment_id: payment.razorpayPaymentId,
+      razorpay_payment_id: fromWallet ? null : payment.razorpayPaymentId,
     });
     await sendReceiptEmail({
       receipt: { receiptNumber, buyerName: receipt.buyerName, buyerEmail: receipt.buyerEmail, itemTitle: course.title, itemType: course.type, tier: payment.tier, fromTier: payment.fromTier, totalPaid },
@@ -317,11 +321,56 @@ router.post("/quote", requireAuth, couponAttemptLimiter, async (req, res, next) 
       creditApplied: pricing.creditApplied / 100,
       creditAvailable: pricing.availableCredit / 100,
       payable: pricing.payablePaise / 100,
+      // The wallet can settle the whole order on its own (no Razorpay): the
+      // buy popup then offers "Pay with wallet" for this amount.
+      walletCoversAll: pricing.walletCoversAll,
+      walletPayable: pricing.totalDuePaise / 100,
     });
   } catch (e) {
     next(e);
   }
 });
+
+// The checks create-order and pay-with-wallet share: the request is well-formed,
+// the application is the caller's own, the plan can be bought right now, and any
+// offer code is usable. Returns { error: { status, message } } or
+// { application, course, plan, applied } (applied = the checked offer code, or null).
+async function prepareOrder(req) {
+  const { applicationId, courseSlug, tier: tierName, couponCode } = req.body || {};
+  if (!applicationId || !courseSlug) {
+    return { error: { status: 400, message: "applicationId and courseSlug are required" } };
+  }
+  if (typeof applicationId !== "string" || typeof courseSlug !== "string") {
+    return { error: { status: 400, message: "applicationId and courseSlug must be text" } };
+  }
+  if (couponCode !== undefined && couponCode !== null && typeof couponCode !== "string") {
+    return { error: { status: 400, message: "couponCode must be text" } };
+  }
+  const application = await prisma.application.findUnique({ where: { id: applicationId } });
+  // Only the account the application belongs to can pay for it. This is also what
+  // keeps an application with no account (a guest form filled in while logged out)
+  // from taking a payment it could never unlock, and stops anyone who learned
+  // someone else's application id from opening orders — or reserving their referral
+  // credit — on their behalf. Same answer for "missing" and "not yours".
+  if (!application || !application.userId || application.userId !== req.user.sub) {
+    return { error: { status: 404, message: "Application not found" } };
+  }
+
+  const found = await loadPurchasablePlan(courseSlug, tierName, application.userId);
+  if (found.error) return { error: found.error };
+  const { course, plan } = found;
+
+  // An offer code, if one was entered, must be usable — checked again here, so
+  // a code that stopped being valid since the quote is refused rather than
+  // silently dropped (which would charge more than the buyer was shown).
+  let applied = null;
+  if (couponCode && couponCode.trim()) {
+    const checked = await checkCoupon({ rawCode: couponCode, userId: application.userId, course, planRupees: tierTotal(plan) });
+    if (!checked.ok) return { error: { status: 400, message: checked.error } };
+    applied = checked;
+  }
+  return { application, course, plan, applied };
+}
 
 // ---------- 1. create an order (called right after the applicant submits the form) ----------
 router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, next) => {
@@ -332,42 +381,12 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
         error: "Live payments are disabled by a safety guard. Set ALLOW_LIVE_PAYMENTS=true in Backend/.env to enable real charges.",
       });
     }
-    const { applicationId, courseSlug, tier: tierName, couponCode } = req.body || {};
-    if (!applicationId || !courseSlug) {
-      return res.status(400).json({ ok: false, error: "applicationId and courseSlug are required" });
-    }
-    if (typeof applicationId !== "string" || typeof courseSlug !== "string") {
-      return res.status(400).json({ ok: false, error: "applicationId and courseSlug must be text" });
-    }
-    if (couponCode !== undefined && couponCode !== null && typeof couponCode !== "string") {
-      return res.status(400).json({ ok: false, error: "couponCode must be text" });
-    }
-    const application = await prisma.application.findUnique({ where: { id: applicationId } });
-    // Only the account the application belongs to can pay for it. This is also what
-    // keeps an application with no account (a guest form filled in while logged out)
-    // from taking a payment it could never unlock, and stops anyone who learned
-    // someone else's application id from opening orders — or reserving their referral
-    // credit — on their behalf. Same answer for "missing" and "not yours".
-    if (!application || !application.userId || application.userId !== req.user.sub) {
-      return res.status(404).json({ ok: false, error: "Application not found" });
-    }
-
-    const found = await loadPurchasablePlan(courseSlug, tierName, application.userId);
-    if (found.error) return res.status(found.error.status).json({ ok: false, error: found.error.message });
-    const { course, plan } = found;
-
-    // What this buyer really pays: the plan price, less any referral welcome
-    // discount, less any referral credit they hold (utils/referrals.js) — all
-    // worked out here, never taken from the client.
-    // An offer code, if one was entered, must be usable — checked again here, so
-    // a code that stopped being valid since the quote is refused rather than
-    // silently dropped (which would charge more than the buyer was shown).
-    let applied = null;
-    if (couponCode && couponCode.trim()) {
-      const checked = await checkCoupon({ rawCode: couponCode, userId: application.userId, course, planRupees: tierTotal(plan) });
-      if (!checked.ok) return res.status(400).json({ ok: false, error: checked.error });
-      applied = checked;
-    }
+    // What this buyer really pays: the plan price, less any offer code and referral
+    // welcome discount, less any referral credit they hold (utils/referrals.js) — all
+    // worked out on the server, never taken from the client.
+    const prepared = await prepareOrder(req);
+    if (prepared.error) return res.status(prepared.error.status).json({ ok: false, error: prepared.error.message });
+    const { application, course, plan, applied } = prepared;
 
     const pricing = await priceOrder(application.userId, tierTotal(plan), applied ? applied.discountPaise : 0);
     const amountPaise = pricing.payablePaise; // whole rupees in paise, Razorpay's smallest unit
@@ -376,7 +395,7 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
       amount: amountPaise,
       currency: "INR",
       receipt: `app_${application.id}`,
-      notes: { applicationId: String(application.id), courseSlug, tier: plan.tier },
+      notes: { applicationId: String(application.id), courseSlug: course.slug, tier: plan.tier },
     });
 
     const payment = await prisma.payment.create({
@@ -429,6 +448,105 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
     });
   } catch (e) {
     if (respondToRazorpayError(e, res)) return;
+    next(e);
+  }
+});
+
+// ---------- 1a. pay for an order entirely from the wallet ----------
+// Same request as create-order, but when the student's wallet credit
+// (utils/wallet.js) covers the whole price it is settled right here — no Razorpay
+// order, nothing to confirm afterwards: the credit is spent, the payment is
+// recorded as paid, and access and the receipt are granted in the same call. A
+// wallet that falls short is refused (the buy popup only offers this when the quote
+// says walletCoversAll; otherwise credit is simply applied as a discount, as before).
+router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res, next) => {
+  try {
+    const prepared = await prepareOrder(req);
+    if (prepared.error) return res.status(prepared.error.status).json({ ok: false, error: prepared.error.message });
+    const { application, course, plan, applied } = prepared;
+    const userId = application.userId;
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Everything below runs under a lock on the student's row, so a second
+      // request (double click, another tab) waits and then sees the spent balance.
+      await lockUser(tx, userId);
+
+      const enrollment = await tx.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: course.id } } });
+      if (hasValidAccess(enrollment)) return { error: { status: 400, message: "You already have access to this course." } };
+
+      const pricing = await priceOrder(userId, tierTotal(plan), applied ? applied.discountPaise : 0, tx);
+      if (!pricing.walletCoversAll) {
+        return { error: { status: 400, message: "Your wallet doesn't have enough credit to pay for this in full." } };
+      }
+      const spendId = `${WALLET_ORDER_PREFIX}${crypto.randomUUID()}`;
+      const payment = await tx.payment.create({
+        data: {
+          razorpayOrderId: spendId,
+          razorpayPaymentId: spendId,
+          amount: 0, // nothing went through Razorpay; creditApplied is what was paid
+          status: "paid",
+          applicationId: application.id,
+          tier: plan.tier,
+          referralDiscount: pricing.referralDiscount,
+          creditApplied: pricing.totalDuePaise,
+          couponId: applied ? applied.coupon.id : null,
+          couponCode: applied ? applied.coupon.code : "",
+          couponDiscount: pricing.couponDiscount,
+          orderSnapshotBasePrice: plan.price,
+          orderSnapshotDiscountPercent: plan.discountPercent || 0,
+        },
+      });
+      await tx.creditEntry.create({
+        data: { userId, amount: -pricing.totalDuePaise, kind: "redeemed", paymentId: payment.id, note: "Paid for a course or internship from the wallet" },
+      });
+      await tx.application.update({
+        where: { id: application.id },
+        data: { paymentId: payment.id, tier: plan.tier, ...(application.courseId ? {} : { courseId: course.id }) },
+      });
+      // Access is granted here, inside the lock, rather than only afterwards: a
+      // second request for the same course (another tab, a fresh application)
+      // then finds the enrollment above and is refused instead of paying twice.
+      // Same fields as a fresh grant in grantAccessForPayment, which will find
+      // this and leave the dates alone.
+      const startDate = accessStartFor(course);
+      await tx.enrollment.upsert({
+        where: { userId_courseId: { userId, courseId: course.id } },
+        create: { userId, courseId: course.id, paymentId: payment.id, tier: plan.tier, status: "active", startDate, endDate: computeEndDate(startDate, course.durationDays) },
+        update: { paymentId: payment.id, tier: plan.tier, status: "active", startDate, endDate: computeEndDate(startDate, course.durationDays) },
+      });
+      return { payment };
+    });
+    if (result.error) return res.status(result.error.status).json({ ok: false, error: result.error.message });
+    const { payment } = result;
+
+    // Same two-buyers-one-last-redemption check create-order does. The order is
+    // already paid by now, so undo it: free the code and give the credit back.
+    if (applied) {
+      const over = await overLimitAfterReserving(applied.coupon, userId);
+      if (over) {
+        await prisma.$transaction([
+          prisma.payment.update({ where: { id: payment.id }, data: { status: "failed" } }),
+          prisma.creditEntry.deleteMany({ where: { paymentId: payment.id, kind: "redeemed" } }),
+        ]);
+        return res.status(409).json({ ok: false, error: over });
+      }
+    }
+
+    // Access already exists; this adds the referral reward and the receipt. It's
+    // idempotent, and the credit is spent, so a hiccup gets one retry.
+    let granted;
+    try {
+      granted = await grantAccessForPayment(payment, payment.razorpayPaymentId);
+    } catch (firstErr) {
+      console.error("[payments] wallet purchase grant failed, retrying:", firstErr.message);
+      granted = await grantAccessForPayment(payment, payment.razorpayPaymentId);
+    }
+    res.status(201).json({
+      ok: true,
+      courseSlug: course.slug,
+      enrolled: !!(granted && granted.userId && granted.courseId),
+    });
+  } catch (e) {
     next(e);
   }
 });

@@ -1,6 +1,7 @@
 const { prisma } = require("../db");
 const { hasValidAccess } = require("./enrollmentAccess");
 const { tierRank, tierTotal } = require("./tiers");
+const { WALLET_ORDER_PREFIX } = require("./wallet");
 
 // Razorpay's smallest chargeable order is ₹1. A "difference" below that (the
 // higher plan is priced at or below what's already been paid) can't be sold
@@ -49,7 +50,16 @@ async function getUpgradeOptions(userId, course) {
     _sum: { amount: true },
     where: { status: "paid", createdAt: { gte: since }, application: { userId, courseId: course.id } },
   });
-  const paidPaise = paid._sum.amount || 0;
+  // A purchase settled from the wallet has no Razorpay amount (see utils/wallet.js):
+  // the credit it spent is what was paid for it.
+  const fromWallet = await prisma.payment.aggregate({
+    _sum: { creditApplied: true },
+    where: {
+      status: "paid", createdAt: { gte: since }, application: { userId, courseId: course.id },
+      razorpayOrderId: { startsWith: WALLET_ORDER_PREFIX },
+    },
+  });
+  const paidPaise = (paid._sum.amount || 0) + (fromWallet._sum.creditApplied || 0);
 
   const higher = course.tiers.filter((plan) => tierRank(plan.tier) > tierRank(enrollment.tier));
   const options = higher

@@ -519,6 +519,38 @@ export async function getPriceQuote(courseSlug, tier, couponCode) {
   }
 }
 
+// ---------- Wallet ----------
+// The student's wallet: { balance, available, earned, spent, entries: [{ id, amount, kind, label, createdAt }] }
+// (rupees). `available` is what can be spent now — balance less credit held by an unpaid checkout.
+export async function getMyWallet() {
+  try {
+    const res = await authFetch("/me/wallet");
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not load your wallet" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not load your wallet" };
+  }
+}
+
+// Buys the course/internship with wallet credit alone — no Razorpay. Only
+// allowed when the price quote says walletCoversAll. On success the course is
+// already unlocked: { ok, courseSlug, enrolled }.
+export async function payWithWallet(applicationId, courseSlug, tier, couponCode) {
+  try {
+    const res = await authFetch("/payments/pay-with-wallet", {
+      method: "POST",
+      body: JSON.stringify({ applicationId, courseSlug, tier, ...(couponCode ? { couponCode } : {}) }),
+    });
+    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not pay from your wallet" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not pay from your wallet right now." };
+  }
+}
 
 // ---------- Services (public) ----------
 export async function getServices() {

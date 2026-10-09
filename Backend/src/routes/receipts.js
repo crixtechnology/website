@@ -2,13 +2,15 @@ const express = require("express");
 const { prisma } = require("../db");
 const { requireAuth } = require("../middleware/requireAuth");
 const { isAdminUser } = require("../utils/enrollmentAccess");
+const { isWalletPayment } = require("../utils/wallet");
 
 const router = express.Router();
 
 function serializeReceipt(payment) {
   return {
     paymentId: payment.id,
-    razorpay_payment_id: payment.razorpayPaymentId,
+    // A wallet purchase has no Razorpay transaction to quote.
+    razorpay_payment_id: isWalletPayment(payment) ? null : payment.razorpayPaymentId,
     currency: payment.currency,
     receiptNumber: payment.receiptNumber,
     issuedAt: payment.receiptIssuedAt,
