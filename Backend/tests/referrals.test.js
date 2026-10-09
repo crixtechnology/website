@@ -14,6 +14,7 @@ jest.mock("../src/utils/mailer", () => ({
   sendAccountExistsEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
+  sendWalletCreditEmail: jest.fn(async () => ({})),
 }));
 jest.mock("../src/utils/receiptPdf", () => ({ buildReceiptPdfBuffer: jest.fn(() => Buffer.from("fake-pdf")) }));
 jest.mock("../src/utils/razorpay", () => ({
@@ -21,6 +22,7 @@ jest.mock("../src/utils/razorpay", () => ({
   razorpay: { orders: { create: jest.fn(async () => ({ id: `order_ref_${Math.random().toString(36).slice(2)}`, currency: "INR" })) } },
 }));
 const { razorpay } = require("../src/utils/razorpay");
+const mailer = require("../src/utils/mailer");
 
 let app, prisma, adminToken;
 
@@ -159,6 +161,7 @@ describe("referral pricing, rewards and credit", () => {
 
   it("charges the discounted amount, and only the first confirmation rewards the referrer", async () => {
     razorpay.orders.create.mockClear();
+    mailer.sendWalletCreditEmail.mockClear();
     const { order, confirm } = await buy(friend, course);
     expect(order.amount).toBe(90000);
     expect(razorpay.orders.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 90000 }));
@@ -170,6 +173,11 @@ describe("referral pricing, rewards and credit", () => {
     const theirs = await referralOf(referrer);
     expect(theirs.creditBalance).toBe(500);
     expect(theirs.stats).toMatchObject({ total: 1, pending: 0, rewarded: 1, earned: 500 });
+    // The referrer is told once — not again on the repeated confirmations above.
+    expect(mailer.sendWalletCreditEmail).toHaveBeenCalledTimes(1);
+    expect(mailer.sendWalletCreditEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: referrer.email, amount: 500, balance: 500, reason: "referral" }),
+    );
     expect((await referralOf(friend)).referredBy.status).toBe("rewarded");
 
     // The receipt shows what came off: list ₹1000, paid ₹900.

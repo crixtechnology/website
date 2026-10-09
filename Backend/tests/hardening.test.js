@@ -10,6 +10,7 @@ jest.mock("../src/utils/mailer", () => ({
   sendAccountExistsEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
+  sendWalletCreditEmail: jest.fn(async () => ({})),
 }));
 jest.mock("../src/utils/razorpay", () => ({
   isLiveBlocked: false,

@@ -1,5 +1,6 @@
 const { prisma } = require("../db");
 const { creditBalance, reservedCredit } = require("./referrals");
+const { notifyCreditAdded } = require("./walletNotices");
 
 // The student wallet.
 //
@@ -94,12 +95,12 @@ async function adjustCredit({ userId, rupees, note, adminId }) {
   if (note !== undefined && typeof note !== "string") return { ok: false, status: 400, error: "The note must be text." };
   const cleanNote = String(note || "").trim().slice(0, MAX_NOTE_LENGTH);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Lock BEFORE reading anything: the transaction's snapshot is fixed by its
     // first plain read, and a snapshot taken before the lock was won couldn't
     // see what the request we waited for just committed.
     await lockUser(tx, userId);
-    const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true } });
     if (!user) return { ok: false, status: 404, error: "User not found" };
 
     if (n < 0) {
@@ -112,8 +113,14 @@ async function adjustCredit({ userId, rupees, note, adminId }) {
       data: { userId, amount: n * 100, kind: "adjustment", note: cleanNote || (n > 0 ? "Credit from Crix" : "Adjustment by Crix") },
     });
     console.log(`[admin] ${adminId} ${n > 0 ? "added" : "removed"} ₹${Math.abs(n)} ${n > 0 ? "to" : "from"} the wallet of user ${userId}`);
-    return { ok: true, balance: (await creditBalance(userId, tx)) / 100 };
+    return { ok: true, balance: (await creditBalance(userId, tx)) / 100, user };
   });
+
+  // Tell the student, but only about credit they gained — and only now that it is saved.
+  if (result.ok && n > 0) {
+    notifyCreditAdded({ user: result.user, rupees: n, balanceRupees: result.balance, reason: "admin", note: cleanNote });
+  }
+  return result;
 }
 
 module.exports = {
