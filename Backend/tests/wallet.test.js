@@ -10,6 +10,7 @@ jest.mock("../src/utils/mailer", () => ({
   sendAccountExistsEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
+  sendWalletCreditEmail: jest.fn(async () => ({})),
 }));
 jest.mock("../src/utils/receiptPdf", () => ({ buildReceiptPdfBuffer: jest.fn(() => Buffer.from("fake-pdf")) }));
 jest.mock("../src/utils/razorpay", () => ({
@@ -17,6 +18,7 @@ jest.mock("../src/utils/razorpay", () => ({
   razorpay: { orders: { create: jest.fn(async () => ({ id: `order_w_${Math.random().toString(36).slice(2)}`, currency: "INR" })) } },
 }));
 const { razorpay } = require("../src/utils/razorpay");
+const mailer = require("../src/utils/mailer");
 
 let app, prisma, adminToken, adminId;
 
@@ -282,6 +284,43 @@ describe("paying for a course from the wallet", () => {
       razorpay_order_id: payment.razorpayOrderId, razorpay_payment_id: "pay_x", razorpay_signature: "0".repeat(64),
     });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("the credit email", () => {
+  // One student for the whole group: sign-ups are rate limited per test run.
+  let student;
+  beforeAll(async () => { student = await signup("mailed"); });
+  beforeEach(() => mailer.sendWalletCreditEmail.mockClear());
+
+  it("tells the student when an admin adds credit, with the note and the new balance", async () => {
+    await grant(student, 300, "Welcome credit");
+    mailer.sendWalletCreditEmail.mockClear();
+    const res = await grant(student, 500, "Thanks for the feedback");
+    expect(res.status).toBe(201);
+    expect(mailer.sendWalletCreditEmail).toHaveBeenCalledTimes(1);
+    expect(mailer.sendWalletCreditEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: student.email, name: "Student Person", amount: 500, balance: 800, reason: "admin", note: "Thanks for the feedback" }),
+    );
+  });
+
+  it("does not email when credit is taken away, or when the change is refused", async () => {
+    expect((await grant(student, -100)).status).toBe(201); // taken away
+    expect((await grant(student, -999999)).status).toBe(400); // more than they have
+    expect((await grant(student, 0)).status).toBe(400); // not a change
+    expect((await grant(student, 2.5)).status).toBe(400); // not whole rupees
+    expect(mailer.sendWalletCreditEmail).not.toHaveBeenCalled();
+  });
+
+  it("never lets an email problem undo the credit", async () => {
+    const before = (await walletOf(student)).balance;
+    mailer.sendWalletCreditEmail.mockRejectedValueOnce(new Error("mail host down"));
+    expect((await grant(student, 250, "Still added")).status).toBe(201);
+    expect((await walletOf(student)).balance).toBe(before + 250);
+
+    mailer.sendWalletCreditEmail.mockImplementationOnce(() => { throw new Error("blew up synchronously"); });
+    expect((await grant(student, 50)).status).toBe(201);
+    expect((await walletOf(student)).balance).toBe(before + 300);
   });
 });
 

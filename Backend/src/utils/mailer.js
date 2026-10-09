@@ -592,6 +592,36 @@ async function sendPaymentRequestEmail({ to, name, itemTitle, itemType, tier, am
   return deliver({ to, subject: `Payment request — ${itemTitle || "Crix Technology"}`, text, html });
 }
 
+// ---------- wallet credit added ----------
+// Sent when credit lands in a student's wallet — added by an admin, or earned
+// through a referral (utils/walletNotices.js). Best-effort: the credit and its
+// history are in the wallet on their Profile page whether or not this arrives.
+async function sendWalletCreditEmail({ to, name, amount, balance, reason, note }) {
+  if (!to) return { sent: false, reason: "No email" };
+  const why = reason === "referral"
+    ? "A friend you referred made their first purchase"
+    : (note || "Credit from Crix");
+  const link = `${siteOrigin()}/profile`;
+  const html = layout({
+    preheader: `${fmtRupees(amount)} was added to your Crix wallet — balance ${fmtRupees(balance)}.`,
+    title: "Credit added to your wallet",
+    content:
+      paragraph(`Hi ${escapeHtml(name || "there")}, ${escapeHtml(fmtRupees(amount))} was added to your Crix Technology wallet.`) +
+      detailsBox([
+        ["Reason", escapeHtml(why)],
+        ["Credit added", fmtRupees(amount)],
+        ["Wallet balance", fmtRupees(balance), true],
+      ]) +
+      button("View my wallet", link) +
+      paragraph("Your credit is taken off the price automatically at checkout. If it covers the full price of a course or internship, you can pay with your wallet alone.", `font-size:13px;color:${BRAND.muted}`),
+  });
+  const text =
+    `Hi ${name || "there"},\n\n${fmtRupees(amount)} was added to your Crix Technology wallet.\n\n` +
+    `Reason: ${why}\nCredit added: ${fmtRupees(amount)}\nWallet balance: ${fmtRupees(balance)}\n\n` +
+    `Your credit is taken off the price automatically at checkout, and if it covers the full price you can pay with your wallet alone. See your wallet: ${link}` + TEXT_SIGNOFF;
+  return deliver({ to, subject: `${fmtRupees(amount)} added to your Crix wallet`, text, html });
+}
+
 module.exports = {
   sendContactEmail,
   sendApplicationEmail,
@@ -600,4 +630,5 @@ module.exports = {
   sendOtpEmail,
   sendPasswordChangedEmail,
   sendPaymentRequestEmail,
+  sendWalletCreditEmail,
 };

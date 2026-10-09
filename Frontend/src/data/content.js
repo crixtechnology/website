@@ -323,7 +323,7 @@ Payment for a course, a paid internship, a plan upgrade or a payment request sen
 • Process your internship application or course purchase
 • Grant and manage access to purchased course content, live-class schedules, and recordings
 • Send you tasks, updates, and certificates via email
-• Send account and transaction emails — one-time verification codes, receipts, payment requests, and security notices such as a password change
+• Send account and transaction emails — one-time verification codes, receipts, payment requests, wallet credit notices, and security notices such as a password change
 • Ship your internship joining kit to the address you give us
 • Run the referral program — apply referral discounts and credit
 • Respond to your queries and support requests

@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { prisma } = require("../db");
+const { notifyCreditAdded } = require("./walletNotices");
 
 // Referral programme.
 //
@@ -237,6 +238,7 @@ async function rewardReferrerForPurchase(payment, application) {
   if (won.count !== 1) return null;
 
   if (referral.rewardAmount > 0) {
+    let credited = false;
     try {
       await prisma.creditEntry.create({
         data: {
@@ -247,8 +249,19 @@ async function rewardReferrerForPurchase(payment, application) {
           note: "A friend you referred made their first purchase",
         },
       });
+      credited = true;
     } catch (e) {
       if (!(e && e.code === "P2002")) throw e;
+    }
+    // Let the referrer know — only when this call really added the credit (not on a
+    // duplicate), and never in a way that can fail the purchase that triggered it.
+    if (credited) {
+      try {
+        const referrer = await prisma.user.findUnique({ where: { id: referral.referrerId }, select: { email: true, name: true } });
+        notifyCreditAdded({ user: referrer, rupees: referral.rewardAmount / 100, balanceRupees: (await creditBalance(referral.referrerId)) / 100, reason: "referral" });
+      } catch (err) {
+        console.error("[referrals] credit email skipped:", err.message);
+      }
     }
   }
   return referral;

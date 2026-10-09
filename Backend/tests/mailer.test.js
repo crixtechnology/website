@@ -65,6 +65,39 @@ describe("mailer via Brevo's HTTP API", () => {
     expect(body.textContent).toContain("Amount: ₹3,999");
   });
 
+  it("builds the wallet credit email: amounts, reason, balance, a link to the wallet, and escaped text", async () => {
+    global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
+    const { sendWalletCreditEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "" });
+
+    await sendWalletCreditEmail({ to: "a@example.com", name: "Asha <b>", amount: 500, balance: 1250.5, reason: "admin", note: "Welcome <i>credit</i>" });
+    let body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.subject).toBe("₹500 added to your Crix wallet");
+    expect(body.htmlContent).toContain("crix-logo.png");
+    expect(body.htmlContent).toContain("View my wallet");
+    expect(body.htmlContent).toContain("/profile");
+    expect(body.htmlContent).toContain("₹1,250.50");
+    // Names and admin notes are free text — escaped in the HTML.
+    expect(body.htmlContent).toContain("Asha &lt;b&gt;");
+    expect(body.htmlContent).toContain("Welcome &lt;i&gt;credit&lt;/i&gt;");
+    expect(body.htmlContent).not.toContain("<i>credit</i>");
+    expect(body.textContent).toContain("Reason: Welcome <i>credit</i>");
+    expect(body.textContent).toContain("Wallet balance: ₹1,250.50");
+
+    // Referral rewards get their own wording; a missing note falls back to a plain one.
+    global.fetch.mockClear();
+    await sendWalletCreditEmail({ to: "a@example.com", name: "", amount: 500, balance: 500, reason: "referral" });
+    body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.textContent).toContain("A friend you referred made their first purchase");
+    global.fetch.mockClear();
+    await sendWalletCreditEmail({ to: "a@example.com", amount: 100, balance: 100, reason: "admin" });
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body).textContent).toContain("Credit from Crix");
+
+    // No address, no email.
+    global.fetch.mockClear();
+    expect(await sendWalletCreditEmail({ to: "", amount: 100, balance: 100, reason: "admin" })).toEqual({ sent: false, reason: "No email" });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("sends the owner's new-application ping through Brevo when it's set up, without the applicant's details", async () => {
     global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
     const prevEnv = process.env.NODE_ENV;
