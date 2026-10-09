@@ -15,7 +15,6 @@ const AdminApplications = lazy(() => import("./pages/admin/AdminApplications.jsx
 const AdminServices = lazy(() => import("./pages/admin/AdminServices.jsx"));
 const AdminReferrals = lazy(() => import("./pages/admin/AdminReferrals.jsx"));
 const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons.jsx"));
-const AdminAmbassadors = lazy(() => import("./pages/admin/AdminAmbassadors.jsx"));
 const AdminPaymentRequests = lazy(() => import("./pages/admin/AdminPaymentRequests.jsx"));
 const AdminWallet = lazy(() => import("./pages/admin/AdminWallet.jsx"));
 
@@ -31,7 +30,6 @@ const ROUTES = [
   ["/admin/services", AdminServices],
   ["/admin/referrals", AdminReferrals],
   ["/admin/coupons", AdminCoupons],
-  ["/admin/ambassadors", AdminAmbassadors],
   ["/admin/payment-requests", AdminPaymentRequests],
   ["/admin/wallet", AdminWallet],
 ];

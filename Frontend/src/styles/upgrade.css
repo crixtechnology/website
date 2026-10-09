@@ -178,8 +178,8 @@ nav.topbar .nav-in{justify-content:flex-start;gap:8px}
   background-image:radial-gradient(rgba(var(--cyan-rgb),.16) 1px,transparent 1px);background-size:22px 22px;
   -webkit-mask-image:radial-gradient(70% 90% at 20% 30%,#000,transparent 70%);mask-image:radial-gradient(70% 90% at 20% 30%,#000,transparent 70%)}
 
-/* ---------- Panels used across student, legal, ambassador and admin pages ---------- */
-.modal-box,.admin-form,.ref-card,.amb-panel,.faq-list,.related-card,.plan-card,.course-facts>div,.ref-stat,.admin-row,.order-summary{box-shadow:var(--shadow-card)}
+/* ---------- Panels used across student, legal and admin pages ---------- */
+.modal-box,.admin-form,.ref-card,.faq-list,.related-card,.plan-card,.course-facts>div,.ref-stat,.admin-row,.order-summary{box-shadow:var(--shadow-card)}
 .related-card:hover{box-shadow:var(--edge-hi),var(--shadow-glow)}
 .plan-card--plus{box-shadow:var(--edge-hi),0 0 0 1px rgba(var(--teal-rgb),.25),0 24px 50px -28px rgba(var(--teal-rgb),.55)}
 .admin-row{transition:border-color .2s,box-shadow .2s}
@@ -556,8 +556,6 @@ input.admin-search{padding-left:42px;background:var(--panel) no-repeat 15px cent
 .admin-pill.new{box-shadow:0 0 14px -4px rgba(var(--teal-rgb),.7)}
 .status-toggle{transition:opacity .2s,box-shadow .2s}
 .status-toggle.open:hover{box-shadow:0 0 16px -6px rgba(var(--teal-rgb),.8)}
-.amb-table tbody tr{transition:background .2s}
-.amb-table tbody tr:hover{background:rgba(var(--teal-rgb),.05)}
 
 @media (prefers-reduced-motion:reduce){
   .card:hover ul li::before,.benefit:hover .benefit-icon,.foot-links a:hover{transform:none}

@@ -137,23 +137,13 @@ async function applyReferralCode(userId, rawCode) {
   const hasCourse = await prisma.enrollment.count({ where: { userId } });
   if (hasCourse > 0) return { ok: false, error: "Referral codes are for new students — you already have a course." };
 
-  // An approved campus ambassador is paid a cash commission on what their friend
-  // pays (utils/ambassadors.js) instead of earning credit, so the referral is
-  // tagged with the ambassador and the commission % promised right now.
-  const ambassadorUtils = require("./ambassadors"); // required here, not at the top: it requires this file
-  const ambassador = await prisma.ambassador.findUnique({ where: { userId: referrer.id } });
-  const asAmbassador = !!ambassador && ambassador.status === "approved";
-  const commissionPercent = asAmbassador ? ambassadorUtils.effectivePercent(ambassador, await ambassadorUtils.getSettings()) : 0;
-
   try {
     const referral = await prisma.referral.create({
       data: {
         referrerId: referrer.id,
         refereeId: userId,
         refereeDiscountPercent: settings.refereeDiscountPercent,
-        rewardAmount: asAmbassador ? 0 : settings.referrerCreditRupees * 100,
-        ambassadorId: asAmbassador ? ambassador.id : null,
-        commissionPercent,
+        rewardAmount: settings.referrerCreditRupees * 100,
       },
     });
     return { ok: true, referral };
@@ -245,12 +235,6 @@ async function rewardReferrerForPurchase(payment, application) {
     data: { status: "rewarded", qualifyingPaymentId: payment.id, rewardedAt: new Date() },
   });
   if (won.count !== 1) return null;
-
-  // An ambassador's friend: the reward is a commission (held, then payable), not credit.
-  if (referral.ambassadorId) {
-    await require("./ambassadors").recordEarning(referral, payment);
-    return referral;
-  }
 
   if (referral.rewardAmount > 0) {
     try {

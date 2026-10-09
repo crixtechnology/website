@@ -819,14 +819,16 @@ export function Contact() {
             <div className="info-row"><span className="ic">✉</span><div><span className="info-label">Email</span>
               <div className="contact-line"><a href={`mailto:${site.email}`}>{site.email}</a><CopyButton value={site.email} label="email address" /></div></div></div>
             <div className="info-row"><span className="ic">✆</span><div><span className="info-label">Phone</span>
+              <span className="contact-sub">{site.phoneLabel}</span>
               <div className="contact-line"><a href={`tel:${site.phone.replace(/\s/g, "")}`}>{site.phone}</a>
-                <CopyButton value={site.phone} label="phone number" />
+                <CopyButton value={site.phone} label="IT services phone number" />
                 <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
-              {site.phoneAlt && (
+              {site.phoneAlt && (<>
+                <span className="contact-sub">{site.phoneAltLabel}</span>
                 <div className="contact-line"><a href={`tel:${site.phoneAlt.replace(/\s/g, "")}`}>{site.phoneAlt}</a>
-                  <CopyButton value={site.phoneAlt} label="second phone number" />
+                  <CopyButton value={site.phoneAlt} label="internships and courses phone number" />
                   <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
-              )}
+              </>)}
             </div></div>
             {site.hours && <div className="info-row"><span className="ic">◔</span><div><span className="info-label">Working hours</span>{site.hours}</div></div>}
             <div className="info-row"><span className="ic">◎</span><div><span className="info-label">Location</span>{site.city}</div></div>

@@ -178,14 +178,6 @@ export default function MyCourses() {
           </div>
         )}
         <ReferralCard />
-        <div className="ref-card amb-teaser">
-          <div>
-            <span className="eyebrow">Campus Ambassador</span>
-            <h2 className="ref-title">Want to earn from it?</h2>
-            <p className="ref-lede">Represent Crix at your college: get a certificate and a welcome kit, and earn a commission on every student you bring in.</p>
-          </div>
-          <Link className="btn btn-solid" to="/ambassador">Become an ambassador →</Link>
-        </div>
       </div>
       <UpgradeModal data={upgrade} onClose={() => setUpgrade(null)} onDone={load} />
     </section>

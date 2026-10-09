@@ -33,7 +33,6 @@ const ROUTE_LOADERS = {
   "/dashboard": () => import("./pages/student/MyCourses.jsx"),
   "/learn/": () => import("./pages/student/Learn.jsx"),
   "/profile": () => import("./pages/student/Profile.jsx"),
-  "/ambassador": () => import("./pages/Ambassador.jsx"),
 };
 registerPrefetch(ROUTE_LOADERS);
 
@@ -41,7 +40,6 @@ const MyCourses = lazy(ROUTE_LOADERS["/dashboard"]);
 const Learn = lazy(ROUTE_LOADERS["/learn/"]);
 const Profile = lazy(ROUTE_LOADERS["/profile"]);
 
-const Ambassador = lazy(ROUTE_LOADERS["/ambassador"]);
 
 // Matches the "Loading..." convention every data-fetching page here already
 // uses (MyCourses etc.) rather than a full-screen splash
@@ -189,7 +187,6 @@ export default function App() {
             <Route path="/internships" element={<Navigate to="/programs#internships" replace />} />
             <Route path="/courses" element={<Navigate to="/programs#courses" replace />} />
             <Route path="/services" element={<Services />} />
-            <Route path="/ambassador" element={<Ambassador />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
