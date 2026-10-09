@@ -78,7 +78,7 @@
     },
     "/contact": {
       "title": "Contact Us | Crix Technology",
-      "description": "Contact Crix Technology about internships, online courses or IT services. Call or WhatsApp +91 97232 23588 or email us — we reply within two working days.",
+      "description": "Contact Crix Technology about internships, online courses or IT services. Call or WhatsApp +91 97232 23588 (IT services) or +91 97123 65388 (internships & courses), or email us — we reply within two working days.",
       "priority": "0.7",
       "changefreq": "monthly",
       "crumb": "Contact",
@@ -87,19 +87,6 @@
         "IT services enquiry Ahmedabad",
         "internship enquiry",
         "online course enquiry"
-      ]
-    },
-    "/ambassador": {
-      "title": "Campus Ambassador Program | Crix Technology",
-      "description": "Become a Crix Technology campus ambassador: get a certificate and welcome kit, share your code with fellow students and earn commission when they join.",
-      "priority": "0.6",
-      "changefreq": "monthly",
-      "crumb": "Campus Ambassador",
-      "keywords": [
-        "campus ambassador program",
-        "student ambassador India",
-        "campus ambassador internship",
-        "refer and earn for students"
       ]
     },
     "/privacy-policy": {

@@ -8,7 +8,8 @@ const COMPANY = {
   cin: "U63122GJ2026PTC179737",
   registeredAddress: "G-403, Jalaram Vatika, Nr. Sadguru Bunglows, New Maninagar, Ramol, Daskroi, Ahmedabad – 382449, Gujarat",
   email: "crixtechnology@gmail.com",
-  phone: "+91 97232 23588",
+  phone: "+91 97232 23588",          // IT services
+  phoneAlt: "+91 97123 65388",       // internships & courses (used on receipts / emails)
   website: "https://crixtechnology.in",
 };
 

@@ -346,15 +346,14 @@ export async function adminUpdateReferralSettings(settings) {
 }
 
 // ---------- Admin: offer / discount codes ----------
-export const adminGetCoupons = () => ambassadorCall("/admin/coupons", {}, "Could not load the offer codes");
-export const adminCreateCoupon = (payload) => ambassadorCall("/admin/coupons", { method: "POST", body: JSON.stringify(payload) }, "Could not create the offer code");
-export const adminUpdateCoupon = (id, patch) => ambassadorCall(`/admin/coupons/${id}`, { method: "PUT", body: JSON.stringify(patch) }, "Could not save the offer code");
-export const adminDeleteCoupon = (id) => ambassadorCall(`/admin/coupons/${id}`, { method: "DELETE" }, "Could not delete the offer code");
+export const adminGetCoupons = () => adminCall("/admin/coupons", {}, "Could not load the offer codes");
+export const adminCreateCoupon = (payload) => adminCall("/admin/coupons", { method: "POST", body: JSON.stringify(payload) }, "Could not create the offer code");
+export const adminUpdateCoupon = (id, patch) => adminCall(`/admin/coupons/${id}`, { method: "PUT", body: JSON.stringify(patch) }, "Could not save the offer code");
+export const adminDeleteCoupon = (id) => adminCall(`/admin/coupons/${id}`, { method: "DELETE" }, "Could not delete the offer code");
 
-// ---------- Campus ambassador programme ----------
-// Small helper: every call below is "authFetch, drop the session on a 401, read
+// Small helper: every coupon call above is "authFetch, drop the session on a 401, read
 // the JSON, turn a failure into { ok:false, error }".
-async function ambassadorCall(path, options, fallbackError) {
+async function adminCall(path, options, fallbackError) {
   try {
     const res = await authFetch(path, options);
     if (res.status === 401) adminLogout();
@@ -366,19 +365,6 @@ async function ambassadorCall(path, options, fallbackError) {
   }
 }
 
-export function adminGetAmbassadors(q, status) {
-  const params = new URLSearchParams();
-  if (q) params.set("q", q);
-  if (status) params.set("status", status);
-  return ambassadorCall(`/admin/ambassadors${params.toString() ? `?${params}` : ""}`, {}, "Could not load ambassadors");
-}
-export const adminGetAmbassador = (id) => ambassadorCall(`/admin/ambassadors/${id}`, {}, "Could not load this ambassador");
-export const adminUpdateAmbassador = (id, fields) => ambassadorCall(`/admin/ambassadors/${id}`, { method: "PATCH", body: JSON.stringify(fields) }, "Could not update this ambassador");
-export const adminVoidEarning = (id, voidIt) => ambassadorCall(`/admin/ambassador-earnings/${id}`, { method: "PATCH", body: JSON.stringify({ void: voidIt }) }, "Could not update this commission");
-export const adminGetAmbassadorPayouts = (status) => ambassadorCall(`/admin/ambassador-payouts${status ? `?status=${status}` : ""}`, {}, "Could not load payouts");
-export const adminUpdateAmbassadorPayout = (id, body) => ambassadorCall(`/admin/ambassador-payouts/${id}`, { method: "PATCH", body: JSON.stringify(body) }, "Could not update this payout");
-export const adminGetAmbassadorSettings = () => ambassadorCall("/admin/ambassador-settings", {}, "Could not load the programme rules");
-export const adminUpdateAmbassadorSettings = (settings) => ambassadorCall("/admin/ambassador-settings", { method: "PUT", body: JSON.stringify(settings) }, "Could not save the programme rules");
 
 // ---------- Admin: students/subscriptions (full CRUD) ----------
 // A "subscription" is an Enrollment — grant gives a user access to a course

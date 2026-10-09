@@ -84,7 +84,7 @@ export async function buildReceiptPdf(receipt) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(...hexToRgb(BRAND.muted));
-      doc.text(`${site.website}  •  ${site.email}  •  ${site.phone}`, PAGE_W / 2, PAGE_H - 11, { align: "center" });
+      doc.text(`${site.website}  •  ${site.email}  •  ${site.phoneAlt}`, PAGE_W / 2, PAGE_H - 11, { align: "center" });
       doc.text(`${site.legalName}  •  CIN: ${site.cin}`, PAGE_W / 2, PAGE_H - 7, { align: "center" });
       doc.text(`Page ${i} of ${pageCount}`, PAGE_W - MARGIN, PAGE_H - 7, { align: "right" });
     }
@@ -135,7 +135,7 @@ export async function buildReceiptPdf(receipt) {
   doc.text("BILLED BY", MARGIN, y);
   doc.text("BILLED TO", MARGIN + colGap, y);
 
-  const leftLines = [site.legalName, site.registeredAddress, `Email: ${site.email}`, `Phone: ${site.phone}`, `CIN: ${site.cin}`];
+  const leftLines = [site.legalName, site.registeredAddress, `Email: ${site.email}`, `Phone: ${site.phoneAlt}`, `CIN: ${site.cin}`];
   const rightLines = [buyerName || "—", buyerEmail ? `Email: ${buyerEmail}` : null, buyerPhone ? `Phone: ${buyerPhone}` : null].filter(Boolean);
 
   const drawWrappedBlock = (lines, x, startY, maxWidth) => {

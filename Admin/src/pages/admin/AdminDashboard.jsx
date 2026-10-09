@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetAmbassadors } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
@@ -16,7 +16,6 @@ const TILE_ICONS = {
   Services: <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M12 2v3 M12 19v3 M4.9 4.9 7 7 M17 17l2.1 2.1 M2 12h3 M19 12h3 M4.9 19.1 7 17 M17 7l2.1-2.1" />,
   "Offer codes": <path d="M3 12V4h8l10 10-8 8z M7.5 7.5h.01" />,
   Referrals: <path d="M16 3h5v5 M21 3l-7 7 M8 21H3v-5 M3 21l7-7" />,
-  "Campus ambassadors": <path d="M12 3 2 8l10 5 10-5z M6 10.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-5.5" />,
   "Payment requests": <path d="M3 6h18v12H3z M3 10h18 M15 14.5h3 M7 14.5h2" />,
   Messages: <path d="M4 5h16v11H8l-4 4z" />,
   Applications: <path d="M7 3h7l4 4v14H7z M14 3v4h4 M9.5 13h5 M9.5 16.5h5" />,
@@ -30,14 +29,14 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     courses: 0, openCourses: 0, internships: 0, openInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
-    referrals: 0, referralsRewarded: 0, ambassadorApplications: 0, ambassadorPayouts: 0,
+    referrals: 0, referralsRewarded: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, ambassadorsRes] = await Promise.all([
-        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(), adminGetAmbassadors(),
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(),
       ]);
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
       const courses = entries.filter((c) => c.type !== "internship");
@@ -68,8 +67,6 @@ export default function AdminDashboard() {
         newApplications: applications.filter((a) => !a.contacted).length,
         referrals: referralsRes.ok ? referralsRes.summary.total : 0,
         referralsRewarded: referralsRes.ok ? referralsRes.summary.rewarded : 0,
-        ambassadorApplications: ambassadorsRes.ok ? ambassadorsRes.summary.applied : 0,
-        ambassadorPayouts: ambassadorsRes.ok ? ambassadorsRes.summary.payoutsWaiting : 0,
       });
       setLoading(false);
     })();
@@ -86,7 +83,6 @@ export default function AdminDashboard() {
     { label: "Payment requests", value: "Manage", sub: "ask a student to pay for a course or internship", to: "/admin/payment-requests" },
     { label: "Offer codes", value: "Manage", sub: "discount codes for courses & internships", to: "/admin/coupons" },
     { label: "Referrals", value: stats.referrals, sub: `${stats.referralsRewarded} led to a purchase · rules & credit`, to: "/admin/referrals" },
-    { label: "Campus ambassadors", value: stats.ambassadorApplications, sub: `applications to review · ${stats.ambassadorPayouts} payouts to send`, to: "/admin/ambassadors" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
     { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },
   ];

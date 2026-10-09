@@ -433,7 +433,7 @@ function layout({ preheader = "", title, content }) {
         </td></tr>
         <tr><td align="center" style="padding:24px 16px 0;font-size:13px;line-height:1.7;color:${BRAND.muted}">
           Questions? Just reply to this email, or WhatsApp us at
-          <a href="https://wa.me/${COMPANY.phone.replace(/\D/g, "")}" style="color:${BRAND.teal};text-decoration:none;font-weight:600">${COMPANY.phone}</a>.
+          <a href="https://wa.me/${COMPANY.phoneAlt.replace(/\D/g, "")}" style="color:${BRAND.teal};text-decoration:none;font-weight:600">${COMPANY.phoneAlt}</a>.
         </td></tr>
         <tr><td align="center" style="padding:12px 16px 0;font-size:13px;color:${BRAND.muted}">
           <a href="${site}" style="color:${BRAND.teal};text-decoration:none;font-weight:600">${escapeHtml(siteLabel)}</a>
@@ -452,7 +452,7 @@ function layout({ preheader = "", title, content }) {
 </html>`;
 }
 
-const TEXT_SIGNOFF = `\n\nQuestions? Reply to this email or WhatsApp us at ${COMPANY.phone}.\nCrix Technology Private Limited`;
+const TEXT_SIGNOFF = `\n\nQuestions? Reply to this email or WhatsApp us at ${COMPANY.phoneAlt}.\nCrix Technology Private Limited`;
 
 // Best-effort, like the notification senders above — a delivery failure (or
 // email simply not being set up yet) must never break the payment flow that

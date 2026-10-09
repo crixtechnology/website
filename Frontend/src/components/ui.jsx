@@ -1,6 +1,7 @@
 import { Suspense, lazy, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import FaqBot from "./FaqBot.jsx";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import {
   submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder,
@@ -343,12 +344,12 @@ export function SkeletonCards({ count = 3 }) {
 
 // A course/internship not yet open for buying (no price set yet, or the
 // admin closed it) gets an "Inquire" button straight to WhatsApp instead of
-// a dead end — same number the site's floating WhatsApp button uses.
+// a dead end — to the Internships & Courses number.
 // `verb` lets the message (and the button copy that builds it) say "apply
 // for" vs "enroll in" so the CTA itself signals internship vs course.
 export function whatsappInquiryLink(title, verb = "learning more about") {
   const text = encodeURIComponent(`Hi Crix Technology! I'm interested in ${verb} "${title}". Could you share more details?`);
-  return `https://wa.me/${site.whatsapp}?text=${text}`;
+  return `https://wa.me/${site.whatsappAlt}?text=${text}`;
 }
 
 /* ---------- Plans (Basic / Plus / Pro) ----------
@@ -1696,7 +1697,7 @@ export function AuthModal() {
                   mail) — never leave anyone stuck waiting on it. */}
               {resetStep === 2 && <p className="form-note" style={{ marginTop: 0 }}>
                 Didn't get the code?{" "}
-                <a href={`https://wa.me/${site.whatsapp}?text=${encodeURIComponent("Hi Crix Technology! I can't log in — please help me reset my password.")}`}
+                <a href={`https://wa.me/${site.whatsappAlt}?text=${encodeURIComponent("Hi Crix Technology! I can't log in — please help me reset my password.")}`}
                   target="_blank" rel="noopener noreferrer">Message us on WhatsApp</a>{" "}
                 and we'll reset it for you.
               </p>}
@@ -2045,7 +2046,6 @@ const FOOT_COLS = [
       ["Web Development Track", "/programs#courses"],
       ["Android Development", "/programs#internships"],
       ["Online Courses", "/programs#courses"],
-      ["Campus Ambassador", "/ambassador"],
     ],
   },
   {
@@ -2072,13 +2072,25 @@ export function Footer() {
             skills training. Based in Ahmedabad — serving clients pan-India and globally.
           </p>
           <div className="foot-contact">
-            <span><a href={tel(site.phone)}>{site.phone}</a>
-              <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></span>
-            {site.phoneAlt && (
-              <span><a href={tel(site.phoneAlt)}>{site.phoneAlt}</a>
-                <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></span>
-            )}
-            <a href={`mailto:${site.email}`}>{site.email}</a>
+            <ul className="foot-phones">
+              <li>
+                <span className="foot-phone-label">{site.phoneLabel}</span>
+                <div className="foot-phone-row">
+                  <a href={tel(site.phone)}>{site.phone}</a>
+                  <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${site.phoneLabel}`}>WhatsApp</a>
+                </div>
+              </li>
+              {site.phoneAlt && (
+                <li>
+                  <span className="foot-phone-label">{site.phoneAltLabel}</span>
+                  <div className="foot-phone-row">
+                    <a href={tel(site.phoneAlt)}>{site.phoneAlt}</a>
+                    <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${site.phoneAltLabel}`}>WhatsApp</a>
+                  </div>
+                </li>
+              )}
+            </ul>
+            <a className="foot-email" href={`mailto:${site.email}`}>{site.email}</a>
             {site.hours && <span className="foot-hours">{site.hours}</span>}
           </div>
           {(site.linkedin || site.instagram) && (
@@ -2115,7 +2127,7 @@ export function Footer() {
 export function Chrome() {
   const [loaded, setLoaded] = useState(false);
   const [showTop, setShowTop] = useState(false);
-  // Phones have no hover, so the "24×7 available" note would never be seen
+  // Phones have no hover, so the "Need help?" note would never be seen
   // there: on touch screens it slides out once per visit, a few seconds in,
   // then tucks itself away again.
   const [waPeek, setWaPeek] = useState(false);
@@ -2293,14 +2305,7 @@ export function Chrome() {
       <div id="progress" ref={progressRef}></div>
       <div id="spotlight" ref={spotRef} aria-hidden="true"></div>
       <div id="cursor-ring" ref={ringRef} aria-hidden="true"></div>
-      <a id="wa" className={waPeek ? "peek" : ""} href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer"
-        aria-label="Chat on WhatsApp — available 24×7">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.6.9 5 2.3 7L4 29l7.3-2.2c1.9 1 3.6 1.5 5.7 1.5 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm6.6 16.9c-.3.8-1.6 1.5-2.3 1.6-.6.1-1.3.2-2.2-.1-.5-.2-1.1-.4-1.9-.7-3.4-1.5-5.6-4.9-5.8-5.1-.2-.2-1.4-1.8-1.4-3.5s.9-2.5 1.2-2.8c.3-.3.7-.4.9-.4h.7c.2 0 .5-.1.8.6.3.8 1 2.6 1.1 2.8.1.2.2.4 0 .7-.1.3-.2.4-.4.7-.2.2-.4.5-.6.7-.2.2-.4.4-.2.8s1 1.7 2.2 2.7c1.5 1.3 2.8 1.7 3.2 1.9.4.2.6.2.8-.1.2-.2.9-1.1 1.2-1.5.2-.4.5-.3.8-.2.3.1 2.1 1 2.4 1.2.4.2.6.3.7.4.1.3.1.9-.2 1.7z"/></svg>
-        <span className="wa-tip" aria-hidden="true">
-          <span className="wa-tip-badge"><svg viewBox="0 0 32 32"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.6.9 5 2.3 7L4 29l7.3-2.2c1.9 1 3.6 1.5 5.7 1.5 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm6.6 16.9c-.3.8-1.6 1.5-2.3 1.6-.6.1-1.3.2-2.2-.1-.5-.2-1.1-.4-1.9-.7-3.4-1.5-5.6-4.9-5.8-5.1-.2-.2-1.4-1.8-1.4-3.5s.9-2.5 1.2-2.8c.3-.3.7-.4.9-.4h.7c.2 0 .5-.1.8.6.3.8 1 2.6 1.1 2.8.1.2.2.4 0 .7-.1.3-.2.4-.4.7-.2.2-.4.5-.6.7-.2.2-.4.4-.2.8s1 1.7 2.2 2.7c1.5 1.3 2.8 1.7 3.2 1.9.4.2.6.2.8-.1.2-.2.9-1.1 1.2-1.5.2-.4.5-.3.8-.2.3.1 2.1 1 2.4 1.2.4.2.6.3.7.4.1.3.1.9-.2 1.7z"/></svg></span>
-          <span className="wa-tip-text"><b>24×7 available</b><small>Chat with us on WhatsApp</small></span>
-        </span>
-      </a>
+      <FaqBot peek={waPeek} />
       {/* Invisible must also mean unreachable: hidden, it is out of the tab order and away from screen readers. */}
       <button id="toTop" className={showTop ? "show" : ""} aria-label="Back to top"
         tabIndex={showTop ? 0 : -1} aria-hidden={showTop ? undefined : true}

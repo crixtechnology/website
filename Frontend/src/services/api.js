@@ -519,35 +519,6 @@ export async function getPriceQuote(courseSlug, tier, couponCode) {
   }
 }
 
-// ---------- Campus ambassador programme ----------
-// Small helper: every call below is "authFetch, drop the session on a 401, read
-// the JSON, turn a failure into { ok:false, error }".
-async function ambassadorCall(path, options, fallbackError) {
-  try {
-    const res = await authFetch(path, options);
-    if (res.status === 401) adminLogout();
-    const data = await res.json();
-    if (!res.ok) return { ok: false, error: data.error || fallbackError };
-    return data;
-  } catch (e) {
-    return { ok: false, error: fallbackError };
-  }
-}
-
-// What the programme offers (public — shown before anyone applies).
-export async function getAmbassadorProgram() {
-  try {
-    const res = await fetch(`${API}/ambassador/program`);
-    return await res.json();
-  } catch (e) {
-    return { ok: false, error: "Could not load the programme details" };
-  }
-}
-// My application status, or — once approved — my whole ambassador dashboard.
-export const getMyAmbassador = () => ambassadorCall("/me/ambassador", {}, "Could not load your ambassador details");
-export const applyAmbassador = (form) => ambassadorCall("/ambassador/apply", { method: "POST", body: JSON.stringify(form) }, "Could not send your application");
-export const updateAmbassadorProfile = (fields) => ambassadorCall("/me/ambassador/profile", { method: "PUT", body: JSON.stringify(fields) }, "Could not save your details");
-export const requestAmbassadorPayout = () => ambassadorCall("/me/ambassador/payouts", { method: "POST" }, "Could not request the payout");
 
 // ---------- Services (public) ----------
 export async function getServices() {
