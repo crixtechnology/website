@@ -297,7 +297,7 @@ export const about = {
 // on /privacy-policy and /terms-of-service.
 // ============================================================
 export const legal = {
-  updated: "Effective date: September 2026 · Last updated: September 2026",
+  updated: "Effective date: October 2026 · Last updated: October 2026",
   privacy: {
     intro:
       "At Crix Technology, we are committed to protecting your privacy. This policy explains how we collect, use, and safeguard your personal information when you use our website, internship programs, and courses.",
@@ -311,7 +311,7 @@ export const legal = {
 • Account credentials — either a password, stored as a secure one-way hash and never in plain text, or, if you choose "Continue with Google", the name, email address, and account identifier provided to us by Google
 • Postal address — when you join an internship, so we can ship your joining kit
 • Purchase records — what you bought or upgraded, the plan, the amount paid, any offer code or referral discount used, and your receipt details
-• Referral activity — your referral code, whose code you used, and the referral credit you earn and spend
+• Referral and wallet activity — your referral code, whose code you used, and the credit added to and spent from your wallet
 • Any messages or project submissions you send us
 
 Payment for a course, a paid internship, a plan upgrade or a payment request sent to your account is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Our Internship Program includes both free and paid internships; no payment details are collected for a free internship.`,
@@ -348,7 +348,7 @@ Payment for a course, a paid internship, a plan upgrade or a payment request sen
       },
       {
         title: "6. Data Retention",
-        content: `We retain your account and course-related information for as long as your account remains active, and for a reasonable period afterward to respond to queries, resolve disputes, and comply with our legal obligations. Financial and transaction records — course and internship payments, receipts, and referral credit — are retained for the period required under applicable Indian tax and accounting law. You may request deletion of your account at any time, subject to these retention requirements.`,
+        content: `We retain your account and course-related information for as long as your account remains active, and for a reasonable period afterward to respond to queries, resolve disputes, and comply with our legal obligations. Financial and transaction records — course and internship payments, receipts, and wallet credit — are retained for the period required under applicable Indian tax and accounting law. You may request deletion of your account at any time, subject to these retention requirements.`,
       },
       {
         title: "7. Cookies & Similar Technologies",
@@ -455,19 +455,23 @@ Certificates and Letters of Recommendation are issued only upon satisfactory com
         title: "6. Course & Internship Purchases, Payment & Cancellations",
         content: `Most internship slots are apply-only, and applying never requires payment — but some internship slots, like courses, do carry a real price and are sold the same way. Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A course or internship is available for online purchase only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
 
-Plans and upgrades: a course or internship may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and offer codes, referral discounts and referral credit do not apply to upgrades.
+Plans and upgrades: a course or internship may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and offer codes, referral discounts and wallet credit do not apply to upgrades.
 
-Payment requests: Crix Technology may also send a payment request to a specific registered account for a particular course or internship, at an amount and (where applicable) plan set by us — including for a program that is currently closed or has no listed price. A payment request appears under "Payment requests" in your My Dashboard, is personal to your account, and can be paid only by you through Razorpay. Paying it grants you access to that course or internship on the same terms as a regular purchase, and a receipt is issued in the same way. Crix Technology may cancel a payment request that has not yet been paid; a request is not an offer to anyone else, and no online discounts, offer codes or referral credit apply to it.
+Payment requests: Crix Technology may also send a payment request to a specific registered account for a particular course or internship, at an amount and (where applicable) plan set by us — including for a program that is currently closed or has no listed price. A payment request appears under "Payment requests" in your My Dashboard, is personal to your account, and can be paid only by you through Razorpay. Paying it grants you access to that course or internship on the same terms as a regular purchase, and a receipt is issued in the same way. Crix Technology may cancel a payment request that has not yet been paid; a request is not an offer to anyone else, and no online discounts, offer codes or wallet credit apply to it.
 
 Access to a purchased course or internship's live-class schedule and recorded lectures is granted upon confirmed payment and remains tied to your account. Crix Technology may reschedule live sessions, substitute mentors, or make reasonable changes to program content and delivery format, provided the overall quality and scope is not materially reduced.
 
 All course and internship purchases, including plan upgrades and payments made against a payment request, are final. Crix Technology does not offer refunds or cancellations once payment has been completed, regardless of whether materials, recordings, or live sessions have been accessed. Please review the program's details and use the "Request to apply" or "Request to enroll" option on its page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
       },
       {
-        title: "7. Referral Program & Offer Codes",
+        title: "7. Referral Program, Wallet & Offer Codes",
         content: `Every registered student has a personal referral code. A new student may apply a friend's code once — when signing up, or at checkout before their first purchase — and receives a discount on that first purchase. You cannot use your own code, and a student can be referred only once.
 
-When a referred friend's first course or internship payment is confirmed, the student who referred them earns referral credit. Referral credit is added to your account and applied automatically to your next purchase at checkout. It has no cash value, cannot be withdrawn, transferred or exchanged, and never reduces an order below ₹1.
+Your wallet. Your Crix wallet holds credit you can spend on courses and internships. Credit reaches your wallet in two ways: as a referral reward — when a referred friend's first course or internship payment is confirmed, the student who referred them earns credit — or when Crix Technology adds credit to your account. Your balance, and every change with its note, is shown on your Profile page.
+
+Spending credit. Wallet credit is taken off the price automatically at checkout. If your credit covers the full price of a course or internship, you can pay with your wallet alone, without a card or UPI payment. When you pay through Razorpay, the minimum payable on an order is ₹1, so credit never reduces such an order below ₹1. Credit applied to a checkout you have started but not yet paid may be held for that checkout until it is paid or abandoned. Wallet credit does not apply to plan upgrades or to payment requests (see section 6), although an amount you paid from your wallet counts as paid when your upgrade price is worked out.
+
+Limits. Wallet credit has no cash value. It cannot be withdrawn, transferred to another account or exchanged for money, and it does not expire. Crix Technology may add credit to, or take credit away from, a wallet — for example to correct a mistake or reverse a reward — and every change appears in your wallet history. Because purchases are final (section 6), credit spent on a purchase is not returned if you later cancel it or stop using it. If your account is deleted, any remaining credit is lost.
 
 Offer codes are issued by Crix Technology, usually to individual students, and may be limited to particular programs, dates, a number of uses, or a maximum discount. Only one offer code can be used per order, and an offer code cannot be exchanged for cash.
 
