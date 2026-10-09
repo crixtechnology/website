@@ -123,7 +123,7 @@ function buildReceiptPdfBuffer(receipt) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(...hexToRgb(BRAND.muted));
-      doc.text(`${COMPANY.website}  •  ${COMPANY.email}  •  ${COMPANY.phone}`, PAGE_W / 2, PAGE_H - 11, { align: "center" });
+      doc.text(`${COMPANY.website}  •  ${COMPANY.email}  •  ${COMPANY.phoneAlt}`, PAGE_W / 2, PAGE_H - 11, { align: "center" });
       doc.text(`${COMPANY.legalName}  •  CIN: ${COMPANY.cin}`, PAGE_W / 2, PAGE_H - 7, { align: "center" });
       doc.text(`Page ${i} of ${pageCount}`, PAGE_W - MARGIN, PAGE_H - 7, { align: "right" });
     }
@@ -172,7 +172,7 @@ function buildReceiptPdfBuffer(receipt) {
   doc.text("BILLED BY", MARGIN, y);
   doc.text("BILLED TO", MARGIN + colGap, y);
 
-  const leftLines = [COMPANY.legalName, COMPANY.registeredAddress, `Email: ${COMPANY.email}`, `Phone: ${COMPANY.phone}`, `CIN: ${COMPANY.cin}`];
+  const leftLines = [COMPANY.legalName, COMPANY.registeredAddress, `Email: ${COMPANY.email}`, `Phone: ${COMPANY.phoneAlt}`, `CIN: ${COMPANY.cin}`];
   const rightLines = [buyerName || "—", buyerEmail ? `Email: ${buyerEmail}` : null, buyerPhone ? `Phone: ${buyerPhone}` : null].filter(Boolean);
 
   const drawWrappedBlock = (lines, x, startY, maxWidth) => {

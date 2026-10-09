@@ -8,7 +8,7 @@
   ],
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
-    { "source": "/:page(programs|services|about|contact|ambassador|privacy-policy|terms-of-service|client-terms)", "destination": "/:page/index.html" },
+    { "source": "/:page(programs|services|about|contact|privacy-policy|terms-of-service|client-terms)", "destination": "/:page/index.html" },
     { "source": "/(.*)", "destination": "/app.html" }
   ],
   "headers": [
