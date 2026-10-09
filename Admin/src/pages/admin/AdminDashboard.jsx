@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetBotQuestions } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
@@ -18,6 +18,7 @@ const TILE_ICONS = {
   Referrals: <path d="M16 3h5v5 M21 3l-7 7 M8 21H3v-5 M3 21l7-7" />,
   "Payment requests": <path d="M3 6h18v12H3z M3 10h18 M15 14.5h3 M7 14.5h2" />,
   Messages: <path d="M4 5h16v11H8l-4 4z" />,
+  "Help bot questions": <path d="M4 5h16v11H9l-5 4z M10 9.5a2 2 0 1 1 2.5 1.9c-.4.2-.5.5-.5.9 M12 13.6h.01" />,
   Applications: <path d="M7 3h7l4 4v14H7z M14 3v4h4 M9.5 13h5 M9.5 16.5h5" />,
   default: <path d="M5 12h14" />,
 };
@@ -29,14 +30,14 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     courses: 0, openCourses: 0, internships: 0, openInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
-    referrals: 0, referralsRewarded: 0,
+    referrals: 0, referralsRewarded: 0, botQuestions: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes] = await Promise.all([
-        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(),
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, botRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(), adminGetBotQuestions(),
       ]);
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
       const courses = entries.filter((c) => c.type !== "internship");
@@ -67,6 +68,7 @@ export default function AdminDashboard() {
         newApplications: applications.filter((a) => !a.contacted).length,
         referrals: referralsRes.ok ? referralsRes.summary.total : 0,
         referralsRewarded: referralsRes.ok ? referralsRes.summary.rewarded : 0,
+        botQuestions: botRes.ok && botRes.summary ? botRes.summary.open : 0,
       });
       setLoading(false);
     })();
@@ -85,6 +87,7 @@ export default function AdminDashboard() {
     { label: "Offer codes", value: "Manage", sub: "discount codes for courses & internships", to: "/admin/coupons" },
     { label: "Referrals", value: stats.referrals, sub: `${stats.referralsRewarded} led to a purchase · rules & credit`, to: "/admin/referrals" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
+    { label: "Help bot questions", value: stats.botQuestions, sub: "questions the bot couldn't answer", to: "/admin/bot-questions" },
     { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },
   ];
 

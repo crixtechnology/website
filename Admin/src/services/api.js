@@ -518,6 +518,39 @@ export async function adminDeleteContact(id) {
   }
 }
 
+// ---------- Admin: help bot questions it couldn't answer ----------
+export async function adminGetBotQuestions({ status = "open", q = "" } = {}) {
+  try {
+    const params = new URLSearchParams({ status });
+    if (q) params.set("q", q);
+    const res = await authFetch(`/admin/bot-questions?${params}`);
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load the questions" };
+  }
+}
+
+export async function adminUpdateBotQuestion(id, handled) {
+  try {
+    const res = await authFetch(`/admin/bot-questions/${id}`, { method: "PATCH", body: JSON.stringify({ handled }) });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not update the question" };
+  }
+}
+
+export async function adminDeleteBotQuestion(id) {
+  try {
+    const res = await authFetch(`/admin/bot-questions/${id}`, { method: "DELETE" });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not delete the question" };
+  }
+}
+
 export async function adminGetServices(q) {
   try {
     const res = await authFetch(`/admin/services${q ? `?q=${encodeURIComponent(q)}` : ""}`);

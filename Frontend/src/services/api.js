@@ -119,6 +119,22 @@ async function authFetch(path, options = {}) {
   });
 }
 
+// ---------- Help bot: questions it couldn't answer ----------
+// Tells the backend (routes/botQuestions.js) about a question the help bot had no
+// answer for, so the admin can see what to add. Fire-and-forget: it never throws and
+// never makes the chat wait or show an error. Only the typed text is sent.
+export function reportUnansweredQuestion(question) {
+  if (!API) return;
+  try {
+    fetch(`${API}/bot/unanswered`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch (e) { /* the chat must never notice */ }
+}
+
 export async function submitContact(form) {
   try {
     if (API) {

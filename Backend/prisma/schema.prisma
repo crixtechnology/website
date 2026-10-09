@@ -508,3 +508,21 @@ model Setting {
 
   @@map("settings")
 }
+
+// A question a visitor typed into the site's help bot that it had no answer for
+// (routes/botQuestions.js). One row per distinct question, lower-cased, with
+// emails / phone numbers / links already masked, plus a counter — so repeats show
+// up as "asked 7 times" in the admin panel. No name, account or IP is stored.
+model BotQuestion {
+  id           String   @id @default(cuid())
+  question     String   @unique @db.VarChar(191)
+  timesAsked   Int      @default(1)
+  // Set by an admin once the bot can answer it (or it's not worth answering);
+  // asking it again reopens it.
+  handled      Boolean  @default(false)
+  firstAskedAt DateTime @default(now())
+  lastAskedAt  DateTime @default(now())
+
+  @@index([handled, timesAsked])
+  @@map("bot_questions")
+}

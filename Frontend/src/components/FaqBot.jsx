@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { site } from "../data/content.js";
 import { FAQ_TOPICS, searchFaqs } from "../data/faqData.js";
+import { reportUnansweredQuestion } from "../services/api.js";
 
 const REDUCED_MOTION = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -116,7 +117,10 @@ export default function FaqBot({ peek }) {
     if (talk) { reply(text, { text: talk.text }); return; }
     const hits = searchFaqs(text);
     if (!hits.length) {
-      reply(text, { text: `I couldn't find that one. Try a topic below, or message us on WhatsApp using the buttons at the bottom.` });
+      // Nothing matched: note the question for the team (anonymously — see the Privacy
+      // Policy) so an answer can be added, and say so.
+      reportUnansweredQuestion(text);
+      reply(text, { text: "I couldn't find that one — I've noted your question so we can add an answer. For now, try a topic below, or message us on WhatsApp using the buttons at the bottom." });
       return;
     }
     const [best, ...more] = hits;
