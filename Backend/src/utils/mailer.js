@@ -56,7 +56,7 @@ function escapeHtml(str) {
 // path — used both for the admin-panel link below and as the Referer
 // header formsubmit.co requires (see sendViaFormSubmit).
 function siteOrigin() {
-  return primaryOrigin() || "https://crixtechnology.in";
+  return primaryOrigin() || "https://www.crixtechnology.com";
 }
 
 // `path` is which page this notification is conceptually "from" (only used

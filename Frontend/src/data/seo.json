@@ -1,6 +1,6 @@
 {
   "_comment": "Single source for page titles/descriptions. Read by the app (usePageMeta) AND by scripts/prerender-meta.js after each build, which writes a per-page HTML file with these tags baked in for crawlers that don't run JavaScript. Keep titles under ~60 characters and descriptions under ~160 so search results don't cut them off. siteUrl is the canonical address every page points to. keywords: a short, page-specific list of real phrases from the page (read by Bing; Google ignores the tag) — keep each list short, never stuff.",
-  "siteUrl": "https://www.crixtechnology.in",
+  "siteUrl": "https://www.crixtechnology.com",
   "siteName": "Crix Technology",
   "image": "/og-image.png",
   "routes": {

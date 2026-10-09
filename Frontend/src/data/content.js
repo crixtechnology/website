@@ -17,7 +17,7 @@ export const site = {
   whatsapp: "919723223588",             // 91 + 10 digit, bina + ke
   whatsappAlt: "919712365388",
   hours: "Mon–Sat, 10am–6pm IST",
-  website: "https://crixtechnology.in",
+  website: "https://www.crixtechnology.com",
   cin: "U63122GJ2026PTC179737",
   udyam: "UDYAM-GJ-01-0667027",
   legalName: "Crix Technology Private Limited",

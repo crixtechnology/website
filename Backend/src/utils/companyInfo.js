@@ -10,7 +10,7 @@ const COMPANY = {
   email: "crixtechnology@gmail.com",
   phone: "+91 97232 23588",          // IT services
   phoneAlt: "+91 97123 65388",       // internships & courses (used on receipts / emails)
-  website: "https://crixtechnology.in",
+  website: "https://www.crixtechnology.com",
 };
 
 module.exports = { COMPANY };

@@ -2455,7 +2455,7 @@ export function LiveDevice() {
         <div className="device-inner">
           <div className="device-topbar">
             <i></i><i></i><i></i>
-            <span>crixtechnology.in</span>
+            <span>crixtechnology.com</span>
           </div>
           <MorphParticles />
           <div className="device-sheen"></div>
