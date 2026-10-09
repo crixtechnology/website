@@ -74,10 +74,7 @@ async function clearTestDb() {
   // they go before everything they reference.
   await prisma.emailOtp.deleteMany();
   await prisma.creditEntry.deleteMany();
-  await prisma.ambassadorEarning.deleteMany();
-  await prisma.ambassadorPayout.deleteMany();
   await prisma.referral.deleteMany();
-  await prisma.ambassador.deleteMany();
   await prisma.setting.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.paymentRequest.deleteMany();
