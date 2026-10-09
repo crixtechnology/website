@@ -30,14 +30,14 @@ export const FAQ_TOPICS = [
         a: "It depends on the track. For example, Android Development comes in 15 Days, 3 Month and 6 Month tracks. Each program's page shows its duration, and its start date where one is set." },
       { id: "i-online", q: "Is it online? Can I do it from home?", k: "online virtual remote home location offline",
         a: "Yes — it's fully virtual. Join from anywhere in India or abroad; there is no need to come to an office." },
-      { id: "i-kit", q: "When will I get the joining kit?", k: "kit address courier delivery shipping post welcome",
+      { id: "i-kit", q: "When will I get the joining kit?", k: "kit courier delivery shipping post welcome",
         a: "The joining kit is shipped to your postal address. Our team will get in touch to collect it. Delivery time depends on your location and the courier, so please keep your address complete and correct." },
     ],
   },
   {
     id: "courses", icon: "📚", label: "Courses",
     faqs: [
-      { id: "c-offer", q: "Which courses do you have?", k: "course list online learn programming react node sql python kotlin",
+      { id: "c-offer", q: "Which courses do you have?", k: "course list online learn programming react node sql python kotlin price",
         a: `Our online courses include:\n${list(courses)}\nThe courses page always shows what is open and its price.`,
         links: [{ to: "/courses", label: "See courses" }] },
       { id: "c-begin", q: "I'm a beginner — where should I start?", k: "beginner start fresher basics new first",
@@ -59,7 +59,7 @@ export const FAQ_TOPICS = [
   {
     id: "payments", icon: "💳", label: "Payments & receipts",
     faqs: [
-      { id: "p-pay", q: "How do I pay?", k: "payment razorpay upi card netbanking wallet secure checkout buy purchase",
+      { id: "p-pay", q: "How do I pay?", k: "pay payment razorpay upi card netbanking wallet secure checkout buy purchase",
         a: "Payments go through Razorpay — card, UPI, net-banking or wallet. Your payment details are entered directly in Razorpay's secure screen and are never stored on our servers.\nIf you have credit in your Crix wallet, it is taken off the price first — and if it covers the whole price you can pay with the wallet alone." },
       { id: "p-refund", q: "What is the refund policy?", k: "refund cancel cancellation money back return",
         a: "All course and internship purchases are final — there are no refunds or cancellations once payment is complete. If you have doubts, ask before buying using “Request to apply” / “Request to enroll” on the program's page. This does not affect any statutory right you may have under consumer law.",
@@ -82,7 +82,7 @@ export const FAQ_TOPICS = [
     faqs: [
       { id: "a-create", q: "How do I create an account?", k: "signup sign up register create account google email",
         a: "Sign up with your email and a password, or choose “Continue with Google”. Use a permanent, valid email — disposable or temporary emails aren't accepted." },
-      { id: "a-forgot", q: "I forgot my password", k: "forgot reset password code otp login cannot",
+      { id: "a-forgot", q: "I forgot my password", k: "forgot reset password code otp login cannot working",
         a: "On the sign-in box choose “Forgot password” and we'll email you a code. If the code doesn't arrive, message us on WhatsApp and we'll reset it for you.",
         links: [{ href: `https://wa.me/${site.whatsappAlt}?text=${encodeURIComponent("Hi Crix Technology! I can't log in — please help me reset my password.")}`, label: "WhatsApp for password help" }] },
       { id: "a-logout", q: "Why was I logged out?", k: "logout signed out session device inactive timeout",
@@ -117,7 +117,7 @@ export const FAQ_TOPICS = [
       { id: "s-offer", q: "What IT services do you offer?", k: "services it build website app development offer list",
         a: "• Static websites\n• Dynamic websites & web apps\n• Chatbot development\n• Website upgrade & redesign\n• Mobile app development\n• Digital marketing\n• AI / ML solutions\n• Software & IT consulting",
         links: [{ to: "/services", label: "See all services" }] },
-      { id: "s-cost", q: "How much does a project cost?", k: "cost price quote estimate budget charges rate pricing",
+      { id: "s-cost", q: "How much does a project cost?", k: "cost price quote estimate budget charges rate pricing website app project",
         a: "It depends on the scope — pages, features, integrations and timeline. Every engagement starts with a clear written scope and cost estimate, with no surprise line items later. Share your requirements with our IT team for a quote." },
       { id: "s-models", q: "How can we work together?", k: "engagement model fixed price dedicated team hourly retainer hire developer contract",
         a: "Three ways:\n• Fixed price — a clear scope, agreed cost and timeline up front, paid in milestones\n• Dedicated team — a developer or small team embedded in your business, billed monthly\n• Hourly / retainer — ad-hoc support and maintenance, billed hourly or monthly" },
@@ -128,7 +128,7 @@ export const FAQ_TOPICS = [
         links: [{ to: "/contact", label: "Open contact form" }] },
       { id: "s-redo", q: "Can you redesign my existing website?", k: "redesign upgrade revamp existing site migrate seo performance",
         a: "Yes — from a visual refresh to a full rebuild on a modern stack, with performance and SEO fixes and your redirects preserved." },
-      { id: "s-bot", q: "Do you build chatbots?", k: "chatbot bot whatsapp ai assistant faq lead",
+      { id: "s-bot", q: "Do you build chatbots?", k: "chatbot bot ai assistant faq lead",
         a: "Yes — rule-based FAQ and lead-capture bots, and AI assistants trained on your own content, for your website and WhatsApp, with hand-off to your team when a human is needed." },
       { id: "s-tech", q: "Which technologies do you use?", k: "technology tech stack react node python flutter database cloud",
         a: "• Web: HTML, CSS, JavaScript, TypeScript, PHP, Python, React, Next.js, Node.js, Express\n• Mobile: Java, Kotlin, Swift, Dart, React Native, Flutter\n• Databases: MongoDB, MySQL, PostgreSQL, MSSQL\n• AI / ML: Python, TensorFlow / PyTorch, LLM APIs, RAG\n• Cloud & tools: AWS / GCP / Azure, Docker, CI/CD, Git",
@@ -149,7 +149,7 @@ export const FAQ_TOPICS = [
         links: [{ href: `https://wa.me/${site.whatsappAlt}`, label: "WhatsApp internships & courses" }, { to: "/contact", label: "Contact page" }] },
       { id: "o-hours", q: "What are your working hours?", k: "hours timing time open available when reach",
         a: `We're available ${site.hours}. You can message us on WhatsApp any time — we'll reply when we're back.` },
-      { id: "o-email", q: "What is your email address?", k: "email mail address write reply response",
+      { id: "o-email", q: "What is your email address?", k: "email mail write reply response",
         a: `Email us at ${site.email}. We reply within two working days.`,
         links: [{ href: `mailto:${site.email}`, label: "Send an email" }] },
       { id: "o-where", q: "Where are you located?", k: "location address office city ahmedabad gujarat visit map",
@@ -168,24 +168,22 @@ export const FAQ_TOPICS = [
 
 export const ALL_FAQS = FAQ_TOPICS.flatMap((t) => t.faqs.map((f) => ({ ...f, topic: t.id })));
 
-const STOP = new Set(["the", "and", "for", "you", "your", "are", "can", "how", "what", "who", "when", "where", "does", "this", "that", "with", "have", "will", "from", "about", "please", "tell", "want", "need", "get", "give", "any", "was", "its", "our"]);
+const STOP = new Set(["the", "and", "for", "you", "your", "are", "can", "how", "what", "who", "when", "where", "does", "this", "that", "with", "have", "will", "from", "about", "please", "tell", "want", "need", "get", "give", "any", "was", "its", "our", "not", "no", "do", "is", "it", "to", "of", "my", "me", "in", "on", "a", "i"]);
 
-// Free-text search: counts how many of the typed words appear in a question's
-// text/keywords (a word that only matches the question itself counts double).
+// Lower-case word tokens, with a trailing plural "s" removed so "fees" finds "fee"
+// and "apps" finds "app".
+const stem = (w) => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w);
+const tokens = (text) => (text.toLowerCase().match(/[a-z0-9₹]+/g) || []).map(stem);
+
+const INDEX = ALL_FAQS.map((f) => ({ f, q: new Set(tokens(f.q)), k: new Set(tokens(f.k)) }));
+
+// Free-text search over whole words: a typed word scores 3 when it is one of a
+// question's curated keywords, 2 when it appears in the question itself.
 export function searchFaqs(text, limit = 3) {
-  const words = (text.toLowerCase().match(/[a-z0-9₹]+/g) || []).filter((w) => (w.length > 2 || w === "ai") && !STOP.has(w));
+  const words = tokens(text).filter((w) => (w.length > 2 || w === "ai") && !STOP.has(w));
   if (!words.length) return [];
-  return ALL_FAQS
-    .map((f) => {
-      const q = f.q.toLowerCase();
-      const hay = `${q} ${f.k}`;
-      let score = 0;
-      for (const w of words) {
-        if (q.includes(w)) score += 2;
-        else if (hay.includes(w)) score += 1;
-      }
-      return { f, score };
-    })
+  return INDEX
+    .map(({ f, q, k }) => ({ f, score: words.reduce((sum, w) => sum + (k.has(w) ? (q.has(w) ? 4 : 3) : q.has(w) ? 2 : 0), 0) }))
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score)
     .filter((r, _, all) => r.score * 2 >= all[0].score) // drop weak "related" matches

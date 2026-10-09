@@ -53,9 +53,9 @@ function appliesToCourse(coupon, course) {
 // Redemptions that count against a code's limits: paid orders, plus orders
 // started within the reservation window and not yet paid. `userId` narrows it
 // to one student.
-async function countUses(couponId, userId) {
+async function countUses(couponId, userId, db = prisma) {
   const since = new Date(Date.now() - RESERVATION_WINDOW_MS);
-  return prisma.payment.count({
+  return db.payment.count({
     where: {
       couponId,
       OR: [{ status: "paid" }, { status: "created", createdAt: { gte: since } }],
@@ -99,12 +99,13 @@ async function checkCoupon({ rawCode, userId, course, planRupees }) {
 // can pass checkCoupon for the last redemption at the same moment; now that
 // this order is counted, whoever pushed the total over the limit is turned
 // away (worst case both retry — never an oversold code). Returns an error
-// message, or null if all is well.
-async function overLimitAfterReserving(coupon, userId) {
-  if (coupon.maxUses != null && (await countUses(coupon.id)) > coupon.maxUses) {
+// message, or null if all is well. `db` lets a caller run the check inside its
+// own transaction (see the wallet payment, which must be able to roll back).
+async function overLimitAfterReserving(coupon, userId, db = prisma) {
+  if (coupon.maxUses != null && (await countUses(coupon.id, undefined, db)) > coupon.maxUses) {
     return "That offer code has just been fully redeemed.";
   }
-  if (userId && (await countUses(coupon.id, userId)) > coupon.perUserLimit) {
+  if (userId && (await countUses(coupon.id, userId, db)) > coupon.perUserLimit) {
     return "You've already used that offer code.";
   }
   return null;

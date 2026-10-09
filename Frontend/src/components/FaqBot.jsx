@@ -11,6 +11,15 @@ const waIcon = (
 
 const GREETING = "Hi! 👋 I'm the Crix assistant. Ask me anything about our internships, courses, payments or IT services — pick a topic below or type your question.";
 
+// Short pleasantries get a short reply instead of "I couldn't find that". Only
+// for very short messages, so "hi, what is your refund policy?" still gets searched.
+const SMALL_TALK = [
+  { re: /^\s*(hi+|hello+|hey+|namaste|good (morning|afternoon|evening))\b/i, text: "Hello! 👋 What would you like to know? Pick a topic below or type a question." },
+  { re: /\b(thanks|thank you|thankyou|thx)\b/i, text: "You're welcome! Is there anything else I can help with?" },
+  { re: /^\s*(bye|goodbye|see you)\b/i, text: "Goodbye! If you need us later, the WhatsApp buttons below reach our team." },
+];
+const isShort = (t) => t.trim().split(/\s+/).length <= 4;
+
 // An answer: plain lines, with "• " lines grouped into a bullet list.
 function Answer({ text }) {
   const blocks = [];
@@ -60,6 +69,12 @@ export default function FaqBot({ peek }) {
 
   // Keep the *start* of the newest answer in view (not the end of it), so a long
   // answer is read from its first line instead of landing half-way down.
+  // On desktop, start with the cursor in the question box. Not on touch screens:
+  // that would pop the keyboard up over the panel before anyone asked for it.
+  useEffect(() => {
+    if (open && inputRef.current && window.matchMedia("(pointer: fine)").matches) inputRef.current.focus();
+  }, [open]);
+
   useEffect(() => {
     const body = bodyRef.current;
     if (!body) return;
@@ -97,6 +112,8 @@ export default function FaqBot({ peek }) {
     const text = draft.trim();
     if (!text) return;
     setDraft("");
+    const talk = isShort(text) && SMALL_TALK.find((t) => t.re.test(text));
+    if (talk) { reply(text, { text: talk.text }); return; }
     const hits = searchFaqs(text);
     if (!hits.length) {
       reply(text, { text: `I couldn't find that one. Try a topic below, or message us on WhatsApp using the buttons at the bottom.` });

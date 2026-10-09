@@ -227,6 +227,40 @@ describe("paying for a course from the wallet", () => {
     expect(receipt).toMatchObject({ basePrice: 1000, totalPaid: 800, discountAmount: 200, paymentMode: "Wallet credit" });
   });
 
+  it("never oversells a code's last use: the loser gets no access and keeps their credit", async () => {
+    const course = await openCourse([["basic", 1000]]);
+    const coupon = await authed(request(app).post("/api/admin/coupons"), adminToken).send({
+      code: "LASTONE", discountType: "percent", discountValue: 20, appliesTo: "all", maxUses: 1,
+    });
+    expect(coupon.status).toBeLessThan(300);
+    const a = await signup("racea");
+    const b = await signup("raceb");
+    await grant(a, 800);
+    await grant(b, 800);
+    const appA = await application(a, course);
+    const appB = await application(b, course);
+
+    const [ra, rb] = await Promise.all([
+      payWallet(a, course, appA, { couponCode: "LASTONE" }),
+      payWallet(b, course, appB, { couponCode: "LASTONE" }),
+    ]);
+
+    const results = [[a, ra], [b, rb]];
+    const winners = results.filter(([, r]) => r.status === 201);
+    const losers = results.filter(([, r]) => r.status !== 201);
+    expect(winners).toHaveLength(1);
+    expect(losers).toHaveLength(1);
+    expect([400, 409]).toContain(losers[0][1].status);
+
+    const [winner] = winners[0];
+    const [loser] = losers[0];
+    expect((await walletOf(winner)).balance).toBe(0);
+    expect(await prisma.enrollment.count({ where: { userId: winner.id } })).toBe(1);
+    // The student who lost the race: still holds their credit and got no course.
+    expect((await walletOf(loser)).balance).toBe(800);
+    expect(await prisma.enrollment.count({ where: { userId: loser.id } })).toBe(0);
+  });
+
   it("counts a wallet purchase as paid when pricing a later plan upgrade", async () => {
     const course = await openCourse([["basic", 1000], ["plus", 1500]]);
     const student = await signup("upgrade");

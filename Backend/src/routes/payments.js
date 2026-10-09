@@ -466,10 +466,15 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
     const { application, course, plan, applied } = prepared;
     const userId = application.userId;
 
-    const result = await prisma.$transaction(async (tx) => {
+    let result;
+    try { result = await prisma.$transaction(async (tx) => {
       // Everything below runs under a lock on the student's row, so a second
       // request (double click, another tab) waits and then sees the spent balance.
       await lockUser(tx, userId);
+      // An offer code is locked too, BEFORE the first plain read below (which fixes
+      // this transaction's snapshot): two buyers of a code's last use then queue up,
+      // and the second one's limit check sees the first one's committed payment.
+      if (applied) await tx.$queryRaw`SELECT id FROM coupons WHERE id = ${applied.coupon.id} FOR UPDATE`;
 
       const enrollment = await tx.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: course.id } } });
       if (hasValidAccess(enrollment)) return { error: { status: 400, message: "You already have access to this course." } };
@@ -496,6 +501,13 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
           orderSnapshotDiscountPercent: plan.discountPercent || 0,
         },
       });
+      // This purchase now counts against the code's limits. If that pushed it over,
+      // throw: that rolls the whole purchase back (no payment, no spent credit, no
+      // access) — nothing has been granted yet.
+      if (applied) {
+        const over = await overLimitAfterReserving(applied.coupon, userId, tx);
+        if (over) throw Object.assign(new Error(over), { couponLimit: over });
+      }
       await tx.creditEntry.create({
         data: { userId, amount: -pricing.totalDuePaise, kind: "redeemed", paymentId: payment.id, note: "Paid for a course or internship from the wallet" },
       });
@@ -515,22 +527,12 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
         update: { paymentId: payment.id, tier: plan.tier, status: "active", startDate, endDate: computeEndDate(startDate, course.durationDays) },
       });
       return { payment };
-    });
+    }); } catch (e) {
+      if (e && e.couponLimit) return res.status(409).json({ ok: false, error: e.couponLimit });
+      throw e;
+    }
     if (result.error) return res.status(result.error.status).json({ ok: false, error: result.error.message });
     const { payment } = result;
-
-    // Same two-buyers-one-last-redemption check create-order does. The order is
-    // already paid by now, so undo it: free the code and give the credit back.
-    if (applied) {
-      const over = await overLimitAfterReserving(applied.coupon, userId);
-      if (over) {
-        await prisma.$transaction([
-          prisma.payment.update({ where: { id: payment.id }, data: { status: "failed" } }),
-          prisma.creditEntry.deleteMany({ where: { paymentId: payment.id, kind: "redeemed" } }),
-        ]);
-        return res.status(409).json({ ok: false, error: over });
-      }
-    }
 
     // Access already exists; this adds the referral reward and the receipt. It's
     // idempotent, and the credit is spent, so a hiccup gets one retry.
