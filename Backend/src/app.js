@@ -23,7 +23,6 @@ const videoRoutes = require("./routes/videos");
 const adminUserRoutes = require("./routes/adminUsers");
 const serviceRoutes = require("./routes/services");
 const referralRoutes = require("./routes/referrals");
-const ambassadorRoutes = require("./routes/ambassadors");
 const receiptRoutes = require("./routes/receipts");
 const paymentRequestRoutes = require("./routes/paymentRequests");
 
@@ -86,7 +85,6 @@ app.use("/api", receiptRoutes);
 app.use("/api", paymentRequestRoutes);
 app.use("/api", referralRoutes);
 app.use("/api", couponRoutes);
-app.use("/api", ambassadorRoutes);
 
 // Anything under /api that no route above claimed. Without this Express answers with
 // an HTML "Cannot GET /api/..." page, which the frontend then fails to parse as JSON.

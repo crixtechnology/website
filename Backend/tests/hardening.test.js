@@ -32,7 +32,7 @@ afterAll(async () => { await teardownTestDb(); });
 const admin = (req) => req.set("Authorization", `Bearer ${adminToken}`);
 
 describe("admin searches ignore a non-text ?q", () => {
-  const lists = ["users", "contacts", "applications", "enrollments", "services", "payment-requests", "ambassadors", "referrals"];
+  const lists = ["users", "contacts", "applications", "enrollments", "services", "payment-requests", "referrals"];
   it.each(lists)("GET /api/admin/%s?q[]=a is a normal 200", async (name) => {
     const res = await admin(request(app).get(`/api/admin/${name}?q[]=a&q[x]=y`));
     expect(res.status).toBe(200);
