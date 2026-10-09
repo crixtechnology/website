@@ -312,6 +312,7 @@ export const legal = {
 • Postal address — when you join an internship, so we can ship your joining kit
 • Purchase records — what you bought or upgraded, the plan, the amount paid, any offer code or referral discount used, and your receipt details
 • Referral and wallet activity — your referral code, whose code you used, and the credit added to and spent from your wallet
+• Help chat questions — if the site's help assistant has no answer to something you type, we may save that question (without your name or contact details, and with any email address, phone number or link removed) so we can improve its answers
 • Any messages or project submissions you send us
 
 Payment for a course, a paid internship, a plan upgrade or a payment request sent to your account is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Our Internship Program includes both free and paid internships; no payment details are collected for a free internship.`,
