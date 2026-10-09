@@ -27,7 +27,7 @@ export const FAQ_TOPICS = [
       { id: "i-how", q: "How does the internship work?", k: "process steps tasks mentor mail how works procedure",
         a: "It's four steps:\n• Choose your domain (Web, Android, AI/ML and more)\n• Register and complete your enrollment\n• Get project tasks by email and build real applications with mentor guidance\n• Submit your work and get certified" },
       { id: "i-duration", q: "How long is an internship?", k: "duration length months days weeks time period",
-        a: "It depends on the track. For example, Android Development comes in 15 Days, 3 Month and 6 Month tracks. Each program's page shows its duration, and its start date where one is set." },
+        a: "Internships run for 15 days, 1 month, 3 months or 6 months, depending on the program. Each program's page shows its duration, and its start date where one is set." },
       { id: "i-online", q: "Is it online? Can I do it from home?", k: "online virtual remote home location offline",
         a: "Yes — it's fully virtual. Join from anywhere in India or abroad; there is no need to come to an office." },
       { id: "i-kit", q: "When will I get the joining kit?", k: "kit courier delivery shipping post welcome",

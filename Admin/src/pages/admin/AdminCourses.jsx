@@ -7,6 +7,7 @@ import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, formatINR } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate, toStartDateInput } from "../../utils/startDate.js";
+import { formatDuration, INTERNSHIP_DURATIONS } from "../../utils/duration.js";
 
 const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", discountPercent: "0", features: "" }]));
 // outcomes / audience / prerequisites are typed one per line; faqs is a list of { q, a } rows.
@@ -184,7 +185,7 @@ export default function AdminCourses() {
             {hasPlans
               ? <>{plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from {formatINR(cheapest)} · {c.tag}</>
               : <>Apply-only · {c.tag}</>}
-            {c.durationDays ? ` · ${c.durationDays} days` : ""}
+            {c.durationDays ? ` · ${formatDuration(c.durationDays)}` : ""}
             {c.startsAt ? ` · ${startsInFuture(c) ? "starts" : "started"} ${formatStartDate(c.startsAt)}` : ""}
           </span>
         </div>
@@ -222,7 +223,11 @@ export default function AdminCourses() {
           <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit entry" : "Add a new course or internship"}</h3>
           <div className="admin-form-grid">
             <div className="field"><label>Type</label>
-              <select value={form.type} onChange={set("type")}>
+              <select value={form.type} onChange={(e) => {
+                const type = e.target.value;
+                // An internship can only run 15 days / 1 / 3 / 6 months: drop any other length so it is re-picked.
+                setForm((f) => ({ ...f, type, durationDays: type === "internship" && f.durationDays && !INTERNSHIP_DURATIONS.includes(Number(f.durationDays)) ? "" : f.durationDays }));
+              }}>
                 <option value="course">Course</option>
                 <option value="internship">Internship</option>
               </select>
@@ -231,8 +236,21 @@ export default function AdminCourses() {
               <input value={form.title} onChange={set("title")} placeholder="Full Stack (MERN) Development" /></div>
             <div className="field"><label>Tag</label>
               <input value={form.tag} onChange={set("tag")} placeholder="Beginner friendly" /></div>
-            <div className="field"><label>Duration (days)</label>
-              <input type="number" min="1" value={form.durationDays} onChange={set("durationDays")} placeholder="30" /></div>
+            {form.type === "internship" ? (
+              <div className="field"><label htmlFor="ac-duration">Duration</label>
+                <select id="ac-duration" value={form.durationDays} onChange={set("durationDays")}>
+                  <option value="">Not set (access never expires)</option>
+                  {INTERNSHIP_DURATIONS.map((d) => <option key={d} value={String(d)}>{formatDuration(d)}</option>)}
+                  {/* An internship from before this list existed may carry another length: keep it selectable so editing doesn't silently change it. */}
+                  {form.durationDays && !INTERNSHIP_DURATIONS.includes(Number(form.durationDays)) && (
+                    <option value={form.durationDays}>{formatDuration(form.durationDays)} (current)</option>
+                  )}
+                </select>
+              </div>
+            ) : (
+              <div className="field"><label htmlFor="ac-duration">Duration (days)</label>
+                <input id="ac-duration" type="number" min="1" value={form.durationDays} onChange={set("durationDays")} placeholder="30" /></div>
+            )}
             <div className="field"><label>Starts on (optional)</label>
               <input type="date" value={form.startsAt} onChange={set("startsAt")} /></div>
           </div>

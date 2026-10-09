@@ -20,6 +20,7 @@ import PhoneInput from "./PhoneInput.jsx";
 import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
+import { formatDuration } from "../utils/duration.js";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -460,7 +461,7 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
             </ul>
           ) : null}
         </div>
-        {item.durationDays ? <span className="duration-chip">{item.durationDays} days</span> : null}
+        {item.durationDays ? <span className="duration-chip">{formatDuration(item.durationDays)}</span> : null}
         {deliverables?.length ? (
           <div className="deliverable-row">
             {deliverables.map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
@@ -1331,7 +1332,7 @@ export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
 
         {item.durationDays ? (
           <div className="detail-fact" style={{ maxWidth: 220 }}>
-            <span>Duration</span><b>{item.durationDays} days</b>
+            <span>Duration</span><b>{formatDuration(item.durationDays)}</b>
           </div>
         ) : null}
 
