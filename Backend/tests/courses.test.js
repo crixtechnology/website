@@ -217,3 +217,57 @@ describe("course field validation", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("internship durations: 15 days, 1 month, 3 months or 6 months", () => {
+  const internship = (extra = {}) => ({ type: "internship", title: uniqueTitle(), ...extra });
+
+  it.each([15, 30, 90, 180])("accepts %i days for an internship", async (days) => {
+    const res = await authed(request(app).post("/api/admin/courses")).send(internship({ durationDays: days }));
+    expect(res.status).toBe(201);
+    expect(res.body.course.durationDays).toBe(days);
+  });
+
+  it("accepts an internship with no duration set", async () => {
+    const res = await authed(request(app).post("/api/admin/courses")).send(internship());
+    expect(res.status).toBe(201);
+    expect(res.body.course.durationDays).toBeNull();
+  });
+
+  it.each([7, 45, 60, 365, "45"])("refuses %p days for a new internship, with a clear message", async (days) => {
+    const res = await authed(request(app).post("/api/admin/courses")).send(internship({ durationDays: days }));
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("An internship's duration must be 15 days, 1 month, 3 months or 6 months.");
+  });
+
+  it("leaves courses free to use any number of days", async () => {
+    const res = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), durationDays: 45, tiers: [{ tier: "basic", price: 100 }] });
+    expect(res.status).toBe(201);
+    expect(res.body.course.durationDays).toBe(45);
+  });
+
+  it("applies the same rule when editing, and to a course turned into an internship", async () => {
+    const created = await authed(request(app).post("/api/admin/courses")).send(internship({ durationDays: 30 }));
+    const id = created.body.course._id;
+    expect((await authed(request(app).put(`/api/admin/courses/${id}`)).send({ durationDays: 90 })).body.course.durationDays).toBe(90);
+    expect((await authed(request(app).put(`/api/admin/courses/${id}`)).send({ durationDays: 50 })).status).toBe(400);
+    expect((await prisma.course.findUnique({ where: { id } })).durationDays).toBe(90); // refused edit changed nothing
+
+    const course = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), durationDays: 45, tiers: [{ tier: "basic", price: 100 }] });
+    const turned = await authed(request(app).put(`/api/admin/courses/${course.body.course._id}`)).send({ type: "internship", durationDays: 45 });
+    // Turning it into an internship while keeping 45 days is a "new" length for an internship — but it is the
+    // existing value, so it is allowed to stay; picking a different off-list length is not.
+    expect(turned.status).toBe(200);
+    expect((await authed(request(app).put(`/api/admin/courses/${course.body.course._id}`)).send({ durationDays: 60 })).status).toBe(400);
+  });
+
+  it("lets an older internship with another length be saved unchanged, but not moved to another odd length", async () => {
+    // Created before the rule existed: put the odd value straight into the database.
+    const made = await authed(request(app).post("/api/admin/courses")).send(internship({ durationDays: 30 }));
+    const legacy = await prisma.course.update({ where: { id: made.body.course._id }, data: { durationDays: 45 } });
+    const keep = await authed(request(app).put(`/api/admin/courses/${legacy.id}`)).send({ title: "Legacy internship renamed", durationDays: 45 });
+    expect(keep.status).toBe(200);
+    expect(keep.body.course.durationDays).toBe(45);
+    expect((await authed(request(app).put(`/api/admin/courses/${legacy.id}`)).send({ durationDays: 60 })).status).toBe(400);
+    expect((await authed(request(app).put(`/api/admin/courses/${legacy.id}`)).send({ durationDays: 90 })).status).toBe(200);
+  });
+});

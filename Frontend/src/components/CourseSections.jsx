@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { getCourses } from "../services/api.js";
 import { site } from "../data/content.js";
 import { offeredTiers, planPrice, formatINR, isOpenForBuy } from "../utils/tiers.js";
+import { formatDuration } from "../utils/duration.js";
 import { useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/usePageMeta.js";
 
 // The extra sections of a course / internship page (CourseDetail in pages/pages.jsx).
@@ -21,7 +22,7 @@ const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" &&
 export function CourseFacts({ course }) {
   const plans = offeredTiers(course);
   const facts = [["Type", kindLabel(course)], ["Format", "Online"]];
-  if (course.durationDays) facts.push(["Duration", `${course.durationDays} days`]);
+  if (course.durationDays) facts.push(["Duration", formatDuration(course.durationDays)]);
   else if (course.type !== "internship" && plans.length) facts.push(["Access", "Lifetime"]);
   if (startsInFuture(course)) facts.push(["Starts", formatStartDate(course.startsAt)]);
   if (plans.length && isOpenForBuy(course)) facts.push(["From", formatINR(Math.min(...plans.map(planPrice)))]);

@@ -127,4 +127,66 @@ describe("admin course form", () => {
     expect(q('[aria-label="Question 1"]').value).toBe("Q?");
     expect(q('[aria-label="Answer 1"]').value).toBe("A.");
   });
+
+  describe("duration", () => {
+    const choose = (el, value) => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(el, value);
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    const internship = { ...base, _id: "i1", type: "internship", title: "Android Internship", tiers: [], durationDays: null };
+    const edit = () => act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
+
+    it("offers an internship exactly 15 days, 1 month, 3 months and 6 months (or not set)", async () => {
+      await renderAdmin([internship]);
+      await edit();
+      const select = q("#ac-duration");
+      expect(select.tagName).toBe("SELECT");
+      expect([...select.options].map((o) => [o.value, o.textContent])).toEqual([
+        ["", "Not set (access never expires)"], ["15", "15 days"], ["30", "1 month"], ["90", "3 months"], ["180", "6 months"],
+      ]);
+    });
+
+    it("saves the chosen length as a number of days", async () => {
+      await renderAdmin([internship]);
+      await edit();
+      await act(async () => { choose(q("#ac-duration"), "90"); });
+      await submit();
+      expect(api.adminUpdateCourse).toHaveBeenCalledTimes(1);
+      expect(api.adminUpdateCourse.mock.calls[0][1].durationDays).toBe(90);
+    });
+
+    it("keeps a course's duration a free number of days", async () => {
+      await renderAdmin();
+      expect(q("#ac-duration").tagName).toBe("INPUT");
+      await act(async () => { fill(q("#ac-duration"), "45"); });
+      expect(q("#ac-duration").value).toBe("45");
+    });
+
+    it("drops an odd length when a course is switched to an internship, so it has to be re-picked", async () => {
+      await renderAdmin();
+      await act(async () => { fill(q("#ac-duration"), "45"); });
+      await act(async () => { choose(q("select"), "internship"); });
+      expect(q("#ac-duration").tagName).toBe("SELECT");
+      expect(q("#ac-duration").value).toBe("");
+      // ...but a valid one survives the switch.
+      await act(async () => { choose(q("select"), "course"); });
+      await act(async () => { fill(q("#ac-duration"), "30"); });
+      await act(async () => { choose(q("select"), "internship"); });
+      expect(q("#ac-duration").value).toBe("30");
+    });
+
+    it("keeps an older internship's other length selectable, labelled as current", async () => {
+      await renderAdmin([{ ...internship, durationDays: 45 }]);
+      await edit();
+      const select = q("#ac-duration");
+      expect(select.value).toBe("45");
+      expect([...select.options].map((o) => o.textContent)).toContain("45 days (current)");
+    });
+
+    it("shows the length the way people say it in the list", async () => {
+      await renderAdmin([{ ...internship, durationDays: 90 }, { ...base, _id: "c2", title: "Other course", durationDays: 45 }]);
+      expect(container.textContent).toContain("3 months");
+      expect(container.textContent).toContain("45 days");
+    });
+  });
 });

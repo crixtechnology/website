@@ -31,6 +31,8 @@ function parseStartsAt(raw) {
   return { ok: true, value: date };
 }
 
+const { INTERNSHIP_DURATION_DAYS, INTERNSHIP_DURATION_ERROR } = require("../utils/internshipDurations");
+
 function validDuration(value) {
   if (value === undefined || value === null || value === "" || value === 0) return true;
   const n = Number(value);
@@ -101,6 +103,9 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     if (!content.ok) return res.status(400).json({ ok: false, error: content.error });
     if (!validDuration(durationDays)) {
       return res.status(400).json({ ok: false, error: "durationDays must be a positive whole number of days" });
+    }
+    if (entryType === "internship" && durationDays && !INTERNSHIP_DURATION_DAYS.includes(Number(durationDays))) {
+      return res.status(400).json({ ok: false, error: INTERNSHIP_DURATION_ERROR });
     }
     const parsed = parseTiers(tiers === undefined ? [] : tiers);
     if (!parsed.ok) return res.status(400).json({ ok: false, error: parsed.error });
@@ -186,6 +191,12 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
     if (durationDays !== undefined) {
       if (!validDuration(durationDays)) {
         return res.status(400).json({ ok: false, error: "durationDays must be a positive whole number of days" });
+      }
+      // An internship older than this rule may still carry another length (say 45 days):
+      // saving it unchanged is fine, but a NEW length has to be one of the four.
+      if (effectiveType === "internship" && durationDays && !INTERNSHIP_DURATION_DAYS.includes(Number(durationDays))
+        && Number(durationDays) !== existing.durationDays) {
+        return res.status(400).json({ ok: false, error: INTERNSHIP_DURATION_ERROR });
       }
       update.durationDays = durationDays ? Number(durationDays) : null;
     }

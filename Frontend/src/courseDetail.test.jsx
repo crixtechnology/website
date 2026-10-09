@@ -72,7 +72,7 @@ describe("key facts", () => {
   it("show the duration when there is one, and drop the price for a closed course", async () => {
     await renderPage({ ...base, durationDays: 90, status: "closed" });
     const text = q(".course-facts").textContent;
-    expect(text).toContain("Duration90 days");
+    expect(text).toContain("Duration3 months");
     expect(text).not.toContain("Lifetime");
     expect(text).not.toContain("From");
   });

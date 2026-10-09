@@ -118,7 +118,7 @@ export const internships = [
     tag: "Mobile",
     title: "Android Development",
     desc: "Build and ship native Android apps — from UI fundamentals to a deployed project.",
-    points: ["Java · Kotlin · React Native", "UI, navigation & local storage", "REST API integration", "15 Days / 3 Month / 6 Month tracks"],
+    points: ["Java · Kotlin · React Native", "UI, navigation & local storage", "REST API integration", "15 Days / 1 Month / 3 Month / 6 Month tracks"],
   },
 ];
 
