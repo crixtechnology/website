@@ -10,7 +10,7 @@ const OTP_MAX_ATTEMPTS = 5;
 // flood someone's inbox.
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 
-const PURPOSES = { RESET: "reset_password", REVEAL: "view_password" };
+const PURPOSES = { RESET: "reset_password", REVEAL: "view_password", VERIFY_EMAIL: "verify_email", DELETE_ACCOUNT: "delete_account" };
 
 function hashCode(userId, purpose, code) {
   // HMAC with a server secret: a 6-digit code has only 1M possibilities, so a

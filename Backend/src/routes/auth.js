@@ -13,6 +13,7 @@ const { sendAccountExistsEmail } = require("../utils/mailer");
 const { respondNoEarlierThan } = require("../utils/authTiming");
 const { publicUser, ensureDefaultPassword } = require("../utils/accounts");
 const { applyReferralCode } = require("../utils/referrals");
+const { grantSignupBonus, holdSignupBonus, claimSignupBonus } = require("../utils/wallet");
 
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -83,11 +84,19 @@ function rejectIfAlreadyLoggedInElsewhere(res, user) {
 
 // ---------- student self-signup (role is always "student" — admin accounts
 // are only ever created by scripts/seedAdmin.js) ----------
+const AGE_CODE = "AGE_CONFIRMATION_REQUIRED";
+const AGE_ERROR = "Please confirm you're 18 or older, or that your parent or guardian has agreed to you using Crix Technology (you must be at least 16).";
+
 router.post("/signup", authLimiter, async (req, res, next) => {
   try {
-    const { name, email, phone, password, referralCode } = req.body || {};
+    const { name, email, phone, password, referralCode, ageConfirmed } = req.body || {};
     if (!name || !email || !password) {
       return res.status(400).json({ ok: false, error: "name, email and password are required" });
+    }
+    // Users must be 16+; anyone under 18 needs a parent's or guardian's permission
+    // (DPDP Act 2023). The sign-up form's checkbox confirms one or the other.
+    if (ageConfirmed !== true) {
+      return res.status(400).json({ ok: false, code: AGE_CODE, error: AGE_ERROR });
     }
     if (!isValidName(name)) {
       return res.status(400).json({ ok: false, error: "Enter a valid name." });
@@ -141,7 +150,7 @@ router.post("/signup", authLimiter, async (req, res, next) => {
     let user;
     try {
       user = await prisma.user.create({
-        data: { name: String(name).trim(), email: normalizedEmail, phone: phone ? String(phone).trim() : "", passwordHash, role: "student" },
+        data: { name: String(name).trim(), email: normalizedEmail, phone: phone ? String(phone).trim() : "", passwordHash, role: "student", ageConfirmedAt: new Date() },
       });
     } catch (createErr) {
       if (createErr && createErr.code === "P2002") {
@@ -175,6 +184,8 @@ router.post("/signup", authLimiter, async (req, res, next) => {
     if (referralCode) {
       await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
     }
+    // The welcome credit (utils/wallet.js) waits until the email is verified. Never blocks the account either.
+    await holdSignupBonus(user).catch((e) => console.error("[auth] signup bonus hold failed:", e.message));
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);
     respondNoEarlierThan(workStartedAt, () => res.status(201).json({ ok: true, token, user: publicUser(user) }));
@@ -229,7 +240,7 @@ router.post("/google", authLimiter, async (req, res, next) => {
     if (!googleClient) {
       return res.status(503).json({ ok: false, error: "Google Sign-In isn't configured yet." });
     }
-    const { credential, referralCode } = req.body || {};
+    const { credential, referralCode, ageConfirmed } = req.body || {};
     if (!credential) return res.status(400).json({ ok: false, error: "Missing Google credential" });
 
     let payload;
@@ -254,16 +265,24 @@ router.post("/google", authLimiter, async (req, res, next) => {
     }
 
     if (!user) {
+      // A brand-new account needs the same age confirmation as the sign-up form;
+      // someone who already has an account just logs in.
+      if (ageConfirmed !== true) {
+        return res.status(400).json({ ok: false, code: AGE_CODE, error: AGE_ERROR });
+      }
       user = await prisma.user.create({
-        data: { name: payload.name || email.split("@")[0], email, phone: "", googleId: payload.sub, role: "student" },
+        data: { name: payload.name || email.split("@")[0], email, phone: "", googleId: payload.sub, role: "student", ageConfirmedAt: new Date() },
       });
       if (referralCode) {
         await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
       }
+      await grantSignupBonus(user).catch((e) => console.error("[auth] signup bonus failed:", e.message));
     } else if (!user.googleId) {
       // Existing email/password account signing in with Google for the
       // first time — link it rather than creating a duplicate.
       user = await prisma.user.update({ where: { id: user.id }, data: { googleId: payload.sub } });
+      // Google has verified this email, so a bonus held for verification is released.
+      await claimSignupBonus(user.id).catch((e) => console.error("[auth] signup bonus release failed:", e.message));
     }
 
     if (rejectIfAlreadyLoggedInElsewhere(res, user)) return;

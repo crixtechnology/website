@@ -34,12 +34,12 @@ async function createCourse(startsAt) {
 }
 
 async function buy(course, email) {
-  const signup = await request(app).post("/api/auth/signup").send({ name: "Early Bird", email, phone: "9876500000", password: "a-real-password" });
+  const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Early Bird", email, phone: "9876500000", password: "a-real-password" });
   const token = signup.body.token;
   const appRes = await authed(request(app).post("/api/applications"), token).send({
     type: "course", refTitle: course.title, courseSlug: course.slug, name: "Early Bird", email, phone: "9876500000",
   });
-  const order = await authed(request(app).post("/api/payments/create-order"), token).send({ applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" });
+  const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" });
   const paymentId = `pay_${Math.random().toString(36).slice(2)}`;
   const signature = crypto.createHmac("sha256", "test-key-secret").update(`${order.body.orderId}|${paymentId}`).digest("hex");
   const verify = await request(app).post("/api/payments/verify").send({ razorpay_order_id: order.body.orderId, razorpay_payment_id: paymentId, razorpay_signature: signature });

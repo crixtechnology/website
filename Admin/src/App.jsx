@@ -18,6 +18,10 @@ const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons.jsx"));
 const AdminPaymentRequests = lazy(() => import("./pages/admin/AdminPaymentRequests.jsx"));
 const AdminWallet = lazy(() => import("./pages/admin/AdminWallet.jsx"));
 const AdminBotQuestions = lazy(() => import("./pages/admin/AdminBotQuestions.jsx"));
+const AdminJobOpenings = lazy(() => import("./pages/admin/AdminJobOpenings.jsx"));
+const AdminTestQuestions = lazy(() => import("./pages/admin/AdminTestQuestions.jsx"));
+const AdminApplicants = lazy(() => import("./pages/admin/AdminApplicants.jsx"));
+const AdminCareerSettings = lazy(() => import("./pages/admin/AdminCareerSettings.jsx"));
 
 const ROUTES = [
   ["/admin", AdminDashboard],
@@ -34,6 +38,10 @@ const ROUTES = [
   ["/admin/payment-requests", AdminPaymentRequests],
   ["/admin/wallet", AdminWallet],
   ["/admin/bot-questions", AdminBotQuestions],
+  ["/admin/job-openings", AdminJobOpenings],
+  ["/admin/test-questions", AdminTestQuestions],
+  ["/admin/applicants", AdminApplicants],
+  ["/admin/careers-settings", AdminCareerSettings],
 ];
 
 function RouteLoading() {

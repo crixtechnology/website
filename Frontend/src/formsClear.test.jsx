@@ -90,6 +90,7 @@ describe("login / sign-up popup", () => {
     await type("#auth-email", "test@example.com");
     await type("#auth-phone", "9876543210");
     await type("#auth-password", "a-long-password");
+    await act(async () => { q(".age-check input").click(); });
   };
 
   it("empties every field after the 'check your email' reply to a sign-up", async () => {
@@ -115,6 +116,38 @@ describe("login / sign-up popup", () => {
     await submit(q("#auth-password").closest("form"));
     expect(q("#auth-name").value).toBe("Test Person");
     expect(q("#auth-password").value).toBe("a-long-password");
+  });
+});
+
+describe("age confirmation at sign-up", () => {
+  const ctx = (overrides = {}) => ({
+    authModal: { mode: "signup" }, closeAuthModal: jest.fn(), login: jest.fn(), signup: jest.fn(), loginWithGoogle: jest.fn(),
+    sessionExpired: false, ...overrides,
+  });
+  const renderModal = (value) => render(<UserContext.Provider value={value}><AuthModal /></UserContext.Provider>);
+
+  it("won't create an account until the 18+ / parent-permission box is ticked, and sends it", async () => {
+    const value = ctx();
+    value.signup.mockResolvedValue({ ok: true, token: "t", user: { name: "Test Person" } });
+    await renderModal(value);
+    expect(q(".age-check").textContent).toContain("18 or older");
+    await type("#auth-name", "Test Person");
+    await type("#auth-email", "test@example.com");
+    await type("#auth-phone", "9876543210");
+    await type("#auth-password", "a-long-password");
+
+    await submit(q("#auth-password").closest("form"));
+    expect(value.signup).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Please confirm your age");
+
+    await act(async () => { q(".age-check input").click(); });
+    await submit(q("#auth-password").closest("form"));
+    expect(value.signup).toHaveBeenCalledWith(expect.objectContaining({ email: "test@example.com", ageConfirmed: true }));
+  });
+
+  it("isn't asked when logging in", async () => {
+    await renderModal(ctx({ authModal: { mode: "login" } }));
+    expect(q(".age-check")).toBeNull();
   });
 });
 

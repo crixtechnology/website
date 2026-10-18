@@ -12,14 +12,15 @@ afterAll(async () => { await teardownTestDb(); });
 
 describe("POST /api/auth/signup", () => {
   const email = "duplicate-test@example.com";
-  const validSignup = { name: "Test User", email, phone: "9876543210", password: "a-real-password" };
+  const validSignup = { name: "Test User", email, phone: "9876543210", password: "a-real-password", ageConfirmed: true };
 
-  it("creates a new account", async () => {
+  it("creates a new account, recording the age confirmation", async () => {
     const res = await request(app).post("/api/auth/signup").send(validSignup);
     expect(res.status).toBe(201);
     expect(res.body.ok).toBe(true);
     expect(res.body.token).toEqual(expect.any(String));
     expect(res.body.user.email).toBe(email);
+    expect((await prisma.user.findUnique({ where: { email } })).ageConfirmedAt).toBeInstanceOf(Date);
   });
 
   // Anti-enumeration: a duplicate-email signup must look the same, from the
@@ -55,19 +56,19 @@ describe("POST /api/auth/signup", () => {
     const duplicateMs = Date.now() - t0;
 
     const t1 = Date.now();
-    await request(app).post("/api/auth/signup").send({ ...validSignup, email: "timing-check-new@example.com" });
+    await request(app).post("/api/auth/signup").send({ ageConfirmed: true, ...validSignup, email: "timing-check-new@example.com" });
     const newAccountMs = Date.now() - t1;
 
     expect(Math.abs(newAccountMs - duplicateMs)).toBeLessThan(150);
   });
 
   it("rejects a password shorter than 8 characters", async () => {
-    const res = await request(app).post("/api/auth/signup").send({ ...validSignup, email: "short-pw@example.com", password: "short" });
+    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, ...validSignup, email: "short-pw@example.com", password: "short" });
     expect(res.status).toBe(400);
   });
 
   it("rejects a disposable email domain", async () => {
-    const res = await request(app).post("/api/auth/signup").send({ ...validSignup, email: "someone@mailinator.com" });
+    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, ...validSignup, email: "someone@mailinator.com" });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/disposable|temporary/i);
   });
@@ -78,7 +79,7 @@ describe("POST /api/auth/login", () => {
   const password = "a-real-password";
 
   beforeAll(async () => {
-    await request(app).post("/api/auth/signup").send({ name: "Login Test", email, phone: "9876543211", password });
+    await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Login Test", email, phone: "9876543211", password });
     // Signup itself starts a live session (a freshly-signed-up user is
     // immediately logged in) — clear it so the login test below exercises
     // /login in isolation instead of tripping the single-device-login block
@@ -128,7 +129,7 @@ describe("single-device-login enforcement", () => {
   const password = "a-real-password";
 
   beforeAll(async () => {
-    await request(app).post("/api/auth/signup").send({ name: "Single Device", email, phone: "9876543212", password });
+    await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Single Device", email, phone: "9876543212", password });
   });
 
   // Each test starts from a clean slot regardless of what a previous test in

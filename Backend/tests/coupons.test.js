@@ -41,7 +41,7 @@ async function createPriced(overrides = {}) {
 
 async function createStudent(label) {
   const email = `${label}-${uniq()}@example.com`;
-  const signup = await request(app).post("/api/auth/signup").send({ name: "Student", email, phone: "9876500000", password: "a-real-password" });
+  const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Student", email, phone: "9876500000", password: "a-real-password" });
   return { user: signup.body.user, token: signup.body.token, email };
 }
 
@@ -61,7 +61,7 @@ async function startOrder(token, email, course, couponCode, tier = "basic") {
   const appRes = await authed(request(app).post("/api/applications"), token).send({
     type: course.type, refTitle: course.title, courseSlug: course.slug, tier, name: "Student", email, phone: "9876500000",
   });
-  return authed(request(app).post("/api/payments/create-order"), token).send({
+  return authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true,
     applicationId: appRes.body.application._id, courseSlug: course.slug, tier, couponCode,
   });
 }

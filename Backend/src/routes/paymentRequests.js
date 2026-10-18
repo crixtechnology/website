@@ -12,12 +12,14 @@
 const express = require("express");
 const crypto = require("crypto");
 const { prisma } = require("../db");
+const { safeEqual } = require("../utils/safeCompare");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
 const { isTier, tierRank } = require("../utils/tiers");
 const { requireAuth } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { publicWriteLimiter } = require("../utils/rateLimit");
+const { rejectWithoutTerms } = require("../utils/terms");
 const { queryText } = require("../utils/validators");
 const { sendPaymentRequestEmail } = require("../utils/mailer");
 const { attachReceipt } = require("./payments");
@@ -254,6 +256,7 @@ router.post("/me/payment-requests/:id/create-order", publicWriteLimiter, require
         error: "Live payments are disabled by a safety guard. Set ALLOW_LIVE_PAYMENTS=true in Backend/.env to enable real charges.",
       });
     }
+    if (rejectWithoutTerms(req, res)) return;
     const request = await prisma.paymentRequest.findUnique({
       where: { id: req.params.id },
       include: { course: { select: COURSE_SUMMARY } },
@@ -278,6 +281,7 @@ router.post("/me/payment-requests/:id/create-order", publicWriteLimiter, require
 
     await prisma.payment.create({
       data: {
+        termsAcceptedAt: new Date(),
         razorpayOrderId: order.id,
         amount: request.amount,
         status: "created",
@@ -317,7 +321,7 @@ router.post("/payment-requests/verify", async (req, res, next) => {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
     const sig = String(razorpay_signature);
-    const valid = expected.length === sig.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+    const valid = safeEqual(expected, sig);
     if (!valid) return res.status(400).json({ ok: false, error: "Payment could not be verified." });
 
     const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: String(razorpay_order_id) } });

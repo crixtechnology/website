@@ -39,7 +39,7 @@ let seq = 0;
 
 async function signup(label, extra = {}) {
   const email = `${label}${++seq}@example.com`;
-  const res = await request(app).post("/api/auth/signup").send({
+  const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true,
     name: "Student Person", email, phone: "9876500000", password: "a-real-password", ...extra,
   });
   expect(res.status).toBe(201);
@@ -63,7 +63,7 @@ async function buy(student, course) {
     type: "course", refTitle: course.title, courseSlug: course.slug, tier: "basic",
     name: "Student Person", email: student.email, phone: "9876500000",
   });
-  const order = await authed(request(app).post("/api/payments/create-order"), student.token).send({
+  const order = await authed(request(app).post("/api/payments/create-order"), student.token).send({ acceptTerms: true,
     applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
   });
   expect(order.status).toBe(201);
@@ -226,7 +226,7 @@ describe("referral pricing, rewards and credit", () => {
       const appRes = await authed(request(app).post("/api/applications"), saver.token).send({
         type: "course", refTitle: c.title, courseSlug: c.slug, tier: "basic", name: "Student Person", email: saver.email, phone: "9876500000",
       });
-      return authed(request(app).post("/api/payments/create-order"), saver.token).send({ applicationId: appRes.body.application._id, courseSlug: c.slug, tier: "basic" });
+      return authed(request(app).post("/api/payments/create-order"), saver.token).send({ acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: c.slug, tier: "basic" });
     };
     expect((await start(a)).body.amount).toBe(150000); // uses the ₹500
     expect((await start(b)).body.amount).toBe(200000); // that credit is already spoken for
@@ -295,5 +295,49 @@ describe("admin: referral rules and overview", () => {
     const del = await authed(request(app).delete(`/api/admin/users/${friend.id}`), adminToken);
     expect(del.status).toBe(200);
     expect((await referralOf(referrer)).stats.total).toBe(0);
+  });
+});
+
+// New accounts cost nothing to make, so free credit must never turn into
+// referral credit: only real money paid earns a reward, capped at that amount.
+describe("referral rewards come only from real money", () => {
+  // Made directly (the signup route is rate limited per IP, and this file already uses it a lot).
+  const direct = async (label) => {
+    const email = `${label}${++seq}@example.com`;
+    const user = await prisma.user.create({ data: { name: "Student Person", email, phone: "9876500000", passwordHash: "x", role: "student" } });
+    return { id: user.id, email, token: signToken({ sub: user.id, role: "student", email }, { expiresIn: "1h" }) };
+  };
+  const referred = async (label, referrer) => {
+    const friend = await direct(label);
+    const applied = await authed(request(app).post("/api/referrals/apply"), friend.token).send({ code: (await referralOf(referrer)).code });
+    expect(applied.status).toBeLessThan(300);
+    return friend;
+  };
+
+  it("leaves the referral pending when the friend pays entirely from wallet credit", async () => {
+    const referrer = await direct("walletref");
+    const friend = await referred("walletfriend", referrer);
+    await authed(request(app).post(`/api/admin/users/${friend.id}/wallet`), adminToken).send({ rupees: 2000, note: "test" });
+    const course = await openCourse(1000);
+    const appRes = await authed(request(app).post("/api/applications"), friend.token).send({
+      type: "course", refTitle: course.title, courseSlug: course.slug, tier: "basic",
+      name: "Student Person", email: friend.email, phone: "9876500000",
+    });
+    const paid = await authed(request(app).post("/api/payments/pay-with-wallet"), friend.token).send({
+      acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
+    });
+    expect(paid.status).toBe(201);
+    const theirs = await referralOf(referrer);
+    expect(theirs.creditBalance).toBe(0);
+    expect(theirs.stats).toMatchObject({ pending: 1, rewarded: 0 });
+  });
+
+  it("never rewards more than the friend actually paid", async () => {
+    const referrer = await direct("capref");
+    const friend = await referred("capfriend", referrer);
+    await buy(friend, await openCourse(200)); // ₹200 less the 10% welcome discount = ₹180 paid
+    const theirs = await referralOf(referrer);
+    expect(theirs.creditBalance).toBe(180);
+    expect(theirs.stats).toMatchObject({ rewarded: 1, earned: 180 });
   });
 });

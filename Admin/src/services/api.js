@@ -627,4 +627,54 @@ export async function adminCancelPaymentRequest(id) {
     return { ok: false, error: "Could not cancel the request" };
   }
 }
+
+// ---------- Careers: job openings, question bank, applicants, settings ----------
+const qs = (params) => {
+  const p = new URLSearchParams();
+  Object.entries(params || {}).forEach(([k, v]) => { if (v) p.set(k, v); });
+  const s = p.toString();
+  return s ? `?${s}` : "";
+};
+const jsonBody = (method, body) => ({ method, body: JSON.stringify(body) });
+
+export const adminGetJobOpenings = () => adminCall("/admin/job-openings", {}, "Could not load the job openings");
+export const adminCreateJobOpening = (payload) => adminCall("/admin/job-openings", jsonBody("POST", payload), "Could not create the opening");
+export const adminUpdateJobOpening = (id, patch) => adminCall(`/admin/job-openings/${id}`, jsonBody("PUT", patch), "Could not save the opening");
+export const adminDeleteJobOpening = (id) => adminCall(`/admin/job-openings/${id}`, { method: "DELETE" }, "Could not delete the opening");
+
+export const adminGetTestQuestions = (filters) => adminCall(`/admin/test-questions${qs(filters)}`, {}, "Could not load the question bank");
+export const adminCreateTestQuestion = (payload) => adminCall("/admin/test-questions", jsonBody("POST", payload), "Could not add the question");
+export const adminUpdateTestQuestion = (id, patch) => adminCall(`/admin/test-questions/${id}`, jsonBody("PUT", patch), "Could not save the question");
+export const adminDeleteTestQuestion = (id) => adminCall(`/admin/test-questions/${id}`, { method: "DELETE" }, "Could not delete the question");
+// `file` is the Excel (.xlsx) or CSV file itself. Answers { ok, created, errors: [{ row, error }] }.
+export const adminImportTestQuestions = (file) =>
+  adminCall("/admin/test-questions/import", { method: "POST", body: file, headers: { "Content-Type": "application/octet-stream" } }, "Could not upload the file");
+
+export const adminGetJobApplications = (filters) => adminCall(`/admin/job-applications${qs(filters)}`, {}, "Could not load the applicants");
+export const adminGetJobApplication = (id) => adminCall(`/admin/job-applications/${id}`, {}, "Could not load this applicant");
+// action: "shortlist" | "not_shortlist" | "schedule_interview" | "select" | "reject"
+export const adminSetJobApplicationStatus = (id, payload) => adminCall(`/admin/job-applications/${id}/status`, jsonBody("POST", payload), "Could not update the application");
+
+export const adminGetCareerSettings = () => adminCall("/admin/careers/settings", {}, "Could not load the careers settings");
+export const adminUpdateCareerSettings = (settings) => adminCall("/admin/careers/settings", jsonBody("PUT", settings), "Could not save the careers settings");
+export const adminGetWallets = (q) => adminCall(`/admin/wallets${qs({ q })}`, {}, "Could not load the wallet balances");
+
+// A file from the API (the Excel export, a webcam snapshot): these need the
+// login token, so they can't be plain links. Answers { ok, blob, filename }.
+async function adminFile(path, fallbackError) {
+  try {
+    const res = await authFetch(path);
+    if (res.status === 401) adminLogout();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error || fallbackError };
+    }
+    const named = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") || "");
+    return { ok: true, blob: await res.blob(), filename: named ? named[1] : "" };
+  } catch (e) {
+    return { ok: false, error: fallbackError };
+  }
+}
+export const adminExportJobApplications = (filters) => adminFile(`/admin/job-applications/export${qs(filters)}`, "Could not export the applicants");
+export const adminGetTestSnapshot = (id) => adminFile(`/admin/test-snapshots/${id}`, "Could not load this snapshot");
 

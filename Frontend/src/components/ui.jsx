@@ -12,7 +12,7 @@ import { IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
 import { usePendingPaymentRequests } from "../hooks/usePendingPaymentRequests.js";
 import ErrorBoundary from "./ErrorBoundary.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
-import { trackEvent } from "../utils/analytics.js";
+import { trackEvent, analyticsAvailable, openCookieSettings } from "../utils/analytics.js";
 import { prefetchRoute } from "../utils/prefetch.js";
 import { isValidName, emailFormatError } from "../utils/validators.js";
 import { phoneError, compactPhone } from "../utils/phone.js";
@@ -574,6 +574,52 @@ export function Alert({ kind = "info", inline = false, children }) {
   return inline ? box : createPortal(box, document.body);
 }
 
+/* ---------- TermsCheckbox: "I agree to the Terms & Conditions" ----------
+   Shown above every Pay button on the site (courses, internships, plan
+   upgrades, payment requests, the careers test fee). The Pay button stays
+   disabled until it's ticked, and the server refuses to start a payment
+   without it too (Backend/src/utils/terms.js). The links open in a new tab so
+   reading the terms doesn't lose the checkout. `what` names the purchase in
+   the sentence, e.g. "this course". */
+/* ---------- DownloadPdfButton: save a text document (terms, rules) as a PDF ----------
+   `getDocument()` returns { title, subtitle?, intro?, sections } (see
+   utils/documentPdf.js). The PDF code is loaded only when pressed. */
+export function DownloadPdfButton({ getDocument, label = "Download PDF", className = "btn btn-ghost pdf-btn" }) {
+  const [state, setState] = useState("idle"); // idle | busy | error
+  const onClick = async () => {
+    if (state === "busy") return;
+    setState("busy");
+    try {
+      const { downloadDocumentPdf } = await import("../utils/documentPdf.js");
+      await downloadDocumentPdf(getDocument());
+      setState("idle");
+    } catch (e) {
+      console.error("PDF download failed:", e);
+      setState("error");
+    }
+  };
+  return (
+    <button type="button" className={className} onClick={onClick} disabled={state === "busy"}>
+      <span aria-hidden="true">⤓ </span>
+      {state === "busy" ? "Preparing PDF…" : state === "error" ? "Couldn't make the PDF — try again" : label}
+    </button>
+  );
+}
+
+export function TermsCheckbox({ checked, onChange, disabled = false, what = "this purchase" }) {
+  return (
+    <label className="check-row terms-check">
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      <span>
+        I have read and agree to the{" "}
+        <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>,
+        including the <a href="/terms-of-service#refunds" target="_blank" rel="noopener noreferrer">payment &amp; refund rules</a>,
+        for {what}.
+      </span>
+    </label>
+  );
+}
+
 // Loads Razorpay's Checkout script on first use; resolves false if it can't.
 // Shared by BuyModal and UpgradeModal.
 export const loadRazorpayScript = () =>
@@ -763,6 +809,8 @@ export function BuyModal({ item, user, initialTier, onClose }) {
   // An admin offer code the buyer has applied (already checked by the server);
   // the server checks it again when the order is created.
   const [couponCode, setCouponCode] = useState("");
+  // The Terms & Conditions box; un-ticked again for every new item.
+  const [agreed, setAgreed] = useState(false);
   useBodyScrollLock(!!item);
   useModalFocus(!!item);
 
@@ -788,6 +836,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       setLoading(false);
       setTier(null);
       setCouponCode("");
+      setAgreed(false);
     }
   }, [item, user]);
 
@@ -817,6 +866,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
   const submit = async (useWallet) => {
     if (loading) return; // already in flight — avoid double-submitting a payment order
     if (!plan) { setError("Choose a plan to continue."); return; }
+    if (!agreed) { setError("Please accept the Terms & Conditions to continue."); return; }
     const missing = [
       !form.name.trim() && "name",
       !form.email.trim() && "email",
@@ -995,7 +1045,9 @@ export function BuyModal({ item, user, initialTier, onClose }) {
                 ))}
               </fieldset>
               {plan && <CheckoutExtras key={item.slug} item={item} tier={plan.tier} onPayable={setPayable} onWalletCovers={setWalletPays} couponCode={couponCode} onCoupon={setCouponCode} />}
-              <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
+              <TermsCheckbox checked={agreed} onChange={(v) => { setAgreed(v); clearStatus(); }} disabled={loading}
+                what={item.type === "internship" ? "this internship" : "this course"} />
+              <button className="btn btn-solid" type="submit" disabled={loading || !agreed} style={{ width: "100%" }}>
                 {loading ? "Please wait..."
                   : walletPays != null ? `Pay ${formatINR(walletPays)} with wallet`
                   : plan ? `Continue to payment · ${formatINR(payable != null ? payable : planPrice(plan))}` : "Continue to payment"}
@@ -1022,6 +1074,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   // Same stale-async guard as BuyModal's genRef: bumped whenever a fresh item
   // opens so a still-running fetch/payment chain from the previous open can't
   // write into this one.
@@ -1038,6 +1091,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
     setStatus({ text: "", kind: "" });
     setLoading(false);
     setDone(false);
+    setAgreed(false);
     getUpgradeOptions(item.slug).then((res) => {
       if (genRef.current !== gen) return;
       setInfo(res.ok
@@ -1054,7 +1108,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
   const selected = options.find((o) => o.tier === tier) || options.find((o) => o.tier === data.tier) || options[0];
 
   const onPay = async () => {
-    if (loading || !selected) return; // already in flight — avoid a second order
+    if (loading || !selected || !agreed) return; // already in flight — avoid a second order
     setLoading(true);
     setStatus({ text: "", kind: "" });
     const myGen = genRef.current;
@@ -1157,7 +1211,8 @@ export function UpgradeModal({ data, onClose, onDone }) {
                 </label>
               ))}
             </fieldset>
-            <button className="btn btn-solid" onClick={onPay} disabled={loading} style={{ width: "100%" }}>
+            <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={loading} what="this upgrade" />
+            <button className="btn btn-solid" onClick={onPay} disabled={loading || !agreed} style={{ width: "100%" }}>
               {loading ? "Please wait..." : selected ? `Pay ${formatINR(selected.due)} to upgrade` : "Upgrade"}
             </button>
             <Alert inline kind={status.kind}>{status.text}</Alert>
@@ -1548,6 +1603,10 @@ export function AuthModal() {
   const [reset, setReset] = useState({ otp: "", password: "", confirm: "" });
   const [resendIn, setResendIn] = useState(0); // seconds until "Resend code" is available again
   const googleBtnRef = useRef(null);
+  // "I'm 18 or older, or my parent/guardian agrees" — needed to create an
+  // account, by form or with Google. A ref too, for Google's callback.
+  const [ageOk, setAgeOk] = useState(false);
+  const ageOkRef = useRef(false);
   useBodyScrollLock(!!authModal);
   useModalFocus(!!authModal);
 
@@ -1568,6 +1627,8 @@ export function AuthModal() {
       setStatus("");
       setStatusKind("error");
       setLoading(false);
+      setAgeOk(false);
+      ageOkRef.current = false;
     }
   }, [authModal]);
 
@@ -1607,8 +1668,15 @@ export function AuthModal() {
         callback: async (response) => {
           setLoading(true);
           setStatus("");
-          const res = await loginWithGoogle(response.credential);
+          const res = await loginWithGoogle(response.credential, { ageConfirmed: ageOkRef.current });
           setLoading(false);
+          // A new Google account needs the age box: show the sign-up side, where it is.
+          if (res.code === "AGE_CONFIRMATION_REQUIRED") {
+            setMode("signup");
+            setStatusKind("error");
+            setStatus("To create your account, tick the age box below, then continue with Google again.");
+            return;
+          }
           finishAuth(res, "Could not sign in with Google.");
         },
       });
@@ -1684,10 +1752,11 @@ export function AuthModal() {
       const phoneProblem = phoneError(form.phone);
       if (phoneProblem) { setStatus(`Please add ${phoneProblem}.`); return; }
       if (form.password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
+      if (!ageOk) { setStatus("Please confirm your age to create an account."); return; }
     }
     setLoading(true);
     setStatus("");
-    const res = mode === "login" ? await login(form.email.trim(), form.password) : await signup(form);
+    const res = mode === "login" ? await login(form.email.trim(), form.password) : await signup({ ...form, ageConfirmed: ageOk });
     setLoading(false);
     // Signup's response is deliberately ambiguous when the email already has
     // an account (see routes/auth.js) — `ok: true` but no `token`, since a
@@ -1714,6 +1783,16 @@ export function AuthModal() {
         </h3>
         {sessionExpired && (
           <Alert inline kind="info">You were signed out after {IDLE_TIMEOUT_MINUTES} minutes of inactivity. Please log in again.</Alert>
+        )}
+        {mode === "signup" && (
+          <label className="check-row age-check">
+            <input type="checkbox" checked={ageOk} disabled={loading}
+              onChange={(e) => { setAgeOk(e.target.checked); ageOkRef.current = e.target.checked; setStatus(""); }} />
+            <span>
+              I am 18 or older, or I am 16 or 17 and my parent or guardian has agreed to me using Crix Technology and to
+              the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+            </span>
+          </label>
         )}
         {GOOGLE_CLIENT_ID && mode !== "forgot" && (
           <>
@@ -1926,6 +2005,7 @@ export function Navbar() {
     ["/programs#courses", "Courses"],
     ["/services", "IT Services"],
     ["/about", "About"],
+    ["/careers", "Careers"],
     ["/contact", "Contact"],
   ];
   return (
@@ -2088,6 +2168,7 @@ const FOOT_COLS = [
     heading: "Company",
     links: [
       ["About Us", "/about"],
+      ["Careers", "/careers"],
       ["Contact", "/contact"],
       ["Privacy Policy", "/privacy-policy"],
       ["Terms of Service", "/terms-of-service"],
@@ -2146,6 +2227,10 @@ export function Footer() {
                 {col.links.map(([label, to]) => (
                   <li key={label}><Link to={to}>{label}</Link></li>
                 ))}
+                {/* Re-opens the cookie banner (components/CookieConsent.jsx) — only when there's something to choose. */}
+                {col.heading === "Company" && analyticsAvailable() && (
+                  <li><button type="button" className="link-btn foot-link-btn" onClick={openCookieSettings}>Cookie settings</button></li>
+                )}
               </ul>
             </div>
           ))}

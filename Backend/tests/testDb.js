@@ -57,6 +57,11 @@ async function setupTestDb() {
   }
 
   await clearTestDb();
+  // New accounts normally start with bonus wallet credit (utils/wallet.js
+  // grantSignupBonus). Every suite written before that existed assumes a new
+  // student has an empty wallet and pays full price, so it is switched off
+  // here; tests/careers.test.js turns it on for itself.
+  await prisma.setting.create({ data: { key: "careers", value: { signupBonusCredits: 0 } } });
   return app;
 }
 
@@ -73,11 +78,18 @@ async function clearTestDb() {
   // Referral rows point at users (and credit entries at referrals/payments), so
   // they go before everything they reference.
   await prisma.emailOtp.deleteMany();
+  // Careers: attempts (their answers, violations and snapshots cascade) before
+  // the applications they belong to; applications are removed after payments.
+  await prisma.notification.deleteMany();
+  await prisma.testAttempt.deleteMany();
+  await prisma.testQuestion.deleteMany();
   await prisma.creditEntry.deleteMany();
   await prisma.referral.deleteMany();
   await prisma.setting.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.paymentRequest.deleteMany();
+  await prisma.jobApplication.deleteMany();
+  await prisma.jobOpening.deleteMany();
   await prisma.coupon.deleteMany();
   await prisma.enrollment.deleteMany();
   await prisma.application.deleteMany();

@@ -36,7 +36,7 @@ let seq = 0;
 
 async function signup(label) {
   const email = `${label}${++seq}@example.com`;
-  const res = await request(app).post("/api/auth/signup").send({
+  const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true,
     name: "Student Person", email, phone: "9876500000", password: "a-real-password",
   });
   expect(res.status).toBe(201);
@@ -65,7 +65,7 @@ async function application(student, course) {
   return res.body.application._id;
 }
 const payWallet = (student, course, applicationId, extra = {}) =>
-  authed(request(app).post("/api/payments/pay-with-wallet"), student.token).send({ applicationId, courseSlug: course.slug, tier: "basic", ...extra });
+  authed(request(app).post("/api/payments/pay-with-wallet"), student.token).send({ acceptTerms: true, applicationId, courseSlug: course.slug, tier: "basic", ...extra });
 
 describe("the wallet", () => {
   it("starts empty and needs a login", async () => {
@@ -176,7 +176,7 @@ describe("paying for a course from the wallet", () => {
     const student = await signup("claimed");
     await grant(student, 1000);
     // Starting a checkout for another course reserves 999 of the 1000.
-    const start = await authed(request(app).post("/api/payments/create-order"), student.token).send({
+    const start = await authed(request(app).post("/api/payments/create-order"), student.token).send({ acceptTerms: true,
       applicationId: await application(student, other), courseSlug: other.slug, tier: "basic",
     });
     expect(start.status).toBe(201);

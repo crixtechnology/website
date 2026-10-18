@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetBotQuestions } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetBotQuestions, adminGetJobApplications } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
@@ -20,6 +20,10 @@ const TILE_ICONS = {
   Messages: <path d="M4 5h16v11H8l-4 4z" />,
   "Help bot questions": <path d="M4 5h16v11H9l-5 4z M10 9.5a2 2 0 1 1 2.5 1.9c-.4.2-.5.5-.5.9 M12 13.6h.01" />,
   Applications: <path d="M7 3h7l4 4v14H7z M14 3v4h4 M9.5 13h5 M9.5 16.5h5" />,
+  "Job openings": <path d="M3 8h18v12H3z M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M12 12v4 M10 14h4" />,
+  "Job applicants": <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6 M16 11l2 2 4-4" />,
+  "Question bank": <path d="M5 4h14v16H5z M9 9a3 3 0 1 1 4 2.8c-.7.3-1 .8-1 1.5 M12 16.5h.01" />,
+  "Careers settings": <path d="M4 7h10 M18 7h2 M4 17h2 M10 17h10 M14 7a2 2 0 1 0 4 0 2 2 0 0 0-4 0z M6 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0z" />,
   default: <path d="M5 12h14" />,
 };
 
@@ -31,14 +35,16 @@ export default function AdminDashboard() {
     courses: 0, openCourses: 0, internships: 0, openInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
     referrals: 0, referralsRewarded: 0, botQuestions: 0,
+    jobApplicants: 0, jobToReview: 0, jobSelected: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, botRes] = await Promise.all([
-        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(), adminGetBotQuestions(),
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, botRes, jobsRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(), adminGetBotQuestions(), adminGetJobApplications(),
       ]);
+      const jobs = jobsRes && jobsRes.ok ? jobsRes : null;
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
       const courses = entries.filter((c) => c.type !== "internship");
       const internships = entries.filter((c) => c.type === "internship");
@@ -69,6 +75,10 @@ export default function AdminDashboard() {
         referrals: referralsRes.ok ? referralsRes.summary.total : 0,
         referralsRewarded: referralsRes.ok ? referralsRes.summary.rewarded : 0,
         botQuestions: botRes.ok && botRes.summary ? botRes.summary.open : 0,
+        jobApplicants: jobs ? jobs.summary.totalApplicants : 0,
+        // Tests that are in and still need a shortlist / not-shortlist decision.
+        jobToReview: jobs ? (jobs.applications || []).filter((a) => a.status === "submitted").length : 0,
+        jobSelected: jobs ? jobs.summary.selected : 0,
       });
       setLoading(false);
     })();
@@ -89,6 +99,11 @@ export default function AdminDashboard() {
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
     { label: "Help bot questions", value: stats.botQuestions, sub: "questions the bot couldn't answer", to: "/admin/bot-questions" },
     { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },
+    // Careers: the roles, the aptitude test and the people who took it.
+    { label: "Job applicants", value: stats.jobApplicants, sub: `${stats.jobToReview} test${stats.jobToReview === 1 ? "" : "s"} waiting for a decision · ${stats.jobSelected} selected`, to: "/admin/applicants" },
+    { label: "Job openings", value: "Manage", sub: "roles on the Careers page & their test settings", to: "/admin/job-openings" },
+    { label: "Question bank", value: "Manage", sub: "aptitude test questions · Excel/CSV upload", to: "/admin/test-questions" },
+    { label: "Careers settings", value: "Manage", sub: "test fee, credits, violation limit", to: "/admin/careers-settings" },
   ];
 
   return (

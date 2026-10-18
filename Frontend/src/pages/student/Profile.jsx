@@ -6,7 +6,9 @@ import { Alert } from "../../components/ui.jsx";
 import PhoneInput from "../../components/PhoneInput.jsx";
 import PasswordSettings from "../../components/PasswordSettings.jsx";
 import WalletCard from "../../components/WalletCard.jsx";
+import DeleteAccount from "../../components/DeleteAccount.jsx";
 import { phoneError } from "../../utils/phone.js";
+import { safeNextPath } from "../../utils/safePath.js";
 
 export default function Profile() {
   usePageMeta({ title: "Your Profile | Crix Technology", description: "Manage your Crix Technology account details." });
@@ -16,8 +18,7 @@ export default function Profile() {
   // Where to go after a successful save — set when the user was sent here to
   // finish their details before an enrollment. Kept relative-only so it
   // can't be used as an open redirect.
-  const rawNext = params.get("next") || "";
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "";
+  const next = safeNextPath(params.get("next"));
   const sentToComplete = params.get("reason") === "complete" || !!next;
 
   const [form, setForm] = useState({ name: "", phone: "" });
@@ -27,6 +28,22 @@ export default function Profile() {
   useEffect(() => {
     if (user) setForm({ name: user.name || "", phone: user.phone || "" });
   }, [user]);
+
+  if (!isLoggedIn && params.get("deleted") === "1") {
+    return (
+      <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
+        <div className="wrap" style={{ maxWidth: 520 }}>
+          <span className="eyebrow">Your account</span>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Your account has been deleted</h1>
+          <p style={{ color: "var(--muted)", lineHeight: 1.7 }}>
+            Your account and personal data have been permanently deleted, and we've emailed you a confirmation. Payment
+            records and receipts are kept, with no link to an account, as Indian tax and accounting law requires.
+            You're always welcome back.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
@@ -124,6 +141,8 @@ export default function Profile() {
         <div style={{ marginTop: 40 }}><WalletCard /></div>
 
         <PasswordSettings />
+
+        <DeleteAccount />
       </div>
     </section>
   );

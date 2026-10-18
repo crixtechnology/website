@@ -312,36 +312,41 @@ export const legal = {
 • Postal address — when you join an internship, so we can ship your joining kit
 • Purchase records — what you bought or upgraded, the plan, the amount paid, any offer code or referral discount used, and your receipt details
 • Referral and wallet activity — your referral code, whose code you used, and the credit added to and spent from your wallet
+• Careers applications — the roles you apply for, your aptitude-test answers and result, and, during the test, webcam photos taken at regular intervals, your IP address, device and browser details, and any test-rule warnings. Where your browser supports it, each webcam photo is checked on your own device only for whether a face is visible, or more than one; we keep just that result ("no face" / "more than one face"). This is not face recognition: we don't identify you from your face or create any biometric template
+• Your agreement to our Terms & Conditions — the date and time you ticked the box before each payment
 • Help chat questions — if the site's help assistant has no answer to something you type, we may save that question (without your name or contact details, and with any email address, phone number or link removed) so we can improve its answers
 • Any messages or project submissions you send us
 
-Payment for a course, a paid internship, a plan upgrade or a payment request sent to your account is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Our Internship Program includes both free and paid internships; no payment details are collected for a free internship.`,
+Payment for a course, a paid internship, a plan upgrade, a payment request sent to your account or an aptitude-test registration fee is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Our Internship Program includes both free and paid internships; no payment details are collected for a free internship.`,
       },
       {
         title: "2. How We Use Your Information",
         content: `We use the information you provide to:
 • Create and maintain your account, and verify your identity when you log in
 • Process your internship application or course purchase
+• Run the aptitude test for a role you apply for — mark it, check that it was taken fairly and by you, and decide shortlisting and selection
 • Grant and manage access to purchased course content, live-class schedules, and recordings
 • Send you tasks, updates, and certificates via email
 • Send account and transaction emails — one-time verification codes, receipts, payment requests, wallet credit notices, and security notices such as a password change
+• Verify that your email address is really yours — for example before a signup bonus is added to your wallet
+• Detect and prevent fraud and misuse — of signup bonuses, referral rewards, offer codes, wallet credit and the aptitude test
 • Ship your internship joining kit to the address you give us
 • Run the referral program — apply referral discounts and credit
 • Respond to your queries and support requests
 • Improve our programs and website experience
-• Send relevant announcements about new batches or courses (you may opt out anytime)`,
+• Tell you about new batches or courses — if we send such announcements, each one will tell you how to opt out, and opting out never affects account or transaction emails`,
       },
       {
         title: "3. Information Sharing",
         content: `We do not sell, trade, or rent your personal information to third parties. We may share information only in these limited circumstances:
-• With service providers who assist in operating our website — for example, Razorpay for payment processing, Google for "Sign in with Google" authentication and (where enabled) Google Analytics for aggregate site-usage statistics, and our email provider for sending account and transaction emails
+• With service providers who assist in operating our website, under their own confidentiality and security obligations — our website hosting and database providers; our cloud storage provider, which stores aptitude-test webcam photos (in a private store) and recorded lectures; Cloudflare, which delivers course videos; Razorpay for payment processing; Google for "Sign in with Google" authentication and (where enabled) Google Analytics for aggregate site-usage statistics; and our email provider for sending account and transaction emails
 • With courier or delivery partners — only your name, phone number and postal address, to deliver a joining kit
 • If required by law or to protect the rights and safety of Crix Technology or its users
 • With your explicit consent`,
       },
       {
         title: "4. Payment Processing",
-        content: `All payments on this website — for courses, paid internships, plan upgrades and payment requests — are processed through Razorpay, a licensed payment aggregator regulated by the Reserve Bank of India. When you make a payment, your card, UPI, net-banking, or wallet details are entered directly into Razorpay's secure payment interface and are never transmitted to or stored on Crix Technology's own servers — we receive only a payment status, an order/transaction reference, and the amount paid. Please refer to Razorpay's own privacy policy for details on how it handles your payment data.`,
+        content: `All payments on this website — for courses, paid internships, plan upgrades, payment requests and aptitude-test registration fees — are processed through Razorpay, a licensed payment aggregator regulated by the Reserve Bank of India. When you make a payment, your card, UPI, net-banking, or wallet details are entered directly into Razorpay's secure payment interface and are never transmitted to or stored on Crix Technology's own servers — we receive only a payment status, an order/transaction reference, and the amount paid. Please refer to Razorpay's own privacy policy for details on how it handles your payment data.`,
       },
       {
         title: "5. Data Storage & Security",
@@ -349,31 +354,45 @@ Payment for a course, a paid internship, a plan upgrade or a payment request sen
       },
       {
         title: "6. Data Retention",
-        content: `We retain your account and course-related information for as long as your account remains active, and for a reasonable period afterward to respond to queries, resolve disputes, and comply with our legal obligations. Financial and transaction records — course and internship payments, receipts, and wallet credit — are retained for the period required under applicable Indian tax and accounting law. You may request deletion of your account at any time, subject to these retention requirements.`,
+        content: `We retain your account and course-related information for as long as your account remains active, and for a reasonable period afterward to respond to queries, resolve disputes, and comply with our legal obligations. Financial and transaction records — course and internship payments, aptitude-test fees, receipts, wallet credit, and the record of when you accepted our Terms & Conditions for each payment — are retained for the period required under applicable Indian tax and accounting law.
+
+Careers applications and aptitude-test results are kept while your account is active, so we can answer questions about a hiring decision. Aptitude-test webcam photos are kept only as long as needed to check that a test was taken fairly: they are deleted automatically 6 months after your application is closed (selected, not shortlisted or rejected), and in any case no later than 12 months after the test. They are deleted straight away if your account is deleted.
+
+You can delete your account yourself at any time, from your Profile page ("Delete my account"). We email a one-time code to your account's email address to confirm it's you, and once you enter it your account is deleted straight away — your profile, course access, wallet credit, referrals, careers applications and aptitude tests (with their webcam photos), notifications and contact-form messages. Unused wallet credit and remaining course access are lost and are not refunded. The only things we keep are your payment records and receipts, with no link to an account, for as long as Indian tax and accounting law requires, along with a record that your account was deleted that contains no personal details. We email you a confirmation when it's done. If you can't log in, you can ask us to delete your account by writing from your registered email address to crixtechnology@gmail.com.`,
       },
       {
         title: "7. Cookies & Similar Technologies",
         content: `When you log in, an authentication token is kept in your browser's session storage for that tab only: it is cleared when you close the tab, and you are signed out automatically after 30 minutes of inactivity. For security, an account can be signed in on only one device at a time — signing in on a new device ends the earlier session.
 
-We also use your browser's local storage for a few small conveniences: your light/dark theme choice, and a referral code from a link you followed, so it can be pre-filled when you sign up. Where enabled, Google Analytics uses cookies to collect aggregate usage statistics (such as pages viewed and checkout steps reached) to help us improve the website. You can block or clear cookies and site data in your browser settings; doing so will sign you out and may affect some features.`,
+We also use your browser's local storage for a few small conveniences: your light/dark theme choice, your cookie choice (below), and a referral code from a link you followed, so it can be pre-filled when you sign up. These are needed for the site to work as you'd expect, so we don't ask for them.
+
+Analytics cookies are different: we use them only if you agree. When Google Analytics is enabled, a banner asks you the first time you visit, and nothing from Google Analytics is loaded until you choose "Accept analytics". If you accept, its cookies collect aggregate usage statistics (such as pages viewed and checkout steps reached) to help us improve the website — never for advertising. "Decline" works exactly as well as "Accept", and you can change your mind at any time from "Cookie settings" at the bottom of every page; declining after accepting stops analytics straight away and removes its cookies. You can also block or clear cookies and site data in your browser settings; doing so will sign you out and may affect some features.`,
       },
       {
         title: "8. Third-Party Links & Services",
-        content: `Our website may contain links to third-party websites, and integrates third-party services such as Razorpay (payments), Google (sign-in and, where enabled, Google Analytics), and WhatsApp (contact and course inquiries), and uses courier partners to deliver kits. We are not responsible for the privacy practices or content of these third parties. We encourage you to review their respective privacy policies before using them.`,
+        content: `Our website may contain links to third-party websites, and integrates third-party services such as Razorpay (payments), Google (sign-in and, where enabled, Google Analytics), Cloudflare (video delivery), cloud storage for test photos and lectures, and WhatsApp (contact and course inquiries), and uses courier partners to deliver kits. We are not responsible for the privacy practices or content of these third parties. We encourage you to review their respective privacy policies before using them.`,
       },
       {
         title: "9. Your Rights",
         content: `You have the right to:
 • Access the personal information we hold about you
 • Request correction of inaccurate data
-• Request deletion of your data or your account (subject to legal and record-keeping obligations)
-• Withdraw consent for communications at any time
+• Delete your account and personal data — yourself, from your Profile page, or by asking us (subject to legal and record-keeping obligations; see "Data Retention")
+• Withdraw consent you have given — for communications, or for webcam monitoring (an aptitude test can't be taken without it, and withdrawing it doesn't affect a test already taken)
+• Nominate another person to exercise these rights on your behalf in the event of your death or incapacity, as provided under the Digital Personal Data Protection Act, 2023
+• Have your grievances about how we handle your personal data addressed by our Grievance Officer (see below)
 
-To exercise any of these rights, contact us at crixtechnology@gmail.com.`,
+To exercise any of these rights, contact us at crixtechnology@gmail.com. If you are not satisfied with how we resolve a grievance, you may complain to the Data Protection Board of India once it is accepting complaints under the Digital Personal Data Protection Act, 2023.`,
       },
       {
         title: "10. Children's Privacy",
-        content: `Our services are intended for students who are 16 years of age or older. We do not knowingly collect personal information from children under 16. If you believe we have inadvertently collected such information, please contact us immediately.`,
+        content: `Our services are intended for students who are 16 years of age or older. We do not knowingly collect personal information from anyone under 16.
+
+Under the Digital Personal Data Protection Act, 2023, anyone under 18 is a child. If you are 16 or 17, you may create an account only with the permission of your parent or legal guardian, and by creating it you confirm that they have agreed to you using our services and to this Privacy Policy. We record the date and time of that confirmation. We never use the personal data of users under 18 for targeted advertising. Where Google Analytics is enabled, it collects only aggregate site-usage statistics (see "Cookies & Similar Technologies").
+
+The Careers aptitude test, which uses webcam monitoring, is open only to candidates aged 18 or older, who confirm their age before paying the registration fee.
+
+If you are a parent or guardian and believe your child has given us personal data without your permission, or if you believe we hold data about someone under 16, please contact us and we will delete it.`,
       },
       {
         title: "11. International Users",
@@ -406,11 +425,13 @@ Location: Ahmedabad, Gujarat, India`,
   },
   terms: {
     intro:
-      "Please read these Terms of Service carefully before using Crix Technology's website or enrolling in any of our programs. These terms constitute a legally binding agreement between you and Crix Technology.",
+      "Please read these Terms of Service carefully before using Crix Technology's website, enrolling in any of our courses or internships, or applying for a role through our Careers page. These terms constitute a legally binding agreement between you and Crix Technology. You will be asked to tick \"I have read and agree to the Terms & Conditions\" before every payment on this website — no payment can be made without it.",
     sections: [
       {
         title: "1. Acceptance of Terms",
-        content: `By accessing or using Crix Technology's website, internship programs, or courses, you agree to be bound by these Terms of Service. If you do not agree with any part of these terms, please do not use our services.`,
+        content: `By accessing or using Crix Technology's website, internship programs, courses, or careers and aptitude-test services, you agree to be bound by these Terms of Service. If you do not agree with any part of these terms, please do not use our services.
+
+Before you pay for anything on this website — a course, an internship, a plan upgrade, a payment request, or an aptitude-test registration fee — you must tick the box confirming that you have read and agree to these Terms & Conditions. The Pay button stays disabled until you do, and the date and time you agreed is recorded with that payment. By ticking the box and completing the payment, you confirm that you have read and accepted these Terms, including the payment and refund rules in section 6, as they stand on the date of that payment.`,
       },
       {
         title: "2. Eligibility",
@@ -418,6 +439,8 @@ Location: Ahmedabad, Gujarat, India`,
 • Students currently enrolled in a college or university
 • Recent graduates (within 1 year of graduation)
 • Individuals who are at least 16 years of age
+
+If you are 16 or 17, you may use our services only with the permission of your parent or legal guardian, who agrees to these Terms and our Privacy Policy on your behalf. When creating an account you confirm that you are 18 or older, or that you have this permission. Careers roles and the aptitude test are open only to candidates aged 18 or older (see section 8).
 
 By applying, you confirm that you meet the eligibility criteria.`,
       },
@@ -435,7 +458,7 @@ You are responsible for all activity that occurs under your account. Crix Techno
       },
       {
         title: "4. Internship Program",
-        content: `Crix Technology offers a virtual Internship Program that includes both free and paid internships — whether a particular internship is free or paid, and its fee where applicable, is shown on its page or communicated to you before you enroll (see section 6). Whichever you join, by enrolling you agree to:
+        content: `Crix Technology offers a virtual Internship Program that includes both free and paid internships — whether a particular internship is free or paid, and its fee where applicable, is shown on its page or communicated to you before you enroll (see section 6). Each internship runs for the duration shown on its page — 15 days, 1 month, 3 months or 6 months. Whichever you join, by enrolling you agree to:
 • Complete assigned tasks honestly and on time
 • Submit original work — plagiarism will result in immediate disqualification
 • Maintain professional conduct in all communications
@@ -453,8 +476,18 @@ Certificates and Letters of Recommendation are issued only upon satisfactory com
 • Record or screen-capture video lectures without written permission`,
       },
       {
-        title: "6. Course & Internship Purchases, Payment & Cancellations",
-        content: `Most internship slots are apply-only, and applying never requires payment — but some internship slots, like courses, do carry a real price and are sold the same way. Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A course or internship is available for online purchase only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
+        title: "6. Payments, Refunds & Cancellations",
+        id: "refunds",
+        content: `Payment rules at a glance:
+• Every payment on this website is made through Razorpay, in Indian Rupees, and is priced by Crix Technology's servers — the amount shown at checkout is the amount charged.
+• You must tick "I have read and agree to the Terms & Conditions" before each payment.
+• A receipt is issued for every confirmed payment and can be downloaded from your My Dashboard.
+• All payments are final and non-refundable once completed, except as stated in this section or required by law.
+• The aptitude-test registration fee is not refunded in cash; instead, the full amount is returned to your Crix wallet as credit (see section 8).
+• If money is debited from your account but the payment fails or is not confirmed, Razorpay or your bank normally reverses it automatically within 5–7 working days. If it is not reversed, or the item you paid for is not unlocked, contact us with your payment reference and we will resolve it.
+• If you are charged twice for the same order, the duplicate payment is refunded to the original payment method once verified.
+
+Most internship slots are apply-only, and applying never requires payment — but some internship slots, like courses, do carry a real price and are sold the same way. Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A course or internship is available for online purchase only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
 
 Plans and upgrades: a course or internship may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and offer codes, referral discounts and wallet credit do not apply to upgrades.
 
@@ -462,24 +495,45 @@ Payment requests: Crix Technology may also send a payment request to a specific 
 
 Access to a purchased course or internship's live-class schedule and recorded lectures is granted upon confirmed payment and remains tied to your account. Crix Technology may reschedule live sessions, substitute mentors, or make reasonable changes to program content and delivery format, provided the overall quality and scope is not materially reduced.
 
+Aptitude-test registration fees for roles on our Careers page are covered by section 8.
+
 All course and internship purchases, including plan upgrades and payments made against a payment request, are final. Crix Technology does not offer refunds or cancellations once payment has been completed, regardless of whether materials, recordings, or live sessions have been accessed. Please review the program's details and use the "Request to apply" or "Request to enroll" option on its page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
       },
       {
         title: "7. Referral Program, Wallet & Offer Codes",
         content: `Every registered student has a personal referral code. A new student may apply a friend's code once — when signing up, or at checkout before their first purchase — and receives a discount on that first purchase. You cannot use your own code, and a student can be referred only once.
 
-Your wallet. Your Crix wallet holds credit you can spend on courses and internships. Credit reaches your wallet in two ways: as a referral reward — when a referred friend's first course or internship payment is confirmed, the student who referred them earns credit — or when Crix Technology adds credit to your account. Your balance, and every change with its note, is shown on your Profile page.
+Your wallet. Your Crix wallet holds credit you can spend on courses and internships. 1 credit = ₹1. Credit reaches your wallet in these ways: as a signup bonus when you create a new student account (where Crix Technology is offering one), added once you verify your email address — or straight away if you sign up with Google; as the return of an aptitude-test registration fee you have paid (see section 8); as a referral reward — when a referred friend's first course or internship purchase paid with real money (not wallet credit alone) is confirmed, the student who referred them earns credit, up to the amount the friend actually paid; or when Crix Technology adds credit to your account. Your balance, and every change with its note, is shown on your Profile page and in your My Dashboard.
 
-Spending credit. Wallet credit is taken off the price automatically at checkout. If your credit covers the full price of a course or internship, you can pay with your wallet alone, without a card or UPI payment. When you pay through Razorpay, the minimum payable on an order is ₹1, so credit never reduces such an order below ₹1. Credit applied to a checkout you have started but not yet paid may be held for that checkout until it is paid or abandoned. Wallet credit does not apply to plan upgrades or to payment requests (see section 6), although an amount you paid from your wallet counts as paid when your upgrade price is worked out.
+Spending credit. Wallet credit is taken off the price automatically at checkout, up to the share of a purchase that wallet credit may pay for, as shown on the Careers page. If your credit covers the full price of a course or internship, you can pay with your wallet alone, without a card or UPI payment. When you pay through Razorpay, the minimum payable on an order is ₹1, so credit never reduces such an order below ₹1. Credit applied to a checkout you have started but not yet paid may be held for that checkout until it is paid or abandoned. Wallet credit does not apply to plan upgrades, to payment requests (see section 6) or to aptitude-test registration fees (see section 8), although an amount you paid from your wallet counts as paid when your upgrade price is worked out.
 
-Limits. Wallet credit has no cash value. It cannot be withdrawn, transferred to another account or exchanged for money, and it does not expire. Crix Technology may add credit to, or take credit away from, a wallet — for example to correct a mistake or reverse a reward — and every change appears in your wallet history. Because purchases are final (section 6), credit spent on a purchase is not returned if you later cancel it or stop using it. If your account is deleted, any remaining credit is lost.
+Limits. Wallet credit has no cash value. It cannot be withdrawn, transferred to another account or exchanged for money, and can be used only for purchases on crixtechnology.com. Signup bonus credit and credit returned from an aptitude-test fee are valid for the period shown on the Careers page when the credit is added; credit that has expired is removed from your wallet automatically and cannot be restored. Referral rewards and credit added by Crix Technology do not expire. Crix Technology may add credit to, or take credit away from, a wallet — for example to correct a mistake or reverse a reward — and every change appears in your wallet history. Because purchases are final (section 6), credit spent on a purchase is not returned if you later cancel it or stop using it. If your account is deleted, any remaining credit is lost.
 
 Offer codes are issued by Crix Technology, usually to individual students, and may be limited to particular programs, dates, a number of uses, or a maximum discount. Only one offer code can be used per order, and an offer code cannot be exchanged for cash.
 
 The referral discount, the referral reward, and each offer code's terms are set by Crix Technology and may be changed, suspended or withdrawn at any time; a change does not affect a referral discount already applied to your account. Crix Technology may refuse, withhold or reverse any discount, credit or reward obtained through fake or duplicate accounts, self-referral, or other misuse.`,
       },
       {
-        title: "8. User Conduct",
+        title: "8. Careers, Aptitude Test & Selection",
+        id: "careers",
+        content: `Applying. Roles listed on our Careers page are open to the applicants described on each role, who must be 18 years of age or older. To apply, you need a registered student account, and you confirm you are 18 or older before paying the registration fee. If we find that a candidate is under 18, we may cancel the application and delete their test data; the fee still comes back as wallet credit. You can hold only one open application per role; once an application ends without an offer (not shortlisted or rejected), you may apply for that role again, which requires a new registration fee.
+
+Registration fee. Each application requires an aptitude-test registration fee, shown on the Careers page and at checkout. You pay it on the Careers page (or in your My Dashboard) through Razorpay, after accepting these Terms. Your test is unlocked as soon as the payment is confirmed, and a receipt is issued. The fee is not refunded in cash for any reason — including if you do not take the test, do not finish it, are disqualified, are not shortlisted or not selected, or the role closes after you have paid. Instead, the full fee is returned to your Crix wallet as credit, 1 credit per rupee, immediately after the payment is confirmed, on the wallet terms in section 7.
+
+The test. You get one attempt per paid application. Once started, the timer runs continuously until it ends — closing the page, losing your connection or turning off your device does not pause it, and the test is submitted automatically when the time is up. The test is marked by our servers, with marks for each correct answer and, where shown, marks taken off for each wrong answer. You need a laptop or desktop computer, a stable internet connection, and (where required) a working webcam; Crix Technology is not responsible for an attempt affected by your device, browser, power supply or internet connection.
+
+Test rules and proctoring. To keep the test fair, you agree that:
+• The test runs in full screen; leaving full screen, switching to another tab, window or app, or the test window losing focus each count as a warning
+• After the number of warnings shown before you start, the test is submitted automatically
+• Copying, pasting, right-clicking, selecting text and screenshot shortcuts are disabled, and attempts to use them are recorded
+• Your webcam takes a photo at regular intervals during the test, and your IP address, device and browser details are recorded with your attempt, to confirm that you — and only you — are taking it. The photos are deleted automatically 6 months after your application is closed, and in any case within 12 months of the test (see our Privacy Policy)
+• You must take the test yourself, alone, without help from any other person, website, tool or AI service, and must not copy, record, share or publish any question
+Breaking these rules, attempting to tamper with the test, or having someone else take it for you leads to disqualification, may lead to your account being suspended, and may stop you from applying again. Your registration fee is still returned as wallet credit, but no other remedy is due.
+
+Results and selection. Your score, marks and answers are used by Crix Technology to decide shortlisting and are not shared with you. We aim to tell you whether you have been shortlisted within 7 days of submitting the test; shortlisted applicants are invited to an online interview, and selected applicants receive an offer letter. Paying the registration fee or passing the test does not guarantee an interview, selection, an offer, a stipend or employment. Selection decisions, cut-off scores and stipends are at Crix Technology's sole discretion and are final. Crix Technology may close, change or withdraw a role at any time.`,
+      },
+      {
+        title: "9. User Conduct",
         content: `When using our website or services, you agree not to:
 • Provide false or misleading information during registration
 • Engage in any activity that disrupts or interferes with our services
@@ -487,31 +541,31 @@ The referral discount, the referral reward, and each offer code's terms are set 
 • Use our platform for any unlawful or harmful purpose`,
       },
       {
-        title: "9. Intellectual Property",
+        title: "10. Intellectual Property",
         content: `All content on this website — including text, graphics, logos, icons, and course material — is the property of Crix Technology and is protected by applicable intellectual property laws. You may not use, copy, or distribute any content without our prior written consent.`,
       },
       {
-        title: "10. Certificates & Credentials",
+        title: "11. Certificates & Credentials",
         content: `Certificates of completion are issued to students who meet the attendance, assessment, and project/assignment requirements specified for the respective course, and who have no outstanding fee dues or unresolved disciplinary action. Certification reflects successful completion of the course and does not constitute a guarantee of employment, salary, or any specific career outcome. Crix Technology reserves the right to withhold or revoke a certificate in cases of academic dishonesty, non-payment of fees, or breach of these Terms. Misrepresenting the nature of a Crix Technology certificate (e.g., claiming it is a government-issued credential) is strictly prohibited.`,
       },
       {
-        title: "11. Code of Conduct",
+        title: "12. Code of Conduct",
         content: `Students are expected to maintain discipline, punctuality, and respectful behaviour towards trainers, staff, and fellow students at all times, whether in-person or online. Crix Technology maintains a zero-tolerance policy towards harassment, discrimination, cheating, plagiarism, or disruptive behaviour. Violations may result in warnings, suspension, or termination of enrollment without refund. Students must not record, reproduce, distribute, or resell course materials or live sessions without prior written permission.`,
       },
       {
-        title: "12. Placement Assistance Disclaimer",
+        title: "13. Placement Assistance Disclaimer",
         content: `Where Crix Technology offers placement assistance, interview preparation, or job-referral support as part of a course, this is provided on a best-effort basis only. Crix Technology does not guarantee job placement, interviews, or employment outcomes for any student, as these depend on factors including market conditions, employer requirements, and individual performance.`,
       },
       {
-        title: "13. Student Work",
+        title: "14. Student Work",
         content: `Any code, projects, or assignments created solely by a student as part of coursework ("Student Work") remain the intellectual property of that student. By submitting Student Work for evaluation, or agreeing to feature it as a showcase/portfolio project, the student grants Crix Technology a non-exclusive, royalty-free, worldwide licence to use, reproduce, and display such Student Work for promotional, marketing, and educational purposes, unless the student opts out in writing.`,
       },
       {
-        title: "14. Data Privacy",
+        title: "15. Data Privacy",
         content: `Personal data collected through your account and during enrollment is processed in accordance with the Digital Personal Data Protection Act, 2023 ("DPDP Act") and used solely for administration of your account and courses, communication, certification, payment processing, and (where applicable) placement assistance. Students may, by written request, access, correct, or request erasure of their personal data, or withdraw consent, subject to Crix Technology's legal and administrative record-keeping requirements. Crix Technology will not sell student personal data to third parties without consent. See our Privacy Policy for full details, including our designated Grievance Officer's contact information.`,
       },
       {
-        title: "15. Limitation of Liability",
+        title: "16. Limitation of Liability",
         content: `Crix Technology provides its services "as is" without warranties of any kind. We are not liable for:
 • Any indirect, incidental, or consequential damages arising from use of our services
 • Loss of data, income, or missed employment opportunities resulting from technical issues
@@ -520,31 +574,31 @@ The referral discount, the referral reward, and each offer code's terms are set 
 Our total liability in any matter shall not exceed the amount you paid for our services.`,
       },
       {
-        title: "16. Force Majeure",
+        title: "17. Force Majeure",
         content: `Crix Technology shall not be liable for any delay, cancellation, or change in course delivery caused by circumstances beyond its reasonable control, including natural disasters, government restrictions, internet outages, or public health emergencies. In such cases, Crix Technology will make reasonable efforts to reschedule or provide alternate arrangements.`,
       },
       {
-        title: "17. Termination",
+        title: "18. Termination",
         content: `We reserve the right to terminate or suspend access to our services, including your account, at our discretion for conduct that we believe violates these Terms or is harmful to other users, us, or third parties. Upon termination, your right to use our services immediately ceases.`,
       },
       {
-        title: "18. Changes to Terms",
+        title: "19. Changes to Terms",
         content: `We may revise these Terms of Service at any time. Changes will be posted on this page with an updated effective date. Continued use of our services after changes constitutes acceptance of the revised terms.`,
       },
       {
-        title: "19. Governing Law & Dispute Resolution",
+        title: "20. Governing Law & Dispute Resolution",
         content: `These Terms shall be governed by and construed in accordance with the laws of India. The parties shall first attempt to resolve any dispute amicably through good-faith discussion. If unresolved, the dispute shall be referred to arbitration under the Arbitration and Conciliation Act, 1996 (as amended), before a sole arbitrator, with the seat and venue of arbitration at Ahmedabad, Gujarat, India, and proceedings conducted in English. Subject to this clause, the courts at Ahmedabad, Gujarat, India shall have exclusive jurisdiction.`,
       },
       {
-        title: "20. Third-Party Services",
-        content: `Our website integrates third-party services, including Razorpay for payment processing, Google for sign-in and (where enabled) Google Analytics, and courier partners for delivering kits, and links to WhatsApp for inquiries and support. Your use of these services is also subject to their own terms and privacy policies, over which Crix Technology has no control. Crix Technology is not responsible for the availability, content, security, or practices of these third-party services.`,
+        title: "21. Third-Party Services",
+        content: `Our website integrates third-party services, including Razorpay for payment processing, Google for sign-in and (where enabled) Google Analytics, cloud storage for aptitude-test webcam photos, and courier partners for delivering kits, and links to WhatsApp for inquiries and support. Your use of these services is also subject to their own terms and privacy policies, over which Crix Technology has no control. Crix Technology is not responsible for the availability, content, security, or practices of these third-party services.`,
       },
       {
-        title: "21. General Provisions",
+        title: "22. General Provisions",
         content: `If any provision of these Terms is found invalid or unenforceable by a court or arbitrator of competent jurisdiction, that provision shall be limited or eliminated to the minimum extent necessary, and the remaining provisions shall continue in full force and effect. No failure or delay by Crix Technology in exercising any right under these Terms shall operate as a waiver of that right. You may not assign or transfer your rights or obligations under these Terms without our prior written consent; Crix Technology may assign these Terms in connection with a merger, acquisition, or sale of assets. These Terms, together with any policies referenced herein, constitute the entire agreement between you and Crix Technology regarding your use of our services.`,
       },
       {
-        title: "22. Contact Us",
+        title: "23. Contact Us",
         content: `For any questions regarding these Terms of Service, please contact us:
 
 Email: crixtechnology@gmail.com

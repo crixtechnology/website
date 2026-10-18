@@ -196,12 +196,15 @@ export async function submitApplication(payload) {
 }
 
 // ---------- Razorpay ----------
+// Every call that starts a payment sends acceptTerms: true. They are only made
+// once the buyer has ticked the Terms & Conditions box (<TermsCheckbox> in
+// components/ui.jsx), and the server refuses to start a payment without it.
 export async function createRazorpayOrder(applicationId, courseSlug, tier, couponCode) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
     const res = await authFetch("/payments/create-order", {
       method: "POST",
-      body: JSON.stringify({ applicationId, courseSlug, tier, ...(couponCode ? { couponCode } : {}) }),
+      body: JSON.stringify({ applicationId, courseSlug, tier, acceptTerms: true, ...(couponCode ? { couponCode } : {}) }),
     });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
@@ -233,13 +236,13 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
 }
 
 // ---------- Auth (unified — students and admins both use these) ----------
-export async function signup({ name, email, phone, password, referralCode }) {
+export async function signup({ name, email, phone, password, referralCode, ageConfirmed }) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
     const res = await fetch(`${API}/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone, password, referralCode: (referralCode || "").trim() || undefined }),
+      body: JSON.stringify({ name, email, phone, password, ageConfirmed: ageConfirmed === true, referralCode: (referralCode || "").trim() || undefined }),
     });
     const data = await res.json();
     // The remembered friend's code (from a shared ?ref= link) is used up as soon as
@@ -271,14 +274,15 @@ export async function login(email, password) {
 }
 
 // credential is the ID token Google's Identity Services button hands back
-// (see AuthModal in components/ui.jsx) — verified server-side.
-export async function googleAuth(credential) {
+// (see AuthModal in components/ui.jsx) — verified server-side. `ageConfirmed`
+// is the sign-up popup's age box; a brand-new account can't be made without it.
+export async function googleAuth(credential, { ageConfirmed = false } = {}) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
     const res = await fetch(`${API}/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ credential, referralCode: getStoredReferral() || undefined }),
+      body: JSON.stringify({ credential, ageConfirmed: ageConfirmed === true, referralCode: getStoredReferral() || undefined }),
     });
     const data = await res.json();
     if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); clearStoredReferral(); }
@@ -380,6 +384,21 @@ export const requestPasswordReveal = () =>
 export const verifyPasswordReveal = (otp) =>
   authPost("/auth/password/reveal/verify", { otp }, "Could not verify the code right now.");
 
+// ---------- Student: delete my account (Profile page; DPDP Act 2023 erasure) ----------
+export async function getDeletionSummary() {
+  try {
+    return await jsonOr(await authFetch("/me/account/deletion"), "Could not load your account details");
+  } catch (e) {
+    return { ok: false, error: "Could not load your account details" };
+  }
+}
+
+export const sendDeletionCode = () =>
+  authPost("/me/account/deletion/send-code", {}, "Could not send the code right now. Please try again.");
+
+export const deleteMyAccount = (code) =>
+  authPost("/me/account/deletion", { code, confirm: true }, "Could not delete your account right now. Please try again.");
+
 // ---------- Student: my courses + learn page ----------
 export async function getMyEnrollments() {
   try {
@@ -473,7 +492,7 @@ export async function getUpgradeOptions(courseSlug) {
 // createRazorpayOrder, so the same Checkout + verifyPayment flow finishes it.
 export async function createUpgradeOrder(courseSlug, tier) {
   try {
-    const res = await authFetch("/payments/create-upgrade-order", { method: "POST", body: JSON.stringify({ courseSlug, tier }) });
+    const res = await authFetch("/payments/create-upgrade-order", { method: "POST", body: JSON.stringify({ courseSlug, tier, acceptTerms: true }) });
     if (res.status === 401) adminLogout();
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not start the upgrade" };
@@ -538,6 +557,24 @@ export async function getPriceQuote(courseSlug, tier, couponCode) {
 // ---------- Wallet ----------
 // The student's wallet: { balance, available, earned, spent, entries: [{ id, amount, kind, label, createdAt }] }
 // (rupees). `available` is what can be spent now — balance less credit held by an unpaid checkout.
+// The signup bonus of an email/password account waits until the email is
+// verified: send a code to the account's own address, then check it.
+export async function sendBonusCode() {
+  try {
+    return await jsonOr(await authFetch("/me/signup-bonus/send-code", { method: "POST", body: "{}" }), "Could not send the code");
+  } catch (e) {
+    return { ok: false, error: "Could not send the code right now." };
+  }
+}
+
+export async function verifyBonusCode(code) {
+  try {
+    return await jsonOr(await authFetch("/me/signup-bonus/verify", { method: "POST", body: JSON.stringify({ code }) }), "Could not check the code");
+  } catch (e) {
+    return { ok: false, error: "Could not check the code right now." };
+  }
+}
+
 export async function getMyWallet() {
   try {
     const res = await authFetch("/me/wallet");
@@ -557,7 +594,7 @@ export async function payWithWallet(applicationId, courseSlug, tier, couponCode)
   try {
     const res = await authFetch("/payments/pay-with-wallet", {
       method: "POST",
-      body: JSON.stringify({ applicationId, courseSlug, tier, ...(couponCode ? { couponCode } : {}) }),
+      body: JSON.stringify({ applicationId, courseSlug, tier, acceptTerms: true, ...(couponCode ? { couponCode } : {}) }),
     });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
@@ -600,7 +637,7 @@ export async function getMyPaymentRequests() {
 // Same response shape as createRazorpayOrder.
 export async function createPaymentRequestOrder(id) {
   try {
-    const res = await authFetch(`/me/payment-requests/${id}/create-order`, { method: "POST" });
+    const res = await authFetch(`/me/payment-requests/${id}/create-order`, { method: "POST", body: JSON.stringify({ acceptTerms: true }) });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not start payment" };
@@ -624,3 +661,120 @@ export async function verifyPaymentRequest({ razorpay_order_id, razorpay_payment
     return { ok: false, error: "Could not confirm your payment right now." };
   }
 }
+
+// ---------- Careers: job openings, applications, the aptitude-test fee ----------
+// Open roles for the Careers page, plus the live terms (test fee, signup bonus, credit rules).
+export async function getOpenings() {
+  if (!API) return { ok: false, openings: [] };
+  try {
+    const res = await fetch(`${API}/careers/openings`);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load openings", openings: [] };
+  }
+}
+
+// The logged-in student's applications: { applications, terms }.
+export async function getMyJobApplications() {
+  if (!API) return { ok: false, error: "Backend not configured yet." };
+  try {
+    return await jsonOr(await authFetch("/me/job-applications"), "Could not load your applications");
+  } catch (e) {
+    return { ok: false, error: "Could not load your applications" };
+  }
+}
+
+// Applies for a role (by slug). Applying again for a role returns the same application.
+export async function applyForRole(opening) {
+  try {
+    return await jsonOr(await authFetch("/me/job-applications", { method: "POST", body: JSON.stringify({ opening }) }), "Could not apply right now");
+  } catch (e) {
+    return { ok: false, error: "Could not apply right now." };
+  }
+}
+
+// Same response shape as createRazorpayOrder. The amount is the server's.
+export async function createTestFeeOrder(applicationId) {
+  try {
+    const res = await authFetch(`/me/job-applications/${applicationId}/create-order`, { method: "POST", body: JSON.stringify({ acceptTerms: true, confirmAdult: true }) });
+    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not start payment" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not start payment right now." };
+  }
+}
+
+export async function verifyTestFee({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
+  try {
+    const res = await fetch(`${API}/careers/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not confirm payment" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not confirm your payment right now." };
+  }
+}
+
+// ---------- Dashboard notifications ----------
+export async function getNotifications() {
+  if (!API) return { ok: false };
+  try {
+    return await jsonOr(await authFetch("/me/notifications"), "Could not load notifications");
+  } catch (e) {
+    return { ok: false, error: "Could not load notifications" };
+  }
+}
+
+export function markNotificationsRead() {
+  return authFetch("/me/notifications/read", { method: "POST" }).then(() => {}).catch(() => {});
+}
+
+// ---------- The aptitude test (pages/student/AptitudeTest.jsx) ----------
+// Every call answers { ok, ... }. Two extra fields let the test page react
+// properly: `network: true` when the request never reached the server (the page
+// keeps the answer and retries), and `code` from the server — "submitted" (the
+// test is over), "session" (it is open in another window) or "desktop_app".
+// The desktop lockdown app, when the page is running inside it, supplies a token
+// through window.crixDesktop; the server verifies it.
+function desktopAppHeaders() {
+  try {
+    const token = window.crixDesktop && typeof window.crixDesktop.getToken === "function" ? window.crixDesktop.getToken() : "";
+    return token ? { "X-Crix-App-Token": String(token) } : {};
+  } catch (e) { return {}; }
+}
+
+async function testCall(path, { method = "POST", body, sessionId, headers, raw } = {}) {
+  let res;
+  try {
+    res = await authFetch(path, {
+      method,
+      ...(body !== undefined ? { body: raw ? body : JSON.stringify(body) } : {}),
+      headers: { ...(sessionId ? { "X-Test-Session": sessionId } : {}), ...desktopAppHeaders(), ...(headers || {}) },
+    });
+  } catch (e) {
+    return { ok: false, network: true, error: "You seem to be offline. Reconnecting..." };
+  }
+  if (res.status === 401) { adminLogout(); return { ok: false, code: "auth", error: "Your session expired. Log in again to continue your test." }; }
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* not JSON: treated as a server hiccup below */ }
+  if (!data) return { ok: false, network: res.status >= 500, error: "Something went wrong. Please try again." };
+  if (!res.ok) return { ok: false, status: res.status, code: data.code, reason: data.reason, error: data.error || "Something went wrong." };
+  return data;
+}
+
+export const getTestInfo = (applicationId) => testCall(`/me/job-applications/${applicationId}/test`, { method: "GET" });
+export const startTest = (applicationId, { consent, adult, sessionId }) =>
+  testCall(`/me/job-applications/${applicationId}/test/start`, { body: { consent, ...(adult ? { adult } : {}), ...(sessionId ? { sessionId } : {}) } });
+export const saveTestAnswer = (attemptId, sessionId, answer) => testCall(`/me/test/${attemptId}/answers`, { method: "PUT", body: answer, sessionId });
+export const testHeartbeat = (attemptId, sessionId) => testCall(`/me/test/${attemptId}/heartbeat`, { body: {}, sessionId });
+export const reportTestViolation = (attemptId, sessionId, type, detail) => testCall(`/me/test/${attemptId}/violations`, { body: { type, ...(detail ? { detail } : {}) }, sessionId });
+export const submitTest = (attemptId, sessionId) => testCall(`/me/test/${attemptId}/submit`, { body: {}, sessionId });
+// `blob` is a JPEG; `flag` is "" | "no_face" | "multiple_faces".
+export const uploadTestSnapshot = (attemptId, sessionId, blob, flag) =>
+  testCall(`/me/test/${attemptId}/snapshots`, { body: blob, raw: true, sessionId, headers: { "Content-Type": "image/jpeg", ...(flag ? { "X-Face-Flag": flag } : {}) } });

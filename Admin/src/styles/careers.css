@@ -1,0 +1,26 @@
+/* Admin pages for careers and the aptitude test: the few shapes the existing
+   admin styles (admin-form, admin-row, ref-stats, admin-pill...) don't cover.
+   Colours come from the same tokens as everything else in global.css. */
+
+/* Question bank: the options of the question being written. */
+.question-options{border:0;padding:0;margin:0 0 18px;min-width:0;display:grid;gap:10px}
+.question-options legend{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);padding:0;margin-bottom:10px}
+.question-option{display:flex;align-items:center;gap:10px}
+.question-option input[type="radio"]{flex:none;width:18px;height:18px;accent-color:var(--teal)}
+.question-option input:not([type="radio"]){flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--text);font:inherit;font-size:.92rem}
+.question-option input:not([type="radio"]):focus{outline:none;border-color:var(--teal)}
+.question-option .btn{padding:8px 12px}
+[data-theme="light"] .question-option input:not([type="radio"]){background:rgba(16,27,51,.035)}
+
+/* The right answer, and a wrong one the candidate chose. */
+.question-answer{color:var(--teal);font-weight:600}
+.question-wrong{color:var(--danger)}
+
+/* Attempt review: webcam snapshots. */
+.snapshot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.snapshot{margin:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.snapshot.flagged{border-color:var(--danger)}
+.snapshot img,.snapshot-empty{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.snapshot-empty{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.75rem;text-align:center;padding:8px}
+.snapshot figcaption{padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.04em;color:var(--muted)}
+.snapshot.flagged figcaption{color:var(--danger)}

@@ -2,8 +2,10 @@ import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigationType } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import SetNewPassword from "./components/SetNewPassword.jsx";
+import CookieConsent from "./components/CookieConsent.jsx";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
 import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
+import Careers from "./pages/Careers.jsx";
 import { useCopyProtection } from "./hooks/useCopyProtection.js";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
 import { captureReferralFromUrl } from "./utils/referral.js";
@@ -15,7 +17,8 @@ import { registerPrefetch } from "./utils/prefetch.js";
 // got a chance to set up window.gtag — silently dropping every session's
 // very first pageview (anyone who lands and bounces without navigating
 // again would never be recorded at all). initAnalytics() is idempotent and
-// side-effect-safe to call at import time (a no-op with no GA ID set).
+// side-effect-safe to call at import time (a no-op with no GA ID set, and
+// until the visitor accepts analytics in the cookie banner).
 initAnalytics();
 
 // The student area is only ever reached by someone already
@@ -33,12 +36,14 @@ const ROUTE_LOADERS = {
   "/dashboard": () => import("./pages/student/MyCourses.jsx"),
   "/learn/": () => import("./pages/student/Learn.jsx"),
   "/profile": () => import("./pages/student/Profile.jsx"),
+  "/test/": () => import("./pages/student/AptitudeTest.jsx"),
 };
 registerPrefetch(ROUTE_LOADERS);
 
 const MyCourses = lazy(ROUTE_LOADERS["/dashboard"]);
 const Learn = lazy(ROUTE_LOADERS["/learn/"]);
 const Profile = lazy(ROUTE_LOADERS["/profile"]);
+const AptitudeTest = lazy(ROUTE_LOADERS["/test/"]);
 
 
 // Matches the "Loading..." convention every data-fetching page here already
@@ -188,6 +193,7 @@ export default function App() {
             <Route path="/courses" element={<Navigate to="/programs#courses" replace />} />
             <Route path="/services" element={<Services />} />
             <Route path="/about" element={<About />} />
+            <Route path="/careers" element={<Careers />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
@@ -199,6 +205,8 @@ export default function App() {
             <Route path="/dashboard" element={<MyCourses />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/learn/:slug" element={<Learn />} />
+            {/* The aptitude test an application's fee unlocks (My Dashboard → Apply / Aptitude Test). */}
+            <Route path="/test/:applicationId" element={<AptitudeTest />} />
 
             {/* Any other address: a real "not found" page, not the home page under a wrong URL. */}
             <Route path="*" element={<NotFound />} />
@@ -208,6 +216,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
       <Footer />
+      <CookieConsent />
       <AuthModal />
       <SetNewPassword />
     </>

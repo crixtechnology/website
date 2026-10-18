@@ -26,7 +26,7 @@ afterAll(async () => { await teardownTestDb(); });
 const authed = (req, token) => req.set("Authorization", `Bearer ${token}`);
 
 async function createStudent(email) {
-  const signup = await request(app).post("/api/auth/signup").send({ name: "Student", email, phone: "9876500000", password: "a-real-password" });
+  const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Student", email, phone: "9876500000", password: "a-real-password" });
   return { user: signup.body.user, token: signup.body.token };
 }
 
@@ -57,7 +57,11 @@ describe("payment requests", () => {
     expect(mine.body.requests).toHaveLength(1);
     const reqId = mine.body.requests[0]._id;
 
-    const order = await authed(request(app).post(`/api/me/payment-requests/${reqId}/create-order`), token);
+    const noTerms = await authed(request(app).post(`/api/me/payment-requests/${reqId}/create-order`), token).send({});
+    expect(noTerms.status).toBe(400);
+    expect(noTerms.body.code).toBe("TERMS_REQUIRED");
+
+    const order = await authed(request(app).post(`/api/me/payment-requests/${reqId}/create-order`), token).send({ acceptTerms: true });
     expect(order.status).toBe(201);
     expect(order.body.amount).toBe(250000);
     expect(razorpay.orders.create).toHaveBeenLastCalledWith(expect.objectContaining({ amount: 250000 }));
@@ -86,7 +90,7 @@ describe("payment requests", () => {
 
     const after = await authed(request(app).get("/api/me/payment-requests"), token);
     expect(after.body.requests[0].status).toBe("paid");
-    const payAgain = await authed(request(app).post(`/api/me/payment-requests/${reqId}/create-order`), token);
+    const payAgain = await authed(request(app).post(`/api/me/payment-requests/${reqId}/create-order`), token).send({ acceptTerms: true });
     expect(payAgain.status).toBe(400);
   });
 
@@ -99,7 +103,7 @@ describe("payment requests", () => {
       .send({ email: "preq-owner@example.com", courseId: course.id, amount: 100 });
     const id = created.body.request._id;
 
-    const stolen = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), other.token);
+    const stolen = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), other.token).send({ acceptTerms: true });
     expect(stolen.status).toBe(404);
 
     const dup = await authed(request(app).post("/api/admin/payment-requests"), adminToken)
@@ -120,7 +124,7 @@ describe("payment requests", () => {
 
     const created = await authed(request(app).post("/api/admin/payment-requests"), adminToken)
       .send({ email: "preq-pro@example.com", courseId: course.id, amount: 500, tier: "basic" });
-    const order = await authed(request(app).post(`/api/me/payment-requests/${created.body.request._id}/create-order`), token);
+    const order = await authed(request(app).post(`/api/me/payment-requests/${created.body.request._id}/create-order`), token).send({ acceptTerms: true });
     const verified = await request(app).post("/api/payment-requests/verify").send(signedConfirmation(order.body.orderId));
     expect(verified.body.ok).toBe(true);
 

@@ -1,6 +1,7 @@
 const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
+const { deleteAccount } = require("../utils/accountDeletion");
 const { serializeEnrollment } = require("../utils/enrollmentAccess");
 const { serialize } = require("../utils/serialize");
 const bcrypt = require("bcryptjs");
@@ -147,12 +148,10 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res, next) => {
       }
     }
 
-    await prisma.$transaction([
-      prisma.enrollment.deleteMany({ where: { userId: target.id } }),
-      prisma.creditEntry.deleteMany({ where: { userId: target.id } }),
-      prisma.referral.deleteMany({ where: { OR: [{ referrerId: target.id }, { refereeId: target.id }] } }),
-      prisma.user.delete({ where: { id: target.id } }),
-    ]);
+    // Same erasure as a student's own request (utils/accountDeletion.js).
+    const result = await deleteAccount(target, { requestedBy: "admin", adminId: String(req.admin.sub) });
+    if (!result.ok) return res.status(result.status).json({ ok: false, error: result.error });
+    console.log(`[admin] ${req.admin.sub} deleted user ${target.id}`);
     res.json({ ok: true });
   } catch (e) {
     next(e);

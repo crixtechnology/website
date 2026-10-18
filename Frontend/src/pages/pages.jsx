@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
+  DownloadPdfButton,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, courses, process, benefits, stats, about, legal,
@@ -913,12 +914,17 @@ function LegalPage({ eyebrow, title, doc, path }) {
           section's top/bottom mask fade so every line stays fully legible. */}
       <section className="section section--plain" style={{ paddingTop: 44 }}>
         <div className="wrap" style={{ maxWidth: 780 }}>
+          {/* The whole document as a PDF, to keep or print. */}
+          <div className="legal-actions">
+            <DownloadPdfButton label={`Download ${title} (PDF)`}
+              getDocument={() => ({ title, subtitle: legal.updated, intro: doc.intro, sections: doc.sections })} />
+          </div>
           <p style={{
             color: "var(--text)", lineHeight: 1.8, marginBottom: 40, padding: "18px 22px",
             background: "rgba(var(--teal-rgb),.08)", borderLeft: "3px solid var(--teal)", borderRadius: 12,
           }}>{doc.intro}</p>
           {doc.sections.map((s) => (
-            <div key={s.title} style={{ marginBottom: 32 }}>
+            <div key={s.title} id={s.id} style={{ marginBottom: 32, scrollMarginTop: 96 }}>
               <h3 aria-level={2} style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{s.title}</h3>
               <p style={{ color: "var(--muted)", lineHeight: 1.85, whiteSpace: "pre-line" }}>{s.content}</p>
             </div>
