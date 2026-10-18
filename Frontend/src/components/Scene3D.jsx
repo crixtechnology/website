@@ -8,36 +8,49 @@ import { REDUCED } from "./ui.jsx";
 // separate download that arrives AFTER the page is usable, instead of sitting in the
 // main script every visitor waits for (see the lazy() wrappers in ui.jsx).
 
-/* ---------- Hero3D: neural constellation background ---------- */
+/* ---------- Hero3D: holographic globe over a drifting constellation ---------- */
 // Colors/opacities tuned separately per theme — this is a raw WebGL canvas
 // (Three.js material colors), not DOM/CSS, so the CSS custom-property
 // theme system (global.css's [data-theme="light"] block) can't reach it at
-// all. The dark-mode values below (pale cyan/teal at low opacity) were
-// tuned to pop against the near-black --ink background; over the light
-// theme's near-white background the same pale, low-opacity colors read as
-// washed out almost to invisible, so light gets its own deeper, more
-// opaque set instead of just reusing dark's. Dark mode adds glows together
-// (they light up against the dark); light mode draws them normally.
+// all. Dark mode adds glows together (they light up against the near-black
+// background); light mode uses deeper colors drawn normally, since pale,
+// added-together glows wash out to nothing over the near-white background.
+// `body` matches each theme's page background, so the globe's far side is
+// hidden behind a sphere that blends into the page.
 const HERO3D_PALETTE = {
   dark: {
-    points: 0x7fe8e0, pointsOpacity: 0.85, line: 0x14c9c9, lineOpacity: 0.16,
-    globe: [0x14c9c9, 0x7fe8e0, 0xf2b44c], globeOpacity: [0.35, 0.18, 0.2],
-    node: 0x7fe8e0, core: 0x14c9c9, coreOpacity: 0.28, ring: 0x7fe8e0, ringOpacity: 0.38, spark: 0xf2b44c, glow: true,
+    points: 0x7fe8e0, pointsOpacity: 0.8, line: 0x14c9c9, lineOpacity: 0.14,
+    grid: 0x14c9c9, gridOpacity: 0.2, land: 0x7fe8e0, landOpacity: 0.95,
+    body: 0x060b1a, bodyOpacity: 0.88, rim: 0x14c9c9, halo: 0x14c9c9, haloOpacity: 0.6,
+    arc: 0x14c9c9, arcOpacity: 0.5, pulse: 0xf2b44c, ping: 0x7fe8e0,
+    ring: 0x7fe8e0, ringOpacity: 0.35, moon: 0xf2b44c, moonOpacity: 0.6, glow: true,
   },
   light: {
-    points: 0x0891b2, pointsOpacity: 0.9, line: 0x0d8c86, lineOpacity: 0.3,
-    globe: [0x0d8c86, 0x0891b2, 0xb45309], globeOpacity: [0.55, 0.32, 0.34],
-    node: 0x0e7490, core: 0x14c9c9, coreOpacity: 0.16, ring: 0x0d8c86, ringOpacity: 0.45, spark: 0xb45309, glow: false,
+    points: 0x0891b2, pointsOpacity: 0.85, line: 0x0d8c86, lineOpacity: 0.26,
+    grid: 0x0d8c86, gridOpacity: 0.32, land: 0x0e7490, landOpacity: 0.95,
+    body: 0xf5f7fb, bodyOpacity: 0.9, rim: 0x14c9c9, halo: 0x14c9c9, haloOpacity: 0.4,
+    arc: 0x0d8c86, arcOpacity: 0.6, pulse: 0xb45309, ping: 0x0e7490,
+    ring: 0x0d8c86, ringOpacity: 0.45, moon: 0xb45309, moonOpacity: 0.75, glow: false,
   },
 };
 
 // Full detail for desktops. Phones, tablets and low-power devices get the same
-// scene with fewer points and lines, one orbit ring, normal pixel density and
-// 30 frames a second — light enough to run there too, instead of being off.
+// scene with fewer dots, arcs and lines, one orbit ring, normal pixel density
+// and 30 frames a second — light enough to run there too, instead of being off.
 const HERO3D_DETAIL = {
-  full: { points: 420, lines: 260, connectEvery: 6, maxRatio: 1.6, antialias: true, frameMs: 0, rings: 2 },
-  lite: { points: 220, lines: 140, connectEvery: 8, maxRatio: 1, antialias: false, frameMs: 33, rings: 1 },
+  full: { points: 360, lines: 220, connectEvery: 6, maxRatio: 1.6, antialias: true, frameMs: 0, rings: 2, dots: 2600, arcs: 10, segs: 48 },
+  lite: { points: 160, lines: 100, connectEvery: 8, maxRatio: 1, antialias: false, frameMs: 33, rings: 1, dots: 1500, arcs: 6, segs: 32 },
 };
+
+const GLOBE_R = 2.6;
+const ARC_PTS = 40;
+
+// Where the "land" is: a smooth, made-up pattern over the sphere, so the dots
+// gather into continent-like patches. The same every time (no randomness).
+const isLand = (x, y, z) =>
+  Math.sin(3.4 * x + 1.3) * Math.cos(2.9 * y - 0.4) +
+  0.6 * Math.sin(4.6 * z + 2.1) * Math.cos(3.8 * x + 0.7) +
+  0.35 * Math.sin(7.3 * y + 0.5) > 0.22;
 
 export function Hero3D({ lite = false }) {
   const mountRef = useRef(null);
@@ -56,25 +69,32 @@ export function Hero3D({ lite = false }) {
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     mount.appendChild(renderer.domElement);
 
-    // A soft round glow, used for the constellation's dots, the globe's nodes,
-    // its core and the travelling sparks.
-    const glowCanvas = document.createElement("canvas");
-    glowCanvas.width = glowCanvas.height = 64;
-    const gctx = glowCanvas.getContext("2d");
-    const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.3, "rgba(255,255,255,.7)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    gctx.fillStyle = grad;
-    gctx.fillRect(0, 0, 64, 64);
-    const glowTex = new THREE.CanvasTexture(glowCanvas);
-    const blending = palette.glow ? THREE.AdditiveBlending : THREE.NormalBlending;
-    const disposables = [glowTex];
+    const disposables = [];
     const keep = (...xs) => { disposables.push(...xs); return xs[0]; };
+    const blending = palette.glow ? THREE.AdditiveBlending : THREE.NormalBlending;
+    // A soft-edged texture drawn once on a small canvas: `stops` are
+    // [position 0-1 from the centre, opacity].
+    const radialTex = (stops) => {
+      const c = document.createElement("canvas");
+      c.width = c.height = 128;
+      const g = c.getContext("2d");
+      const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      stops.forEach(([at, a]) => grad.addColorStop(at, `rgba(255,255,255,${a})`));
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 128, 128);
+      return keep(new THREE.CanvasTexture(c));
+    };
+    const dotTex = radialTex([[0, 1], [0.3, 0.7], [1, 0]]);
     const sprite = (color, opacity, scale) => {
-      const s = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity, depthWrite: false, blending })));
+      const s = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: dotTex, color, transparent: true, opacity, depthWrite: false, blending })));
       s.scale.setScalar(scale);
       return s;
+    };
+    const lineMat = (color, opacity, extra) => keep(new (extra && extra.dashSize ? THREE.LineDashedMaterial : THREE.LineBasicMaterial)({ color, transparent: true, opacity, depthWrite: false, ...extra }));
+    const geometry = (arr) => {
+      const g = keep(new THREE.BufferGeometry());
+      g.setAttribute("position", new THREE.BufferAttribute(arr instanceof Float32Array ? arr : new Float32Array(arr), 3));
+      return g;
     };
 
     // ----- the constellation: drifting dots, joined when they come close -----
@@ -84,95 +104,164 @@ export function Hero3D({ lite = false }) {
     for (let i = 0; i < N; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 30;
       positions[i * 3 + 1] = (Math.random() - 0.5) * 18;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 14;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 14 - 3;
       speeds.push(0.0016 + Math.random() * 0.003);
     }
-    const geo = keep(new THREE.BufferGeometry());
-    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    // Round, softly glowing dots (they were single square pixels before).
-    scene.add(new THREE.Points(geo, keep(new THREE.PointsMaterial({ color: palette.points, map: glowTex, size: 0.16, transparent: true, opacity: palette.pointsOpacity, depthWrite: false, blending }))));
-
+    const geo = geometry(positions);
+    scene.add(new THREE.Points(geo, keep(new THREE.PointsMaterial({ color: palette.points, map: dotTex, size: 0.14, transparent: true, opacity: palette.pointsOpacity, depthWrite: false, blending }))));
     const MAXL = detail.lines;
     const linePos = new Float32Array(MAXL * 6);
-    const lineGeo = keep(new THREE.BufferGeometry());
-    lineGeo.setAttribute("position", new THREE.BufferAttribute(linePos, 3));
-    scene.add(new THREE.LineSegments(lineGeo, keep(new THREE.LineBasicMaterial({ color: palette.line, transparent: true, opacity: palette.lineOpacity }))));
+    const lineGeo = geometry(linePos);
+    scene.add(new THREE.LineSegments(lineGeo, lineMat(palette.line, palette.lineOpacity)));
 
     // ----- the globe -----
-    // The globe sits in a "rig" so it can lean toward the cursor (rig
-    // rotation) independently of its own continuous spin (cluster rotation).
+    // It sits in a "rig" that leans toward the cursor (rig rotation), and
+    // spins on its own tilted axis inside it (globe rotation).
     const rig = new THREE.Group();
-    const cluster = new THREE.Group();
-    rig.add(cluster);
+    const tilt = new THREE.Group();
+    tilt.rotation.set(0.28, 0, 0.32);
+    const globe = new THREE.Group();
+    tilt.add(globe);
+    rig.add(tilt);
     scene.add(rig);
-    const GLOBES = [[2.6, 0, 0, 0], [1.1, 4.4, 1.6, -1.5], [0.8, -4.8, -2.0, 1.0]];
-    const globes = GLOBES.map((c, i) => {
-      const mat = keep(new THREE.MeshBasicMaterial({ color: palette.globe[i], wireframe: true, transparent: true, opacity: palette.globeOpacity[i] }));
-      // the main globe is a finer geodesic sphere than before
-      const m = new THREE.Mesh(keep(new THREE.IcosahedronGeometry(c[0], i === 0 ? 2 : 1)), mat);
-      m.position.set(c[1], c[2], c[3]);
-      cluster.add(m);
-      return m;
-    });
-    // Glowing nodes on the main globe's corners, turning with it.
+    const R = GLOBE_R;
+
+    // A sphere the color of the page hides the far side, so the globe reads as
+    // solid; its edge is lit (a "rim"), like an atmosphere seen from space.
+    const body = new THREE.Mesh(
+      keep(new THREE.SphereGeometry(R * 0.99, lite ? 32 : 48, lite ? 24 : 32)),
+      keep(new THREE.ShaderMaterial({
+        transparent: true,
+        uniforms: { body: { value: new THREE.Color(palette.body) }, rim: { value: new THREE.Color(palette.rim) }, alpha: { value: palette.bodyOpacity } },
+        vertexShader: "varying float f; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vec3 n = normalize(normalMatrix * normal); f = pow(1.0 - abs(dot(n, normalize(-mv.xyz))), 2.6); gl_Position = projectionMatrix * mv; }",
+        fragmentShader: "uniform vec3 body; uniform vec3 rim; uniform float alpha; varying float f; void main(){ gl_FragColor = vec4(mix(body, rim, f * 0.85), mix(alpha, 1.0, f)); }",
+      })),
+    );
+    body.renderOrder = -1; // drawn first, so it hides only what lies behind it
+    globe.add(body);
+
+    // The wire: lines of latitude and longitude.
     {
-      const pa = globes[0].geometry.attributes.position;
-      const seen = new Set();
-      const nodes = [];
-      for (let i = 0; i < pa.count; i++) {
-        const key = [pa.getX(i), pa.getY(i), pa.getZ(i)].map((v) => v.toFixed(2)).join();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        if (seen.size % 2) nodes.push(pa.getX(i), pa.getY(i), pa.getZ(i)); // every other corner
+      const g = [];
+      const r = R * 1.002;
+      for (let lat = -75; lat <= 75; lat += 15) {
+        const phi = (lat * Math.PI) / 180, y = Math.sin(phi) * r, rr = Math.cos(phi) * r;
+        for (let k = 0; k < 96; k++) {
+          const a0 = (k / 96) * Math.PI * 2, a1 = ((k + 1) / 96) * Math.PI * 2;
+          g.push(Math.cos(a0) * rr, y, Math.sin(a0) * rr, Math.cos(a1) * rr, y, Math.sin(a1) * rr);
+        }
       }
-      const nodeGeo = keep(new THREE.BufferGeometry());
-      nodeGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(nodes), 3));
-      globes[0].add(new THREE.Points(nodeGeo, keep(new THREE.PointsMaterial({ color: palette.node, map: glowTex, size: 0.24, transparent: true, opacity: 0.9, depthWrite: false, blending }))));
+      for (let m = 0; m < 18; m++) {
+        const th = (m / 18) * Math.PI * 2;
+        for (let k = 0; k < 48; k++) {
+          const p0 = -Math.PI / 2 + (k / 48) * Math.PI, p1 = -Math.PI / 2 + ((k + 1) / 48) * Math.PI;
+          g.push(Math.cos(p0) * Math.cos(th) * r, Math.sin(p0) * r, Math.cos(p0) * Math.sin(th) * r,
+            Math.cos(p1) * Math.cos(th) * r, Math.sin(p1) * r, Math.cos(p1) * Math.sin(th) * r);
+        }
+      }
+      globe.add(new THREE.LineSegments(geometry(g), lineMat(palette.grid, palette.gridOpacity)));
     }
-    // A soft glow at the globe's heart, gently breathing.
-    const core = sprite(palette.core, palette.coreOpacity, 6.5);
-    cluster.add(core);
-    // Links from the main globe to the two small ones, with sparks of light
-    // travelling along them.
-    const linkGeo = keep(new THREE.BufferGeometry());
-    linkGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(GLOBES.slice(1).flatMap((c) => [0, 0, 0, c[1], c[2], c[3]])), 3));
-    cluster.add(new THREE.LineSegments(linkGeo, keep(new THREE.LineBasicMaterial({ color: palette.ring, transparent: true, opacity: palette.ringOpacity, depthWrite: false }))));
-    const sparks = GLOBES.slice(1).map((c, i) => {
-      const sp = sprite(palette.spark, 0.95, 0.42);
-      cluster.add(sp);
-      return { sp, to: new THREE.Vector3(c[1], c[2], c[3]), phase: i * 0.5 };
-    });
-    // Thin orbit rings around the globe, each with a light travelling round it.
-    const rings = [[3.5, 1.15, 0.35], [4.3, 1.9, -0.6]].slice(0, detail.rings).map(([r, tiltX, tiltZ], i) => {
+
+    // Glowing dots, spread evenly over the sphere, kept only on "land".
+    const land = [];
+    {
       const pts = [];
-      for (let k = 0; k <= 128; k++) { const a = (k / 128) * Math.PI * 2; pts.push(Math.cos(a) * r, Math.sin(a) * r, 0); }
-      const ringGeo = keep(new THREE.BufferGeometry());
-      ringGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pts), 3));
+      const golden = Math.PI * (3 - Math.sqrt(5));
+      for (let i = 0; i < detail.dots; i++) {
+        const y = 1 - (i / (detail.dots - 1)) * 2, rr = Math.sqrt(1 - y * y), th = golden * i;
+        const x = Math.cos(th) * rr, z = Math.sin(th) * rr;
+        if (!isLand(x, y, z)) continue;
+        pts.push(x * R * 1.006, y * R * 1.006, z * R * 1.006);
+        land.push(new THREE.Vector3(x, y, z));
+      }
+      globe.add(new THREE.Points(geometry(pts), keep(new THREE.PointsMaterial({ color: palette.land, map: dotTex, size: lite ? 0.13 : 0.1, transparent: true, opacity: palette.landOpacity, depthWrite: false, blending }))));
+    }
+
+    // Data arcs between places on the globe: a faint path, a bright pulse
+    // that runs along it, and a ripple where the pulse lands.
+    const pingGeo = keep(new THREE.RingGeometry(0.07, 0.11, 32));
+    const arcs = [];
+    for (let i = 0; i < detail.arcs && land.length > 2; i++) {
+      const a = land[Math.floor(Math.random() * land.length)];
+      let b = land[Math.floor(Math.random() * land.length)];
+      for (let t = 0; t < 20 && a.distanceTo(b) < 0.6; t++) b = land[Math.floor(Math.random() * land.length)];
+      const lift = R * (1.12 + a.distanceTo(b) * 0.35);
+      const mid = a.clone().add(b).normalize().multiplyScalar(lift);
+      const curve = new THREE.QuadraticBezierCurve3(a.clone().multiplyScalar(R * 1.01), mid, b.clone().multiplyScalar(R * 1.01));
+      const arr = new Float32Array((ARC_PTS + 1) * 3);
+      curve.getPoints(ARC_PTS).forEach((p, k) => arr.set([p.x, p.y, p.z], k * 3));
+      const pathGeo = geometry(arr);
+      globe.add(new THREE.Line(pathGeo, lineMat(palette.arc, palette.arcOpacity)));
+      // the pulse: the same points, drawn only a short stretch at a time
+      const pulseGeo = keep(new THREE.BufferGeometry());
+      pulseGeo.setAttribute("position", pathGeo.getAttribute("position"));
+      pulseGeo.setDrawRange(0, 0);
+      globe.add(new THREE.Line(pulseGeo, lineMat(palette.pulse, 0.95)));
+      const head = sprite(palette.pulse, 1, 0.34);
+      head.visible = false;
+      globe.add(head);
+      const ping = new THREE.Mesh(pingGeo, keep(new THREE.MeshBasicMaterial({ color: palette.ping, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending })));
+      ping.position.copy(b).multiplyScalar(R * 1.012);
+      ping.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), b);
+      globe.add(ping);
+      arcs.push({ arr, pulseGeo, head, ping, period: 2.6 + Math.random() * 2.4, offset: Math.random() * 5 });
+    }
+
+    // A soft halo around the globe (a flat glow that always faces the camera).
+    const halo = new THREE.Sprite(keep(new THREE.SpriteMaterial({
+      map: radialTex([[0, 0], [0.6, 0], [0.665, 0.85], [0.74, 0.32], [1, 0]]),
+      color: palette.halo, transparent: true, opacity: palette.haloOpacity, depthWrite: false, blending,
+    })));
+    halo.scale.setScalar((R * 2) / 0.665 * 1.005);
+    rig.add(halo);
+
+    // Orbit rings; the first carries a small amber wire moon (the old globe's
+    // satellites), the second (desktop) is dashed with a light running round.
+    const rings = [[R * 1.42, 1.2, 0.42], [R * 1.72, 1.85, -0.55]].slice(0, detail.rings).map(([r, tiltX, tiltZ], i) => {
+      const pts = [];
+      for (let k = 0; k <= 160; k++) { const a = (k / 160) * Math.PI * 2; pts.push(Math.cos(a) * r, Math.sin(a) * r, 0); }
+      const ringGeo = geometry(pts);
+      const line = new THREE.Line(ringGeo, i ? lineMat(palette.ring, palette.ringOpacity * 0.8, { dashSize: 0.18, gapSize: 0.14 }) : lineMat(palette.ring, palette.ringOpacity));
+      if (i) line.computeLineDistances();
       const ring = new THREE.Group();
       ring.rotation.set(tiltX, 0, tiltZ);
-      ring.add(new THREE.Line(ringGeo, keep(new THREE.LineBasicMaterial({ color: palette.ring, transparent: true, opacity: palette.ringOpacity * (i ? 0.7 : 1), depthWrite: false }))));
-      const sat = sprite(palette.spark, 1, 0.5);
-      ring.add(sat);
+      ring.add(line);
+      let rider;
+      if (i === 0) {
+        rider = new THREE.Mesh(keep(new THREE.IcosahedronGeometry(0.34, 1)), keep(new THREE.MeshBasicMaterial({ color: palette.moon, wireframe: true, transparent: true, opacity: palette.moonOpacity })));
+        rider.add(sprite(palette.moon, 0.5, 1.1));
+      } else {
+        rider = sprite(palette.pulse, 1, 0.42);
+      }
+      ring.add(rider);
       rig.add(ring);
-      return { sat, r, speed: i ? -0.006 : 0.009, a: i * 2 };
+      return { rider, r, speed: i ? -0.005 : 0.007, a: i * 2.4 };
     });
-    // Beside the headline on wide screens; on a narrow, upright screen (where
-    // the right-hand position was mostly off the edge) tucked into the top-right
-    // corner, smaller, so it stays clear of the headline.
+
+    // Beside the headline on wide screens. On a narrow, upright screen it is
+    // larger than the screen's width allows beside the text, so it sits low,
+    // behind the buttons, like a planet rising — clear of the headline.
     const place = () => {
       const narrow = mount.clientWidth < 820 || mount.clientWidth < mount.clientHeight;
-      rig.position.set(narrow ? 2.7 : 4.5, narrow ? 4.6 : 0, 0);
-      rig.scale.setScalar(narrow ? 0.6 : 1);
+      const halfH = camera.position.z * Math.tan((camera.fov * Math.PI) / 360);
+      const halfW = halfH * camera.aspect;
+      if (narrow) {
+        const s = Math.min(1, (halfW * 0.92) / (R * 1.42));
+        rig.scale.setScalar(s);
+        rig.position.set(halfW * 0.22, -halfH * 0.56, 0);
+      } else {
+        rig.scale.setScalar(1);
+        rig.position.set(Math.min(4.8, halfW * 0.42), -0.2, 0);
+      }
     };
     place();
 
-    let mx = 0, my = 0, frame = 0, spinBoost = 0, lastY = window.scrollY;
+    let mx = 0, my = 0, frame = 0, spinBoost = 0, lastY = window.scrollY, scrollShift = 0;
     const onMove = (e) => { mx = e.clientX / window.innerWidth - 0.5; my = e.clientY / window.innerHeight - 0.5; };
     const onScrollFx = () => {
       if (REDUCED) return;
       const y = window.scrollY;
-      cluster.rotation.z = y * 0.0008;
-      cluster.position.y = y * 0.004;
+      scrollShift = y * 0.004;
       // Scrolling spins the globe faster for a moment; decays in step().
       spinBoost = Math.min(0.05, spinBoost + Math.abs(y - lastY) * 0.00012);
       lastY = y;
@@ -223,9 +312,11 @@ export function Hero3D({ lite = false }) {
 
     // One frame. `dt` scales the motion to real elapsed time, so the 30-frames-
     // a-second version moves at the same speed as the 60 one.
+    const TRAIL = 0.28;
     const step = (dt) => {
       const p = geo.attributes.position.array;
       const now = Date.now();
+      const tt = now * 0.001;
       for (let i = 0; i < N; i++) {
         p[i*3+1] += Math.sin(now * 0.0004 + i) * 0.0015 * dt;
         p[i*3] += speeds[i] * 0.4 * dt;
@@ -233,19 +324,29 @@ export function Hero3D({ lite = false }) {
       }
       geo.attributes.position.needsUpdate = true;
       if (frame++ % detail.connectEvery === 0) connect();
-      cluster.rotation.y += (0.0022 + spinBoost) * dt;
-      cluster.rotation.x += 0.0009 * dt;
+      globe.rotation.y += (0.0018 + spinBoost) * dt;
       spinBoost *= Math.pow(0.94, dt);
+      tilt.position.y += (scrollShift - tilt.position.y) * 0.1;
       // Lean toward the cursor (or phone tilt), eased.
-      rig.rotation.y += (mx * 0.7 - rig.rotation.y) * 0.05;
-      rig.rotation.x += (my * 0.5 - rig.rotation.x) * 0.05;
-      globes.forEach((m, i) => { m.rotation.x += (0.002 + i * 0.001) * dt; m.rotation.z += 0.0015 * dt; });
-      const tt = now * 0.001;
-      sparks.forEach((s) => { const k = (Math.sin(tt * 0.9 + s.phase * Math.PI) + 1) / 2; s.sp.position.copy(s.to).multiplyScalar(k); });
-      rings.forEach((r) => { r.a += r.speed * dt; r.sat.position.set(Math.cos(r.a) * r.r, Math.sin(r.a) * r.r, 0); });
-      core.material.opacity = palette.coreOpacity * (0.85 + Math.sin(tt * 1.3) * 0.15);
-      camera.position.x += (mx * 1.6 - camera.position.x) * 0.04;
-      camera.position.y += (-my * 1.1 - camera.position.y) * 0.04;
+      rig.rotation.y += (mx * 0.6 - rig.rotation.y) * 0.05;
+      rig.rotation.x += (my * 0.4 - rig.rotation.x) * 0.05;
+      // Each pulse runs its arc, then a ripple spreads where it lands.
+      arcs.forEach((arc) => {
+        const u = (((tt + arc.offset) % arc.period) / arc.period) * 1.6; // 0-1 travelling, then a pause
+        const headAt = Math.min(u, 1);
+        const from = Math.floor(Math.max(0, Math.min(u, 1 + TRAIL) - TRAIL) * ARC_PTS);
+        const to = Math.floor(headAt * ARC_PTS);
+        arc.pulseGeo.setDrawRange(from, Math.max(0, to - from + 1));
+        arc.head.visible = u < 1;
+        if (u < 1) arc.head.position.set(arc.arr[to * 3], arc.arr[to * 3 + 1], arc.arr[to * 3 + 2]);
+        const k = u >= 1 ? Math.min(1, (u - 1) / 0.45) : 0; // ripple progress
+        arc.ping.material.opacity = u >= 1 ? (1 - k) * 0.9 : 0;
+        arc.ping.scale.setScalar(1 + k * 3.2);
+      });
+      rings.forEach((r) => { r.a += r.speed * dt; r.rider.position.set(Math.cos(r.a) * r.r, Math.sin(r.a) * r.r, 0); r.rider.rotation.x += 0.01 * dt; r.rider.rotation.y += 0.014 * dt; });
+      halo.material.opacity = palette.haloOpacity * (0.88 + Math.sin(tt * 1.2) * 0.12);
+      camera.position.x += (mx * 1.4 - camera.position.x) * 0.04;
+      camera.position.y += (-my * 1 - camera.position.y) * 0.04;
       camera.lookAt(scene.position);
       renderer.render(scene, camera);
     };
