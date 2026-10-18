@@ -280,23 +280,48 @@ export function burstConfetti(fromEl) {
   setTimeout(() => box.remove(), 1400);
 }
 
+// Every Reveal on a page is checked together, in one pass, still before the
+// first paint: measuring each one as it mounted made the browser recalculate
+// the whole layout once per Reveal (dozens on the home page — most of a phone's
+// load time), whereas reading every position first and only then adding the
+// classes costs a single layout. One shared IntersectionObserver then handles
+// everything below the fold.
+const revealQueue = new Set();
+let revealFlushScheduled = false;
+let revealObserver = null;
+const showReveal = (el) => { el.classList.add("in"); scrambleEyebrows(el); };
+function revealIO() {
+  if (!revealObserver && typeof IntersectionObserver !== "undefined") {
+    revealObserver = new IntersectionObserver(
+      (es) => es.forEach((e) => { if (e.isIntersecting) { showReveal(e.target); revealObserver.unobserve(e.target); } }),
+      { threshold: 0.15 }
+    );
+  }
+  return revealObserver;
+}
+function flushReveals() {
+  revealFlushScheduled = false;
+  const els = [...revealQueue].filter((el) => el.isConnected);
+  revealQueue.clear();
+  const vh = window.innerHeight;
+  const rects = els.map((el) => el.getBoundingClientRect()); // all reads first: one layout
+  els.forEach((el, i) => {
+    if (rects[i].top < vh && rects[i].bottom > 0) { showReveal(el); return; }
+    const io = revealIO();
+    if (io) io.observe(el); else showReveal(el);
+  });
+}
+
 export function Reveal({ as: Tag = "div", variant = "reveal", className = "", children, style, ...rest }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    if (r.top < window.innerHeight && r.bottom > 0) {
-      el.classList.add("in");
-      scrambleEyebrows(el);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); scrambleEyebrows(e.target); io.unobserve(e.target); } }),
-      { threshold: 0.15 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    if (!el) return undefined;
+    revealQueue.add(el);
+    // A microtask runs after this whole render has been committed but before
+    // the browser paints, so visible content still never shows its "hidden" frame.
+    if (!revealFlushScheduled) { revealFlushScheduled = true; queueMicrotask(flushReveals); }
+    return () => { revealQueue.delete(el); if (revealObserver) revealObserver.unobserve(el); };
   }, []);
   return <Tag ref={ref} className={`${variant} ${className}`} style={style} {...rest}>{children}</Tag>;
 }
@@ -2513,8 +2538,36 @@ export function Counter({ value, suffix = "" }) {
 // download fails, or the browser has WebGL switched off, the background simply doesn't
 // appear rather than taking the whole page down with it.
 const Hero3DScene = lazy(() => import("./Scene3D.jsx").then((m) => ({ default: m.Hero3D })));
+// Phones, tablets and low-power devices skip the hero's 3D background: it's
+// decorative (the aurora is underneath), it's on screen the moment the page
+// opens, and on a phone's processor drawing it every frame was most of what
+// made the home page slow to load and respond.
+const LITE_3D = typeof window !== "undefined" && (
+  window.matchMedia("(max-width: 820px), (pointer: coarse)").matches ||
+  (navigator.hardwareConcurrency || 8) <= 4 ||
+  !!(navigator.connection && navigator.connection.saveData)
+);
 export function Hero3D() {
+  if (LITE_3D) return null;
   return <ErrorBoundary fallback={null}><Suspense fallback={null}><Hero3DScene /></Suspense></ErrorBoundary>;
+}
+
+// Renders `children` only once the placeholder scrolls near the screen — for
+// heavy things further down a page (the laptop's 3D scene), so they cost
+// nothing while the page loads.
+// `placeholderClassName` gives the stand-in the real thing's size, so nothing jumps.
+function WhenVisible({ children, placeholderClassName = "", margin = "200px" }) {
+  const ref = useRef(null);
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || show) return undefined;
+    if (typeof IntersectionObserver === "undefined") { setShow(true); return undefined; }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setShow(true); io.disconnect(); } }, { rootMargin: margin });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [show, margin]);
+  return show ? children : <div ref={ref} className={placeholderClassName} aria-hidden="true" />;
 }
 
 /* ---------- Aurora ---------- */
@@ -2530,7 +2583,8 @@ export function Aurora() {
 // Loaded with the other 3D scene, from Scene3D.jsx.
 const MorphParticlesScene = lazy(() => import("./Scene3D.jsx").then((m) => ({ default: m.MorphParticles })));
 function MorphParticles() {
-  return <ErrorBoundary fallback={null}><Suspense fallback={null}><MorphParticlesScene /></Suspense></ErrorBoundary>;
+  // Further down the home page: started only when it scrolls into view.
+  return <WhenVisible placeholderClassName="particle-stage"><ErrorBoundary fallback={null}><Suspense fallback={null}><MorphParticlesScene /></Suspense></ErrorBoundary></WhenVisible>;
 }
 
 /* ---------- LiveDevice: laptop mockup, screen shows the morphing particle scene ---------- */

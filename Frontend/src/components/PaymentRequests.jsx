@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyPaymentRequests, createPaymentRequestOrder, verifyPaymentRequest, getReceipt } from "../services/api.js";
 import { loadRazorpayScript, Alert, TermsCheckbox } from "./ui.jsx";
-import { downloadReceiptPdf } from "../utils/receiptPdf.js";
+import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { tierLabel, formatINR } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { PAYMENT_REQUESTS_EVENT } from "../hooks/usePendingPaymentRequests.js";
