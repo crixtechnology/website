@@ -262,8 +262,8 @@ export function Programs() {
 
   return (
     <>
-      <PageHead eyebrow="Programs" title="Industry-ready courses, delivered pan-India and globally."
-        text="Fully virtual — join from anywhere, pan-India or globally. Pick a track, enroll, and start building; you learn from working industry professionals, and every course ships with mentor support and a certificate." />
+      <PageHead eyebrow="Programs" title="Industry-ready courses, delivered across India."
+        text="Fully virtual — join from anywhere in India. Pick a track, enroll, and start building; you learn from working industry professionals, and every course ships with mentor support and a certificate." />
       <SectionIndex items={indexItems} />
       <div className="wrap program-filter" role="group" aria-label="Show programs">
         {[["all", "All programs"], ["internships", "Internships"], ["courses", "Courses"]].map(([v, label]) => (
