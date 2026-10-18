@@ -260,7 +260,7 @@ export const process = [
 export const benefits = [
   { icon: "gift", title: "Internship Program", desc: "Real industry experience and mentorship — plus a joining kit to welcome you on board." },
   { icon: "award", title: "Verified Certificate", desc: "Industry-recognized digital certificate on completion." },
-  { icon: "home", title: "Work from Home", desc: "Fully virtual — join from anywhere, pan-India or globally." },
+  { icon: "home", title: "Work from Home", desc: "Fully virtual — join from anywhere in India." },
   { icon: "document", title: "Offer Letter + LOR", desc: "Official offer letter and Letter of Recommendation — issued to internship program graduates." },
   { icon: "linkedin", title: "LinkedIn Recognition", desc: "Official LinkedIn recommendation added to your profile." },
   { icon: "briefcase", title: "Resume Boost", desc: "Real project experience to impress top recruiters." },
@@ -281,7 +281,7 @@ export const about = {
   heading: "Built in Ahmedabad. Serving pan-India and globally.",
   body: "Crix Technology Private Limited is a technology and training company with three pillars: structured virtual internships, IT services for growing businesses, and industry-ready online courses. Our curricula and products are built by working developers — so students learn, and clients get, what industry actually uses in production.",
   overview:
-    "Crix Technology Private Limited is an Ahmedabad-based technology company offering IT services, custom software development, and industry-ready training programs, including virtual internships and online courses. We're virtual-first — delivered remotely from our Ahmedabad base to clients pan-India and globally — working with businesses that need dependable engineering support and with learners who want hands-on, real-world project experience, particularly in web development and AI/ML.",
+    "Crix Technology Private Limited is an Ahmedabad-based technology company offering IT services, custom software development, and industry-ready training programs, including virtual internships and online courses. We're virtual-first — delivered remotely from our Ahmedabad base — working with businesses across India and around the world that need dependable engineering support, and with learners across India who want hands-on, real-world project experience, particularly in web development and AI/ML.",
   history:
     "Registered as a private limited company in Gujarat (CIN U63122GJ2026PTC179737), Crix Technology was built around two connected ideas: giving businesses a dependable extended engineering team for software and web work, and giving learners a mentor-led route into real project experience in web development and AI/ML — a model in which the training arm also feeds a talent pipeline for client delivery work.",
   facts: [
@@ -441,6 +441,8 @@ Before you pay for anything on this website — a course, an internship, a plan 
 • Individuals who are at least 16 years of age
 
 If you are 16 or 17, you may use our services only with the permission of your parent or legal guardian, who agrees to these Terms and our Privacy Policy on your behalf. When creating an account you confirm that you are 18 or older, or that you have this permission. Careers roles and the aptitude test are open only to candidates aged 18 or older (see section 8).
+
+Our internships, courses and careers roles (including the aptitude test) are open only to residents of India. Our IT services are available to clients in India and abroad, under our Client Services Terms.
 
 By applying, you confirm that you meet the eligibility criteria.`,
       },
