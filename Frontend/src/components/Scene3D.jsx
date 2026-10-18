@@ -6,8 +6,7 @@ import { REDUCED } from "./ui.jsx";
 // The two WebGL scenes — the home-page hero and the particle animation inside the
 // laptop mockup. They live in their own file so the ~100 kB three.js library is a
 // separate download that arrives AFTER the page is usable, instead of sitting in the
-// main script every visitor waits for (see the lazy() wrappers in ui.jsx). The code
-// below is moved as it was, unchanged.
+// main script every visitor waits for (see the lazy() wrappers in ui.jsx).
 
 /* ---------- Hero3D: neural constellation background ---------- */
 // Colors/opacities tuned separately per theme — this is a raw WebGL canvas
@@ -17,29 +16,69 @@ import { REDUCED } from "./ui.jsx";
 // tuned to pop against the near-black --ink background; over the light
 // theme's near-white background the same pale, low-opacity colors read as
 // washed out almost to invisible, so light gets its own deeper, more
-// opaque set instead of just reusing dark's.
+// opaque set instead of just reusing dark's. Dark mode adds glows together
+// (they light up against the dark); light mode draws them normally.
 const HERO3D_PALETTE = {
-  dark: { points: 0x7fe8e0, pointsOpacity: 0.85, line: 0x14c9c9, lineOpacity: 0.16, globe: [0x14c9c9, 0x7fe8e0, 0xf2b44c], globeOpacity: [0.35, 0.18, 0.2] },
-  light: { points: 0x0891b2, pointsOpacity: 0.9, line: 0x0d8c86, lineOpacity: 0.3, globe: [0x0d8c86, 0x0891b2, 0xb45309], globeOpacity: [0.55, 0.32, 0.34] },
+  dark: {
+    points: 0x7fe8e0, pointsOpacity: 0.85, line: 0x14c9c9, lineOpacity: 0.16,
+    globe: [0x14c9c9, 0x7fe8e0, 0xf2b44c], globeOpacity: [0.35, 0.18, 0.2],
+    node: 0x7fe8e0, core: 0x14c9c9, coreOpacity: 0.28, ring: 0x7fe8e0, ringOpacity: 0.38, spark: 0xf2b44c, glow: true,
+  },
+  light: {
+    points: 0x0891b2, pointsOpacity: 0.9, line: 0x0d8c86, lineOpacity: 0.3,
+    globe: [0x0d8c86, 0x0891b2, 0xb45309], globeOpacity: [0.55, 0.32, 0.34],
+    node: 0x0e7490, core: 0x14c9c9, coreOpacity: 0.16, ring: 0x0d8c86, ringOpacity: 0.45, spark: 0xb45309, glow: false,
+  },
 };
 
-export function Hero3D() {
+// Full detail for desktops. Phones, tablets and low-power devices get the same
+// scene with fewer points and lines, one orbit ring, normal pixel density and
+// 30 frames a second — light enough to run there too, instead of being off.
+const HERO3D_DETAIL = {
+  full: { points: 420, lines: 260, connectEvery: 6, maxRatio: 1.6, antialias: true, frameMs: 0, rings: 2 },
+  lite: { points: 220, lines: 140, connectEvery: 8, maxRatio: 1, antialias: false, frameMs: 33, rings: 1 },
+};
+
+export function Hero3D({ lite = false }) {
   const mountRef = useRef(null);
   const { theme } = useTheme();
   useEffect(() => {
     const mount = mountRef.current;
-    if (!mount) return;
+    if (!mount) return undefined;
     const palette = HERO3D_PALETTE[theme] || HERO3D_PALETTE.dark;
+    const detail = lite ? HERO3D_DETAIL.lite : HERO3D_DETAIL.full;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 100);
     camera.position.z = 14;
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
+    const renderer = new THREE.WebGLRenderer({ antialias: detail.antialias, alpha: true, powerPreference: "low-power" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, detail.maxRatio));
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     mount.appendChild(renderer.domElement);
 
-    const N = 420;
+    // A soft round glow, used for the constellation's dots, the globe's nodes,
+    // its core and the travelling sparks.
+    const glowCanvas = document.createElement("canvas");
+    glowCanvas.width = glowCanvas.height = 64;
+    const gctx = glowCanvas.getContext("2d");
+    const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.3, "rgba(255,255,255,.7)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    gctx.fillStyle = grad;
+    gctx.fillRect(0, 0, 64, 64);
+    const glowTex = new THREE.CanvasTexture(glowCanvas);
+    const blending = palette.glow ? THREE.AdditiveBlending : THREE.NormalBlending;
+    const disposables = [glowTex];
+    const keep = (...xs) => { disposables.push(...xs); return xs[0]; };
+    const sprite = (color, opacity, scale) => {
+      const s = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity, depthWrite: false, blending })));
+      s.scale.setScalar(scale);
+      return s;
+    };
+
+    // ----- the constellation: drifting dots, joined when they come close -----
+    const N = detail.points;
     const positions = new Float32Array(N * 3);
     const speeds = [];
     for (let i = 0; i < N; i++) {
@@ -48,42 +87,93 @@ export function Hero3D() {
       positions[i * 3 + 2] = (Math.random() - 0.5) * 14;
       speeds.push(0.0016 + Math.random() * 0.003);
     }
-    const geo = new THREE.BufferGeometry();
+    const geo = keep(new THREE.BufferGeometry());
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: palette.points, size: 0.07, transparent: true, opacity: palette.pointsOpacity })));
+    // Round, softly glowing dots (they were single square pixels before).
+    scene.add(new THREE.Points(geo, keep(new THREE.PointsMaterial({ color: palette.points, map: glowTex, size: 0.16, transparent: true, opacity: palette.pointsOpacity, depthWrite: false, blending }))));
 
-    const MAXL = 260;
+    const MAXL = detail.lines;
     const linePos = new Float32Array(MAXL * 6);
-    const lineGeo = new THREE.BufferGeometry();
+    const lineGeo = keep(new THREE.BufferGeometry());
     lineGeo.setAttribute("position", new THREE.BufferAttribute(linePos, 3));
-    scene.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: palette.line, transparent: true, opacity: palette.lineOpacity })));
+    scene.add(new THREE.LineSegments(lineGeo, keep(new THREE.LineBasicMaterial({ color: palette.line, transparent: true, opacity: palette.lineOpacity }))));
 
-    const cluster = new THREE.Group();
-    const mats = [
-      new THREE.MeshBasicMaterial({ color: palette.globe[0], wireframe: true, transparent: true, opacity: palette.globeOpacity[0] }),
-      new THREE.MeshBasicMaterial({ color: palette.globe[1], wireframe: true, transparent: true, opacity: palette.globeOpacity[1] }),
-      new THREE.MeshBasicMaterial({ color: palette.globe[2], wireframe: true, transparent: true, opacity: palette.globeOpacity[2] }),
-    ];
-    [[2.6, 0, 0, 0], [1.1, 4.4, 1.6, -1.5], [0.8, -4.8, -2.0, 1.0]].forEach((c, i) => {
-      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(c[0], 1), mats[i]);
-      m.position.set(c[1], c[2], c[3]);
-      cluster.add(m);
-    });
+    // ----- the globe -----
     // The globe sits in a "rig" so it can lean toward the cursor (rig
     // rotation) independently of its own continuous spin (cluster rotation).
     const rig = new THREE.Group();
-    rig.position.x = 4.5;
+    const cluster = new THREE.Group();
     rig.add(cluster);
     scene.add(rig);
+    const GLOBES = [[2.6, 0, 0, 0], [1.1, 4.4, 1.6, -1.5], [0.8, -4.8, -2.0, 1.0]];
+    const globes = GLOBES.map((c, i) => {
+      const mat = keep(new THREE.MeshBasicMaterial({ color: palette.globe[i], wireframe: true, transparent: true, opacity: palette.globeOpacity[i] }));
+      // the main globe is a finer geodesic sphere than before
+      const m = new THREE.Mesh(keep(new THREE.IcosahedronGeometry(c[0], i === 0 ? 2 : 1)), mat);
+      m.position.set(c[1], c[2], c[3]);
+      cluster.add(m);
+      return m;
+    });
+    // Glowing nodes on the main globe's corners, turning with it.
+    {
+      const pa = globes[0].geometry.attributes.position;
+      const seen = new Set();
+      const nodes = [];
+      for (let i = 0; i < pa.count; i++) {
+        const key = [pa.getX(i), pa.getY(i), pa.getZ(i)].map((v) => v.toFixed(2)).join();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (seen.size % 2) nodes.push(pa.getX(i), pa.getY(i), pa.getZ(i)); // every other corner
+      }
+      const nodeGeo = keep(new THREE.BufferGeometry());
+      nodeGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(nodes), 3));
+      globes[0].add(new THREE.Points(nodeGeo, keep(new THREE.PointsMaterial({ color: palette.node, map: glowTex, size: 0.24, transparent: true, opacity: 0.9, depthWrite: false, blending }))));
+    }
+    // A soft glow at the globe's heart, gently breathing.
+    const core = sprite(palette.core, palette.coreOpacity, 6.5);
+    cluster.add(core);
+    // Links from the main globe to the two small ones, with sparks of light
+    // travelling along them.
+    const linkGeo = keep(new THREE.BufferGeometry());
+    linkGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(GLOBES.slice(1).flatMap((c) => [0, 0, 0, c[1], c[2], c[3]])), 3));
+    cluster.add(new THREE.LineSegments(linkGeo, keep(new THREE.LineBasicMaterial({ color: palette.ring, transparent: true, opacity: palette.ringOpacity, depthWrite: false }))));
+    const sparks = GLOBES.slice(1).map((c, i) => {
+      const sp = sprite(palette.spark, 0.95, 0.42);
+      cluster.add(sp);
+      return { sp, to: new THREE.Vector3(c[1], c[2], c[3]), phase: i * 0.5 };
+    });
+    // Thin orbit rings around the globe, each with a light travelling round it.
+    const rings = [[3.5, 1.15, 0.35], [4.3, 1.9, -0.6]].slice(0, detail.rings).map(([r, tiltX, tiltZ], i) => {
+      const pts = [];
+      for (let k = 0; k <= 128; k++) { const a = (k / 128) * Math.PI * 2; pts.push(Math.cos(a) * r, Math.sin(a) * r, 0); }
+      const ringGeo = keep(new THREE.BufferGeometry());
+      ringGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pts), 3));
+      const ring = new THREE.Group();
+      ring.rotation.set(tiltX, 0, tiltZ);
+      ring.add(new THREE.Line(ringGeo, keep(new THREE.LineBasicMaterial({ color: palette.ring, transparent: true, opacity: palette.ringOpacity * (i ? 0.7 : 1), depthWrite: false }))));
+      const sat = sprite(palette.spark, 1, 0.5);
+      ring.add(sat);
+      rig.add(ring);
+      return { sat, r, speed: i ? -0.006 : 0.009, a: i * 2 };
+    });
+    // Beside the headline on wide screens; on a narrow, upright screen (where
+    // the right-hand position was mostly off the edge) tucked into the top-right
+    // corner, smaller, so it stays clear of the headline.
+    const place = () => {
+      const narrow = mount.clientWidth < 820 || mount.clientWidth < mount.clientHeight;
+      rig.position.set(narrow ? 2.7 : 4.5, narrow ? 4.6 : 0, 0);
+      rig.scale.setScalar(narrow ? 0.6 : 1);
+    };
+    place();
 
-    let mx = 0, my = 0, raf = 0, frame = 0, alive = true, spinBoost = 0, lastY = window.scrollY;
+    let mx = 0, my = 0, frame = 0, spinBoost = 0, lastY = window.scrollY;
     const onMove = (e) => { mx = e.clientX / window.innerWidth - 0.5; my = e.clientY / window.innerHeight - 0.5; };
     const onScrollFx = () => {
       if (REDUCED) return;
       const y = window.scrollY;
       cluster.rotation.z = y * 0.0008;
       cluster.position.y = y * 0.004;
-      // Scrolling spins the globe faster for a moment; decays in animate().
+      // Scrolling spins the globe faster for a moment; decays in step().
       spinBoost = Math.min(0.05, spinBoost + Math.abs(y - lastY) * 0.00012);
       lastY = y;
     };
@@ -131,59 +221,87 @@ export function Hero3D() {
       lineGeo.attributes.position.needsUpdate = true;
     };
 
-    const animate = () => {
-      if (!alive) return;
-      raf = requestAnimationFrame(animate);
+    // One frame. `dt` scales the motion to real elapsed time, so the 30-frames-
+    // a-second version moves at the same speed as the 60 one.
+    const step = (dt) => {
       const p = geo.attributes.position.array;
+      const now = Date.now();
       for (let i = 0; i < N; i++) {
-        p[i*3+1] += Math.sin(Date.now() * 0.0004 + i) * 0.0015;
-        p[i*3] += speeds[i] * 0.4;
+        p[i*3+1] += Math.sin(now * 0.0004 + i) * 0.0015 * dt;
+        p[i*3] += speeds[i] * 0.4 * dt;
         if (p[i*3] > 15) p[i*3] = -15;
       }
       geo.attributes.position.needsUpdate = true;
-      if (frame++ % 6 === 0) connect();
-      cluster.rotation.y += 0.0022 + spinBoost;
-      cluster.rotation.x += 0.0009;
-      spinBoost *= 0.94;
+      if (frame++ % detail.connectEvery === 0) connect();
+      cluster.rotation.y += (0.0022 + spinBoost) * dt;
+      cluster.rotation.x += 0.0009 * dt;
+      spinBoost *= Math.pow(0.94, dt);
       // Lean toward the cursor (or phone tilt), eased.
       rig.rotation.y += (mx * 0.7 - rig.rotation.y) * 0.05;
       rig.rotation.x += (my * 0.5 - rig.rotation.x) * 0.05;
-      cluster.children.forEach((m, i) => { m.rotation.x += 0.002 + i * 0.001; m.rotation.z += 0.0015; });
+      globes.forEach((m, i) => { m.rotation.x += (0.002 + i * 0.001) * dt; m.rotation.z += 0.0015 * dt; });
+      const tt = now * 0.001;
+      sparks.forEach((s) => { const k = (Math.sin(tt * 0.9 + s.phase * Math.PI) + 1) / 2; s.sp.position.copy(s.to).multiplyScalar(k); });
+      rings.forEach((r) => { r.a += r.speed * dt; r.sat.position.set(Math.cos(r.a) * r.r, Math.sin(r.a) * r.r, 0); });
+      core.material.opacity = palette.coreOpacity * (0.85 + Math.sin(tt * 1.3) * 0.15);
       camera.position.x += (mx * 1.6 - camera.position.x) * 0.04;
       camera.position.y += (-my * 1.1 - camera.position.y) * 0.04;
       camera.lookAt(scene.position);
       renderer.render(scene, camera);
     };
-    if (REDUCED) { connect(); renderer.render(scene, camera); } else animate();
+
+    // Runs only while the hero is on screen and the tab is visible: nobody sees
+    // it otherwise, so there's no reason to keep the processor busy.
+    let raf = 0, running = false, onScreen = true, last = 0;
+    const loop = (now) => {
+      if (!running) return;
+      raf = requestAnimationFrame(loop);
+      if (detail.frameMs && now - last < detail.frameMs) return;
+      const dt = last ? Math.min(3, (now - last) / 16.7) : 1; // in 60-fps frames
+      last = now;
+      step(dt);
+    };
+    const update = () => {
+      const should = !REDUCED && onScreen && !document.hidden;
+      if (should && !running) { running = true; last = 0; raf = requestAnimationFrame(loop); }
+      if (!should && running) { running = false; cancelAnimationFrame(raf); }
+    };
+    const io = typeof IntersectionObserver !== "undefined"
+      ? new IntersectionObserver((es) => { onScreen = es.some((e) => e.isIntersecting); update(); })
+      : null;
+    if (io) io.observe(mount);
+    document.addEventListener("visibilitychange", update);
+    connect();
+    step(0); // a first frame straight away (the only one with reduced motion)
+    update();
 
     const onResize = () => {
       camera.aspect = mount.clientWidth / mount.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(mount.clientWidth, mount.clientHeight);
+      place();
+      if (!running) renderer.render(scene, camera);
     };
     window.addEventListener("resize", onResize);
 
     return () => {
-      alive = false;
+      running = false;
       cancelAnimationFrame(raf);
+      if (io) io.disconnect();
+      document.removeEventListener("visibilitychange", update);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("scroll", onScrollFx);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("touchstart", requestMotion);
       window.removeEventListener("deviceorientation", onOrientation);
-      // Disposes GPU-side geometry/material buffers, not just the renderer
-      // — this effect now re-runs on every theme toggle (not just once per
-      // page load, since `theme` is a dependency below), so without this a
-      // few toggles back and forth would leak WebGL resources instead of
-      // freeing the previous scene's before building the next one.
-      geo.dispose();
-      lineGeo.dispose();
-      mats.forEach((m) => m.dispose());
-      cluster.children.forEach((m) => m.geometry.dispose());
+      // Disposes GPU-side geometry/material/texture buffers, not just the
+      // renderer — this effect re-runs on every theme toggle, so without this
+      // a few toggles back and forth would leak WebGL resources.
+      disposables.forEach((x) => x.dispose());
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
-  }, [theme]);
+  }, [theme, lite]);
   return <div className="bg3d" ref={mountRef}></div>;
 }
 
