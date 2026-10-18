@@ -84,7 +84,12 @@
   <meta name="twitter:image" content="https://www.crixtechnology.com/og-image.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Fonts load without holding up the first paint: text shows in the
+       fallback font straight away and swaps when these arrive (the sheet is
+       "print" until it has loaded, then "all"). -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" /></noscript>
   <style>
     /* The pre-app splash in #root (see <body>): brand colours, centred. */
     .seo-shell{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:#060B1A;color:#E8EEF7;font-family:Sora,system-ui,sans-serif}
