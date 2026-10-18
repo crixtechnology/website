@@ -5,7 +5,6 @@ import SetNewPassword from "./components/SetNewPassword.jsx";
 import CookieConsent from "./components/CookieConsent.jsx";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
 import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
-import Careers from "./pages/Careers.jsx";
 import { useCopyProtection } from "./hooks/useCopyProtection.js";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
 import { captureReferralFromUrl } from "./utils/referral.js";
@@ -24,9 +23,10 @@ initAnalytics();
 // The student area is only ever reached by someone already
 // logged in as a student — lazy-loading them keeps their code out of
 // the bundle every anonymous visitor downloads just to browse the public
-// marketing pages. MyCourses in particular pulls in jsPDF + jspdf-autotable
-// (receipt generation) purely for its own "Download Receipt" button; those
-// libraries have no reason to ship to someone reading the homepage.
+// marketing pages. (The PDF library behind every "Download receipt / PDF"
+// button is loaded separately again, only when one is clicked —
+// utils/receiptPdfLazy.js and documentPdf.js — since the Careers page and the
+// navbar's payment-request banner, which are in the main script, offer them too.)
 // Public marketing/legal pages (pages.jsx) stay eagerly imported above —
 // they're what most visitors actually came for and where load speed/SEO
 // matters most, so there's no Suspense flash on the paths that matter most.
@@ -37,6 +37,8 @@ const ROUTE_LOADERS = {
   "/learn/": () => import("./pages/student/Learn.jsx"),
   "/profile": () => import("./pages/student/Profile.jsx"),
   "/test/": () => import("./pages/student/AptitudeTest.jsx"),
+  // Public, but its code (application, payment, the test's rules) is only needed there.
+  "/careers": () => import("./pages/Careers.jsx"),
 };
 registerPrefetch(ROUTE_LOADERS);
 
@@ -44,6 +46,7 @@ const MyCourses = lazy(ROUTE_LOADERS["/dashboard"]);
 const Learn = lazy(ROUTE_LOADERS["/learn/"]);
 const Profile = lazy(ROUTE_LOADERS["/profile"]);
 const AptitudeTest = lazy(ROUTE_LOADERS["/test/"]);
+const Careers = lazy(ROUTE_LOADERS["/careers"]);
 
 
 // Matches the "Loading..." convention every data-fetching page here already

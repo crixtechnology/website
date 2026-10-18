@@ -5,7 +5,7 @@ import {
   getNotifications, markNotificationsRead,
 } from "../services/api.js";
 import { loadRazorpayScript, Alert, burstConfetti, TermsCheckbox } from "./ui.jsx";
-import { downloadReceiptPdf } from "../utils/receiptPdf.js";
+import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { formatINR } from "../utils/tiers.js";
 import { defaultTerms, feeBoxPoints, formatIST } from "../data/careers.js";
 

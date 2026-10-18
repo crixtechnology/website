@@ -9,7 +9,7 @@ import WalletCard from "../../components/WalletCard.jsx";
 import { ApplyTab, ApplicationsTab, DashboardNotices } from "../../components/CareersDashboard.jsx";
 import { takeRememberedRole } from "../../data/careers.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
-import { downloadReceiptPdf } from "../../utils/receiptPdf.js";
+import { downloadReceiptPdf } from "../../utils/receiptPdfLazy.js";
 import { tierLabel } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../../utils/startDate.js";
 

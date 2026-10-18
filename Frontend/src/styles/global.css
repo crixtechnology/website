@@ -102,6 +102,8 @@ h2{font-size:clamp(1.6rem,3.4vw,2.6rem);margin:14px 0 18px}
 
 #loader{position:fixed;inset:0;background:var(--ink);z-index:200;display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,visibility .6s}
 #loader.done{opacity:0;visibility:hidden}
+/* Once it has faded out, its logo stops pulsing — it was still being animated, invisibly, forever. */
+#loader.done .ld{animation:none}
 #loader .ld{animation:pulse 1.3s ease-in-out infinite}
 #loader .ld .logo{gap:14px}
 #loader .ld .logo img{height:54px}
@@ -746,9 +748,12 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 #faq-bot{position:fixed;right:26px;bottom:26px;z-index:60;width:50px;height:50px;border-radius:50%;border:0;padding:0;cursor:pointer;background:#1EBE5D;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(30,190,93,.4);transition:transform .25s}
 #faq-bot:hover{transform:translateY(-3px) scale(1.06)}
 #faq-bot>svg{width:26px;height:26px}
-#faq-bot::before{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(30,190,93,.5);animation:waPulse 2.6s ease-out infinite;pointer-events:none}
+/* The pulse ring grows and fades with transform + opacity only, which the GPU
+   handles on its own: animating box-shadow made the browser repaint every
+   frame, which on a phone was half of all the work the page did while idle. */
+#faq-bot::before{content:"";position:absolute;inset:0;border-radius:50%;background:rgba(30,190,93,.45);animation:waPulse 2.6s ease-out infinite;pointer-events:none;will-change:transform,opacity;z-index:-1}
 #faq-bot.is-open::before{animation:none}
-@keyframes waPulse{0%{box-shadow:0 0 0 0 rgba(30,190,93,.45)}70%,100%{box-shadow:0 0 0 14px rgba(30,190,93,0)}}
+@keyframes waPulse{0%{transform:scale(1);opacity:1}70%,100%{transform:scale(1.56);opacity:0}}
 #faq-bot:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 #faq-bot .faq-tip{position:absolute;right:calc(100% + 14px);top:50%;padding:9px 16px;border-radius:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);box-shadow:0 12px 32px rgba(0,0,0,.35);white-space:nowrap;text-align:left;opacity:0;visibility:hidden;pointer-events:none;transform:translate(10px,-50%);transition:opacity .2s,transform .2s,visibility .2s}
 #faq-bot:hover .faq-tip,#faq-bot:focus-visible .faq-tip,#faq-bot.peek .faq-tip{opacity:1;visibility:visible;transform:translate(0,-50%)}
