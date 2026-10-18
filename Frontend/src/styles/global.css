@@ -214,6 +214,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
   .hero-in{padding-top:78px;padding-bottom:48px}
 }
 .bg3d{position:absolute;inset:0;z-index:0}
+/* The hero's 3D scene starts after the page has loaded, so it fades in rather than popping. */
+@keyframes bg3dIn{from{opacity:0}to{opacity:1}}
+.hero .bg3d{pointer-events:none;animation:bg3dIn 1.2s ease both}
 /* Two-layer scrim: a left-anchored wash keeps the hero copy readable over the
    3D constellation while the right side (the globe) stays visible. */
 .hero::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:

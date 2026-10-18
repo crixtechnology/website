@@ -2538,18 +2538,51 @@ export function Counter({ value, suffix = "" }) {
 // download fails, or the browser has WebGL switched off, the background simply doesn't
 // appear rather than taking the whole page down with it.
 const Hero3DScene = lazy(() => import("./Scene3D.jsx").then((m) => ({ default: m.Hero3D })));
-// Phones, tablets and low-power devices skip the hero's 3D background: it's
-// decorative (the aurora is underneath), it's on screen the moment the page
-// opens, and on a phone's processor drawing it every frame was most of what
-// made the home page slow to load and respond.
+// Phones, tablets and low-power devices get a lighter version of the hero's
+// scene (fewer points, 30 frames a second — HERO3D_DETAIL in Scene3D.jsx), started
+// later: drawing the full one on a phone's processor was most of what made the
+// home page slow to load and respond.
 const LITE_3D = typeof window !== "undefined" && (
   window.matchMedia("(max-width: 820px), (pointer: coarse)").matches ||
-  (navigator.hardwareConcurrency || 8) <= 4 ||
-  !!(navigator.connection && navigator.connection.saveData)
+  (navigator.hardwareConcurrency || 8) <= 4
 );
+const SAVE_DATA = typeof navigator !== "undefined" && !!(navigator.connection && navigator.connection.saveData);
+// The scene starts only once the page has loaded and the browser is idle, then
+// fades in (.bg3d in global.css): setting up WebGL and drawing its first frames
+// then never competes with the page itself becoming visible and usable. On a
+// lite device it waits for the visitor's first touch, scroll or key — or, if
+// they just read, a few seconds more — so even a slow phone has finished
+// loading before any of it starts.
+function useAfterLoadIdle(lite) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let idleId = 0, timer = 0, done = false;
+    const start = () => {
+      if (done) return;
+      done = true;
+      if (window.requestIdleCallback) idleId = window.requestIdleCallback(() => setReady(true), { timeout: 2500 });
+      else timer = setTimeout(() => setReady(true), 300);
+    };
+    const kicks = ["pointerdown", "touchstart", "scroll", "keydown"];
+    const onLoad = () => { timer = setTimeout(start, lite ? 6000 : 0); };
+    if (lite) kicks.forEach((ev) => window.addEventListener(ev, start, { once: true, passive: true }));
+    if (document.readyState === "complete") onLoad();
+    else window.addEventListener("load", onLoad, { once: true });
+    return () => {
+      window.removeEventListener("load", onLoad);
+      kicks.forEach((ev) => window.removeEventListener(ev, start));
+      if (idleId && window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+      clearTimeout(timer);
+    };
+  }, [lite]);
+  return ready;
+}
+
 export function Hero3D() {
-  if (LITE_3D) return null;
-  return <ErrorBoundary fallback={null}><Suspense fallback={null}><Hero3DScene /></Suspense></ErrorBoundary>;
+  const ready = useAfterLoadIdle(LITE_3D);
+  // Someone who has asked their browser to save data gets no 3D download at all.
+  if (SAVE_DATA || !ready) return null;
+  return <ErrorBoundary fallback={null}><Suspense fallback={null}><Hero3DScene lite={LITE_3D} /></Suspense></ErrorBoundary>;
 }
 
 // Renders `children` only once the placeholder scrolls near the screen — for
