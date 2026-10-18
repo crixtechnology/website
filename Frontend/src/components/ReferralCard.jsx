@@ -58,7 +58,8 @@ export default function ReferralCard() {
         {settings.enabled ? (
           <p className="ref-lede">
             Friends who use your code get <b>{settings.refereeDiscountPercent}% off</b> their first course or internship.
-            When they pay, you get <b>{money(settings.referrerCreditRupees)} credit</b> — applied automatically to your next purchase.
+            When they pay, you get up to <b>{money(settings.referrerCreditRupees)} credit</b> (never more than they paid, and not
+            for purchases paid with wallet credit alone) — applied automatically to your next purchase.
           </p>
         ) : (
           <p className="ref-lede">Referral rewards are paused right now. Your code and credit are safe and will work again when they resume.</p>

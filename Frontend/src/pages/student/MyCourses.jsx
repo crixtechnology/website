@@ -1,17 +1,35 @@
 import { useContext, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
 import { getMyEnrollments, getMyReceipts, getReceipt } from "../../services/api.js";
 import { UpgradeModal } from "../../components/ui.jsx";
 import ReferralCard from "../../components/ReferralCard.jsx";
 import PaymentRequests from "../../components/PaymentRequests.jsx";
+import WalletCard from "../../components/WalletCard.jsx";
+import { ApplyTab, ApplicationsTab, DashboardNotices } from "../../components/CareersDashboard.jsx";
+import { takeRememberedRole } from "../../data/careers.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { downloadReceiptPdf } from "../../utils/receiptPdf.js";
 import { tierLabel } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../../utils/startDate.js";
 
+// The dashboard's sections. Each has its own address (/dashboard?tab=apply), so
+// the Careers page, emails and notifications can link straight to one.
+const TABS = [
+  ["courses", "My Courses"],
+  ["apply", "Apply / Aptitude Test"],
+  ["applications", "My Applications"],
+  ["wallet", "My Wallet"],
+];
+
 export default function MyCourses() {
   usePageMeta({ title: "My Dashboard | Crix Technology" });
+  const [params, setParams] = useSearchParams();
+  const tab = TABS.some(([id]) => id === params.get("tab")) ? params.get("tab") : "courses";
+  const goToTab = (id) => setParams(id === "courses" ? {} : { tab: id });
+  // The role picked on the Careers page: in the address, or remembered through
+  // the sign-up / log-in popup. Read once, when the dashboard opens.
+  const [applyRole] = useState(() => params.get("role") || takeRememberedRole());
   const { isLoggedIn, isAdmin, user, logout, openAuthModal } = useContext(UserContext);
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState([]);
@@ -99,6 +117,23 @@ export default function MyCourses() {
           </div>
         </div>
 
+        {/* Admins have no applications or wallet: they keep the single course list. */}
+        {!isAdmin && <DashboardNotices />}
+        {!isAdmin && (
+          <div className="program-filter dash-tabs" role="tablist" aria-label="Dashboard sections">
+            {TABS.map(([id, label]) => (
+              <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? "active" : ""} onClick={() => goToTab(id)}>{label}</button>
+            ))}
+          </div>
+        )}
+
+        {!isAdmin && tab === "apply" && (
+          <ApplyTab user={user} initialRole={applyRole} onGoToApplications={() => goToTab("applications")} />
+        )}
+        {!isAdmin && tab === "applications" && <ApplicationsTab onGoToApply={() => goToTab("apply")} />}
+        {!isAdmin && tab === "wallet" && <WalletCard />}
+
+        {(isAdmin || tab === "courses") && (<>
         {!isAdmin && <PaymentRequests onPaid={load} />}
         <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>{isAdmin ? "All courses & internships" : "My courses"}</h2>
         {loading ? (
@@ -178,6 +213,7 @@ export default function MyCourses() {
           </div>
         )}
         <ReferralCard />
+        </>)}
       </div>
       <UpgradeModal data={upgrade} onClose={() => setUpgrade(null)} onDone={load} />
     </section>

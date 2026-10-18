@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const { prisma } = require("../db");
 const { notifyCreditAdded } = require("./walletNotices");
+const { getCareerSettings } = require("./careerSettings");
 
 // Referral programme.
 //
@@ -200,7 +201,11 @@ async function priceOrder(userId, planRupees, couponPaise = 0, db = prisma) {
   }
 
   const afterReferral = afterCoupon - referralDiscount;
-  const usable = Math.max(0, afterReferral - MIN_CHARGE_PAISE);
+  // The admin can cap how much of one purchase wallet credit may pay for
+  // (utils/careerSettings.js creditUsagePercent; 100 = no cap, the default).
+  const { creditUsagePercent } = await getCareerSettings(db);
+  const usageCap = Math.floor((afterReferral * creditUsagePercent) / 100);
+  const usable = Math.max(0, Math.min(afterReferral - MIN_CHARGE_PAISE, usageCap));
   // Whole rupees only, so the order total stays a whole-rupee amount.
   const creditApplied = Math.floor(Math.min(availableCredit, usable) / 100) * 100;
 
@@ -215,7 +220,7 @@ async function priceOrder(userId, planRupees, couponPaise = 0, db = prisma) {
     // What the order costs before any wallet credit, and whether the wallet
     // alone can cover all of it (paid for without Razorpay — routes/payments.js).
     totalDuePaise: afterReferral,
-    walletCoversAll: afterReferral > 0 && availableCredit >= afterReferral,
+    walletCoversAll: creditUsagePercent >= 100 && afterReferral > 0 && availableCredit >= afterReferral,
   };
 }
 
@@ -230,12 +235,21 @@ async function rewardReferrerForPurchase(payment, application) {
   if (!application || !application.userId) return null;
   const referral = await prisma.referral.findUnique({ where: { refereeId: application.userId } });
   if (!referral || referral.status !== "pending") return null;
+  // Only real money earns a reward, and never more than the friend actually
+  // paid. A purchase paid entirely from wallet credit (signup bonus, test-fee
+  // credit...) leaves the referral pending for a later paid purchase —
+  // otherwise new accounts could spend their free credit to mint referral
+  // credit for one account over and over.
+  const paidPaise = Math.max(0, Number(payment.amount) || 0);
+  if (paidPaise === 0) return null;
+  const reward = Math.min(referral.rewardAmount, paidPaise);
 
   const won = await prisma.referral.updateMany({
     where: { id: referral.id, status: "pending" },
-    data: { status: "rewarded", qualifyingPaymentId: payment.id, rewardedAt: new Date() },
+    data: { status: "rewarded", qualifyingPaymentId: payment.id, rewardedAt: new Date(), rewardAmount: reward },
   });
   if (won.count !== 1) return null;
+  referral.rewardAmount = reward;
 
   if (referral.rewardAmount > 0) {
     let credited = false;

@@ -175,7 +175,7 @@ export async function buildReceiptPdf(receipt) {
   y += 12;
 
   // ── Item table (single line item: the course/internship purchased) ────
-  const kindLabel = itemType === "internship" ? "Internship" : "Course";
+  const kindLabel = itemType === "internship" ? "Internship" : itemType === "aptitude_test" ? "Careers" : "Course";
   const planLabel = tierLabel(tier);
   autoTable(doc, {
     startY: y,
@@ -238,7 +238,8 @@ export async function buildReceiptPdf(receipt) {
   doc.setFontSize(8.5);
   doc.setTextColor(...hexToRgb(BRAND.muted));
   const note = doc.splitTextToSize(
-    "This is a system-generated receipt confirming a completed online payment. No signature required.",
+    "This is a system-generated receipt confirming a completed online payment. No signature required. " +
+      "Crix Technology is not registered under GST, so no GST has been charged on this payment.",
     CONTENT_W
   );
   doc.text(note, MARGIN, y);

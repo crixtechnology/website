@@ -31,6 +31,8 @@ describe("help bot search", () => {
   it.each([
     ["fees", "i-paid"],
     ["refund", "p-refund"],
+    ["delete my account", "p-delete"],
+    ["gst", "p-gst"],
     ["timings", "o-hours"],
     ["phone number", "o-phone"],
     ["address", "o-where"],

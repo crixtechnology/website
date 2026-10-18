@@ -42,6 +42,14 @@ model User {
   // and never written for a password the user chose — those exist only as the
   // bcrypt `passwordHash` and can't be shown to anyone.
   defaultPasswordEnc       String?   @db.Text
+  // An email/password signup's welcome credit waits here until the student
+  // proves the email is theirs with an emailed code (utils/wallet.js
+  // holdSignupBonus / claimSignupBonus) — so made-up addresses can't farm it.
+  signupBonusPending       Boolean   @default(false)
+  // When the student confirmed at sign-up that they are 18 or older, or that a
+  // parent/guardian has agreed to them using the site (users must be 16+).
+  // Null only for accounts made before the checkbox existed.
+  ageConfirmedAt           DateTime?
   // Set when an admin resets this account's password (Admin → Users) and hands
   // the owner a temporary one: the site then asks them to choose their own at
   // the next login. Cleared as soon as they change or reset it.
@@ -58,6 +66,8 @@ model User {
   creditEntries CreditEntry[]
   emailOtps     EmailOtp[]
   paymentRequests PaymentRequest[]
+  jobApplications JobApplication[]
+  notifications   Notification[]
 
   @@map("users")
 }
@@ -86,7 +96,7 @@ model EmailOtp {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purpose   String   // "reset_password" | "view_password"
+  purpose   String   // "reset_password" | "view_password" | "verify_email" | "delete_account"
   codeHash  String
   attempts  Int      @default(0)
   expiresAt DateTime
@@ -344,6 +354,13 @@ model Payment {
   // granted by routes/paymentRequests.js instead of the normal checkout.
   paymentRequestId              String?
   paymentRequest                PaymentRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
+  // Set only on an aptitude-test fee payment (see JobApplication) — ordered,
+  // verified and granted by routes/careers.js, never by the normal checkout.
+  jobApplicationId              String?
+  jobApplication                JobApplication? @relation(fields: [jobApplicationId], references: [id], onDelete: SetNull)
+  // When the buyer ticked "I agree to the Terms & Conditions" for this payment
+  // (utils/terms.js). Null only on payments made before the checkbox existed.
+  termsAcceptedAt               DateTime?
   createdAt                     DateTime      @default(now())
   updatedAt                     DateTime      @updatedAt
 
@@ -431,10 +448,10 @@ model Service {
   @@map("services")
 }
 
-// Generic atomic named counter (one row per sequence) — used to mint
-// gap-free, race-safe sequential receipt numbers. See utils/counter.js's
-// nextSequence(), which does the atomic increment via a single `UPDATE
-// counters SET seq = seq + 1 ...` (Prisma's `{ increment: 1 }`).
+// Named counter (one row per sequence). The receipt_CR / receipt_IN /
+// receipt_AT rows number the course, internship and aptitude-test receipt
+// series — see utils/receiptNumber.js, the only code that touches them:
+// unique, consecutive, and race-safe.
 model Counter {
   name String @id
   seq  Int    @default(0)
@@ -476,6 +493,11 @@ enum CreditKind {
   referral_reward
   redeemed
   adjustment
+  // Careers: the welcome credit every new student account gets, the aptitude-test
+  // fee handed back as credit, and credit that lapsed unused (see utils/wallet.js).
+  signup_bonus
+  test_fee_credit
+  expired
 }
 
 // Append-only ledger of a student's referral credit, in paise: + earned, - spent.
@@ -492,6 +514,9 @@ model CreditEntry {
   referral   Referral?  @relation(fields: [referralId], references: [id])
   paymentId  String?
   note       String     @default("")
+  // Only on credit that lapses (signup bonus, test-fee credit): after this moment
+  // whatever is left of it is taken back by an `expired` entry. Null = never expires.
+  expiresAt  DateTime?
   createdAt  DateTime   @default(now())
 
   @@unique([paymentId, kind])
@@ -525,4 +550,237 @@ model BotQuestion {
 
   @@index([handled, timesAsked])
   @@map("bot_questions")
+}
+
+// ====================== Careers & the aptitude test ======================
+// A role on the public /careers page, with the settings of its aptitude test.
+// Admin-managed (routes/adminCareers.js): add, edit, or close.
+enum OpeningStatus {
+  open
+  closed
+}
+
+model JobOpening {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  title            String
+  summary          String        @db.Text
+  // Which technical question bank this role's test draws from:
+  // "web" | "fullstack" | "datascience" (utils/careers.js TECH_CATEGORIES).
+  techCategory     String        @default("web")
+  skills           Json          @default("[]")
+  responsibilities Json          @default("[]")
+  eligibility      Json          @default("[]")
+  stipend          String        @default("")
+  experience       String        @default("")
+  duration         String        @default("")
+  mode             String        @default("")
+  status           OpeningStatus @default(open)
+  order            Int           @default(0)
+  // --- this role's test ---
+  durationMinutes  Int           @default(45)
+  // { quantitative, logical, verbal, technical }: how many questions of each.
+  questionCounts   Json          @default("{}")
+  marksPerQuestion Float         @default(1)
+  // Taken off for each wrong answer (a positive number, e.g. 0.25).
+  negativeMarks    Float         @default(0.25)
+  cutoffScore      Float         @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  applications JobApplication[]
+
+  @@map("job_openings")
+}
+
+// The question bank. `category` is one of utils/careers.js CATEGORIES. The
+// correct answer (correctIndex into options) never leaves the server.
+model TestQuestion {
+  id           String   @id @default(cuid())
+  category     String   @db.VarChar(32)
+  text         String   @db.Text
+  options      Json
+  correctIndex Int
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([category, active])
+  @@map("test_questions")
+}
+
+enum JobApplicationStatus {
+  payment_pending
+  test_pending
+  submitted
+  shortlisted
+  not_shortlisted
+  interview_scheduled
+  selected
+  rejected
+}
+
+// One student applying for one role. Paying the test fee moves it from
+// payment_pending to test_pending and unlocks exactly one TestAttempt.
+model JobApplication {
+  id            String               @id @default(cuid())
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  openingId     String
+  opening       JobOpening           @relation(fields: [openingId], references: [id])
+  status        JobApplicationStatus @default(payment_pending)
+  // The Payment that paid the test fee.
+  paymentId     String?
+  paidAt        DateTime?
+  interviewAt   DateTime?
+  interviewLink String               @default("") @db.VarChar(500)
+  adminNote     String               @default("") @db.VarChar(500)
+  // When it reached a final status (selected / not shortlisted / rejected);
+  // cleared if it is reopened. Webcam photos are deleted 6 months after this
+  // (utils/proctorRetention.js).
+  closedAt      DateTime?
+  // When the candidate confirmed they are 18 or older — the aptitude test
+  // (webcam monitoring) is for adults only. Set when paying the fee or, for an
+  // older application, when starting the test.
+  adultConfirmedAt DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  payments Payment[]
+  attempt  TestAttempt?
+
+  @@index([userId])
+  @@index([openingId, status])
+  @@map("job_applications")
+}
+
+enum AttemptStatus {
+  in_progress
+  submitted
+}
+
+// The one sitting of the test an application's payment buys. The paper (the
+// questions drawn for this candidate, options already shuffled, with the right
+// answer) is fixed here at start, and the clock is startedAt/endsAt — both
+// server-side, so a refresh shows the same paper and can't add time.
+model TestAttempt {
+  id             String         @id @default(cuid())
+  applicationId  String         @unique
+  application    JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userId         String
+  status         AttemptStatus  @default(in_progress)
+  startedAt      DateTime
+  endsAt         DateTime
+  submittedAt    DateTime?
+  // "manual" | "time_up" | "violations"
+  submitReason   String         @default("")
+  // The rules as they were when the test started.
+  settings       Json
+  // [{ qid, category, text, options: [...], correct }] — `correct` is the index
+  // into the shuffled options and is stripped before anything goes to the browser.
+  paper          Json
+  score          Float?
+  maxScore       Float?
+  correctCount   Int?
+  wrongCount     Int?
+  categoryScores Json?
+  passed         Boolean?
+  violationCount Int            @default(0)
+  // The one browser session allowed to drive this attempt, and when it last called in.
+  sessionId      String?
+  sessionSeenAt  DateTime?
+  webcamConsent  Boolean        @default(false)
+  ip             String         @default("")
+  userAgent      String         @default("") @db.VarChar(500)
+  device         String         @default("")
+  browser        String         @default("")
+  viaDesktopApp  Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  answers    TestAnswer[]
+  violations TestViolation[]
+  snapshots  TestSnapshot[]
+
+  @@index([status, endsAt])
+  @@map("test_attempts")
+}
+
+// One row per question the candidate has touched, saved the moment they answer.
+// `selected` is an index into that paper question's shuffled options, or null.
+model TestAnswer {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    TestAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  selected   Int?
+  marked     Boolean     @default(false)
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([attemptId, questionId])
+  @@map("test_answers")
+}
+
+model TestViolation {
+  id        String      @id @default(cuid())
+  attemptId String
+  attempt   TestAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  type      String      @db.VarChar(40)
+  detail    String      @default("")
+  // Whether it counts toward the limit that auto-submits the test. Minor ones
+  // (a blocked copy or right-click) and repeats of one incident are logged only.
+  counted   Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  @@index([attemptId, createdAt])
+  @@map("test_violations")
+}
+
+// A webcam photo taken during the test. Only where the file lives is stored
+// here (utils/proctorStorage.js keeps the image itself).
+model TestSnapshot {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    TestAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  storageKey String      @db.VarChar(300)
+  // "" | "no_face" | "multiple_faces" (from the browser's face detector, when it has one)
+  flag       String      @default("") @db.VarChar(20)
+  createdAt  DateTime    @default(now())
+
+  @@index([attemptId, createdAt])
+  @@map("test_snapshots")
+}
+
+// A message on the student's dashboard (application status changes, credit added).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String    @db.Text
+  link      String    @default("")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// One row per deleted account: the proof that an erasure request (DPDP Act
+// 2023, s.12) was carried out, and by whom. Holds no personal data: the old
+// account id and a keyed hash of its email (so a later "did you delete my
+// data?" can be answered without keeping the address itself).
+model AccountDeletion {
+  id            String   @id @default(cuid())
+  formerUserId  String
+  emailHash     String   @db.VarChar(64)
+  // "self" (the student, from their profile) | "admin" (Admin → Users)
+  requestedBy   String   @db.VarChar(10)
+  adminId       String?
+  // What was kept, and why (e.g. payment records under tax law).
+  retainedNote  String   @default("") @db.VarChar(500)
+  deletedAt     DateTime @default(now())
+
+  @@index([emailHash])
+  @@map("account_deletions")
 }

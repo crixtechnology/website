@@ -71,6 +71,29 @@ describe("WalletCard", () => {
     expect(container.querySelectorAll(".wallet-history li")).toHaveLength(9);
   });
 
+  it("lets a new student verify their email to collect the signup bonus", async () => {
+    api.getMyWallet.mockResolvedValue({ ok: true, wallet: wallet({ balance: 0, available: 0, earned: 0, spent: 0, entries: [], pendingBonus: 300 }) });
+    api.sendBonusCode.mockResolvedValue({ ok: true, sentTo: "asha@example.com" });
+    api.verifyBonusCode.mockResolvedValue({ ok: true, credited: 300, wallet: wallet({ balance: 300, available: 300, earned: 300, spent: 0, pendingBonus: 0, entries: [{ id: "signup_1", amount: 300, kind: "signup_bonus", type: "Signup Bonus", label: "Signup Bonus", createdAt: "2026-10-16T10:00:00Z" }] }) });
+    await render(<WalletCard />);
+    expect(q(".wallet-bonus").textContent).toContain("300 bonus credits are waiting");
+
+    await act(async () => { q(".wallet-bonus button").click(); });
+    expect(api.sendBonusCode).toHaveBeenCalled();
+    expect(q(".wallet-bonus").textContent).toContain("asha@example.com");
+
+    const input = q("#bonus-code");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(input, "12a3456");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(input.value).toBe("123456"); // digits only
+    await act(async () => { q(".wallet-bonus-form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+    expect(api.verifyBonusCode).toHaveBeenCalledWith("123456");
+    expect(q(".wallet-bonus")).toBeNull();
+    expect(q(".wallet-amount").textContent).toBe("₹300");
+  });
+
   it("renders nothing when the wallet can't be loaded, rather than breaking the profile page", async () => {
     api.getMyWallet.mockResolvedValue({ ok: false, error: "nope" });
     await render(<WalletCard />);
@@ -89,6 +112,23 @@ describe("BuyModal with a wallet", () => {
     await render(<UserContext.Provider value={ctx}><BuyModal item={item} user={user} initialTier="basic" onClose={jest.fn()} /></UserContext.Provider>);
   };
   const submit = async () => { await act(async () => { q(".modal-box form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); }); };
+  const agree = async () => { await act(async () => { q(".modal-box .terms-check input").click(); }); };
+
+  it("won't take payment until the Terms & Conditions box is ticked", async () => {
+    api.getPriceQuote.mockResolvedValue(quote({ creditApplied: 999, creditAvailable: 1500, payable: 1, walletCoversAll: true }));
+    await open();
+    const button = q('.modal-box button[type="submit"]');
+    const link = q('.modal-box .terms-check a[href="/terms-of-service"]');
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(button.disabled).toBe(true);
+
+    await submit();
+    expect(api.submitApplication).not.toHaveBeenCalled();
+    expect(q(".modal-box .alert-inline.alert-error").textContent).toContain("accept the Terms & Conditions");
+
+    await agree();
+    expect(button.disabled).toBe(false);
+  });
 
   it("offers to pay from the wallet when it covers the price, and never starts a Razorpay order", async () => {
     api.getPriceQuote.mockResolvedValue(quote({ creditApplied: 999, creditAvailable: 1500, payable: 1, walletCoversAll: true }));
@@ -102,6 +142,7 @@ describe("BuyModal with a wallet", () => {
     expect(q(".order-summary").textContent).toContain("Wallet credit−₹1,000");
     expect(q(".order-summary .is-total").textContent).toBe("You pay₹0");
 
+    await agree();
     await submit();
     expect(api.payWithWallet).toHaveBeenCalledWith("app1", "react-basics", "basic", "");
     expect(api.createRazorpayOrder).not.toHaveBeenCalled();
@@ -113,6 +154,7 @@ describe("BuyModal with a wallet", () => {
     api.submitApplication.mockResolvedValue({ ok: true, application: { _id: "app1" } });
     api.payWithWallet.mockResolvedValue({ ok: false, error: "Your wallet doesn't have enough credit to pay for this in full." });
     await open();
+    await agree();
     await submit();
     expect(q(".modal-box .alert-inline.alert-error").textContent).toContain("doesn't have enough credit");
   });

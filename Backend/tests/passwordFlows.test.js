@@ -162,9 +162,24 @@ describe("Google accounts get a starter password they can view after an OTP", ()
   const googleProfile = (email, sub) => ({ getPayload: () => ({ email, email_verified: true, sub, name: "Gee Oh" }) });
   let token, userId, revealed, revealCode;
 
+  it("won't create a new Google account without the age confirmation, but lets an existing one log in", async () => {
+    mockVerifyIdToken.mockResolvedValue(googleProfile("no-age-google@example.com", "g-age"));
+    const refused = await request(app).post("/api/auth/google").send({ credential: "tok" });
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe("AGE_CONFIRMATION_REQUIRED");
+    expect(await prisma.user.findUnique({ where: { email: "no-age-google@example.com" } })).toBeNull();
+
+    const made = await request(app).post("/api/auth/google").send({ credential: "tok", ageConfirmed: true });
+    expect(made.status).toBe(200);
+    expect((await prisma.user.findUnique({ where: { email: "no-age-google@example.com" } })).ageConfirmedAt).toBeInstanceOf(Date);
+    // Logging in again later needs no box.
+    await prisma.user.update({ where: { email: "no-age-google@example.com" }, data: { activeSessionId: null } });
+    expect((await request(app).post("/api/auth/google").send({ credential: "tok" })).status).toBe(200);
+  });
+
   it("creates a working starter password on first Google sign-in", async () => {
     mockVerifyIdToken.mockResolvedValue(googleProfile("newgoogle@example.com", "g-1"));
-    const res = await request(app).post("/api/auth/google").send({ credential: "tok" });
+    const res = await request(app).post("/api/auth/google").send({ credential: "tok", ageConfirmed: true });
     expect(res.status).toBe(200);
     expect(res.body.user).toMatchObject({ hasPassword: true, hasDefaultPassword: true, isGoogleAccount: true });
     expect(JSON.stringify(res.body)).not.toMatch(/defaultPasswordEnc|passwordHash/);
@@ -216,7 +231,7 @@ describe("Google accounts get a starter password they can view after an OTP", ()
   it("leaves a password account that links Google alone, and can't reveal a self-chosen password", async () => {
     const pw = await makeUser("linkme@example.com", "MyRealPassword1");
     mockVerifyIdToken.mockResolvedValue(googleProfile("linkme@example.com", "g-2"));
-    const res = await request(app).post("/api/auth/google").send({ credential: "tok" });
+    const res = await request(app).post("/api/auth/google").send({ credential: "tok", ageConfirmed: true });
     expect(res.body.user).toMatchObject({ hasPassword: true, hasDefaultPassword: false, isGoogleAccount: true });
     const row = await prisma.user.findUnique({ where: { id: pw.id } });
     expect(row.passwordHash).toEqual(pw.passwordHash);
@@ -228,7 +243,7 @@ describe("Google accounts get a starter password they can view after an OTP", ()
   it("gives an older Google-only account (no password yet) one on its next Google sign-in", async () => {
     const legacy = await makeUser("legacy-google@example.com", null, { googleId: "g-3" });
     mockVerifyIdToken.mockResolvedValue(googleProfile("legacy-google@example.com", "g-3"));
-    const res = await request(app).post("/api/auth/google").send({ credential: "tok" });
+    const res = await request(app).post("/api/auth/google").send({ credential: "tok", ageConfirmed: true });
     expect(res.body.user).toMatchObject({ hasPassword: true, hasDefaultPassword: true });
     expect((await prisma.user.findUnique({ where: { id: legacy.id } })).passwordHash).toBeTruthy();
   });
@@ -236,7 +251,7 @@ describe("Google accounts get a starter password they can view after an OTP", ()
   it("says so plainly (503) if the code email can't be sent, and lets them retry at once", async () => {
     const u = await makeUser("smtp-down@example.com", null, { googleId: "g-4" });
     mockVerifyIdToken.mockResolvedValue(googleProfile("smtp-down@example.com", "g-4"));
-    const login = await request(app).post("/api/auth/google").send({ credential: "tok" });
+    const login = await request(app).post("/api/auth/google").send({ credential: "tok", ageConfirmed: true });
     mockSendMail.mockRejectedValueOnce(new Error("connect ETIMEDOUT"));
     const down = await request(app).post("/api/auth/password/reveal/request").set(auth(login.body.token));
     expect(down.status).toBe(503);

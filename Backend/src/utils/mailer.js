@@ -525,21 +525,30 @@ async function sendAccountExistsEmail({ to, name }) {
 // purpose: "reset_password" (forgot-password) | "view_password" (profile).
 async function sendOtpEmail({ to, name, code, purpose, ttlMinutes }) {
   const isReset = purpose === "reset_password";
-  const what = isReset ? "reset your password" : "view your account password";
-  const subject = isReset ? "Your Crix Technology password reset code" : "Your Crix Technology verification code";
+  const isDelete = purpose === "delete_account";
+  const what = isReset ? "reset your password"
+    : purpose === "verify_email" ? "verify your email address"
+    : isDelete ? "confirm that you want to permanently delete your account"
+    : "view your account password";
+  const subject = isReset ? "Your Crix Technology password reset code"
+    : isDelete ? "Confirm deleting your Crix Technology account"
+    : "Your Crix Technology verification code";
   const html = layout({
     preheader: `Your code is ${code}. It expires in ${ttlMinutes} minutes.`,
-    title: isReset ? "Reset your password" : "Your verification code",
+    title: isReset ? "Reset your password" : isDelete ? "Confirm deleting your account" : "Your verification code",
     content:
       paragraph(`Hi ${escapeHtml(name || "there")}, use this code to ${what}:`) +
       codeBox(code, `Expires in ${ttlMinutes} minutes · can be used once`) +
       paragraph("Never share this code with anyone — Crix Technology will never ask you for it.") +
+      // Someone else asking to delete the account is worth more than "ignore this".
+      (isDelete ? noteBox("<strong>Didn't ask to delete your account?</strong> Don't share this code, and change your password — someone may be signed in to your account.") : "") +
       paragraph(`If you didn't ask for this, you can ignore this email; ${isReset ? "your password hasn't changed" : "nothing has changed"}.`, `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
     `Hi ${name || "there"},\n\nUse this code to ${what}: ${code}\n\n` +
     `It expires in ${ttlMinutes} minutes and can be used once. Never share it with anyone — Crix Technology will never ask you for it.\n` +
-    `If you didn't ask for this, you can ignore this email; your password hasn't changed.` + TEXT_SIGNOFF;
+    (isDelete ? "Didn't ask to delete your account? Don't share this code, and change your password — someone may be signed in to your account.\n" : "") +
+    `If you didn't ask for this, you can ignore this email; ${isReset ? "your password hasn't changed" : "nothing has changed"}.` + TEXT_SIGNOFF;
   return deliver({ to, subject, text, html });
 }
 
@@ -560,6 +569,30 @@ async function sendPasswordChangedEmail({ to, name }) {
     `Hi ${name || "there"},\n\nThe password on your Crix Technology account was just changed.\n\n` +
     `If that was you, there's nothing more to do. If it wasn't, reset your password right away using "Forgot password" on the login form at ${site} and contact us.` + TEXT_SIGNOFF;
   return deliver({ to, subject: "Your Crix Technology password was changed", text, html });
+}
+
+// ---------- account deleted (DPDP Act 2023 erasure) ----------
+// The last email to the address: confirms what was erased and what the law
+// makes us keep. Sent after the account is gone, to the address captured before.
+async function sendAccountDeletedEmail({ to, name, paymentsKept }) {
+  if (!to) return { sent: false, reason: "No email" };
+  const kept = paymentsKept > 0
+    ? `We have kept the records of your ${paymentsKept} payment${paymentsKept === 1 ? "" : "s"} and ${paymentsKept === 1 ? "its receipt" : "their receipts"}, with no link to an account, because Indian tax and accounting law requires us to.`
+    : "We held no payment records for your account, so nothing was kept.";
+  const erased = "Your profile, course access, wallet credit, referrals, careers applications, aptitude tests and webcam photos, notifications and contact-form messages have been erased.";
+  const grievance = "If you have a question or a complaint about how your data was handled, write to our Grievance Officer at crixtechnology@gmail.com.";
+  const html = layout({
+    preheader: "Your Crix Technology account and personal data have been deleted.",
+    title: "Your account has been deleted",
+    content:
+      paragraph(`Hi ${escapeHtml(name || "there")}, as you asked, we've permanently deleted your Crix Technology account.`) +
+      paragraph(erased) +
+      paragraph(escapeHtml(kept)) +
+      noteBox(`You're always welcome back — signing up again starts a brand-new account. ${grievance}`),
+  });
+  const text =
+    `Hi ${name || "there"},\n\nAs you asked, we've permanently deleted your Crix Technology account.\n\n${erased}\n\n${kept}\n\n${grievance}` + TEXT_SIGNOFF;
+  return deliver({ to, subject: "Your Crix Technology account has been deleted", text, html });
 }
 
 // ---------- payment request from the admin ----------
@@ -622,7 +655,154 @@ async function sendWalletCreditEmail({ to, name, amount, balance, reason, note }
   return deliver({ to, subject: `${fmtRupees(amount)} added to your Crix wallet`, text, html });
 }
 
+// ====================== careers & the aptitude test ======================
+// All best-effort (sent through utils/notifications.js sendCareerEmail, which
+// swallows failures): each one repeats something the student can already see on
+// their dashboard. Times are stored in UTC and written out here in IST.
+function fmtIst(date) {
+  if (!date) return "";
+  return `${new Date(date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} IST`;
+}
+
+const creditRules = (expiryMonths) =>
+  `1 credit = ₹1. Credits can be used only for purchases on crixtechnology.com${expiryMonths > 0 ? `, are valid for ${expiryMonths} months` : ""}, and can't be withdrawn as cash or transferred.`;
+
+// ---------- signup bonus credited ----------
+async function sendSignupBonusEmail({ to, name, credits, expiryMonths }) {
+  if (!to) return { sent: false, reason: "No email" };
+  const link = `${siteOrigin()}/dashboard?tab=wallet`;
+  const html = layout({
+    preheader: `Welcome to Crix Technology — ${credits} bonus credits are in your wallet.`,
+    title: `Welcome! ${credits} bonus credits are yours`,
+    content:
+      paragraph(`Hi ${escapeHtml(name || "there")}, welcome to Crix Technology. We've added <strong>${credits} bonus credits</strong> to your wallet to get you started.`) +
+      detailsBox([
+        ["Signup bonus", `${credits} credits`],
+        ["Worth", fmtRupees(credits), true],
+      ]) +
+      button("View my wallet", link) +
+      paragraph(escapeHtml(creditRules(expiryMonths)), `font-size:13px;color:${BRAND.muted}`),
+  });
+  const text =
+    `Hi ${name || "there"},\n\nWelcome to Crix Technology. We've added ${credits} bonus credits to your wallet.\n\n` +
+    `${creditRules(expiryMonths)}\n\nSee your wallet: ${link}` + TEXT_SIGNOFF;
+  return deliver({ to, subject: `Welcome to Crix Technology — ${credits} bonus credits added`, text, html });
+}
+
+// ---------- test fee paid: receipt attached, credits added, test unlocked ----------
+async function sendTestPaymentEmail({ to, name, roleTitle, amount, credits, balance, expiryMonths, receiptNumber, pdfBuffer }) {
+  if (!to) return { sent: false, reason: "No email" };
+  const link = `${siteOrigin()}/dashboard?tab=apply`;
+  const html = layout({
+    preheader: `Payment confirmed — your ${roleTitle} aptitude test is unlocked and ${credits} credits are in your wallet.`,
+    title: "Payment confirmed — your test is unlocked",
+    content:
+      paragraph(`Hi ${escapeHtml(name || "there")}, we've received your payment for the <strong>${escapeHtml(roleTitle)}</strong> aptitude test. You can take the test right away from My Dashboard.`) +
+      detailsBox([
+        ["Role", escapeHtml(roleTitle)],
+        ["Receipt no.", escapeHtml(receiptNumber)],
+        ["Amount paid", fmtRupees(amount)],
+        ["Credits added", `${credits} credits`],
+        ["Wallet balance", `${Math.round(balance)} credits`, true],
+      ]) +
+      paragraph("Your receipt is attached to this email as a PDF.") +
+      button("Take the test", link) +
+      noteBox("Find a quiet place with a steady internet connection and a working webcam before you start — the test runs in full screen, and it can be taken only once.") +
+      paragraph(`The full fee has come back to you as wallet credit. ${escapeHtml(creditRules(expiryMonths))} Paying for the test doesn't guarantee selection.`, `font-size:13px;color:${BRAND.muted}`),
+  });
+  const text =
+    `Hi ${name || "there"},\n\nWe've received your payment for the ${roleTitle} aptitude test. You can take it right away from My Dashboard: ${link}\n\n` +
+    `Receipt no.: ${receiptNumber}\nAmount paid: ${fmtRupees(amount)}\nCredits added: ${credits}\nWallet balance: ${Math.round(balance)} credits\n\n` +
+    `Your receipt is attached as a PDF. ${creditRules(expiryMonths)} Paying for the test doesn't guarantee selection.` + TEXT_SIGNOFF;
+  return deliver({
+    to,
+    subject: `Payment confirmed — ${roleTitle} aptitude test (${receiptNumber})`,
+    text,
+    html,
+    attachments: pdfBuffer ? [{ filename: `Receipt-${receiptNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }] : undefined,
+  });
+}
+
+// ---------- test submitted ----------
+async function sendTestSubmittedEmail({ to, name, roleTitle, reason }) {
+  if (!to) return { sent: false, reason: "No email" };
+  const link = `${siteOrigin()}/dashboard?tab=applications`;
+  const how = reason === "time_up"
+    ? "Your time ran out, so the test was submitted automatically with the answers you had saved."
+    : reason === "violations"
+      ? "The test was submitted automatically because the limit on test-rule violations was reached. The answers you had saved were kept."
+      : "Every answer you picked was saved.";
+  const html = layout({
+    preheader: `Your ${roleTitle} aptitude test has been submitted. Shortlisting result within 7 days.`,
+    title: "Your test has been submitted",
+    content:
+      paragraph(`Hi ${escapeHtml(name || "there")}, your aptitude test for <strong>${escapeHtml(roleTitle)}</strong> is in. ${escapeHtml(how)}`) +
+      paragraph("You'll get your shortlisting result within 7 days — by email and in My Applications on your dashboard.") +
+      button("View my application", link),
+  });
+  const text =
+    `Hi ${name || "there"},\n\nYour aptitude test for ${roleTitle} has been submitted. ${how}\n\n` +
+    `You'll get your shortlisting result within 7 days, by email and in My Applications: ${link}` + TEXT_SIGNOFF;
+  return deliver({ to, subject: `Test submitted — ${roleTitle}`, text, html });
+}
+
+// ---------- application status changed (shortlisted / interview / offer / rejection) ----------
+async function sendApplicationStatusEmail({ to, name, roleTitle, status, interviewAt, interviewLink }) {
+  if (!to) return { sent: false, reason: "No email" };
+  const link = `${siteOrigin()}/dashboard?tab=applications`;
+  const hi = `Hi ${name || "there"},`;
+  const when = fmtIst(interviewAt);
+  // { subject, title, lines: plain paragraphs, details?: rows, note? }
+  const copy = {
+    shortlisted: {
+      subject: `You're shortlisted — ${roleTitle}`,
+      title: "You've been shortlisted",
+      lines: [`Congratulations! Based on your aptitude test, you've been shortlisted for ${roleTitle}.`, "The next step is an online interview. We'll send you the date, time and meeting link shortly."],
+    },
+    interview_scheduled: {
+      subject: `Your interview is scheduled — ${roleTitle}`,
+      title: "You're shortlisted — your interview is scheduled",
+      lines: [`Congratulations! You've been shortlisted for ${roleTitle}, and your online interview is scheduled.`],
+      details: [["Role", escapeHtml(roleTitle)], ["Date & time", escapeHtml(when), true], ["Meeting link", interviewLink ? `<a href="${escapeHtml(interviewLink)}" style="color:${BRAND.teal}">${escapeHtml(interviewLink)}</a>` : ""]],
+      note: "Please join a few minutes early, from a quiet place with a working camera and microphone.",
+    },
+    not_shortlisted: {
+      subject: `Your aptitude test result — ${roleTitle}`,
+      title: "Your aptitude test result",
+      lines: [`Thank you for taking the aptitude test for ${roleTitle}. After reviewing the results, we're not able to shortlist you for this role this time.`, "This isn't the end of the road — keep building your skills, and you're welcome to apply again. Your wallet credits are still yours to use on any Crix course or internship."],
+    },
+    selected: {
+      subject: `Congratulations — you're selected for ${roleTitle}`,
+      title: "Congratulations — you're selected!",
+      lines: [`We're delighted to offer you the ${roleTitle} role at Crix Technology.`, "Your offer letter and joining details will follow in a separate email. If you have any questions in the meantime, just reply to this email."],
+    },
+    rejected: {
+      subject: `An update on your application — ${roleTitle}`,
+      title: "An update on your application",
+      lines: [`Thank you for the time you gave to your ${roleTitle} application and interview. After careful consideration, we won't be moving forward with your application this time.`, "We appreciate your interest in Crix Technology and wish you the very best. You're welcome to apply for future openings."],
+    },
+  }[status];
+  if (!copy) return { sent: false, reason: "No email for this status" };
+
+  const html = layout({
+    preheader: copy.lines[0],
+    title: copy.title,
+    content:
+      paragraph(escapeHtml(hi)) +
+      copy.lines.map((l) => paragraph(escapeHtml(l))).join("") +
+      (copy.details ? detailsBox(copy.details) : "") +
+      (copy.note ? noteBox(escapeHtml(copy.note)) : "") +
+      button("View my application", link),
+  });
+  const text =
+    `${hi}\n\n${copy.lines.join("\n\n")}\n\n` +
+    (status === "interview_scheduled" ? `Date & time: ${when}\nMeeting link: ${interviewLink || ""}\n\n${copy.note}\n\n` : "") +
+    `See your application: ${link}` + TEXT_SIGNOFF;
+  return deliver({ to, subject: copy.subject, text, html });
+}
+
 module.exports = {
+  sendAccountDeletedEmail,
   sendContactEmail,
   sendApplicationEmail,
   sendReceiptEmail,
@@ -631,4 +811,8 @@ module.exports = {
   sendPasswordChangedEmail,
   sendPaymentRequestEmail,
   sendWalletCreditEmail,
+  sendSignupBonusEmail,
+  sendTestPaymentEmail,
+  sendTestSubmittedEmail,
+  sendApplicationStatusEmail,
 };

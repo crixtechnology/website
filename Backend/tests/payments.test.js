@@ -50,7 +50,7 @@ async function createPricedCourse(overrides = {}) {
 }
 
 async function createStudent(email) {
-  const signup = await request(app).post("/api/auth/signup").send({
+  const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true,
     name: "Student", email, phone: "9876500000", password: "a-real-password",
   });
   return { user: signup.body.user, token: signup.body.token };
@@ -75,7 +75,7 @@ describe("POST /api/payments/create-order — server-side guards", () => {
       type: "internship", refTitle: course.title, courseSlug: course.slug,
       name: "Student", email: "unpriced-buyer@example.com", phone: "9876500000",
     });
-    const order = await authed(request(app).post("/api/payments/create-order"), token).send({
+    const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true,
       applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
     });
     expect(order.status).toBe(400);
@@ -95,11 +95,39 @@ describe("POST /api/payments/create-order — server-side guards", () => {
       type: "course", refTitle: course.title, courseSlug: course.slug,
       name: "Student", email: "repeat-buyer@example.com", phone: "9876500000",
     });
-    const order = await authed(request(app).post("/api/payments/create-order"), token).send({
+    const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true,
       applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
     });
     expect(order.status).toBe(400);
     expect(order.body.error).toMatch(/already have access/i);
+  });
+});
+
+describe("Terms & Conditions must be accepted before paying", () => {
+  it("refuses every checkout route without acceptTerms: true, before any order is made", async () => {
+    const { token } = await createStudent("no-terms-buyer@example.com");
+    razorpay.orders.create.mockClear();
+    for (const path of ["/api/payments/create-order", "/api/payments/pay-with-wallet", "/api/payments/create-upgrade-order"]) {
+      const res = await authed(request(app).post(path), token).send({ applicationId: "x", courseSlug: "x", tier: "basic" });
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("TERMS_REQUIRED");
+    }
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+  });
+
+  it("stamps termsAcceptedAt on the order once they are accepted", async () => {
+    const course = await createPricedCourse();
+    const { token } = await createStudent("terms-buyer@example.com");
+    const appRes = await authed(request(app).post("/api/applications"), token).send({
+      type: "course", refTitle: course.title, courseSlug: course.slug,
+      name: "Student", email: "terms-buyer@example.com", phone: "9876500000",
+    });
+    const order = await authed(request(app).post("/api/payments/create-order"), token).send({
+      acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
+    });
+    expect(order.status).toBe(201);
+    const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: order.body.orderId } });
+    expect(payment.termsAcceptedAt).toBeInstanceOf(Date);
   });
 });
 
@@ -128,7 +156,7 @@ describe("POST /api/payments/create-order — plans", () => {
   beforeEach(() => razorpay.orders.create.mockClear());
 
   it("charges the chosen plan's discounted price and records the plan on the payment and application", async () => {
-    const res = await authed(request(app).post("/api/payments/create-order"), buyerToken).send({ applicationId, courseSlug: course.slug, tier: "plus" });
+    const res = await authed(request(app).post("/api/payments/create-order"), buyerToken).send({ acceptTerms: true, applicationId, courseSlug: course.slug, tier: "plus" });
     expect(res.status).toBe(201);
     expect(res.body.amount).toBe(150000); // ₹2000 less 25%, in paise
     expect(razorpay.orders.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 150000 }));
@@ -143,21 +171,21 @@ describe("POST /api/payments/create-order — plans", () => {
   });
 
   it("requires a plan to be chosen", async () => {
-    const res = await authed(request(app).post("/api/payments/create-order"), buyerToken).send({ applicationId, courseSlug: course.slug });
+    const res = await authed(request(app).post("/api/payments/create-order"), buyerToken).send({ acceptTerms: true, applicationId, courseSlug: course.slug });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/choose a plan/i);
     expect(razorpay.orders.create).not.toHaveBeenCalled();
   });
 
   it("rejects a plan name that does not exist", async () => {
-    const res = await authed(request(app).post("/api/payments/create-order"), buyerToken).send({ applicationId, courseSlug: course.slug, tier: "gold" });
+    const res = await authed(request(app).post("/api/payments/create-order"), buyerToken).send({ acceptTerms: true, applicationId, courseSlug: course.slug, tier: "gold" });
     expect(res.status).toBe(400);
     expect(razorpay.orders.create).not.toHaveBeenCalled();
   });
 
   it("rejects a plan this course does not offer", async () => {
     const twoPlans = await createPricedCourse({ tiers: [{ tier: "basic", price: 1000 }, { tier: "pro", price: 3000 }] });
-    const res = await authed(request(app).post("/api/payments/create-order"), buyerToken).send({ applicationId, courseSlug: twoPlans.slug, tier: "plus" });
+    const res = await authed(request(app).post("/api/payments/create-order"), buyerToken).send({ acceptTerms: true, applicationId, courseSlug: twoPlans.slug, tier: "plus" });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/isn't available/i);
     expect(razorpay.orders.create).not.toHaveBeenCalled();
@@ -262,7 +290,7 @@ describe("plan upgrades", () => {
     razorpay_signature: crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "").update(`${orderId}|${paymentId}`).digest("hex"),
   });
   const upgradeOptions = () => authed(request(app).get(`/api/payments/upgrade-options/${course.slug}`), token);
-  const createUpgrade = (tier) => authed(request(app).post("/api/payments/create-upgrade-order"), token).send({ courseSlug: course.slug, tier });
+  const createUpgrade = (tier) => authed(request(app).post("/api/payments/create-upgrade-order"), token).send({ acceptTerms: true, courseSlug: course.slug, tier });
 
   beforeAll(async () => {
     course = await createPricedCourse({
@@ -296,7 +324,7 @@ describe("plan upgrades", () => {
   });
 
   it("requires a login", async () => {
-    const res = await request(app).post("/api/payments/create-upgrade-order").send({ courseSlug: course.slug, tier: "plus" });
+    const res = await request(app).post("/api/payments/create-upgrade-order").send({ acceptTerms: true, courseSlug: course.slug, tier: "plus" });
     expect(res.status).toBe(401);
   });
 
@@ -308,7 +336,7 @@ describe("plan upgrades", () => {
 
   it("refuses when the caller has no access to the course", async () => {
     const { token: otherToken } = await createStudent("no-access@example.com");
-    const res = await authed(request(app).post("/api/payments/create-upgrade-order"), otherToken).send({ courseSlug: course.slug, tier: "pro" });
+    const res = await authed(request(app).post("/api/payments/create-upgrade-order"), otherToken).send({ acceptTerms: true, courseSlug: course.slug, tier: "pro" });
     expect(res.status).toBe(400);
     expect(razorpay.orders.create).not.toHaveBeenCalled();
   });
@@ -430,7 +458,7 @@ describe("create-order — bug-sweep regressions", () => {
       name: "Guest Buyer", email: "guest-buyer@example.com", phone: "9876500000",
     });
     expect(appRes.status).toBe(201);
-    const body = { applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" };
+    const body = { acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" };
     // Not logged in: no orders at all.
     expect((await request(app).post("/api/payments/create-order").send(body)).status).toBe(401);
     // Logged in, but the application belongs to nobody: still refused.
@@ -448,7 +476,7 @@ describe("create-order — bug-sweep regressions", () => {
       type: "course", refTitle: course.title, courseSlug: course.slug,
       name: "App Owner", email: "app-owner@example.com", phone: "9876500000",
     });
-    const body = { applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" };
+    const body = { acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" };
     const theirs = await authed(request(app).post("/api/payments/create-order"), stranger.token).send(body);
     expect(theirs.status).toBe(404);
     expect(razorpay.orders.create).not.toHaveBeenCalled();
@@ -463,7 +491,7 @@ describe("create-order — bug-sweep regressions", () => {
       type: "course", refTitle: course.title, courseSlug: course.slug,
       name: "Whole Rupees", email: "whole-rupees@example.com", phone: "9876500000",
     });
-    const order = await authed(request(app).post("/api/payments/create-order"), token).send({
+    const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true,
       applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
     });
     expect(order.status).toBe(201);
@@ -478,7 +506,7 @@ describe("create-order — bug-sweep regressions", () => {
       type: "course", refTitle: course.title, courseSlug: course.slug,
       name: "Owner Hint", email: "owner-hint@example.com", phone: "9876500000",
     });
-    const order = await authed(request(app).post("/api/payments/create-order"), token).send({
+    const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true,
       applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "pro",
     });
     expect(order.status).toBe(400);

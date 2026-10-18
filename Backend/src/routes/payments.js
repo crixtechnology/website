@@ -2,19 +2,21 @@ const express = require("express");
 const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { prisma } = require("../db");
+const { safeEqual } = require("../utils/safeCompare");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
-const { nextSequence } = require("../utils/counter");
+const { issueReceiptNumber } = require("../utils/receiptNumber");
 const { round2 } = require("../utils/money");
 const { WITH_TIERS, isTier, tierRank, tierTotal } = require("../utils/tiers");
 const { getUpgradeOptions } = require("../utils/upgrades");
 const { requireAuth } = require("../middleware/requireAuth");
 const { priceOrder, rewardReferrerForPurchase, redeemCreditForPurchase } = require("../utils/referrals");
 const { checkCoupon, overLimitAfterReserving } = require("../utils/coupons");
-const { WALLET_ORDER_PREFIX, isWalletPayment, lockUser } = require("../utils/wallet");
+const { WALLET_ORDER_PREFIX, isWalletPayment, lockUser, expireCredits } = require("../utils/wallet");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
 const { publicWriteLimiter } = require("../utils/rateLimit");
+const { rejectWithoutTerms } = require("../utils/terms");
 
 const router = express.Router();
 
@@ -171,11 +173,6 @@ async function attachReceipt(payment, application) {
   // describes the discount, so show the effective % of the list price instead.
   const effectiveDiscountPercent = extraOff && basePrice > 0 ? round2((discountAmount / basePrice) * 100) : discountPercent;
 
-  const seq = await nextSequence("receipt");
-  const year = new Date().getFullYear();
-
-  const receiptNumber = `CRX-${year}-${String(seq).padStart(5, "0")}`;
-  const issuedAt = new Date();
   const receipt = {
     buyerName: application.name || "",
     buyerEmail: application.email || "",
@@ -189,25 +186,24 @@ async function attachReceipt(payment, application) {
     paymentMode: fromWallet ? "Wallet credit" : "Razorpay (Online)",
   };
 
-  const affected = await prisma.$executeRaw`
-    UPDATE payments
-    SET userId = ${application.userId},
-        courseId = ${application.courseId},
-        receiptNumber = ${receiptNumber},
-        receiptIssuedAt = ${issuedAt},
-        receiptBuyerName = ${receipt.buyerName},
-        receiptBuyerEmail = ${receipt.buyerEmail},
-        receiptBuyerPhone = ${receipt.buyerPhone},
-        receiptItemType = ${receipt.itemType},
-        receiptItemTitle = ${receipt.itemTitle},
-        receiptBasePrice = ${receipt.basePrice},
-        receiptDiscountPercent = ${receipt.discountPercent},
-        receiptDiscountAmount = ${receipt.discountAmount},
-        receiptTotalPaid = ${receipt.totalPaid},
-        receiptPaymentMode = ${receipt.paymentMode}
-    WHERE id = ${payment.id} AND receiptNumber IS NULL
-  `;
-  if (affected === 0) return; // the other concurrent caller (verify vs webhook) got there first
+  // Numbered from the one shared receipt counter (utils/receiptNumber.js).
+  // null: the other concurrent caller (verify vs webhook) got there first.
+  const issued = await issueReceiptNumber(payment.id, {
+    ...(application.userId ? { userId: application.userId } : {}),
+    ...(application.courseId ? { courseId: application.courseId } : {}),
+    receiptBuyerName: receipt.buyerName,
+    receiptBuyerEmail: receipt.buyerEmail,
+    receiptBuyerPhone: receipt.buyerPhone,
+    receiptItemType: receipt.itemType,
+    receiptItemTitle: receipt.itemTitle,
+    receiptBasePrice: receipt.basePrice,
+    receiptDiscountPercent: receipt.discountPercent,
+    receiptDiscountAmount: receipt.discountAmount,
+    receiptTotalPaid: receipt.totalPaid,
+    receiptPaymentMode: receipt.paymentMode,
+  });
+  if (!issued) return;
+  const { receiptNumber, issuedAt } = issued;
 
   // Best-effort — a failed/unconfigured email must never undo the receipt
   // that was just saved, or break the payment flow that led here (this runs
@@ -301,6 +297,8 @@ router.post("/quote", requireAuth, couponAttemptLimiter, async (req, res, next) 
     if (!courseSlug) return res.status(400).json({ ok: false, error: "courseSlug is required" });
     const found = await loadPurchasablePlan(courseSlug, tierName, req.user.sub);
     if (found.error) return res.status(found.error.status).json({ ok: false, error: found.error.message });
+    // Lapsed credit is taken back before the balance is priced in.
+    await expireCredits(req.user.sub);
 
     const planRupees = tierTotal(found.plan);
     let applied = null;
@@ -369,6 +367,8 @@ async function prepareOrder(req) {
     if (!checked.ok) return { error: { status: 400, message: checked.error } };
     applied = checked;
   }
+  // Lapsed credit is taken back before the balance is priced in.
+  await expireCredits(application.userId);
   return { application, course, plan, applied };
 }
 
@@ -381,6 +381,7 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
         error: "Live payments are disabled by a safety guard. Set ALLOW_LIVE_PAYMENTS=true in Backend/.env to enable real charges.",
       });
     }
+    if (rejectWithoutTerms(req, res)) return;
     // What this buyer really pays: the plan price, less any offer code and referral
     // welcome discount, less any referral credit they hold (utils/referrals.js) — all
     // worked out on the server, never taken from the client.
@@ -400,6 +401,7 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
 
     const payment = await prisma.payment.create({
       data: {
+        termsAcceptedAt: new Date(),
         razorpayOrderId: order.id,
         amount: amountPaise,
         status: "created",
@@ -461,6 +463,7 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
 // says walletCoversAll; otherwise credit is simply applied as a discount, as before).
 router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res, next) => {
   try {
+    if (rejectWithoutTerms(req, res)) return;
     const prepared = await prepareOrder(req);
     if (prepared.error) return res.status(prepared.error.status).json({ ok: false, error: prepared.error.message });
     const { application, course, plan, applied } = prepared;
@@ -486,6 +489,7 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
       const spendId = `${WALLET_ORDER_PREFIX}${crypto.randomUUID()}`;
       const payment = await tx.payment.create({
         data: {
+          termsAcceptedAt: new Date(),
           razorpayOrderId: spendId,
           razorpayPaymentId: spendId,
           amount: 0, // nothing went through Razorpay; creditApplied is what was paid
@@ -590,6 +594,7 @@ router.post("/create-upgrade-order", publicWriteLimiter, requireAuth, async (req
         error: "Live payments are disabled by a safety guard. Set ALLOW_LIVE_PAYMENTS=true in Backend/.env to enable real charges.",
       });
     }
+    if (rejectWithoutTerms(req, res)) return;
     const { courseSlug, tier: tierName } = req.body || {};
     if (!courseSlug) return res.status(400).json({ ok: false, error: "courseSlug is required" });
     if (!isTier(tierName)) return res.status(400).json({ ok: false, error: "Choose a plan to upgrade to." });
@@ -633,6 +638,7 @@ router.post("/create-upgrade-order", publicWriteLimiter, requireAuth, async (req
 
     const payment = await prisma.payment.create({
       data: {
+        termsAcceptedAt: new Date(),
         razorpayOrderId: order.id,
         amount: option.duePaise,
         status: "created",
@@ -679,14 +685,13 @@ router.post("/verify", async (req, res, next) => {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
     const sig = String(razorpay_signature);
-    const valid =
-      expected.length === sig.length &&
-      crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+    const valid = safeEqual(expected, sig);
     if (!valid) return res.status(400).json({ ok: false, error: "Payment could not be verified." });
 
     const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: razorpay_order_id } });
-    // Payments for admin requests are confirmed at /payment-requests/verify.
-    if (!payment || payment.paymentRequestId) return res.status(404).json({ ok: false, error: "Payment record not found" });
+    // Payments for admin requests are confirmed at /payment-requests/verify, and
+    // aptitude-test fees at /careers/verify.
+    if (!payment || payment.paymentRequestId || payment.jobApplicationId) return res.status(404).json({ ok: false, error: "Payment record not found" });
 
     const application = await grantAccessForPayment(payment, razorpay_payment_id);
 
@@ -716,9 +721,7 @@ router.post("/webhook", async (req, res, next) => {
     if (!signature || !secret) return res.status(400).json({ ok: false, error: "Missing signature or secret" });
 
     const expected = crypto.createHmac("sha256", secret).update(req.body).digest("hex");
-    const valid =
-      expected.length === signature.length &&
-      crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+    const valid = safeEqual(expected, signature);
     if (!valid) return res.status(400).json({ ok: false, error: "Invalid webhook signature" });
 
     const event = JSON.parse(req.body.toString("utf8"));
@@ -729,6 +732,8 @@ router.post("/webhook", async (req, res, next) => {
       // A payment an admin requested (routes/paymentRequests.js) has its own
       // grant path; required here, not at the top, since that file requires this one.
       if (payment && payment.paymentRequestId) await require("./paymentRequests").grantAccessForRequestPayment(payment, entity.id);
+      // An aptitude-test fee (routes/careers.js): credits the wallet and unlocks the test.
+      else if (payment && payment.jobApplicationId) await require("../utils/careers").grantTestForPayment(payment, entity.id);
       else if (payment) await grantAccessForPayment(payment, entity.id);
     } else if (entity && event.event === "payment.failed") {
       const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: entity.order_id } });

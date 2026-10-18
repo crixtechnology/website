@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyPaymentRequests, createPaymentRequestOrder, verifyPaymentRequest, getReceipt } from "../services/api.js";
-import { loadRazorpayScript, Alert } from "./ui.jsx";
+import { loadRazorpayScript, Alert, TermsCheckbox } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdf.js";
 import { tierLabel, formatINR } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
@@ -15,6 +15,8 @@ export default function PaymentRequests({ onPaid }) {
   const [requests, setRequests] = useState([]);
   const [busy, setBusy] = useState(""); // request id being paid / receipt being built
   const [msg, setMsg] = useState({ kind: "", text: "" });
+  // One Terms & Conditions box for the list; every Pay button waits on it.
+  const [agreed, setAgreed] = useState(false);
   const mounted = useRef(true);
 
   const load = () => getMyPaymentRequests().then((res) => {
@@ -33,7 +35,7 @@ export default function PaymentRequests({ onPaid }) {
   if (requests.length === 0) return null;
 
   const pay = async (r) => {
-    if (busy) return;
+    if (busy || !agreed) return;
     setBusy(r._id);
     setMsg({ kind: "", text: "" });
     const order = await createPaymentRequestOrder(r._id);
@@ -95,6 +97,9 @@ export default function PaymentRequests({ onPaid }) {
     <div style={{ margin: "0 0 32px" }}>
       <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>Payment requests</h2>
       {msg.text && <Alert inline kind={msg.kind}>{msg.text}</Alert>}
+      {requests.some((r) => r.status === "pending") && (
+        <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={!!busy} what="these payments" />
+      )}
       <div className="admin-list">
         {requests.map((r) => (
           <div className="admin-row" key={r._id}>
@@ -110,7 +115,7 @@ export default function PaymentRequests({ onPaid }) {
             </div>
             <div className="admin-row-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               {r.status === "pending" ? (
-                <button className="btn btn-solid" disabled={!!busy} onClick={() => pay(r)}>
+                <button className="btn btn-solid" disabled={!!busy || !agreed} onClick={() => pay(r)}>
                   {busy === r._id ? "Opening…" : `Pay ${formatINR(r.amount)}`}
                 </button>
               ) : (

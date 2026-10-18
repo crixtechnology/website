@@ -73,8 +73,8 @@ export function UserProvider({ children }) {
     return res;
   }, []);
 
-  const loginWithGoogle = useCallback(async (credential) => {
-    const res = await googleAuthRequest(credential);
+  const loginWithGoogle = useCallback(async (credential, options) => {
+    const res = await googleAuthRequest(credential, options);
     if (res.ok) { setUser(res.user); setToken(res.token); setSessionExpired(false); setLastActivity(); }
     return res;
   }, []);

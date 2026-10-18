@@ -5,6 +5,7 @@ import App from "./App.jsx";
 import { UserProvider } from "./context/UserContext.jsx";
 import "./styles/global.css";
 import "./styles/upgrade.css";
+import "./styles/careers.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(

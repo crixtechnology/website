@@ -3,6 +3,13 @@
 // so tests can import that directly without either side effect.
 const app = require("./app");
 const { connectDB } = require("./db");
+const { checkSecretsOrExit } = require("./utils/startupChecks");
+const { startSnapshotCleanup } = require("./utils/proctorRetention");
+const { storageStatus } = require("./utils/proctorStorage");
+const { seedCareersOnce } = require("./utils/careersFirstRun");
+
+// A guessable JWT_SECRET would let anyone forge an admin login: stop here in production.
+checkSecretsOrExit();
 
 const PORT = process.env.PORT || 5000;
 
@@ -45,4 +52,10 @@ function listen() {
 connectWithRetry().then((connected) => {
   if (!connected) console.error("Starting anyway: requests that need the database will answer 503 until it is back.");
   listen();
+  // Where aptitude-test webcam photos go — a missing setting shows in the host's logs.
+  console.log(storageStatus().message);
+  // Deletes aptitude-test webcam photos past their retention period.
+  startSnapshotCleanup();
+  // The starter job roles and question bank, the first time only (utils/careersFirstRun.js).
+  if (connected) seedCareersOnce().catch((e) => console.error("[careers] first-run setup failed (will retry on next start):", e.message));
 });

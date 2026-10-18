@@ -5,6 +5,7 @@ import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import UserPicker from "../../components/UserPicker.jsx";
 import WalletPanel from "../../components/WalletPanel.jsx";
+import WalletBalances from "../../components/WalletBalances.jsx";
 
 // Pick a student, then add credit to (or take credit from) their wallet. The
 // same panel lives on each student's page in Admin → Users.
@@ -69,6 +70,9 @@ export default function AdminWallet() {
             <WalletPanel key={picked._id} userId={picked._id} userName={picked.name} wallet={wallet} onChange={setWallet} />
           )}
         </div>
+
+        {/* Everyone's balance; "Adjust" opens that student's wallet in the panel above. */}
+        <WalletBalances onPick={(student) => { pick(student); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
       </div>
     </section>
   );

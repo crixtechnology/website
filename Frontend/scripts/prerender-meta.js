@@ -114,9 +114,52 @@ async function livePrograms() {
   return [];
 }
 
+// Open job roles from the backend, for the Careers page's JobPosting markup. Same
+// wake-up allowance as livePrograms(), one try: without them the page is still
+// written, and the app adds the markup itself once it loads.
+async function liveOpenings() {
+  const api = process.env.REACT_APP_API_URL;
+  if (!api || (process.env.VERCEL && /localhost|127\.0\.0\.1/.test(api))) return [];
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  try {
+    const res = await fetch(`${api.replace(/\/+$/, "")}/careers/openings`, { signal: ctrl.signal });
+    const json = await res.json();
+    return (json.ok && Array.isArray(json.openings) ? json.openings : []).filter((o) => o && typeof o.title === "string" && o.title.trim());
+  } catch (e) {
+    console.warn(`prerender-meta: openings fetch failed (${e.name === "AbortError" ? "timed out" : e.message})`);
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// schema.org JobPosting for one opening — must match jobPostingLd() in
+// src/pages/Careers.jsx, which the app uses.
+function jobPostingLd(o) {
+  const lines = (title, items) => (Array.isArray(items) && items.length ? `<p><strong>${title}</strong></p><ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>` : "");
+  return {
+    "@type": "JobPosting",
+    title: o.title,
+    description: `<p>${o.summary || o.title}</p>${lines("Responsibilities", o.responsibilities)}${lines("Eligibility", o.eligibility)}${lines("Skills", o.skills)}`,
+    datePosted: String(o.createdAt || "").slice(0, 10) || undefined,
+    employmentType: "INTERN",
+    hiringOrganization: { "@type": "Organization", name: "Crix Technology", sameAs: seo.siteUrl, logo: `${seo.siteUrl}/crix-logo.png` },
+    jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: "Ahmedabad", addressRegion: "Gujarat", addressCountry: "IN" } },
+    jobLocationType: "TELECOMMUTE",
+    applicantLocationRequirements: { "@type": "Country", name: "India" },
+    baseSalary: { "@type": "MonetaryAmount", currency: "INR", value: { "@type": "QuantitativeValue", minValue: 0, maxValue: 6000, unitText: "MONTH" } },
+    experienceRequirements: o.experience || undefined,
+    skills: (Array.isArray(o.skills) ? o.skills : []).join(", ") || undefined,
+    directApply: true,
+    url: url("/careers"),
+  };
+}
+
 (async () => {
   // 1. The static pages from seo.json.
   let written = 0;
+  const openings = await liveOpenings();
   for (const [p, r] of Object.entries(seo.routes)) {
     if (p === "/") continue; // build/index.html already carries the home page's tags
     writePage({
@@ -126,6 +169,8 @@ async function livePrograms() {
       h1: r.title.replace(/\s*\|\s*Crix Technology.*$/, ""),
       keywords: r.keywords,
       crumbs: r.crumb ? [{ name: "Home", path: "/" }, { name: r.crumb, path: p }] : null,
+      // Same id as the app's useJsonLd("jobs-jsonld") on the Careers page.
+      ld: p === "/careers" && openings.length ? [{ id: "jobs-jsonld", data: { "@context": "https://schema.org", "@graph": openings.map(jobPostingLd) } }] : undefined,
     });
     written++;
   }

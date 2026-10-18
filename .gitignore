@@ -25,3 +25,6 @@ build/
 # logs / os
 *.log
 .DS_Store
+
+# aptitude-test webcam snapshots kept on local disk (see Backend/src/utils/proctorStorage.js)
+Backend/storage/
