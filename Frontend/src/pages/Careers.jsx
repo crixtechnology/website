@@ -497,7 +497,7 @@ export default function Careers() {
               <div className="careers-contact">
                 <div className="contact-line">
                   <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>
-                  <CopyButton value={careersContact.email} label="careers email address" />
+                  <CopyButton value={careersContact.email} label="support email address" />
                 </div>
                 <div className="contact-line">
                   <a href={tel}>{careersContact.phone}</a>

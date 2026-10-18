@@ -11,7 +11,7 @@ import { site } from "./content.js";
 export const defaultTerms = { testFee: 289, signupBonus: 300, creditExpiryMonths: 12, creditUsagePercent: 100 };
 
 export const careersContact = {
-  email: "careers@crixtechnology.com",
+  email: "support@crixtechnology.com",
   phone: site.phoneAlt,
   whatsapp: site.whatsappAlt || site.whatsapp,
 };
