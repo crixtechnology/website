@@ -1,7 +1,7 @@
 import { ALL_FAQS, FAQ_TOPICS, searchFaqs } from "./faqData.js";
 
 // Pages the site actually has, so a bot answer can't link to a dead end.
-const ROUTES = ["/", "/programs", "/internships", "/courses", "/services", "/about", "/contact", "/privacy-policy", "/terms-of-service", "/client-terms", "/dashboard", "/profile"];
+const ROUTES = ["/", "/programs", "/internships", "/courses", "/services", "/about", "/careers", "/contact", "/privacy-policy", "/terms-of-service", "/client-terms", "/dashboard", "/profile"];
 
 describe("help bot answers", () => {
   it("has unique ids, a question and an answer for every entry", () => {
@@ -32,6 +32,16 @@ describe("help bot search", () => {
     ["fees", "i-paid"],
     ["refund", "p-refund"],
     ["delete my account", "p-delete"],
+    ["are you hiring", "k-open"],
+    ["how to apply for a job", "k-apply"],
+    ["aptitude test fee", "k-fee"],
+    ["negative marking", "k-test"],
+    ["webcam full screen rules", "k-rules"],
+    ["when will i get my result", "k-result"],
+    ["can i reapply", "k-again"],
+    ["webcam photos", "k-photos"],
+    ["signup bonus", "r-bonus"],
+    ["cookies", "o-cookies"],
     ["gst", "p-gst"],
     ["timings", "o-hours"],
     ["phone number", "o-phone"],

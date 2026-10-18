@@ -7,6 +7,7 @@
 // `links`: [{ to: "/path", label }] for in-site pages, [{ href, label }] for external.
 // `k`: extra keywords the free-text search should match on.
 import { site, internships, courses } from "./content.js";
+import { careersContact } from "./careers.js";
 
 const list = (items) => items.map((i) => `• ${i.title}`).join("\n");
 
@@ -57,6 +58,40 @@ export const FAQ_TOPICS = [
     ],
   },
   {
+    id: "careers", icon: "💼", label: "Careers & aptitude test",
+    faqs: [
+      { id: "k-open", q: "Are you hiring? Which roles are open?", k: "hiring jobs job openings vacancy vacancies roles career careers opening position",
+        a: "Every role we're hiring for is listed on the Careers page, with its skills, stipend, duration and test details. If no role is open, the page says so — new openings are posted there first.",
+        links: [{ to: "/careers", label: "See open roles" }] },
+      { id: "k-apply", q: "How do I apply for a role?", k: "apply application job role register hiring process steps",
+        a: "• Create an account (or log in)\n• Pick a role on the Careers page, or in My Dashboard → Apply / Aptitude Test\n• Pay the aptitude test registration fee — the whole fee comes back to your wallet as credit\n• Take the online aptitude test\n• If you're shortlisted, we schedule an online interview, then share the result",
+        links: [{ to: "/careers", label: "Careers page" }, { to: "/dashboard", label: "My Dashboard" }] },
+      { id: "k-fee", q: "Do I have to pay to take the aptitude test?", k: "test fee registration fee cost charge money back refund credit aptitude",
+        a: "Yes, there's a registration fee for the aptitude test (shown on the Careers page). The whole fee comes back to your wallet as credit — 1 credit = ₹1 — which you can use on any Crix course or internship before it expires. It can't be withdrawn as cash, and paying for the test doesn't guarantee selection.",
+        links: [{ to: "/careers", label: "Careers page" }] },
+      { id: "k-test", q: "What is the aptitude test like?", k: "aptitude test exam questions pattern syllabus marks negative marking time duration sections",
+        a: "It's an online, timed test you take once, with sections on quantitative aptitude, logical reasoning, verbal ability and a technical section for your role. Wrong answers can cost marks (negative marking), so it's fine to leave a question you don't know. Each role's question count and time are on the Careers page, and you can download the full rules there as a PDF.",
+        links: [{ to: "/careers", label: "Test details & rules" }] },
+      { id: "k-rules", q: "What are the test rules? What do I need?", k: "rules webcam camera fullscreen full screen tab switch laptop browser cheating violation warning",
+        a: "• Use a laptop or desktop with Chrome, Edge or Firefox, a working webcam and a steady connection\n• The test runs in full screen with your webcam on — a photo is taken from time to time\n• Leaving full screen or switching tabs/apps counts as a warning; at the limit the test is submitted automatically\n• Your answers are saved as you pick them, and if your connection drops you can resume — the timer keeps running",
+        links: [{ to: "/careers", label: "Download the rules" }] },
+      { id: "k-who", q: "Who can take the aptitude test?", k: "eligible eligibility age 18 fresher graduate student who can apply experience",
+        a: "Candidates aged 18 or older. Freshers are welcome — students in any year, recent graduates, and anyone with up to a year of experience, from anywhere in India. Each role lists its own eligibility on the Careers page.",
+        links: [{ to: "/careers", label: "See roles" }] },
+      { id: "k-result", q: "When will I hear back after the test?", k: "result shortlist shortlisted interview selected status when hear back offer letter",
+        a: "You'll get your shortlisting result within 7 days of submitting the test — by email and under My Applications in My Dashboard. If you're shortlisted, your online interview's date, time and meeting link appear there too, followed by the final result.",
+        links: [{ to: "/dashboard", label: "My Applications" }] },
+      { id: "k-again", q: "Can I apply again if I'm not selected?", k: "again retry reapply second attempt not selected rejected not shortlisted",
+        a: "Yes. Once an application has ended without an offer (not shortlisted, or not selected after the interview), you can apply for the role again — each application is a new test with its own fee, which again comes back as wallet credit." },
+      { id: "k-photos", q: "What happens to my webcam photos?", k: "webcam photos camera images privacy proctoring stored delete data",
+        a: "They're used only to check that the test was taken fairly, and are stored privately. They're deleted automatically 6 months after your application is closed, and never kept longer than 12 months after the test — or straight away if you delete your account.",
+        links: [{ to: "/privacy-policy", label: "Privacy Policy" }] },
+      { id: "k-help", q: "I had a problem during my test", k: "problem issue test submitted error stuck camera not working disconnected help support",
+        a: `Write to us at ${careersContact.email} with your name and the role, and tell us what happened — we'll look into it.`,
+        links: [{ href: `mailto:${careersContact.email}`, label: "Email us" }] },
+    ],
+  },
+  {
     id: "payments", icon: "💳", label: "Payments & receipts",
     faqs: [
       { id: "p-pay", q: "How do I pay?", k: "pay payment razorpay upi card netbanking wallet secure checkout buy purchase",
@@ -86,7 +121,7 @@ export const FAQ_TOPICS = [
     id: "account", icon: "👤", label: "Account & login",
     faqs: [
       { id: "a-create", q: "How do I create an account?", k: "signup sign up register create account google email",
-        a: "Sign up with your email and a password, or choose “Continue with Google”. Use a permanent, valid email — disposable or temporary emails aren't accepted." },
+        a: "Sign up with your email and a password, or choose “Continue with Google”. Use a permanent, valid email — disposable or temporary emails aren't accepted.\nYou need to be at least 16; if you're 16 or 17, a parent or guardian must agree to you using Crix Technology — you confirm this with a tick box when you sign up." },
       { id: "a-forgot", q: "I forgot my password", k: "forgot reset password code otp login cannot working",
         a: "On the sign-in box choose “Forgot password” and we'll email you a code. If the code doesn't arrive, message us on WhatsApp and we'll reset it for you.",
         links: [{ href: `https://wa.me/${site.whatsappAlt}?text=${encodeURIComponent("Hi Crix Technology! I can't log in — please help me reset my password.")}`, label: "WhatsApp for password help" }] },
@@ -96,7 +131,7 @@ export const FAQ_TOPICS = [
         a: "Open your Profile page after signing in. Your name and phone number can be updated there, and your wallet balance and history are on the same page.",
         links: [{ to: "/profile", label: "Open Profile" }] },
       { id: "a-dash", q: "Where do I find my courses and certificates?", k: "dashboard my courses enrolled certificate where find",
-        a: "Everything is in My Dashboard — your enrolled courses and internships, payment requests, receipts and referral details.",
+        a: "Everything is in My Dashboard:\n• My Courses — your courses and internships, payment requests, receipts and referral details\n• Apply / Aptitude Test — apply for a role and take its test\n• My Applications — where each job application stands\n• My Wallet — your credit, its history and expiry dates",
         links: [{ to: "/dashboard", label: "My Dashboard" }] },
     ],
   },
@@ -104,8 +139,11 @@ export const FAQ_TOPICS = [
     id: "referrals", icon: "🎁", label: "Wallet, referrals & offers",
     faqs: [
       { id: "r-wallet", q: "What is the wallet and how do I use it?", k: "wallet credit balance history pay spend add money top up",
-        a: "Your wallet holds credit — from referrals, or credit our team adds to your account. Your balance and a full history are on your Profile page.\nAt checkout the credit is taken off the price automatically. If it covers the whole price, you can pay with the wallet alone — no card or UPI needed.",
-        links: [{ to: "/profile", label: "Open my wallet" }] },
+        a: "Your wallet holds credit (1 credit = ₹1). It comes from:\n• Your signup bonus, once your email is verified\n• Aptitude test fees, which come back as credit\n• Referral rewards, and credit our team adds\nAt checkout the credit is taken off the price automatically, and if it covers the whole price you can pay with the wallet alone. Your balance, history and each credit's expiry date are in My Dashboard → My Wallet.\nBonus and test-fee credit is valid for a limited time, and there may be a limit on how much of one purchase credit can pay for — the wallet shows both.",
+        links: [{ to: "/dashboard", label: "Open my wallet" }] },
+      { id: "r-bonus", q: "How do I get my signup bonus?", k: "signup bonus welcome credit free credits new account verify email code",
+        a: "New accounts get bonus credits. If you signed up with Google, they're added straight away. If you signed up with an email and password, open My Dashboard → My Wallet and choose “Email me a code” — enter the code we send you and the credits are added. Like test-fee credit, the bonus is valid for a limited time.",
+        links: [{ to: "/dashboard", label: "Open my wallet" }] },
       { id: "r-how", q: "How does the referral program work?", k: "referral refer friend code earn credit reward share",
         a: "Every registered student has a personal referral code.\n• Your friend applies it once, at sign-up or at checkout before their first purchase, and gets a discount on that purchase\n• When their first payment is confirmed, you earn referral credit\n• The credit goes into your wallet and is applied automatically at checkout\nReferral codes are for new students, so you can't add one once you already have a course." },
       { id: "r-credit", q: "Can I withdraw wallet credit as cash?", k: "credit cash withdraw transfer money value",
@@ -163,6 +201,9 @@ export const FAQ_TOPICS = [
         a: "Yes. Crix Technology Private Limited is incorporated under the Companies Act, 2013 (CIN U63122GJ2026PTC179737) and has Udyam registration UDYAM-GJ-01-0667027." },
       { id: "o-privacy", q: "How is my data used?", k: "privacy data personal policy security dpdp",
         a: "Your data is used only to run your account and programs — communication, certificates, payments and (where relevant) joining kits. We don't sell personal data. Payment details are handled by Razorpay, not stored by us.",
+        links: [{ to: "/privacy-policy", label: "Privacy Policy" }] },
+      { id: "o-cookies", q: "Do you use cookies?", k: "cookies cookie analytics tracking consent google banner settings",
+        a: "Only what the site needs to work — keeping you logged in, your theme and your cookie choice. Google Analytics cookies, which count visits, are used only if you choose “Accept analytics” in the cookie banner, and never for ads. You can change your choice any time from “Cookie settings” at the bottom of every page.",
         links: [{ to: "/privacy-policy", label: "Privacy Policy" }] },
       { id: "o-social", q: "Where can I follow you?", k: "linkedin instagram social media follow",
         a: "Find us on LinkedIn and Instagram.",
