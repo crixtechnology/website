@@ -353,17 +353,24 @@ export function Hero3D({ lite = false }) {
 
     // Runs only while the hero is on screen and the tab is visible: nobody sees
     // it otherwise, so there's no reason to keep the processor busy.
-    let raf = 0, running = false, onScreen = true, last = 0;
+    // It also stops (leaving the last frame) on any device where the first
+    // frames turn out too slow to draw: an average over 25 ms each.
+    let raf = 0, running = false, onScreen = true, last = 0, timed = 0, spent = 0, still = false;
     const loop = (now) => {
       if (!running) return;
       raf = requestAnimationFrame(loop);
       if (detail.frameMs && now - last < detail.frameMs) return;
       const dt = last ? Math.min(3, (now - last) / 16.7) : 1; // in 60-fps frames
       last = now;
+      const t0 = performance.now();
       step(dt);
+      if (timed < 30) {
+        spent += performance.now() - t0;
+        if (++timed === 30 && spent / 30 > 25) { still = true; update(); }
+      }
     };
     const update = () => {
-      const should = !REDUCED && onScreen && !document.hidden;
+      const should = !REDUCED && !still && onScreen && !document.hidden;
       if (should && !running) { running = true; last = 0; raf = requestAnimationFrame(loop); }
       if (!should && running) { running = false; cancelAnimationFrame(raf); }
     };
