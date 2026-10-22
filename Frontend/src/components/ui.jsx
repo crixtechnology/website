@@ -2615,10 +2615,29 @@ function useAfterLoadIdle(lite) {
   return ready;
 }
 
+// Without a graphics card the browser draws WebGL on the processor ("software"
+// rendering: SwiftShader, llvmpipe, Microsoft Basic Render). There, just
+// preparing the globe's shaders froze the page for several seconds (PageSpeed's
+// test machines run this way), so those browsers get no hero 3D at all.
+let softwareGL;
+function isSoftwareGL() {
+  if (softwareGL === undefined) {
+    softwareGL = false;
+    try {
+      const gl = document.createElement("canvas").getContext("webgl");
+      const info = gl && gl.getExtension("WEBGL_debug_renderer_info");
+      softwareGL = !!info && /swiftshader|llvmpipe|softpipe|software|basic render/i.test(String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)));
+      const lose = gl && gl.getExtension("WEBGL_lose_context");
+      if (lose) lose.loseContext();
+    } catch (e) {}
+  }
+  return softwareGL;
+}
+
 export function Hero3D() {
   const ready = useAfterLoadIdle(LITE_3D);
   // Someone who has asked their browser to save data gets no 3D download at all.
-  if (SAVE_DATA || !ready) return null;
+  if (SAVE_DATA || !ready || isSoftwareGL()) return null;
   return <ErrorBoundary fallback={null}><Suspense fallback={null}><Hero3DScene lite={LITE_3D} /></Suspense></ErrorBoundary>;
 }
 
