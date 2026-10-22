@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 jest.mock("../src/utils/receiptPdf", () => ({ buildReceiptPdfBuffer: jest.fn(() => Buffer.from("fake-pdf")) }));
@@ -34,7 +35,7 @@ async function createCourse(startsAt) {
 }
 
 async function buy(course, email) {
-  const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Early Bird", email, phone: "9876500000", password: "a-real-password" });
+  const signup = await newStudent(app, { name: "Early Bird", email, phone: "9876500000", password: "a-real-password" });
   const token = signup.body.token;
   const appRes = await authed(request(app).post("/api/applications"), token).send({
     type: "course", refTitle: course.title, courseSlug: course.slug, name: "Early Bird", email, phone: "9876500000",

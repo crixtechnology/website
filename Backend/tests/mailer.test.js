@@ -39,6 +39,26 @@ describe("mailer via Brevo's HTTP API", () => {
     expect(body.attachment).toEqual([{ name: "Receipt-CRX-2026-00001.pdf", content: Buffer.from("fake-pdf").toString("base64") }]);
   });
 
+  it("welcomes a new account with the profile step first, and the bonus when one is waiting", async () => {
+    global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
+    const { sendWelcomeEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "", PUBLIC_SITE_URL: "https://www.crixtechnology.com" });
+    await sendWelcomeEmail({ to: "new@example.com", name: "", profileIncomplete: true, bonusCredits: 300 });
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.subject).toBe("Welcome to Crix Technology — your account is ready");
+    expect(body.htmlContent).toContain("Hi there");
+    expect(body.htmlContent).toContain("Complete your profile");
+    expect(body.htmlContent).toContain("300 bonus credits");
+    expect(body.htmlContent).toContain("/profile?reason=new");
+    expect(body.textContent).toMatch(/Complete your profile: Add your full name and phone number/);
+
+    global.fetch.mockClear();
+    await sendWelcomeEmail({ to: "g@example.com", name: "Asha", profileIncomplete: false, bonusCredits: 0 });
+    const second = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(second.htmlContent).toContain("Hi Asha");
+    expect(second.htmlContent).not.toContain("Complete your profile");
+    expect(second.htmlContent).not.toContain("bonus credits");
+  });
+
   it("defaults the sender to support@crixtechnology.com", async () => {
     global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
     const { sendPasswordChangedEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "" });

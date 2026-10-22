@@ -6,10 +6,11 @@ const { OAuth2Client } = require("google-auth-library");
 const { prisma } = require("../db");
 const { requireAuth } = require("../middleware/requireAuth");
 const { isDisposableEmail } = require("../utils/disposableEmail");
-const { isValidEmail, isValidPhone, isValidName } = require("../utils/validators");
+const { isValidEmail, isValidPhone } = require("../utils/validators");
 const { signToken: signJwt } = require("../utils/jwt");
 const { hasLiveSession } = require("../utils/sessionPolicy");
-const { sendAccountExistsEmail } = require("../utils/mailer");
+const { sendWelcomeEmail } = require("../utils/mailer");
+const { getCareerSettings } = require("../utils/careerSettings");
 const { respondNoEarlierThan } = require("../utils/authTiming");
 const { publicUser, ensureDefaultPassword, nameFromEmail } = require("../utils/accounts");
 const { applyReferralCode } = require("../utils/referrals");
@@ -82,117 +83,32 @@ function rejectIfAlreadyLoggedInElsewhere(res, user) {
   return true;
 }
 
-// ---------- student self-signup (role is always "student" — admin accounts
-// are only ever created by scripts/seedAdmin.js) ----------
+// The age-confirmation error, shared by account creation from the login form and Google.
 const AGE_CODE = "AGE_CONFIRMATION_REQUIRED";
 const AGE_ERROR = "Please confirm you're 18 or older, or that your parent or guardian has agreed to you using Crix Technology (you must be at least 16).";
 
-router.post("/signup", authLimiter, async (req, res, next) => {
-  try {
-    const { name, email, phone, password, referralCode, ageConfirmed } = req.body || {};
-    if (!name || !email || !password) {
-      return res.status(400).json({ ok: false, error: "name, email and password are required" });
-    }
-    // Users must be 16+; anyone under 18 needs a parent's or guardian's permission
-    // (DPDP Act 2023). The sign-up form's checkbox confirms one or the other.
-    if (ageConfirmed !== true) {
-      return res.status(400).json({ ok: false, code: AGE_CODE, error: AGE_ERROR });
-    }
-    if (!isValidName(name)) {
-      return res.status(400).json({ ok: false, error: "Enter a valid name." });
-    }
-    if (phone && !isValidPhone(phone)) {
-      return res.status(400).json({ ok: false, error: "Enter a valid phone number." });
-    }
-    const normalizedEmail = String(email).toLowerCase().trim();
-    if (!isValidEmail(normalizedEmail)) {
-      return res.status(400).json({ ok: false, error: "Enter a valid email address." });
-    }
-    // Lower bound matches modern guidance (length over complexity rules —
-    // NIST SP 800-63B); upper bound isn't a strength rule, it's a hard cap
-    // matching bcrypt's own 72-byte input limit, so a very long password
-    // fails loudly here instead of hashing to the same value as its first
-    // 72 bytes (bcryptjs silently truncates beyond that).
-    if (String(password).length < 8) {
-      return res.status(400).json({ ok: false, error: "Password must be at least 8 characters" });
-    }
-    if (String(password).length > 72) {
-      return res.status(400).json({ ok: false, error: "Password must be at most 72 characters" });
-    }
-    if (isDisposableEmail(normalizedEmail)) {
-      return res.status(400).json({
-        ok: false,
-        error: "Temporary/disposable email addresses aren't allowed — please use a permanent email.",
-      });
-    }
-    // Deliberately ambiguous: telling the caller outright that this email
-    // already has an account (the old 409 "An account with this email
-    // already exists") is an email-enumeration leak — anyone can probe
-    // arbitrary addresses and learn which ones are registered. The P2002
-    // catch below returns the exact same { ok: true, token: null, ... }
-    // shape as a real signup — same status code, same fields, no signal
-    // either way — and the real account owner (not whoever's asking) is the
-    // one who actually finds out, via email, the same way a "forgot
-    // password" flow never confirms account existence in its own response
-    // either.
-    const workStartedAt = Date.now();
-
-    // Hashed unconditionally — bcrypt.hash() is deliberately slow (~250-
-    // 300ms; see DUMMY_PASSWORD_HASH above, same reasoning for /login), and
-    // skipping it on a "taken" branch would itself be a timing leak.
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // No upfront findUnique() check — going straight to create() and
-    // catching the unique-constraint violation instead means a taken email
-    // still costs one write attempt, not zero, tightening the timing gap
-    // this whole thing is about — though the real close is
-    // respondNoEarlierThan below, padding out whatever's left over.
-    let user;
-    try {
-      user = await prisma.user.create({
-        data: { name: String(name).trim(), email: normalizedEmail, phone: phone ? String(phone).trim() : "", passwordHash, role: "student", ageConfirmedAt: new Date() },
-      });
-    } catch (createErr) {
-      if (createErr && createErr.code === "P2002") {
-        // Deliberately ambiguous: telling the caller outright that this
-        // email already has an account (the old 409 "An account with this
-        // email already exists") is an email-enumeration leak — anyone can
-        // probe arbitrary addresses and learn which ones are registered.
-        // This returns the exact same shape as a real signup below — same
-        // status code, same fields, no signal either way, response time
-        // included (respondNoEarlierThan) — and the real account owner (not
-        // whoever's asking) is the one who actually finds out, via email,
-        // the same way a "forgot password" flow never confirms account
-        // existence in its own response either.
-        sendAccountExistsEmail({ to: normalizedEmail }).catch((mailErr) => {
-          console.error("[auth] account-exists notification failed:", mailErr.message);
-        });
-        return respondNoEarlierThan(workStartedAt, () =>
-          res.status(201).json({
-            ok: true,
-            token: null,
-            user: null,
-            message: "If this email already has an account, we've sent a reminder to that inbox — check it to log in.",
-          })
-        );
-      }
-      throw createErr;
-    }
-    // A referral code that came with the signup (typed in, or remembered from a
-    // shared link). A bad or stale code never blocks the account — the student
-    // can still enter one at checkout, where a wrong code is reported.
-    if (referralCode) {
-      await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
-    }
-    // The welcome credit (utils/wallet.js) waits until the email is verified. Never blocks the account either.
-    await holdSignupBonus(user).catch((e) => console.error("[auth] signup bonus hold failed:", e.message));
-    const sessionId = await startSession(user);
-    const token = signToken(user, sessionId);
-    respondNoEarlierThan(workStartedAt, () => res.status(201).json({ ok: true, token, user: publicUser(user) }));
-  } catch (e) {
-    next(e);
-  }
+// ---------- retired: the old sign-up form ----------
+// Accounts are created from the login form now (see /login below). A page
+// still open from before that change gets this message, which its form shows.
+router.post("/signup", (req, res) => {
+  res.status(410).json({
+    ok: false,
+    code: "SIGNUP_MOVED",
+    error: "Sign-up has moved: just log in with your email and a password — a new email gets an account straight away. Please refresh the page.",
+  });
 });
+
+// A new account's welcome email. Never blocks or fails the login.
+function welcome(user) {
+  getCareerSettings()
+    .then((settings) => sendWelcomeEmail({
+      to: user.email,
+      name: user.profilePending ? "" : user.name,
+      profileIncomplete: !!user.profilePending || !String(user.phone || "").trim(),
+      bonusCredits: user.signupBonusPending ? settings.signupBonusCredits : 0,
+    }))
+    .catch((e) => console.error("[auth] welcome email failed:", e.message));
+}
 
 // ---------- unified login — works for both students and admins ----------
 // Also the only way a student account is made from the site's form: an email
@@ -284,6 +200,8 @@ async function createFromLogin(req, res, { email, password, createAccount, ageCo
   }
   // The welcome credit (utils/wallet.js) waits until the email is verified.
   await holdSignupBonus(user).catch((e) => console.error("[auth] signup bonus hold failed:", e.message));
+  const fresh = (await prisma.user.findUnique({ where: { id: user.id } })) || user;
+  welcome(fresh);
   const sessionId = await startSession(user);
   const token = signToken(user, sessionId);
   respondNoEarlierThan(workStartedAt, () => res.status(201).json({ ok: true, created: true, token, user: publicUser(user) }));
@@ -335,6 +253,7 @@ router.post("/google", authLimiter, async (req, res, next) => {
         await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
       }
       await grantSignupBonus(user).catch((e) => console.error("[auth] signup bonus failed:", e.message));
+      welcome(user);
     } else if (!user.googleId) {
       // Existing email/password account signing in with Google for the
       // first time — link it rather than creating a duplicate.

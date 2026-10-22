@@ -5,7 +5,7 @@ const { signToken } = require("../src/utils/jwt");
 // Everything else the app does by email is irrelevant here; keep the mailer quiet.
 jest.mock("../src/utils/mailer", () => ({
   sendApplicationEmail: jest.fn(async () => ({})),
-  sendAccountExistsEmail: jest.fn(async () => ({})),
+  sendWelcomeEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
   sendWalletCreditEmail: jest.fn(async () => ({})),

@@ -498,27 +498,33 @@ async function sendReceiptEmail({ receipt, pdfBuffer }) {
   });
 }
 
-// ---------- "you already have an account" notice ----------
-// Sent by routes/auth.js's /signup when the submitted email already has an
-// account, INSTEAD of a distinct "account already exists" error — telling the
-// caller that directly is an email-enumeration leak. The signup response is
-// ambiguous either way; this email is where the real account owner finds out.
-async function sendAccountExistsEmail({ to, name }) {
-  const loginLink = siteOrigin();
+// ---------- welcome: a new account ----------
+// Sent once when an account is created (the login form or Google). Points to
+// the one step every purchase needs — a full name and phone in Profile — and,
+// where there is one, the signup bonus waiting for the email to be verified.
+async function sendWelcomeEmail({ to, name, profileIncomplete = true, bonusCredits = 0 }) {
+  if (!to) return { sent: false, reason: "No email" };
+  const origin = siteOrigin();
+  const steps = [
+    profileIncomplete && ["Complete your profile", "Add your full name and phone number — you'll need them before buying anything."],
+    bonusCredits > 0 && ["Claim your signup bonus", `Verify your email from My Dashboard → Wallet to add ${bonusCredits} bonus credits.`],
+    ["Explore programs", "Paid internships and self-paced courses, taught by industry professionals."],
+    ["See open roles", "Our Careers page lists every role we're hiring for — some are free to apply."],
+  ].filter(Boolean);
   const html = layout({
-    preheader: "Someone tried to sign up with this email — you already have an account.",
-    title: "You already have an account",
+    preheader: "Your Crix Technology account is ready.",
+    title: "Welcome to Crix Technology",
     content:
-      paragraph(`Hi ${escapeHtml(name || "there")}, someone just tried to create a Crix Technology account with this email address — but you already have one.`) +
-      paragraph("If this was you, just log in instead. Forgot your password? Use <strong>Forgot password</strong> on the login form.") +
-      button("Log in to Crix Technology", loginLink) +
-      paragraph("If it wasn't you, no action is needed — no new account was created and yours is unaffected.", `font-size:13px;color:${BRAND.muted}`),
+      paragraph(`Hi ${escapeHtml(name || "there")}, your account is ready. Here's what to do next:`) +
+      detailsBox(steps.map(([k, v]) => [k, escapeHtml(v)])) +
+      button(profileIncomplete ? "Complete my profile" : "Explore programs", `${origin}${profileIncomplete ? "/profile?reason=new" : "/programs"}`) +
+      paragraph("You log in with this email and the password you chose. Forgot it? Use <strong>Forgot password</strong> on the login form.", `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
-    `Hi ${name || "there"},\n\nSomeone just tried to create a Crix Technology account with this email address — but you already have one.\n\n` +
-    `If this was you, just log in instead: ${loginLink} (use "Forgot password" if you don't remember it).\n\n` +
-    `If it wasn't you, no action is needed — no account was created and your existing one is unaffected.` + TEXT_SIGNOFF;
-  return deliver({ to, subject: "You already have a Crix Technology account", text, html });
+    `Hi ${name || "there"},\n\nYour Crix Technology account is ready. Next steps:\n\n` +
+    steps.map(([k, v]) => `• ${k}: ${v}`).join("\n") +
+    `\n\nProfile: ${origin}/profile\nPrograms: ${origin}/programs\nCareers: ${origin}/careers` + TEXT_SIGNOFF;
+  return deliver({ to, subject: "Welcome to Crix Technology — your account is ready", text, html });
 }
 
 // ---------- One-time code (OTP) ----------
@@ -806,7 +812,7 @@ module.exports = {
   sendContactEmail,
   sendApplicationEmail,
   sendReceiptEmail,
-  sendAccountExistsEmail,
+  sendWelcomeEmail,
   sendOtpEmail,
   sendPasswordChangedEmail,
   sendPaymentRequestEmail,

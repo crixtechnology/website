@@ -1,5 +1,6 @@
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 // Mocked so the race test below can actually distinguish "the atomic guard
@@ -50,8 +51,7 @@ async function createPricedCourse(overrides = {}) {
 }
 
 async function createStudent(email) {
-  const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true,
-    name: "Student", email, phone: "9876500000", password: "a-real-password",
+  const signup = await newStudent(app, { name: "Student", email, phone: "9876500000", password: "a-real-password",
   });
   return { user: signup.body.user, token: signup.body.token };
 }

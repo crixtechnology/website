@@ -1,5 +1,6 @@
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 // Found by throwing hostile input (arrays where text belongs, numbers as text, oversized
@@ -7,7 +8,7 @@ const { signToken } = require("../src/utils/jwt");
 jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/mailer", () => ({
   sendApplicationEmail: jest.fn(async () => ({})),
-  sendAccountExistsEmail: jest.fn(async () => ({})),
+  sendWelcomeEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
   sendWalletCreditEmail: jest.fn(async () => ({})),
@@ -80,7 +81,7 @@ describe("bad input is a 4xx, never a 500", () => {
   it("validates admin grant and create-order ids", async () => {
     expect((await admin(request(app).post("/api/admin/enrollments")).send({ userId: "x", courseId: { a: 1 } })).status).toBe(400);
     expect((await admin(request(app).post("/api/admin/enrollments")).send({ email: ["a"], courseId: course._id })).status).toBe(400);
-    const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Order Person", email: "order.person@example.com", phone: "9876500000", password: "a-real-password" });
+    const signup = await newStudent(app, { name: "Order Person", email: "order.person@example.com", phone: "9876500000", password: "a-real-password" });
     const asStudent = (req) => req.set("Authorization", `Bearer ${signup.body.token}`);
     expect((await asStudent(request(app).post("/api/payments/create-order")).send({ acceptTerms: true, applicationId: 12345, courseSlug: course.slug })).status).toBe(400);
     expect((await asStudent(request(app).post("/api/payments/create-order")).send({ acceptTerms: true, applicationId: "x", courseSlug: { a: 1 } })).status).toBe(400);
@@ -90,7 +91,7 @@ describe("bad input is a 4xx, never a 500", () => {
   // A database outage is not the caller's session ending: the client logs the user out on
   // every 401, so answering 401 here signed everyone out whenever the database blipped.
   it("answers 503, not 401, when the database is unreachable during the login check", async () => {
-    const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Db Down", email: "dbdown@example.com", phone: "9876500000", password: "a-real-password" });
+    const signup = await newStudent(app, { name: "Db Down", email: "dbdown@example.com", phone: "9876500000", password: "a-real-password" });
     const studentToken = signup.body.token;
     const down = () => Object.assign(new Error("Can't reach database server"), { name: "PrismaClientInitializationError", code: "P1001" });
 

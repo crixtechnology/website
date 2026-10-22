@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 jest.mock("../src/utils/receiptPdf", () => ({
@@ -26,7 +27,7 @@ afterAll(async () => { await teardownTestDb(); });
 const authed = (req, token) => req.set("Authorization", `Bearer ${token}`);
 
 async function createStudent(email) {
-  const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Student", email, phone: "9876500000", password: "a-real-password" });
+  const signup = await newStudent(app, { name: "Student", email, phone: "9876500000", password: "a-real-password" });
   return { user: signup.body.user, token: signup.body.token };
 }
 

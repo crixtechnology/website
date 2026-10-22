@@ -1,5 +1,6 @@
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 
 let app;
 let prisma;
@@ -10,67 +11,15 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => { await teardownTestDb(); });
 
-describe("POST /api/auth/signup", () => {
-  const email = "duplicate-test@example.com";
-  const validSignup = { name: "Test User", email, phone: "9876543210", password: "a-real-password", ageConfirmed: true };
-
-  it("creates a new account, recording the age confirmation", async () => {
-    const res = await request(app).post("/api/auth/signup").send(validSignup);
-    expect(res.status).toBe(201);
-    expect(res.body.ok).toBe(true);
-    expect(res.body.token).toEqual(expect.any(String));
-    expect(res.body.user.email).toBe(email);
-    expect((await prisma.user.findUnique({ where: { email } })).ageConfirmedAt).toBeInstanceOf(Date);
-  });
-
-  // Anti-enumeration: a duplicate-email signup must look the same, from the
-  // outside, as a real one — same status code, same `ok: true`, nothing that
-  // distinguishes it (an old "An account already exists" 409 let anyone
-  // probe arbitrary addresses and learn which ones are registered). It must
-  // NOT get a real session token though — that would log the caller straight
-  // into someone else's account, an actual account-takeover bug.
-  it("responds ambiguously to a duplicate email instead of confirming the account exists", async () => {
-    const res = await request(app).post("/api/auth/signup").send(validSignup);
-    expect(res.status).toBe(201);
-    expect(res.body.ok).toBe(true);
-    expect(res.body.token).toBeFalsy();
-    expect(JSON.stringify(res.body)).not.toMatch(/already exists|P2002|Unique constraint|PrismaClientKnownRequestError/i);
-
-    // And no second account was actually created for the same email.
-    const count = await prisma.user.count({ where: { email } });
-    expect(count).toBe(1);
-  });
-
-  // The response-shape fix above isn't enough on its own — bcrypt.hash() is
-  // deliberately slow (~250-300ms), so if it only ran on the "genuinely new
-  // email" branch, response TIME alone would still distinguish a taken email
-  // (fast, no hash) from a new one (slow), even with an identical body. Caught
-  // exactly this regression once already during development (24ms vs 396ms)
-  // before routes/auth.js was fixed to hash unconditionally, before checking
-  // whether the email is taken. 150ms margin is generous against normal
-  // per-request jitter while still well under bcrypt's own cost, so this
-  // reliably fails if that ordering ever regresses.
-  it("takes about the same time for a duplicate email as for a genuinely new one (no bcrypt.hash timing gap)", async () => {
-    const t0 = Date.now();
-    await request(app).post("/api/auth/signup").send(validSignup); // duplicate — email var reused from above
-    const duplicateMs = Date.now() - t0;
-
-    const t1 = Date.now();
-    await request(app).post("/api/auth/signup").send({ ageConfirmed: true, ...validSignup, email: "timing-check-new@example.com" });
-    const newAccountMs = Date.now() - t1;
-
-    expect(Math.abs(newAccountMs - duplicateMs)).toBeLessThan(150);
-  });
-
-  it("rejects a password shorter than 8 characters", async () => {
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, ...validSignup, email: "short-pw@example.com", password: "short" });
-    expect(res.status).toBe(400);
-  });
-
-  it("rejects a disposable email domain", async () => {
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, ...validSignup, email: "someone@mailinator.com" });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/disposable|temporary/i);
+describe("the retired sign-up endpoint", () => {
+  // Accounts are created from the login form now. A page still open from before
+  // gets a message its old form can show, and nothing is created.
+  it("says sign-up has moved, and creates nothing", async () => {
+    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Old Page", email: "old-page@example.com", phone: "9876543210", password: "a-real-password" });
+    expect(res.status).toBe(410);
+    expect(res.body).toMatchObject({ ok: false, code: "SIGNUP_MOVED" });
+    expect(res.body.error).toMatch(/log in with your email and a password/);
+    expect(await prisma.user.findUnique({ where: { email: "old-page@example.com" } })).toBeNull();
   });
 });
 
@@ -79,8 +28,8 @@ describe("POST /api/auth/login", () => {
   const password = "a-real-password";
 
   beforeAll(async () => {
-    await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Login Test", email, phone: "9876543211", password });
-    // Signup itself starts a live session (a freshly-signed-up user is
+    await newStudent(app, { name: "Login Test", email, phone: "9876543211", password });
+    // Creating the account starts a live session (a new user is
     // immediately logged in) — clear it so the login test below exercises
     // /login in isolation instead of tripping the single-device-login block
     // this same session would otherwise trigger against itself.
@@ -125,11 +74,11 @@ describe("single-device-login enforcement", () => {
   const password = "a-real-password";
 
   beforeAll(async () => {
-    await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Single Device", email, phone: "9876543212", password });
+    await newStudent(app, { name: "Single Device", email, phone: "9876543212", password });
   });
 
   // Each test starts from a clean slot regardless of what a previous test in
-  // this block left behind — signup itself also starts a live session, same
+  // this block left behind — creating the account also starts a live session, same
   // as a real login does.
   beforeEach(async () => {
     await prisma.user.updateMany({ where: { email }, data: { activeSessionId: null, activeSessionLastSeenAt: null } });

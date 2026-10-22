@@ -1,4 +1,6 @@
 const request = require("supertest");
+jest.mock("../src/utils/mailer", () => ({ ...jest.requireActual("../src/utils/mailer"), sendWelcomeEmail: jest.fn(async () => ({ sent: true })) }));
+const mailer = require("../src/utils/mailer");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 
 // The site has no separate sign-up form: /auth/login with an email that has no
@@ -39,6 +41,10 @@ describe("creating an account from the login form", () => {
     expect(res.body.user).toEqual(expect.objectContaining({ name: "Rahul Sharma", phone: "", profilePending: true }));
     const row = await prisma.user.findUnique({ where: { email: "rahul.sharma99@example.com" } });
     expect(row.role).toBe("student");
+    // One welcome email, pointing at the profile step.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mailer.sendWelcomeEmail).toHaveBeenCalledTimes(1);
+    expect(mailer.sendWelcomeEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "rahul.sharma99@example.com", profileIncomplete: true }));
     expect(row.ageConfirmedAt).toBeInstanceOf(Date);
 
     // The same email and password now simply log in.

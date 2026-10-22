@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 // The careers flow end to end: signup bonus and credit rules, applying and
@@ -15,7 +16,7 @@ jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next
 jest.mock("../src/utils/testRateLimit", () => ({ testApiLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/mailer", () => ({
   sendApplicationEmail: jest.fn(async () => ({})),
-  sendAccountExistsEmail: jest.fn(async () => ({})),
+  sendWelcomeEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
   sendWalletCreditEmail: jest.fn(async () => ({})),
@@ -140,7 +141,7 @@ describe("signup bonus", () => {
 
   it("holds an email signup's bonus until the email is verified, then gives it once, with an expiry, and tells them", async () => {
     await setSettings({ signupBonusCredits: 300, creditExpiryMonths: 12 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Bonus Person", email: "bonus1@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "Bonus Person", email: "bonus1@example.com", phone: "9876500000", password: "a-real-password" });
     expect(res.status).toBe(201);
     const me = { id: res.body.user.id, token: res.body.token };
 
@@ -184,7 +185,7 @@ describe("signup bonus", () => {
 
   it("won't release a bonus twice, or to an account that has none waiting", async () => {
     await setSettings({ signupBonusCredits: 300 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Twice Person", email: "bonus3@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "Twice Person", email: "bonus3@example.com", phone: "9876500000", password: "a-real-password" });
     const me = { id: res.body.user.id, token: res.body.token };
     await sendCode(me);
     const code = lastCode();
@@ -200,7 +201,7 @@ describe("signup bonus", () => {
 
   it("keeps the bonus waiting when crediting it fails, so it can be claimed again", async () => {
     await setSettings({ signupBonusCredits: 300 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Blip Person", email: "bonus5@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "Blip Person", email: "bonus5@example.com", phone: "9876500000", password: "a-real-password" });
     const me = { id: res.body.user.id, token: res.body.token };
     await sendCode(me);
     const create = jest.spyOn(prisma.creditEntry, "create").mockRejectedValueOnce(new Error("database blip"));
@@ -213,7 +214,7 @@ describe("signup bonus", () => {
 
   it("says so when the code email can't be sent, and lets them ask again straight away", async () => {
     await setSettings({ signupBonusCredits: 300 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "No Mail Person", email: "bonus4@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "No Mail Person", email: "bonus4@example.com", phone: "9876500000", password: "a-real-password" });
     const me = { id: res.body.user.id, token: res.body.token };
     mailer.sendOtpEmail.mockResolvedValueOnce({ sent: false, reason: "Email not configured" });
     const failed = await sendCode(me);
@@ -224,7 +225,7 @@ describe("signup bonus", () => {
 
   it("gives nothing when the bonus is set to 0", async () => {
     await setSettings({ signupBonusCredits: 0 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "No Bonus", email: "bonus2@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "No Bonus", email: "bonus2@example.com", phone: "9876500000", password: "a-real-password" });
     expect((await walletOf({ token: res.body.token })).balance).toBe(0);
   });
 });

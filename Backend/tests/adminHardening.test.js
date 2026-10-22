@@ -2,6 +2,7 @@ const request = require("supertest");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 let app, prisma;
@@ -20,7 +21,7 @@ describe("admin hardening", () => {
     const a = jwt.decode(admin.body.token);
     expect(a.exp - a.iat).toBe(12 * 60 * 60);
 
-    const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Student", email: "hard-student@example.com", phone: "9876500000", password: "a-real-password" });
+    const signup = await newStudent(app, { name: "Student", email: "hard-student@example.com", phone: "9876500000", password: "a-real-password" });
     const s = jwt.decode(signup.body.token);
     expect(s.exp - s.iat).toBe(7 * 24 * 60 * 60);
   });
