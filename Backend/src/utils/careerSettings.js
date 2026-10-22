@@ -11,6 +11,9 @@ const { prisma } = require("../db");
 //   snapshotIntervalSeconds how often the test page takes a webcam photo
 //   generatedQuestionsPercent share of each test made of questions written on the
 //                          spot with fresh values (utils/questionGenerators.js); 0 = bank only
+//   reapplyCooldownDays    days before someone can apply again to the same FREE
+//                          role after an application there ended without an offer
+//                          (0 = straight away). Paid roles need a new fee anyway.
 //   requireWebcam          refuse to start a test without a working webcam
 //   requireDesktopApp      only allow the test inside the desktop lockdown app
 const SETTINGS_KEY = "careers";
@@ -22,6 +25,7 @@ const DEFAULT_SETTINGS = {
   violationLimit: 3,
   snapshotIntervalSeconds: 60,
   generatedQuestionsPercent: 30,
+  reapplyCooldownDays: 30,
   requireWebcam: true,
   requireDesktopApp: false,
 };
@@ -35,6 +39,7 @@ const INT_RANGES = {
   violationLimit: [1, 50, "The violation limit must be a whole number from 1 to 50"],
   snapshotIntervalSeconds: [20, 600, "The webcam interval must be a whole number of seconds from 20 to 600"],
   generatedQuestionsPercent: [0, 100, "The share of generated questions must be a whole number from 0 to 100 percent"],
+  reapplyCooldownDays: [0, 365, "The re-apply wait must be a whole number of days from 0 to 365"],
 };
 const BOOLEANS = ["requireWebcam", "requireDesktopApp"];
 

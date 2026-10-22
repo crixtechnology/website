@@ -464,6 +464,37 @@ describe("applying and paying the test fee", () => {
     expect((await createOrder(s, id)).status).toBe(201);
   });
 
+  it("makes a candidate wait before re-applying to a free role, but not to a paid one", async () => {
+    const free = await opening({ feeRequired: false });
+    const s = await student();
+    const first = (await apply(s, free)).body.application._id;
+    // The application ends without an offer, just now.
+    await prisma.jobApplication.update({ where: { id: first }, data: { status: "not_shortlisted", closedAt: new Date() } });
+    const refused = await apply(s, free);
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe("REAPPLY_COOLDOWN");
+    expect(refused.body.error).toMatch(/apply for this role again from/);
+
+    // Once the wait has passed (closed 31 days ago), a new application is allowed.
+    await prisma.jobApplication.update({ where: { id: first }, data: { closedAt: new Date(Date.now() - 31 * 86400000) } });
+    expect((await apply(s, free)).status).toBe(201);
+
+    // An admin can turn the wait off.
+    const t = await student();
+    const tFirst = (await apply(t, free)).body.application._id;
+    await prisma.jobApplication.update({ where: { id: tFirst }, data: { status: "rejected", closedAt: new Date() } });
+    expect((await setSettings({ reapplyCooldownDays: 0 })).status).toBe(200);
+    expect((await apply(t, free)).status).toBe(201);
+    await setSettings({ reapplyCooldownDays: 30 });
+
+    // Paid roles: no wait (each try needs a new fee).
+    const u = await student();
+    const paidFirst = (await apply(u, o)).body.application._id;
+    await prisma.jobApplication.update({ where: { id: paidFirst }, data: { status: "not_shortlisted", closedAt: new Date() } });
+    expect((await apply(u, o)).status).toBe(201);
+    expect((await setSettings({ reapplyCooldownDays: 400 })).status).toBe(400);
+  });
+
   it("unlocks a free role's test without payment, once the terms and 18+ box are accepted", async () => {
     const free = await opening({ feeRequired: false });
     expect(free.feeRequired).toBe(false);

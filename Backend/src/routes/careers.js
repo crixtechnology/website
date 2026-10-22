@@ -144,13 +144,30 @@ router.post("/me/job-applications", publicWriteLimiter, requireAuth, async (req,
       });
       if (existing) return { application: existing, created: false };
       if (opening.status !== "open") return { error: "This role is closed for applications right now." };
+      // A free role can't be retaken back-to-back: after an application there ends
+      // without an offer, the candidate waits the admin's cooldown before trying again.
+      if (opening.feeRequired === false) {
+        const { reapplyCooldownDays } = await getCareerSettings(tx);
+        if (reapplyCooldownDays > 0) {
+          const last = await tx.jobApplication.findFirst({
+            where: { userId: req.user.sub, openingId: opening.id, status: { in: CLOSED_STATUSES } },
+            orderBy: { updatedAt: "desc" },
+            select: { closedAt: true, updatedAt: true },
+          });
+          const again = last ? new Date((last.closedAt || last.updatedAt).getTime() + reapplyCooldownDays * 86400000) : null;
+          if (again && again > new Date()) {
+            const when = again.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
+            return { error: `You can apply for this role again from ${when}.`, code: "REAPPLY_COOLDOWN" };
+          }
+        }
+      }
       const created = await tx.jobApplication.create({
         data: { userId: req.user.sub, openingId: opening.id },
         include: WITH_DETAIL,
       });
       return { application: created, created: true };
     });
-    if (result.error) return res.status(400).json({ ok: false, error: result.error });
+    if (result.error) return res.status(400).json({ ok: false, error: result.error, ...(result.code ? { code: result.code } : {}) });
     res.status(result.created ? 201 : 200).json({ ok: true, application: shapeApplication(result.application) });
   } catch (e) {
     next(e);

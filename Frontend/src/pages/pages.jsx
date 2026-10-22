@@ -708,7 +708,7 @@ export function About() {
           <div className="tech-stack stagger">
             {techStack.map((t, i) => (
               <Reveal key={t.group} variant="reveal" className="tech-row" style={{ "--i": i }}>
-                <h4>{t.group}</h4>
+                <h4 aria-level={3}>{t.group}</h4>
                 <div className="tech-tags">
                   {t.items.map((it) => <span key={it}>{it}</span>)}
                 </div>

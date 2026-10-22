@@ -862,6 +862,7 @@ p,li,td,h1,h2,h3,h4,.admin-row-meta,.info-row a{overflow-wrap:break-word}
 .burger.has-due::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
 .preq-banner{position:fixed;left:26px;bottom:26px;z-index:60;display:flex;align-items:center;gap:12px;max-width:min(460px,calc(100% - 118px));padding:12px 12px 12px 16px;border-radius:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);box-shadow:0 12px 32px rgba(0,0,0,.3);font-size:.86rem}
 .preq-banner-dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--danger)}
+.profile-reminder .preq-banner-dot{background:var(--amber)}
 .preq-banner-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .preq-banner-link{flex:none;color:var(--teal);font-weight:600;text-decoration:none;white-space:nowrap}
 .preq-banner-link:hover{text-decoration:underline}

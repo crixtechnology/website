@@ -2003,7 +2003,7 @@ export function Navbar() {
   const navRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { isLoggedIn, isAdmin, logout, openAuthModal } = useContext(UserContext);
+  const { user, isLoggedIn, isAdmin, logout, openAuthModal } = useContext(UserContext);
   // Payment requests the admin sent this student — a count on "My Dashboard"
   // and a banner on every other page until they're paid.
   const pendingRequests = usePendingPaymentRequests(isLoggedIn && !isAdmin);
@@ -2133,6 +2133,8 @@ export function Navbar() {
           onClick={() => setOpen(!open)}>{open ? "✕" : "☰"}</button>
       </div>
       {location.pathname !== "/dashboard" && <PaymentRequestBanner requests={pendingRequests} />}
+      {/* One floating reminder at a time: a payment request outranks this one. */}
+      {isLoggedIn && !isAdmin && !pendingRequests.length && location.pathname !== "/profile" && <ProfileReminderBanner user={user} />}
     </nav>
   );
 }
@@ -2159,6 +2161,30 @@ function PaymentRequestBanner({ requests }) {
       <span className="preq-banner-dot" aria-hidden="true" />
       <span className="preq-banner-text">{text}</span>
       <Link className="preq-banner-link" to="/dashboard">Pay now →</Link>
+      <button className="preq-banner-close" onClick={dismiss} aria-label="Dismiss">✕</button>
+    </div>,
+    document.body
+  );
+}
+
+// A student whose profile is missing a detail every purchase needs (an account
+// made from the login form, or an older one with no phone) is reminded on every
+// page but Profile itself. Dismissible for the rest of the tab's session.
+function ProfileReminderBanner({ user }) {
+  const missing = profileMissing(user);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return window.sessionStorage.getItem("crix_profile_reminder") === "1"; } catch (e) { return false; }
+  });
+  if (!missing.length || dismissed) return null;
+  const dismiss = () => {
+    setDismissed(true);
+    try { window.sessionStorage.setItem("crix_profile_reminder", "1"); } catch (e) { /* storage blocked */ }
+  };
+  return createPortal(
+    <div className="preq-banner profile-reminder" role="status">
+      <span className="preq-banner-dot" aria-hidden="true" />
+      <span className="preq-banner-text">Add your {missing.join(" and ")} — you'll need {missing.length > 1 ? "them" : "it"} to buy</span>
+      <Link className="preq-banner-link" to="/profile?reason=complete">Complete profile →</Link>
       <button className="preq-banner-close" onClick={dismiss} aria-label="Dismiss">✕</button>
     </div>,
     document.body

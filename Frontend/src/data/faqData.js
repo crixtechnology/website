@@ -83,7 +83,7 @@ export const FAQ_TOPICS = [
         a: "You'll get your shortlisting result within 7 days of submitting the test — by email and under My Applications in My Dashboard. If you're shortlisted, your online interview's date, time and meeting link appear there too, followed by the final result.",
         links: [{ to: "/dashboard", label: "My Applications" }] },
       { id: "k-again", q: "Can I apply again if I'm not selected?", k: "again retry reapply second attempt not selected rejected not shortlisted",
-        a: "Yes. Once an application has ended without an offer (not shortlisted, or not selected after the interview), you can apply for the role again — each application is a new test with its own fee, which again comes back as wallet credit." },
+        a: "Yes. Once an application has ended without an offer (not shortlisted, or not selected after the interview), you can apply for the role again. For a role with a registration fee, each application is a new test with its own fee, which again comes back as wallet credit. For a free role, there's a short wait before you can apply to the same role again — the Careers page tells you the date if you try too soon." },
       { id: "k-photos", q: "What happens to my webcam photos?", k: "webcam photos camera images privacy proctoring stored delete data",
         a: "They're used only to check that the test was taken fairly, and are stored privately. They're deleted automatically 6 months after your application is closed, and never kept longer than 12 months after the test — or straight away if you delete your account.",
         links: [{ to: "/privacy-policy", label: "Privacy Policy" }] },

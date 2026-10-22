@@ -4,7 +4,7 @@ import { getAdminToken, adminGetCareerSettings, adminUpdateCareerSettings } from
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
-const NUMBERS = ["testFeeRupees", "signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent"];
+const NUMBERS = ["testFeeRupees", "signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent", "reapplyCooldownDays"];
 const TOGGLES = ["requireWebcam", "requireDesktopApp"];
 
 // The rules of the careers flow: what the aptitude test costs, the credit new
@@ -87,8 +87,12 @@ export default function AdminCareerSettings() {
                   <input id="cs-snap" type="number" min="20" max="600" step="1" value={settings.snapshotIntervalSeconds} onChange={setField("snapshotIntervalSeconds")} /></div>
                 <div className="field"><label htmlFor="cs-generated">Generated questions (% of each test)</label>
                   <input id="cs-generated" type="number" min="0" max="100" step="1" value={settings.generatedQuestionsPercent} onChange={setField("generatedQuestionsPercent")} /></div>
+                <div className="field"><label htmlFor="cs-cooldown">Re-apply wait for free roles (days, 0 = none)</label>
+                  <input id="cs-cooldown" type="number" min="0" max="365" step="1" value={settings.reapplyCooldownDays ?? 30} onChange={setField("reapplyCooldownDays")} /></div>
               </div>
               <p className="form-note" style={{ margin: "-4px 0 16px" }}>
+                After an application to a free role ends without an offer, the same candidate can apply to that role again only after the
+                re-apply wait, so a free test can't be retaken over and over. Paid roles need a new registration fee for each try instead.
                 Generated questions are written at the moment a test starts, with fresh numbers, words or code each time, so no two candidates
                 get the same ones. The rest of each test comes from the question bank. Set this to 0 to use the bank only.
               </p>
