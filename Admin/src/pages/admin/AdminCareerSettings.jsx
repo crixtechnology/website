@@ -63,7 +63,7 @@ export default function AdminCareerSettings() {
             <>
               <h3 style={{ margin: "0 0 16px" }}>Fee and credits</h3>
               <div className="admin-form-grid admin-form-grid--2">
-                <div className="field"><label htmlFor="cs-fee">Aptitude test fee (₹)</label>
+                <div className="field"><label htmlFor="cs-fee">Aptitude test registration fee (₹)</label>
                   <input id="cs-fee" type="number" min="1" step="1" value={settings.testFeeRupees} onChange={setField("testFeeRupees")} /></div>
                 <div className="field"><label htmlFor="cs-bonus">Signup bonus (credits, 0 = none)</label>
                   <input id="cs-bonus" type="number" min="0" step="1" value={settings.signupBonusCredits} onChange={setField("signupBonusCredits")} /></div>
@@ -73,6 +73,7 @@ export default function AdminCareerSettings() {
                   <input id="cs-usage" type="number" min="0" max="100" step="1" value={settings.creditUsagePercent} onChange={setField("creditUsagePercent")} /></div>
               </div>
               <p className="form-note" style={{ margin: "-4px 0 20px" }}>
+                Charged only for roles whose Registration fee is set to “Required” in Job openings — free roles skip it.
                 The whole test fee comes back to the candidate as wallet credit (1 credit = ₹1). The expiry applies to the signup bonus and the
                 test-fee credit added from now on — credit already in a wallet keeps the expiry it was given, and referral or admin credit doesn't expire.
                 The usage limit applies to every purchase: at 100% credit can pay for a whole course.

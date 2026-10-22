@@ -72,6 +72,10 @@ function openingData(body) {
     if (b.status !== "open" && b.status !== "closed") return { error: "status must be open or closed" };
     data.status = b.status;
   }
+  if (b.feeRequired !== undefined) {
+    if (typeof b.feeRequired !== "boolean") return { error: "feeRequired must be true or false" };
+    data.feeRequired = b.feeRequired;
+  }
   if (b.order !== undefined) {
     if (!Number.isInteger(b.order) || b.order < 0 || b.order > 10000) return { error: "The display order must be a whole number." };
     data.order = b.order;
@@ -424,16 +428,16 @@ const ATTEMPT_SUMMARY = {
   id: true, status: true, startedAt: true, endsAt: true, submittedAt: true, submitReason: true,
   score: true, maxScore: true, passed: true, correctCount: true, wrongCount: true, categoryScores: true, violationCount: true,
 };
-const LIST_INCLUDE = { user: { select: USER_SUMMARY }, opening: { select: { id: true, title: true, slug: true } }, attempt: { select: ATTEMPT_SUMMARY } };
+const LIST_INCLUDE = { user: { select: USER_SUMMARY }, opening: { select: { id: true, title: true, slug: true, feeRequired: true } }, attempt: { select: ATTEMPT_SUMMARY } };
 
 function shapeApplicant(a) {
   return {
     _id: a.id,
     user: a.user ? { _id: a.user.id, name: a.user.name, email: a.user.email, phone: a.user.phone } : null,
-    opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug } : null,
+    opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug, feeRequired: a.opening.feeRequired !== false } : null,
     status: a.status,
     statusLabel: STATUS_LABELS[a.status] || a.status,
-    paymentStatus: a.paidAt ? "paid" : "pending",
+    paymentStatus: a.paidAt ? "paid" : a.opening && a.opening.feeRequired === false ? "free" : "pending",
     paidAt: a.paidAt,
     interviewAt: a.interviewAt,
     interviewLink: a.interviewLink,
@@ -543,7 +547,7 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
         phone: safe(a.user ? a.user.phone : ""),
         role: safe(a.opening ? a.opening.title : ""),
         status: STATUS_LABELS[a.status] || a.status,
-        payment: a.paidAt ? "Paid" : "Pending",
+        payment: a.paidAt ? "Paid" : a.opening && a.opening.feeRequired === false ? "Free role" : "Pending",
         paidAt: ist(a.paidAt),
         score: t && t.score !== null ? t.score : "",
         maxScore: t && t.maxScore !== null ? t.maxScore : "",
@@ -579,7 +583,7 @@ router.get("/admin/job-applications/:id", requireAdmin, async (req, res, next) =
       where: { id: req.params.id },
       include: {
         user: { select: USER_SUMMARY },
-        opening: { select: { id: true, title: true, slug: true } },
+        opening: { select: { id: true, title: true, slug: true, feeRequired: true } },
         attempt: { include: { answers: true, violations: { orderBy: { createdAt: "asc" } }, snapshots: { where: { NOT: { storageKey: { startsWith: PENDING_PREFIX } } }, orderBy: { createdAt: "asc" }, select: { id: true, flag: true, createdAt: true } } } },
       },
     });

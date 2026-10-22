@@ -12,8 +12,12 @@ export const site = {
   email: "crixtechnology@gmail.com",
   phone: "+91 97232 23588",
   phoneLabel: "IT Services",
+  // Who each number is for, shown under it everywhere it appears, so callers
+  // reach the right team the first time.
+  phoneHint: "Websites, apps & business projects",
   phoneAlt: "+91 97123 65388",
   phoneAltLabel: "Internships & Courses",
+  phoneAltHint: "Students: programs, careers, payments & accounts",
   whatsapp: "919723223588",             // 91 + 10 digit, bina + ke
   whatsappAlt: "919712365388",
   hours: "Mon–Sat, 10am–6pm IST",
@@ -22,7 +26,7 @@ export const site = {
   udyam: "UDYAM-GJ-01-0667027",
   legalName: "Crix Technology Private Limited",
   registeredAddress: "G-403, Jalaram Vatika, Nr. Sadguru Bunglows, New Maninagar, Ramol, Daskroi, Ahmedabad – 382449, Gujarat",
-  year: 2026,
+  year: new Date().getFullYear(), // the footer's © year keeps itself current
   linkedin: "https://www.linkedin.com/company/crix-technology/",
   instagram: "https://www.instagram.com/crix_technology?igsh=MWI4aWZmY2IzaXhobw==",
 };
@@ -317,7 +321,7 @@ export const legal = {
 • Help chat questions — if the site's help assistant has no answer to something you type, we may save that question (without your name or contact details, and with any email address, phone number or link removed) so we can improve its answers
 • Any messages or project submissions you send us
 
-Payment for a course, a paid internship, a plan upgrade, a payment request sent to your account or an aptitude-test registration fee is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Our Internship Program includes both free and paid internships; no payment details are collected for a free internship.`,
+Payment for a course, a paid internship, a plan upgrade, a payment request sent to your account or an aptitude-test registration fee is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Internship programs and courses on our Programs page are paid. Some roles on our Careers page have no registration fee; no payment details are collected when you apply for one of those.`,
       },
       {
         title: "2. How We Use Your Information",
@@ -364,7 +368,7 @@ You can delete your account yourself at any time, from your Profile page ("Delet
         title: "7. Cookies & Similar Technologies",
         content: `When you log in, an authentication token is kept in your browser's session storage for that tab only: it is cleared when you close the tab, and you are signed out automatically after 30 minutes of inactivity. For security, an account can be signed in on only one device at a time — signing in on a new device ends the earlier session.
 
-We also use your browser's local storage for a few small conveniences: your light/dark theme choice, your cookie choice (below), and a referral code from a link you followed, so it can be pre-filled when you sign up. These are needed for the site to work as you'd expect, so we don't ask for them.
+We also use your browser's local storage for a few small conveniences: your light/dark theme choice, your cookie choice (below), and a referral code from a link you followed, so it can be applied when you create your account. These are needed for the site to work as you'd expect, so we don't ask for them.
 
 Analytics cookies are different: we use them only if you agree. When Google Analytics is enabled, a banner asks you the first time you visit, and nothing from Google Analytics is loaded until you choose "Accept analytics". If you accept, its cookies collect aggregate usage statistics (such as pages viewed and checkout steps reached) to help us improve the website — never for advertising. "Decline" works exactly as well as "Accept", and you can change your mind at any time from "Cookie settings" at the bottom of every page; declining after accepting stops analytics straight away and removes its cookies. You can also block or clear cookies and site data in your browser settings; doing so will sign you out and may affect some features.`,
       },
@@ -390,7 +394,7 @@ To exercise any of these rights, contact us at crixtechnology@gmail.com. If you 
 
 Under the Digital Personal Data Protection Act, 2023, anyone under 18 is a child. If you are 16 or 17, you may create an account only with the permission of your parent or legal guardian, and by creating it you confirm that they have agreed to you using our services and to this Privacy Policy. We record the date and time of that confirmation. We never use the personal data of users under 18 for targeted advertising. Where Google Analytics is enabled, it collects only aggregate site-usage statistics (see "Cookies & Similar Technologies").
 
-The Careers aptitude test, which uses webcam monitoring, is open only to candidates aged 18 or older, who confirm their age before paying the registration fee.
+The Careers aptitude test, which uses webcam monitoring, is open only to candidates aged 18 or older, who confirm their age before the test is unlocked (and before paying the registration fee, for a role that has one).
 
 If you are a parent or guardian and believe your child has given us personal data without your permission, or if you believe we hold data about someone under 16, please contact us and we will delete it.`,
       },
@@ -448,8 +452,8 @@ By applying, you confirm that you meet the eligibility criteria.`,
       },
       {
         title: "3. User Accounts & Registration",
-        content: `To purchase a course or access enrolled course content, you must create an account using a valid email address and password, or by signing in with your Google account. You agree to:
-• Provide accurate, current, and complete information when registering
+        content: `To purchase a course or access enrolled course content, you must have an account. You create one by logging in with a valid email address and a password of your choice (an email with no account yet gets a new account, after you confirm), or by signing in with your Google account. Before you buy anything, you must add your full name and phone number to your profile. You agree to:
+• Provide accurate, current, and complete information in your account and profile
 • Keep your password confidential and not share your account with anyone else
 • Notify us immediately of any unauthorized use of your account
 • Register with a permanent, valid email address — disposable or temporary email services are not accepted
@@ -460,7 +464,7 @@ You are responsible for all activity that occurs under your account. Crix Techno
       },
       {
         title: "4. Internship Program",
-        content: `Crix Technology offers a virtual Internship Program that includes both free and paid internships — whether a particular internship is free or paid, and its fee where applicable, is shown on its page or communicated to you before you enroll (see section 6). Each internship runs for the duration shown on its page — 15 days, 1 month, 3 months or 6 months. Whichever you join, by enrolling you agree to:
+        content: `Crix Technology offers a virtual Internship Program of paid internships, listed with our courses on the Programs page — each internship's price is shown on its page or communicated to you before you enroll (see section 6). Opportunities without a fee are not part of the Internship Program: they are listed as roles on our Careers page, under section 8. Each internship runs for the duration shown on its page — 15 days, 1 month, 3 months or 6 months. Whichever you join, by enrolling you agree to:
 • Complete assigned tasks honestly and on time
 • Submit original work — plagiarism will result in immediate disqualification
 • Maintain professional conduct in all communications
@@ -489,7 +493,7 @@ Certificates and Letters of Recommendation are issued only upon satisfactory com
 • If money is debited from your account but the payment fails or is not confirmed, Razorpay or your bank normally reverses it automatically within 5–7 working days. If it is not reversed, or the item you paid for is not unlocked, contact us with your payment reference and we will resolve it.
 • If you are charged twice for the same order, the duplicate payment is refunded to the original payment method once verified.
 
-Most internship slots are apply-only, and applying never requires payment — but some internship slots, like courses, do carry a real price and are sold the same way. Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A course or internship is available for online purchase only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
+Internships on our Programs page, like courses, are paid programs and are sold the same way. Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A course or internship is available for online purchase only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
 
 Plans and upgrades: a course or internship may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and offer codes, referral discounts and wallet credit do not apply to upgrades.
 
@@ -518,9 +522,9 @@ The referral discount, the referral reward, and each offer code's terms are set 
       {
         title: "8. Careers, Aptitude Test & Selection",
         id: "careers",
-        content: `Applying. Roles listed on our Careers page are open to the applicants described on each role, who must be 18 years of age or older. To apply, you need a registered student account, and you confirm you are 18 or older before paying the registration fee. If we find that a candidate is under 18, we may cancel the application and delete their test data; the fee still comes back as wallet credit. You can hold only one open application per role; once an application ends without an offer (not shortlisted or rejected), you may apply for that role again, which requires a new registration fee.
+        content: `Applying. Roles listed on our Careers page are open to the applicants described on each role, who must be 18 years of age or older. To apply, you need a registered student account, and you confirm you are 18 or older before your test is unlocked. If we find that a candidate is under 18, we may cancel the application and delete their test data; any fee paid still comes back as wallet credit. You can hold only one open application per role; once an application ends without an offer (not shortlisted or rejected), you may apply for that role again, which for a role with a registration fee requires a new fee.
 
-Registration fee. Each application requires an aptitude-test registration fee, shown on the Careers page and at checkout. You pay it on the Careers page (or in your My Dashboard) through Razorpay, after accepting these Terms. Your test is unlocked as soon as the payment is confirmed, and a receipt is issued. The fee is not refunded in cash for any reason — including if you do not take the test, do not finish it, are disqualified, are not shortlisted or not selected, or the role closes after you have paid. Instead, the full fee is returned to your Crix wallet as credit, 1 credit per rupee, immediately after the payment is confirmed, on the wallet terms in section 7.
+Registration fee. Some roles have an aptitude-test registration fee and some are free: each role's card and details on the Careers page show which, and the fee where there is one. For a free role, your test is unlocked as soon as you accept these Terms and confirm your age — no payment is taken and no receipt or wallet credit is issued. For a role with a fee, the fee is also shown at checkout, and you pay it on the Careers page (or in your My Dashboard) through Razorpay, after accepting these Terms. Your test is unlocked as soon as the payment is confirmed, and a receipt is issued. The fee is not refunded in cash for any reason — including if you do not take the test, do not finish it, are disqualified, are not shortlisted or not selected, or the role closes after you have paid. Instead, the full fee is returned to your Crix wallet as credit, 1 credit per rupee, immediately after the payment is confirmed, on the wallet terms in section 7.
 
 The test. You get one attempt per paid application. Once started, the timer runs continuously until it ends — closing the page, losing your connection or turning off your device does not pause it, and the test is submitted automatically when the time is up. The test is marked by our servers, with marks for each correct answer and, where shown, marks taken off for each wrong answer. You need a laptop or desktop computer, a stable internet connection, and (where required) a working webcam; Crix Technology is not responsible for an attempt affected by your device, browser, power supply or internet connection.
 
@@ -530,7 +534,7 @@ Test rules and proctoring. To keep the test fair, you agree that:
 • Copying, pasting, right-clicking, selecting text and screenshot shortcuts are disabled, and attempts to use them are recorded
 • Your webcam takes a photo at regular intervals during the test, and your IP address, device and browser details are recorded with your attempt, to confirm that you — and only you — are taking it. The photos are deleted automatically 6 months after your application is closed, and in any case within 12 months of the test (see our Privacy Policy)
 • You must take the test yourself, alone, without help from any other person, website, tool or AI service, and must not copy, record, share or publish any question
-Breaking these rules, attempting to tamper with the test, or having someone else take it for you leads to disqualification, may lead to your account being suspended, and may stop you from applying again. Your registration fee is still returned as wallet credit, but no other remedy is due.
+Breaking these rules, attempting to tamper with the test, or having someone else take it for you leads to disqualification, may lead to your account being suspended, and may stop you from applying again. Any registration fee you paid is still returned as wallet credit, but no other remedy is due.
 
 Results and selection. Your score, marks and answers are used by Crix Technology to decide shortlisting and are not shared with you. We aim to tell you whether you have been shortlisted within 7 days of submitting the test; shortlisted applicants are invited to an online interview, and selected applicants receive an offer letter. Paying the registration fee or passing the test does not guarantee an interview, selection, an offer, a stipend or employment. Selection decisions, cut-off scores and stipends are at Crix Technology's sole discretion and are final. Crix Technology may close, change or withdraw a role at any time.`,
       },

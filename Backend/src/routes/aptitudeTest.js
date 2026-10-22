@@ -136,7 +136,7 @@ router.post("/me/job-applications/:id/test/start", requireAuth, testApiLimiter, 
     let attempt = application.attempt;
     let sessionId = null;
     if (!attempt) {
-      if (application.status === "payment_pending") return res.status(400).json({ ok: false, error: "Pay the test fee to unlock this test." });
+      if (application.status === "payment_pending") return res.status(400).json({ ok: false, error: "Unlock this test from My Dashboard first — accept the terms, and pay the registration fee if the role has one." });
       if (application.status !== "test_pending") return res.status(400).json({ ok: false, error: "This test has already been taken." });
       if (consent !== true) return res.status(400).json({ ok: false, error: "Please accept the test rules and webcam monitoring to start." });
       // Adults only. Confirmed when the fee was paid; an application paid before

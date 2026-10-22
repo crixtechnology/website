@@ -1,10 +1,11 @@
-// Canned Q&A for the floating help bot (components/FaqBot.jsx). Every answer is
+// The answer bank of the floating help agent (data/helpAgent.js). Every answer is
 // taken from what the site itself says (content.js, the Terms and the program
 // pages) — keep them in step when those change. No prices or timelines are
 // quoted: those live on each program's page / depend on the project.
 //
 // Answer text: plain lines; a line starting with "• " becomes a bullet.
 // `links`: [{ to: "/path", label }] for in-site pages, [{ href, label }] for external.
+// `dept`: "programs" | "it" | "both" — the help agent shows that team's number card.
 // `k`: extra keywords the free-text search should match on.
 import { site, internships, courses } from "./content.js";
 import { careersContact } from "./careers.js";
@@ -17,12 +18,12 @@ export const FAQ_TOPICS = [
     faqs: [
       { id: "i-offer", q: "What internships do you offer?", k: "internship tracks mern ai agentic android guided virtual program list",
         a: `Our virtual internships include:\n${list(internships)}\nThe internships page always shows what is open right now.`,
-        links: [{ to: "/internships", label: "See internships" }] },
+        links: [{ to: "/programs", label: "See internships" }] },
       { id: "i-who", q: "Who can apply?", k: "eligibility eligible age student graduate college qualify requirement",
         a: "Internships are open to:\n• Students currently enrolled in a college or university\n• Recent graduates (within 1 year of graduation)\n• Anyone who is at least 16 years old" },
       { id: "i-paid", q: "Is the internship free or paid?", k: "free paid fee cost price charge apply payment",
-        a: "Both exist. Most slots are apply-only and applying never needs payment, but some slots carry a fee. The price (if any) is shown on each program's page.\nIf a program shows no price or says “Currently closed”, use “Request to apply” on its page and we'll get back to you.",
-        links: [{ to: "/internships", label: "Browse internships" }] },
+        a: "Internships on the Programs page are paid — the price is shown on each program's page. Free opportunities are listed as roles on the Careers page, where each role shows whether it has a registration fee or is free to apply.\nIf a program shows no price or says “Currently closed”, use “Request to apply” on its page and we'll get back to you.",
+        links: [{ to: "/programs", label: "Browse programs" }, { to: "/careers", label: "Careers page" }] },
       { id: "i-get", q: "What will I get from an internship?", k: "benefit offer letter lor recommendation certificate joining kit linkedin resume",
         a: "Every internship includes:\n• Offer letter on day one\n• Joining kit\n• Completion certificate\n• Letter of Recommendation (LOR)\nCertificates and the LOR are issued after you satisfactorily complete all assigned tasks." },
       { id: "i-how", q: "How does the internship work?", k: "process steps tasks mentor mail how works procedure",
@@ -40,10 +41,10 @@ export const FAQ_TOPICS = [
     faqs: [
       { id: "c-offer", q: "Which courses do you have?", k: "course list online learn programming react node sql python kotlin price",
         a: `Our online courses include:\n${list(courses)}\nThe courses page always shows what is open and its price.`,
-        links: [{ to: "/courses", label: "See courses" }] },
+        links: [{ to: "/programs", label: "See courses" }] },
       { id: "c-begin", q: "I'm a beginner — where should I start?", k: "beginner start fresher basics new first",
         a: "The Web Development Track is beginner friendly — HTML, CSS and JavaScript through to the full MERN stack, self-paced with mentor support.",
-        links: [{ to: "/courses", label: "Browse courses" }] },
+        links: [{ to: "/programs", label: "Browse courses" }] },
       { id: "c-cert", q: "Do courses give a certificate?", k: "certificate completion credential recognized",
         a: "Yes — a certificate of completion, issued once you meet the attendance, assessment and project requirements. Courses are training, so there's no offer letter or LOR (those are internship-only).\nA certificate does not guarantee a job or any career outcome." },
       { id: "c-access", q: "How do I watch my course after buying?", k: "access watch lectures recorded live class learn dashboard login video",
@@ -64,10 +65,10 @@ export const FAQ_TOPICS = [
         a: "Every role we're hiring for is listed on the Careers page, with its skills, stipend, duration and test details. If no role is open, the page says so — new openings are posted there first.",
         links: [{ to: "/careers", label: "See open roles" }] },
       { id: "k-apply", q: "How do I apply for a role?", k: "apply application job role register hiring process steps",
-        a: "• Create an account (or log in)\n• Pick a role on the Careers page, or in My Dashboard → Apply / Aptitude Test\n• Pay the aptitude test registration fee — the whole fee comes back to your wallet as credit\n• Take the online aptitude test\n• If you're shortlisted, we schedule an online interview, then share the result",
+        a: "• Log in with your email and a password (a new email gets an account)\n• Pick a role on the Careers page, or in My Dashboard → Apply / Aptitude Test\n• Accept the terms — and, if the role has a registration fee, pay it (the whole fee comes back to your wallet as credit)\n• Take the online aptitude test\n• If you're shortlisted, we schedule an online interview, then share the result",
         links: [{ to: "/careers", label: "Careers page" }, { to: "/dashboard", label: "My Dashboard" }] },
       { id: "k-fee", q: "Do I have to pay to take the aptitude test?", k: "test fee registration fee cost charge money back refund credit aptitude",
-        a: "Yes, there's a registration fee for the aptitude test (shown on the Careers page). The whole fee comes back to your wallet as credit — 1 credit = ₹1 — which you can use on any Crix course or internship before it expires. It can't be withdrawn as cash, and paying for the test doesn't guarantee selection.",
+        a: "It depends on the role. Each role on the Careers page shows either its registration fee or “Free to apply”. Where there is a fee, the whole fee comes back to your wallet as credit — 1 credit = ₹1 — which you can use on any Crix course or internship before it expires. It can't be withdrawn as cash, and paying for the test doesn't guarantee selection.",
         links: [{ to: "/careers", label: "Careers page" }] },
       { id: "k-test", q: "What is the aptitude test like?", k: "aptitude test exam questions pattern syllabus marks negative marking time duration sections",
         a: "It's an online, timed test you take once, with sections on quantitative aptitude, logical reasoning, verbal ability and a technical section for your role. Wrong answers can cost marks (negative marking), so it's fine to leave a question you don't know. Each role's question count and time are on the Careers page, and you can download the full rules there as a PDF.",
@@ -109,7 +110,7 @@ export const FAQ_TOPICS = [
         links: [{ to: "/profile", label: "My Profile" }, { to: "/privacy-policy", label: "Privacy Policy" }] },
       { id: "p-failed", q: "My payment failed or money was deducted", k: "failed deducted stuck pending error not received access",
         a: "If money left your account but you didn't get access, please contact us with your name, email, the program name and the payment reference from your bank / UPI app, and we'll check it.",
-        links: [{ href: `https://wa.me/${site.whatsappAlt}?text=${encodeURIComponent("Hi Crix Technology! My payment went through but I don't have access yet.")}`, label: "WhatsApp internships & courses" }, { to: "/contact", label: "Contact page" }] },
+        links: [{ to: "/dashboard", label: "My Dashboard" }, { to: "/contact", label: "Contact page" }], dept: "programs" },
       { id: "p-request", q: "What is a payment request?", k: "payment request pay admin closed price link",
         a: "Sometimes we send a payment request to your registered account for a specific course or internship (even one that's closed or has no listed price). It appears under “Payment requests” in My Dashboard, is personal to your account, and you pay it through Razorpay. Offer codes and wallet credit don't apply to it.",
         links: [{ to: "/dashboard", label: "My Dashboard" }] },
@@ -121,10 +122,10 @@ export const FAQ_TOPICS = [
     id: "account", icon: "👤", label: "Account & login",
     faqs: [
       { id: "a-create", q: "How do I create an account?", k: "signup sign up register create account google email",
-        a: "Sign up with your email and a password, or choose “Continue with Google”. Use a permanent, valid email — disposable or temporary emails aren't accepted.\nYou need to be at least 16; if you're 16 or 17, a parent or guardian must agree to you using Crix Technology — you confirm this with a tick box when you sign up." },
+        a: "Open Log in and enter your email and a password. If the email is new, we ask you to confirm and your account is created with that password — or choose “Continue with Google”. Then add your full name and phone number in Profile; you need them before buying anything. Use a permanent, valid email — disposable or temporary emails aren't accepted.\nYou need to be at least 16; if you're 16 or 17, a parent or guardian must agree to you using Crix Technology — you confirm this with a tick box when your account is created." },
       { id: "a-forgot", q: "I forgot my password", k: "forgot reset password code otp login cannot working",
-        a: "On the sign-in box choose “Forgot password” and we'll email you a code. If the code doesn't arrive, message us on WhatsApp and we'll reset it for you.",
-        links: [{ href: `https://wa.me/${site.whatsappAlt}?text=${encodeURIComponent("Hi Crix Technology! I can't log in — please help me reset my password.")}`, label: "WhatsApp for password help" }] },
+        a: "On the Log in box choose “Forgot password” and we'll email you a code. If the code doesn't arrive, call our Internships & Courses team and we'll reset it for you.",
+        dept: "programs" },
       { id: "a-logout", q: "Why was I logged out?", k: "logout signed out session device inactive timeout",
         a: "For security, an account can be signed in on only one device at a time — signing in elsewhere ends the earlier session. You're also signed out automatically after 30 minutes of inactivity." },
       { id: "a-profile", q: "How do I change my name or phone number?", k: "profile edit update details name phone settings",
@@ -145,7 +146,7 @@ export const FAQ_TOPICS = [
         a: "New accounts get bonus credits. If you signed up with Google, they're added straight away. If you signed up with an email and password, open My Dashboard → My Wallet and choose “Email me a code” — enter the code we send you and the credits are added. Like test-fee credit, the bonus is valid for a limited time.",
         links: [{ to: "/dashboard", label: "Open my wallet" }] },
       { id: "r-how", q: "How does the referral program work?", k: "referral refer friend code earn credit reward share",
-        a: "Every registered student has a personal referral code.\n• Your friend applies it once, at sign-up or at checkout before their first purchase, and gets a discount on that purchase\n• When their first payment is confirmed, you earn referral credit\n• The credit goes into your wallet and is applied automatically at checkout\nReferral codes are for new students, so you can't add one once you already have a course." },
+        a: "Every registered student has a personal referral code.\n• Your friend applies it once, when their account is created or at checkout before their first purchase, and gets a discount on that purchase\n• When their first payment is confirmed, you earn referral credit\n• The credit goes into your wallet and is applied automatically at checkout\nReferral codes are for new students, so you can't add one once you already have a course." },
       { id: "r-credit", q: "Can I withdraw wallet credit as cash?", k: "credit cash withdraw transfer money value",
         a: "No. Wallet credit has no cash value and can't be withdrawn, transferred or exchanged." },
       { id: "r-offer", q: "How do offer / discount codes work?", k: "offer code coupon discount promo voucher",
@@ -167,8 +168,8 @@ export const FAQ_TOPICS = [
       { id: "s-process", q: "What is your process?", k: "process steps workflow discover estimate build deliver support timeline how long time",
         a: "• Discover — understand your goals, users and constraints\n• Estimate — a clear proposal with timeline, deliverables and cost\n• Build — design and develop in short, reviewable iterations\n• Deliver & Support — ship, test, and stay on for fixes and enhancements\nTimelines depend on the project; we confirm one once we know your requirements." },
       { id: "s-start", q: "How do I start a project with you?", k: "start begin get started contact project enquiry inquiry hire",
-        a: "Message our IT team on WhatsApp or send the contact form with a short description of what you need. We'll reply and set up a quick discussion.",
-        links: [{ to: "/contact", label: "Open contact form" }] },
+        a: "Send the inquiry form on the Services page (or the contact form) with a short description of what you need, or call our IT Services team. We'll reply and set up a quick discussion.",
+        links: [{ to: "/services", label: "Services page" }, { to: "/contact", label: "Open contact form" }], dept: "it" },
       { id: "s-redo", q: "Can you redesign my existing website?", k: "redesign upgrade revamp existing site migrate seo performance",
         a: "Yes — from a visual refresh to a full rebuild on a modern stack, with performance and SEO fixes and your redirects preserved." },
       { id: "s-bot", q: "Do you build chatbots?", k: "chatbot bot ai assistant faq lead",
@@ -188,10 +189,11 @@ export const FAQ_TOPICS = [
         a: "Crix Technology Private Limited is an Ahmedabad-based technology company with three pillars: structured virtual internships, industry-ready online courses, and IT services for businesses. We're virtual-first, serving clients across India and around the world, and learners across India.",
         links: [{ to: "/about", label: "About us" }] },
       { id: "o-phone", q: "What are your contact numbers?", k: "phone number call whatsapp contact mobile reach",
-        a: `• IT services: ${site.phone}\n• Internships & courses: ${site.phoneAlt}\nBoth numbers take calls and WhatsApp.`,
-        links: [{ href: `https://wa.me/${site.whatsappAlt}`, label: "WhatsApp internships & courses" }, { to: "/contact", label: "Contact page" }] },
+        a: "We have two separate teams, each with its own number — please call the one your question is for:",
+        links: [{ to: "/contact", label: "Contact page" }], dept: "both" },
       { id: "o-hours", q: "What are your working hours?", k: "hours timing time open available when reach",
-        a: `We're available ${site.hours}. You can message us on WhatsApp any time — we'll reply when we're back.` },
+        a: `We're available ${site.hours}. Outside those hours, send the contact form or an email and we'll reply when we're back.`,
+        links: [{ to: "/contact", label: "Contact form" }] },
       { id: "o-email", q: "What is your email address?", k: "email mail write reply response",
         a: `Email us at ${site.email}. We reply within two working days.`,
         links: [{ href: `mailto:${site.email}`, label: "Send an email" }] },
@@ -225,14 +227,15 @@ const INDEX = ALL_FAQS.map((f) => ({ f, q: new Set(tokens(f.q)), k: new Set(toke
 
 // Free-text search over whole words: a typed word scores 3 when it is one of a
 // question's curated keywords, 2 when it appears in the question itself.
-export function searchFaqs(text, limit = 3) {
+// `minShare`: drop matches scoring under this share of the best one.
+export function searchFaqs(text, limit = 3, minShare = 0.5) {
   const words = tokens(text).filter((w) => (w.length > 2 || w === "ai") && !STOP.has(w));
   if (!words.length) return [];
   return INDEX
     .map(({ f, q, k }) => ({ f, score: words.reduce((sum, w) => sum + (k.has(w) ? (q.has(w) ? 4 : 3) : q.has(w) ? 2 : 0), 0) }))
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score)
-    .filter((r, _, all) => r.score * 2 >= all[0].score) // drop weak "related" matches
+    .filter((r, _, all) => r.score >= all[0].score * minShare) // drop weak "related" matches
     .slice(0, limit)
     .map((r) => r.f);
 }

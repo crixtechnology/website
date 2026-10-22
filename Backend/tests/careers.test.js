@@ -449,6 +449,50 @@ describe("applying and paying the test fee", () => {
     expect((await createOrder(other, applied.body.application._id)).status).toBe(404);
   });
 
+  it("refuses the fee until the profile has a real name and a phone number", async () => {
+    const s = await student();
+    await prisma.user.update({ where: { id: s.id }, data: { phone: "", profilePending: true } });
+    const id = (await apply(s, o)).body.application._id;
+    razorpay.orders.create.mockClear();
+    const refused = await createOrder(s, id);
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe("PROFILE_INCOMPLETE");
+    expect(refused.body.missing).toEqual(["full name", "phone number"]);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+
+    await authed(request(app).patch("/api/auth/me"), s.token).send({ name: "Real Name", phone: "9876500001" });
+    expect((await createOrder(s, id)).status).toBe(201);
+  });
+
+  it("unlocks a free role's test without payment, once the terms and 18+ box are accepted", async () => {
+    const free = await opening({ feeRequired: false });
+    expect(free.feeRequired).toBe(false);
+    const listed = (await request(app).get("/api/careers/openings")).body.openings.find((x) => x.slug === free.slug);
+    expect(listed.feeRequired).toBe(false);
+
+    const s = await student();
+    const id = (await apply(s, free)).body.application._id;
+    const unlock = (body) => authed(request(app).post(`/api/me/job-applications/${id}/unlock-free`), s.token).send(body);
+    expect((await unlock({ confirmAdult: true })).status).toBe(400); // no terms
+    expect((await unlock({ acceptTerms: true })).body.code).toBe("ADULT_REQUIRED");
+    // A free role never opens the gateway.
+    razorpay.orders.create.mockClear();
+    expect((await createOrder(s, id)).status).toBe(400);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+
+    const ok = await unlock({ acceptTerms: true, confirmAdult: true });
+    expect(ok.status).toBe(200);
+    expect(ok.body.application.status).toBe("test_pending");
+    expect((await walletOf(s)).balance).toBe(0); // nothing paid, nothing credited
+    expect((await start(s, id)).status).toBe(200);
+
+    // A paid role can't be unlocked this way.
+    const t = await student();
+    const paidId = (await apply(t, o)).body.application._id;
+    const refused = await authed(request(app).post(`/api/me/job-applications/${paidId}/unlock-free`), t.token).send({ acceptTerms: true, confirmAdult: true });
+    expect(refused.status).toBe(400);
+  });
+
   it("doesn't unlock anything on a bad signature", async () => {
     const s = await student();
     const applied = await apply(s, o);

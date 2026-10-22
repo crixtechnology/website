@@ -541,6 +541,37 @@ export async function adminUpdateBotQuestion(id, handled) {
   }
 }
 
+// Teach the help agent an answer to a question (existing id), or to a new question.
+export async function adminAnswerBotQuestion(id, answer) {
+  try {
+    const res = await authFetch(`/admin/bot-questions/${id}/answer`, { method: "PUT", body: JSON.stringify(answer) });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not save the answer" };
+  }
+}
+
+export async function adminAddBotAnswer(answer) {
+  try {
+    const res = await authFetch("/admin/bot-questions", { method: "POST", body: JSON.stringify(answer) });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not save the answer" };
+  }
+}
+
+export async function adminRemoveBotAnswer(id) {
+  try {
+    const res = await authFetch(`/admin/bot-questions/${id}/answer`, { method: "DELETE" });
+    if (res.status === 401) adminLogout();
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not remove the answer" };
+  }
+}
+
 export async function adminDeleteBotQuestion(id) {
   try {
     const res = await authFetch(`/admin/bot-questions/${id}`, { method: "DELETE" });
@@ -677,4 +708,4 @@ async function adminFile(path, fallbackError) {
 }
 export const adminExportJobApplications = (filters) => adminFile(`/admin/job-applications/export${qs(filters)}`, "Could not export the applicants");
 export const adminGetTestSnapshot = (id) => adminFile(`/admin/test-snapshots/${id}`, "Could not load this snapshot");
-
+

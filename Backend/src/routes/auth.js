@@ -11,7 +11,7 @@ const { signToken: signJwt } = require("../utils/jwt");
 const { hasLiveSession } = require("../utils/sessionPolicy");
 const { sendAccountExistsEmail } = require("../utils/mailer");
 const { respondNoEarlierThan } = require("../utils/authTiming");
-const { publicUser, ensureDefaultPassword } = require("../utils/accounts");
+const { publicUser, ensureDefaultPassword, nameFromEmail } = require("../utils/accounts");
 const { applyReferralCode } = require("../utils/referrals");
 const { grantSignupBonus, holdSignupBonus, claimSignupBonus } = require("../utils/wallet");
 
@@ -195,9 +195,15 @@ router.post("/signup", authLimiter, async (req, res, next) => {
 });
 
 // ---------- unified login — works for both students and admins ----------
+// Also the only way a student account is made from the site's form: an email
+// with no account gets NEW_ACCOUNT back, and the form asks the person to
+// confirm (and tick the age box) before sending the same email and password
+// again with createAccount: true. The new account starts with a placeholder
+// name (from the email) and no phone, flagged profilePending — Profile is
+// where they add the rest, and every payment waits until they have.
 router.post("/login", authLimiter, async (req, res, next) => {
   try {
-    const { email, password } = req.body || {};
+    const { email, password, createAccount, ageConfirmed, referralCode } = req.body || {};
     if (!email || !password) {
       return res.status(400).json({ ok: false, error: "Email and password are required" });
     }
@@ -209,7 +215,9 @@ router.post("/login", authLimiter, async (req, res, next) => {
     // compare, so bcrypt.compare below still resolves it correctly. Rate
     // limiting (authLimiter above) is what actually bounds abuse here.
     const workStartedAt = Date.now();
-    const user = await prisma.user.findUnique({ where: { email: String(email).toLowerCase().trim() } });
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user) return createFromLogin(req, res, { email: normalizedEmail, password, createAccount, ageConfirmed, referralCode, workStartedAt });
     // Always runs, against DUMMY_PASSWORD_HASH when there's no real one to
     // check (no such user, or a Google-only account) — see that constant's
     // own comment. Every failure path below (no user, Google-only, wrong
@@ -230,6 +238,56 @@ router.post("/login", authLimiter, async (req, res, next) => {
     next(e);
   }
 });
+
+// The "no account for this email yet" half of /login.
+async function createFromLogin(req, res, { email, password, createAccount, ageConfirmed, referralCode, workStartedAt }) {
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ ok: false, error: "Enter a valid email address." });
+  }
+  // First ask: tell the form this is a new email, so a mistyped address of an
+  // existing account never silently becomes a second account.
+  if (createAccount !== true) {
+    return respondNoEarlierThan(workStartedAt, () => res.status(400).json({
+      ok: false,
+      code: "NEW_ACCOUNT",
+      error: "There's no account with this email yet. Confirm below to create one with this password.",
+    }));
+  }
+  // Users must be 16+; anyone under 18 needs a parent's or guardian's permission (DPDP Act 2023).
+  if (ageConfirmed !== true) {
+    return res.status(400).json({ ok: false, code: AGE_CODE, error: AGE_ERROR });
+  }
+  if (String(password).length < 8) {
+    return res.status(400).json({ ok: false, error: "Password must be at least 8 characters" });
+  }
+  if (String(password).length > 72) {
+    return res.status(400).json({ ok: false, error: "Password must be at most 72 characters" });
+  }
+  if (isDisposableEmail(email)) {
+    return res.status(400).json({ ok: false, error: "Temporary/disposable email addresses aren't allowed — please use a permanent email." });
+  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: { name: nameFromEmail(email), email, phone: "", passwordHash, role: "student", ageConfirmedAt: new Date(), profilePending: true },
+    });
+  } catch (createErr) {
+    // Made a moment ago by another request (double click): log in normally instead.
+    if (createErr && createErr.code === "P2002") {
+      return respondNoEarlierThan(workStartedAt, () => res.status(409).json({ ok: false, error: "This account was just created — please log in again." }));
+    }
+    throw createErr;
+  }
+  if (referralCode) {
+    await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
+  }
+  // The welcome credit (utils/wallet.js) waits until the email is verified.
+  await holdSignupBonus(user).catch((e) => console.error("[auth] signup bonus hold failed:", e.message));
+  const sessionId = await startSession(user);
+  const token = signToken(user, sessionId);
+  respondNoEarlierThan(workStartedAt, () => res.status(201).json({ ok: true, created: true, token, user: publicUser(user) }));
+}
 
 // ---------- Google Sign-In (student popup only — see Frontend AuthModal) ----------
 // Body is { credential }: the ID token Google's Identity Services button
@@ -347,6 +405,9 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       if (!n) return res.status(400).json({ ok: false, error: "Name can't be empty." });
       if (n.length > 80) return res.status(400).json({ ok: false, error: "Name is too long." });
       update.name = n;
+      // The login form's placeholder name stops counting as missing only when the
+      // owner confirms a name from Profile (confirmName), or types a different one.
+      if (existing.profilePending && (req.body.confirmName === true || n !== existing.name)) update.profilePending = false;
     }
 
     if (phone !== undefined) {

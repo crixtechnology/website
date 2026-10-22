@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCourses } from "../services/api.js";
 import { site } from "../data/content.js";
-import { offeredTiers, planPrice, formatINR, isOpenForBuy } from "../utils/tiers.js";
+import { offeredTiers, planPrice, formatINR, isOpenForBuy, isFreeProgram } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
 import { useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/usePageMeta.js";
 
@@ -100,7 +100,7 @@ export function RelatedPrograms({ course }) {
       if (!alive || !res || !res.ok) return;
       const rank = (c) => (c.type === course.type ? 0 : 2) + (c.status === "closed" ? 1 : 0);
       const others = (res.courses || [])
-        .filter((c) => c.slug && c.slug !== course.slug)
+        .filter((c) => c.slug && c.slug !== course.slug && !isFreeProgram(c))
         .map((c, i) => ({ c, i }))
         .sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i)
         .map((x) => x.c);

@@ -17,6 +17,7 @@ const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { requireAuth } = require("../middleware/requireAuth");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 const { rejectWithoutTerms } = require("../utils/terms");
+const { rejectIfProfileIncomplete } = require("../utils/accounts");
 const { lockUser } = require("../utils/wallet");
 const { getCareerSettings } = require("../utils/careerSettings");
 const { STATUS_LABELS, shapeOpening, grantTestForPayment, finalizeExpiredAttempts } = require("../utils/careers");
@@ -47,7 +48,7 @@ function shapeApplication(a) {
     _id: a.id,
     status: a.status,
     statusLabel: STATUS_LABELS[a.status] || a.status,
-    opening: a.opening ? { _id: a.opening.id, slug: a.opening.slug, title: a.opening.title, status: a.opening.status, test: shapeOpening(a.opening).test } : undefined,
+    opening: a.opening ? { _id: a.opening.id, slug: a.opening.slug, title: a.opening.title, status: a.opening.status, feeRequired: a.opening.feeRequired !== false, test: shapeOpening(a.opening).test } : undefined,
     createdAt: a.createdAt,
     paidAt: a.paidAt,
     paidPaymentId: a.paymentId,
@@ -167,6 +168,7 @@ router.post("/me/job-applications/:id/create-order", publicWriteLimiter, require
       });
     }
     if (rejectWithoutTerms(req, res)) return;
+    if (await rejectIfProfileIncomplete(req, res)) return;
     // The aptitude test (with webcam monitoring) is for adults only.
     if (!req.body || req.body.confirmAdult !== true) {
       return res.status(400).json({ ok: false, code: "ADULT_REQUIRED", error: "The aptitude test is only for candidates aged 18 or older. Please confirm your age to continue." });
@@ -181,6 +183,9 @@ router.post("/me/job-applications/:id/create-order", publicWriteLimiter, require
     }
     if (application.opening.status !== "open") {
       return res.status(400).json({ ok: false, error: "This role is closed for applications right now." });
+    }
+    if (application.opening.feeRequired === false) {
+      return res.status(400).json({ ok: false, error: "This role has no registration fee — unlock the test for free instead." });
     }
 
     await prisma.jobApplication.update({ where: { id: application.id }, data: { adultConfirmedAt: new Date() } });
@@ -216,6 +221,37 @@ router.post("/me/job-applications/:id/create-order", publicWriteLimiter, require
     });
   } catch (e) {
     if (respondToRazorpayError(e, res)) return;
+    next(e);
+  }
+});
+
+// ---------- candidate: unlock the test of a free role ----------
+// A role the admin marked free has no registration fee: once the terms and the
+// 18+ box are accepted, the test unlocks straight away — no payment, no credit.
+router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireAuth, async (req, res, next) => {
+  try {
+    if (rejectWithoutTerms(req, res)) return;
+    if (!req.body || req.body.confirmAdult !== true) {
+      return res.status(400).json({ ok: false, code: "ADULT_REQUIRED", error: "The aptitude test is only for candidates aged 18 or older. Please confirm your age to continue." });
+    }
+    const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, include: { opening: true } });
+    if (!application || application.userId !== req.user.sub) {
+      return res.status(404).json({ ok: false, error: "Application not found" });
+    }
+    if (application.opening.feeRequired !== false) {
+      return res.status(400).json({ ok: false, error: "This role needs the registration fee to unlock the test." });
+    }
+    if (application.opening.status !== "open") {
+      return res.status(400).json({ ok: false, error: "This role is closed for applications right now." });
+    }
+    // Only an application still locked moves; a second click changes nothing.
+    await prisma.jobApplication.updateMany({
+      where: { id: application.id, status: "payment_pending" },
+      data: { status: "test_pending", adultConfirmedAt: new Date() },
+    });
+    const updated = await prisma.jobApplication.findUnique({ where: { id: application.id }, include: WITH_DETAIL });
+    res.json({ ok: true, application: shapeApplication(updated) });
+  } catch (e) {
     next(e);
   }
 });

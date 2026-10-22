@@ -54,6 +54,10 @@ model User {
   // the owner a temporary one: the site then asks them to choose their own at
   // the next login. Cleared as soon as they change or reset it.
   mustChangePassword       Boolean   @default(false)
+  // True for an account made straight from the login form (email + password
+  // only): its name is a placeholder taken from the email until the owner
+  // saves their real one in Profile. Nothing can be bought until then.
+  profilePending           Boolean   @default(false)
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
@@ -547,6 +551,18 @@ model BotQuestion {
   handled      Boolean  @default(false)
   firstAskedAt DateTime @default(now())
   lastAskedAt  DateTime @default(now())
+  // An answer an admin taught the help agent for this question (Admin → Help
+  // agent questions). The site's agent loads every answered row (GET
+  // /bot/answers) and replies with it when a visitor asks something similar.
+  answer       String?  @db.Text
+  // Extra words that should also find this answer ("weekend saturday sunday").
+  keywords     String   @default("") @db.VarChar(300)
+  // Optional in-site page to link under the answer, e.g. "/programs".
+  linkTo       String   @default("") @db.VarChar(120)
+  linkLabel    String   @default("") @db.VarChar(60)
+  // "" | "programs" | "it" | "both": show that team's phone card under the answer.
+  dept         String   @default("") @db.VarChar(10)
+  answeredAt   DateTime?
 
   @@index([handled, timesAsked])
   @@map("bot_questions")
@@ -577,6 +593,8 @@ model JobOpening {
   mode             String        @default("")
   status           OpeningStatus @default(open)
   order            Int           @default(0)
+  // false = a free role: the aptitude test unlocks without the registration fee.
+  feeRequired      Boolean       @default(true)
   // --- this role's test ---
   durationMinutes  Int           @default(45)
   // { quantitative, logical, verbal, technical }: how many questions of each.

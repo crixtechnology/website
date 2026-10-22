@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
   DownloadPdfButton,
@@ -16,8 +16,7 @@ const LOADING_CAP_MS = 4000;
 
 // "On this page" dot rail (SectionIndex) entries for the two long pages.
 const PROGRAMS_INDEX = [
-  { id: "internships", label: "Internships" },
-  { id: "courses", label: "Courses" },
+  { id: "programs", label: "Internships & courses" },
   { id: "how-it-works", label: "How it works" },
   { id: "benefits", label: "Benefits" },
 ];
@@ -36,7 +35,7 @@ import { isValidName, emailFormatError } from "../utils/validators.js";
 import { phoneError } from "../utils/phone.js";
 import PhoneInput from "../components/PhoneInput.jsx";
 import { CourseFacts, CourseLists, CourseFaq, RelatedPrograms, EnrollBar, useCourseJsonLd } from "../components/CourseSections.jsx";
-import { offeredTiers, isOpenForBuy, TIER_ORDER } from "../utils/tiers.js";
+import { offeredTiers, isOpenForBuy, isFreeProgram, TIER_ORDER } from "../utils/tiers.js";
 
 // The ?tier= a purchase link carries, if it names a real plan.
 const tierFromParams = (params) => {
@@ -106,7 +105,7 @@ export function Home() {
             </span>
           </p>
           <div className="hero-ctas">
-            <Link className="btn btn-solid" to="/programs#internships">Explore internships</Link>
+            <Link className="btn btn-solid" to="/programs">Explore programs</Link>
             <Link className="btn btn-ghost" to="/services">Our IT services</Link>
           </div>
           <div className="hero-meta">
@@ -140,7 +139,7 @@ export function Home() {
             ))}
           </div>
           <div className="hero-ctas">
-            <Link className="btn btn-ghost" to="/programs#internships">View internship details →</Link>
+            <Link className="btn btn-ghost" to="/programs">View all programs →</Link>
           </div>
         </div>
       </section>
@@ -177,7 +176,7 @@ export function Home() {
           </div>
           <div className="hero-ctas">
             <Link className="btn btn-ghost" to="/services">All services →</Link>
-            <Link className="btn btn-ghost" to="/programs#courses">Browse courses →</Link>
+            <Link className="btn btn-ghost" to="/programs">Browse courses →</Link>
           </div>
         </div>
       </section>
@@ -243,16 +242,16 @@ export function Programs() {
     }
   }, [params, liveCourses, liveInternships, setParams]);
 
-  // All / Internships / Courses filter. Any nav jump (#internships, #courses)
-  // resets it to "all", so an anchor never points at a hidden section.
-  const { hash } = useLocation();
-  const [filter, setFilter] = useState("all");
-  useEffect(() => { setFilter("all"); }, [hash]);
-  const indexItems = PROGRAMS_INDEX.filter((s) => !(filter === "courses" && s.id === "internships") && !(filter === "internships" && s.id === "courses"));
+  // One list: internships first, then courses — paid programs only. Anything
+  // priced at ₹0 on every plan is a free opportunity, which belongs on Careers.
+  const programs = [
+    ...liveInternships.map((item) => ({ item, kind: "internship" })),
+    ...liveCourses.map((item) => ({ item, kind: "course" })),
+  ].filter(({ item }) => !isFreeProgram(item));
 
   // Search engines: the programs on this page as an ItemList pointing at each
   // one's own page (only live entries have a slug/page to point at).
-  const listed = [...liveInternships, ...liveCourses].filter((p) => p.slug && p.title);
+  const listed = programs.map(({ item }) => item).filter((p) => p.slug && p.title);
   useJsonLd("programs-jsonld", listed.length ? {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -264,41 +263,24 @@ export function Programs() {
     <>
       <PageHead eyebrow="Programs" title="Industry-ready courses, delivered across India."
         text="Fully virtual — join from anywhere in India. Pick a track, enroll, and start building; you learn from working industry professionals, and every course ships with mentor support and a certificate." />
-      <SectionIndex items={indexItems} />
-      <div className="wrap program-filter" role="group" aria-label="Show programs">
-        {[["all", "All programs"], ["internships", "Internships"], ["courses", "Courses"]].map(([v, label]) => (
-          <button key={v} type="button" className={filter === v ? "active" : ""} aria-pressed={filter === v} onClick={() => setFilter(v)}>{label}</button>
-        ))}
-      </div>
-      <section id="internships" className="section section--internships anchor-section" style={{ paddingTop: 20 }} hidden={filter === "courses"}>
+      <SectionIndex items={PROGRAMS_INDEX} />
+      {/* Internships and courses in one grid — only what's sold here. Free
+          opportunities (roles with no fee) live on the Careers page instead.
+          The old #internships / #courses anchors still land on this section. */}
+      <span id="internships" className="anchor-section" aria-hidden="true" />
+      <span id="courses" className="anchor-section" aria-hidden="true" />
+      <section id="programs" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
-          <Reveal as="span" variant="reveal-l" className="eyebrow">Internships</Reveal>
-          <Reveal as="h2" variant="reveal-l">Virtual Internship Program.</Reveal>
-          <Reveal as="p" variant="reveal-l" className="section-lede">
-            A work experience taught and mentored by industry professionals: you get an offer letter and a joining kit when you start, then a completion
-            certificate and Letter of Recommendation at the end — ready to submit for your college's
-            final-year internship requirement.
-          </Reveal>
-          <div className="grid3 stagger" style={{ marginTop: 24 }} key={`i-${filter}`}>
-            {loadingInternships ? <SkeletonCards count={internships.length} /> : liveInternships.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship"
-                onInquire={(item) => setInquire({ item, kind: "internship" })} onDetail={setDetailData} />
-            ))}
-          </div>
-        </div>
-      </section>
-      <section id="courses" className="section section--courses anchor-section" style={{ paddingTop: 20 }} hidden={filter === "internships"}>
-        <div className="wrap">
-          <Reveal as="span" variant="reveal-l" className="eyebrow">Courses</Reveal>
+          <Reveal as="span" variant="reveal-l" className="eyebrow">Internships &amp; Courses</Reveal>
           <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
           <Reveal as="p" variant="reveal-l" className="section-lede">
-            Self-paced training from industry professionals, with mentor support — you get a certificate of completion, and
-            outstanding performers get considered for our Internship Program.
+            Internship programs and self-paced courses, taught and mentored by industry professionals. Internships come with an offer
+            letter, a joining kit, a completion certificate and a Letter of Recommendation; every course ends with a certificate of completion.
           </Reveal>
-          <div className="grid3 stagger" style={{ marginTop: 24 }} key={`c-${filter}`}>
-            {loadingCourses ? <SkeletonCards count={courses.length} /> : liveCourses.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="course"
-                onInquire={(item) => setInquire({ item, kind: "course" })} onDetail={setDetailData} />
+          <div className="grid3 stagger" style={{ marginTop: 24 }}>
+            {loadingInternships || loadingCourses ? <SkeletonCards count={3} /> : programs.map(({ item, kind }, i) => (
+              <InfoCard key={`${kind}-${item.title || item._id}`} item={item} i={i} isProgram kind={kind}
+                onInquire={(it) => setInquire({ item: it, kind })} onDetail={setDetailData} />
             ))}
           </div>
         </div>
@@ -819,17 +801,23 @@ export function Contact() {
           <Reveal variant="reveal-r">
             <div className="info-row"><span className="ic">✉</span><div><span className="info-label">Email</span>
               <div className="contact-line"><a href={`mailto:${site.email}`}>{site.email}</a><CopyButton value={site.email} label="email address" /></div></div></div>
-            <div className="info-row"><span className="ic">✆</span><div><span className="info-label">Phone</span>
-              <span className="contact-sub">{site.phoneLabel}</span>
-              <div className="contact-line"><a href={`tel:${site.phone.replace(/\s/g, "")}`}>{site.phone}</a>
-                <CopyButton value={site.phone} label="IT services phone number" />
-                <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
-              {site.phoneAlt && (<>
-                <span className="contact-sub">{site.phoneAltLabel}</span>
-                <div className="contact-line"><a href={`tel:${site.phoneAlt.replace(/\s/g, "")}`}>{site.phoneAlt}</a>
-                  <CopyButton value={site.phoneAlt} label="internships and courses phone number" />
-                  <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
-              </>)}
+            <div className="info-row"><span className="ic">✆</span><div><span className="info-label">Phone — two separate teams</span>
+              {site.phoneAlt && (
+                <div className="dept-block dept--programs">
+                  <span className="dept-tag">{site.phoneAltLabel}</span>
+                  <span className="dept-hint">{site.phoneAltHint}</span>
+                  <div className="contact-line"><a href={`tel:${site.phoneAlt.replace(/\s/g, "")}`}>{site.phoneAlt}</a>
+                    <CopyButton value={site.phoneAlt} label="internships and courses phone number" />
+                    <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
+                </div>
+              )}
+              <div className="dept-block dept--it">
+                <span className="dept-tag">{site.phoneLabel}</span>
+                <span className="dept-hint">{site.phoneHint}</span>
+                <div className="contact-line"><a href={`tel:${site.phone.replace(/\s/g, "")}`}>{site.phone}</a>
+                  <CopyButton value={site.phone} label="IT services phone number" />
+                  <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
+              </div>
             </div></div>
             {site.hours && <div className="info-row"><span className="ic">◔</span><div><span className="info-label">Working hours</span>{site.hours}</div></div>}
             <div className="info-row"><span className="ic">◎</span><div><span className="info-label">Location</span>{site.city}</div></div>

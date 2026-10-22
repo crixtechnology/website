@@ -1,13 +1,13 @@
 import { Suspense, lazy, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import FaqBot from "./FaqBot.jsx";
+import HelpAgent from "./HelpAgent.jsx";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import {
   submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder,
   getMyReferral, applyReferral, getPriceQuote, payWithWallet, forgotPassword, resetPassword,
 } from "../services/api.js";
-import { UserContext, isProfileComplete } from "../context/UserContext.jsx";
+import { UserContext, isProfileComplete, profileMissing } from "../context/UserContext.jsx";
 import { IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
 import { usePendingPaymentRequests } from "../hooks/usePendingPaymentRequests.js";
 import ErrorBoundary from "./ErrorBoundary.jsx";
@@ -599,6 +599,32 @@ export function Alert({ kind = "info", inline = false, children }) {
   return inline ? box : createPortal(box, document.body);
 }
 
+/* ---------- ProfileGate: a complete profile before any payment ----------
+   Wraps a Pay button (and its boxes). While the signed-in account is missing
+   a detail every purchase needs (context/UserContext.jsx profileMissing), it
+   shows what's missing and a button to Profile instead, which brings them
+   back here afterwards. The server refuses the payment too (PROFILE_INCOMPLETE).
+   `onLeave` closes the popup the gate sits in before leaving the page. */
+export function ProfileGate({ children, onLeave }) {
+  const { user } = useContext(UserContext);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const missing = profileMissing(user);
+  if (!user || missing.length === 0) return children;
+  const go = () => {
+    if (onLeave) onLeave();
+    navigate(`/profile?reason=complete&next=${encodeURIComponent(location.pathname + location.search)}`);
+  };
+  return (
+    <div className="profile-gate" role="status">
+      <p className="form-note" style={{ marginTop: 0 }}>
+        Add your {missing.join(" and ")} to your profile before paying — it goes on your receipt.
+      </p>
+      <button type="button" className="btn btn-solid" style={{ width: "100%" }} onClick={go}>Complete your profile →</button>
+    </div>
+  );
+}
+
 /* ---------- TermsCheckbox: "I agree to the Terms & Conditions" ----------
    Shown above every Pay button on the site (courses, internships, plan
    upgrades, payment requests, the careers test fee). The Pay button stays
@@ -1038,8 +1064,8 @@ export function BuyModal({ item, user, initialTier, onClose }) {
         ) : needsProfile ? (
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
-              Purchasing as <b style={{ color: "var(--text)" }}>{user.name || user.email}</b>. We need a
-              phone number on your profile before you can enrol.
+              Purchasing as <b style={{ color: "var(--text)" }}>{user.email}</b>. Add your {profileMissing(user).join(" and ")} to
+              your profile before you can enrol.
             </p>
             <button className="btn btn-solid" onClick={goCompleteProfile} style={{ width: "100%" }}>
               Complete your profile →
@@ -1236,10 +1262,12 @@ export function UpgradeModal({ data, onClose, onDone }) {
                 </label>
               ))}
             </fieldset>
+            <ProfileGate onLeave={onClose}>
             <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={loading} what="this upgrade" />
             <button className="btn btn-solid" onClick={onPay} disabled={loading || !agreed} style={{ width: "100%" }}>
               {loading ? "Please wait..." : selected ? `Pay ${formatINR(selected.due)} to upgrade` : "Upgrade"}
             </button>
+            </ProfileGate>
             <Alert inline kind={status.kind}>{status.text}</Alert>
           </>
         )}
@@ -1603,23 +1631,24 @@ function loadGoogleScript() {
   return googleScriptPromise;
 }
 
-/* ---------- AuthModal: login/signup as a popup, not a page ----------
+/* ---------- AuthModal: one login popup that also creates accounts ----------
    Rendered once (see App.jsx), driven by UserContext's authModal state —
-   call openAuthModal("login" | "signup", onSuccess) from anywhere to open
-   it; onSuccess(user) fires right after a successful login/signup, before
-   the modal closes, so callers (e.g. "Buy now") can pick up where they
-   left off without a page redirect. */
+   call openAuthModal("login", onSuccess) from anywhere to open it; onSuccess(user)
+   fires right after a successful login, before the modal closes, so callers
+   (e.g. "Buy now") can pick up where they left off without a page redirect.
+   There is no separate sign-up form: an email with no account comes back
+   NEW_ACCOUNT, and the same form asks to confirm (with the age box) before
+   creating it with that password. The new account's name is a placeholder
+   until the owner saves their details in Profile. */
 export function AuthModal() {
-  const { authModal, closeAuthModal, login, signup, loginWithGoogle, sessionExpired } = useContext(UserContext);
-  const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", referralCode: "" });
+  const { authModal, closeAuthModal, login, loginWithGoogle, sessionExpired } = useContext(UserContext);
+  const navigate = useNavigate();
+  const [mode, setMode] = useState("login"); // "login" | "forgot"
+  const [form, setForm] = useState({ email: "", password: "" });
+  // Set once the server says this email has no account yet: the form then
+  // shows the age box and its button creates the account.
+  const [creating, setCreating] = useState(false);
   const [status, setStatus] = useState("");
-  // Almost always "error" (every existing setStatus call site is a
-  // validation/failure message) — "info" is used for exactly one case: the
-  // ambiguous signup response below, which is deliberately NOT styled as a
-  // failure since it's shown to a real, successful "someone will hear from
-  // us" outcome just as often as a genuine failed attempt (see its own
-  // comment further down).
   const [statusKind, setStatusKind] = useState("error");
   const [loading, setLoading] = useState(false);
   // "Forgot password" (mode === "forgot"): step 1 asks for the email and sends a
@@ -1643,12 +1672,12 @@ export function AuthModal() {
 
   useEffect(() => {
     if (authModal) {
-      setMode(authModal.mode || "login");
+      setMode(authModal.mode === "forgot" ? "forgot" : "login");
       setResetStep(1);
       setReset({ otp: "", password: "", confirm: "" });
       setResendIn(0);
-      // A code remembered from a shared referral link pre-fills the signup box.
-      setForm({ name: "", email: "", phone: "", password: "", referralCode: getStoredReferral() });
+      setForm({ email: "", password: "" });
+      setCreating(false);
       setStatus("");
       setStatusKind("error");
       setLoading(false);
@@ -1659,10 +1688,8 @@ export function AuthModal() {
 
   useModalEscape(!!authModal, closeAuthModal);
 
-  // Switching between "Log in" / "Create an account" shouldn't carry a
-  // stale error from the other form along with it.
   const switchMode = (m) => {
-    setMode(m); setStatus(""); setStatusKind("error");
+    setMode(m); setStatus(""); setStatusKind("error"); setCreating(false);
     if (m === "forgot") { setResetStep(1); setReset({ otp: "", password: "", confirm: "" }); setResendIn(0); }
   };
 
@@ -1671,9 +1698,12 @@ export function AuthModal() {
       const onSuccess = authModal?.onSuccess;
       // Empty every field — the password especially — before the popup closes, so
       // nothing typed stays in memory waiting for the next time it opens.
-      setForm({ name: "", email: "", phone: "", password: "", referralCode: "" });
+      setForm({ email: "", password: "" });
       closeAuthModal();
       if (onSuccess) onSuccess(res.user);
+      // A brand-new account goes to Profile to add its details — unless the
+      // caller (e.g. a purchase) carries on, which asks for them itself.
+      else if (res.created) navigate("/profile?reason=new");
     } else {
       setStatusKind("error");
       setStatus(res.error || fallbackError);
@@ -1681,10 +1711,9 @@ export function AuthModal() {
   };
 
   // Render the "Continue with Google" button into googleBtnRef whenever the
-  // modal opens (or mode toggles, so the label switches between
-  // signin_with/signup_with) — skipped entirely if no client ID is set.
+  // modal opens — skipped entirely if no client ID is set.
   useEffect(() => {
-    if (!authModal || !GOOGLE_CLIENT_ID) return;
+    if (!authModal || !GOOGLE_CLIENT_ID || mode === "forgot") return;
     let cancelled = false;
     loadGoogleScript().then((ok) => {
       if (cancelled || !ok || !window.google?.accounts?.id || !googleBtnRef.current) return;
@@ -1695,9 +1724,9 @@ export function AuthModal() {
           setStatus("");
           const res = await loginWithGoogle(response.credential, { ageConfirmed: ageOkRef.current });
           setLoading(false);
-          // A new Google account needs the age box: show the sign-up side, where it is.
+          // A new Google account needs the age box: show it.
           if (res.code === "AGE_CONFIRMATION_REQUIRED") {
-            setMode("signup");
+            setCreating(true);
             setStatusKind("error");
             setStatus("To create your account, tick the age box below, then continue with Google again.");
             return;
@@ -1711,8 +1740,7 @@ export function AuthModal() {
       const avail = googleBtnRef.current.getBoundingClientRect().width;
       const btnWidth = Math.max(220, Math.min(320, Math.round(avail || 320)));
       window.google.accounts.id.renderButton(googleBtnRef.current, {
-        theme: "filled_black", size: "large", width: btnWidth, shape: "pill", logo_alignment: "center",
-        text: mode === "signup" ? "signup_with" : "signin_with",
+        theme: "filled_black", size: "large", width: btnWidth, shape: "pill", logo_alignment: "center", text: "continue_with",
       });
     });
     return () => { cancelled = true; };
@@ -1720,7 +1748,12 @@ export function AuthModal() {
 
   if (!authModal) return null;
 
-  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus(""); };
+  // Editing the email after "no account yet" asks again, so a fixed typo logs in normally.
+  const set = (k) => (e) => {
+    setForm({ ...form, [k]: e.target.value });
+    setStatus("");
+    if (k === "email") setCreating(false);
+  };
 
   const setResetField = (k) => (e) => { setReset({ ...reset, [k]: e.target.value }); setStatus(""); };
 
@@ -1762,62 +1795,51 @@ export function AuthModal() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (loading) return; // already in flight — avoid a duplicate login/signup request
+    if (loading) return; // already in flight — avoid a duplicate request
     setStatusKind("error"); // any status set from here down defaults to an error styling, unless overridden below
     if (mode === "forgot") { await (resetStep === 1 ? sendResetCode() : submitReset()); return; }
-    if (mode === "login") {
-      if (!form.email.trim() || !form.password.trim()) { setStatus("Enter your email and password."); return; }
-    } else {
-      if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.password.trim()) {
-        setStatus("Please fill in every field."); return;
-      }
-      if (!isValidName(form.name)) { setStatus("Enter a valid name (letters only)."); return; }
+    if (!form.email.trim() || !form.password.trim()) { setStatus("Enter your email and password."); return; }
+    if (creating) {
       const emailProblem = emailFormatError(form.email);
       if (emailProblem) { setStatus(`Please add ${emailProblem}.`); return; }
-      const phoneProblem = phoneError(form.phone);
-      if (phoneProblem) { setStatus(`Please add ${phoneProblem}.`); return; }
       if (form.password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
-      if (!ageOk) { setStatus("Please confirm your age to create an account."); return; }
+      if (form.password.length > 72) { setStatus("Password must be at most 72 characters."); return; }
+      if (!ageOk) { setStatus("Please confirm your age to create your account."); return; }
     }
     setLoading(true);
     setStatus("");
-    const res = mode === "login" ? await login(form.email.trim(), form.password) : await signup({ ...form, ageConfirmed: ageOk });
+    const res = await login(form.email.trim(), form.password, creating ? { createAccount: true, ageConfirmed: ageOk } : undefined);
     setLoading(false);
-    // Signup's response is deliberately ambiguous when the email already has
-    // an account (see routes/auth.js) — `ok: true` but no `token`, since a
-    // genuine new signup logs straight in (real token) and this can't, on
-    // pain of logging the caller into someone else's account. Show the
-    // backend's own neutral message instead of treating it as either an
-    // error or a real login — the modal stays open, nothing is stored.
-    if (mode === "signup" && res.ok && !res.token) {
-      setForm({ name: "", email: "", phone: "", password: "", referralCode: "" });
+    if (res.code === "NEW_ACCOUNT") {
+      setCreating(true);
       setStatusKind("info");
-      setStatus(res.message || "Check your email to continue.");
+      setStatus(res.error);
       return;
     }
-    finishAuth(res, mode === "login" ? "Login failed." : "Could not create your account.");
+    finishAuth(res, creating ? "Could not create your account." : "Login failed.");
   };
+
+  const ageBox = (
+    <label className="check-row age-check">
+      <input type="checkbox" checked={ageOk} disabled={loading}
+        onChange={(e) => { setAgeOk(e.target.checked); ageOkRef.current = e.target.checked; setStatus(""); }} />
+      <span>
+        I am 18 or older, or I am 16 or 17 and my parent or guardian has agreed to me using Crix Technology and to
+        the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+      </span>
+    </label>
+  );
 
   return (
     <div className="modal-backdrop" onClick={closeAuthModal}>
       <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={closeAuthModal} aria-label="Close">✕</button>
-        <span className="eyebrow">{mode === "forgot" ? "Account recovery" : mode === "login" ? "Welcome back" : "Get started"}</span>
+        <span className="eyebrow">{mode === "forgot" ? "Account recovery" : creating ? "New here" : "Welcome"}</span>
         <h3 id="auth-modal-title" style={{ margin: "10px 0 14px" }}>
-          {mode === "forgot" ? "Reset your password" : mode === "login" ? "Log in to your account" : "Create your account"}
+          {mode === "forgot" ? "Reset your password" : creating ? "Create your account" : "Log in or create an account"}
         </h3>
         {sessionExpired && (
           <Alert inline kind="info">You were signed out after {IDLE_TIMEOUT_MINUTES} minutes of inactivity. Please log in again.</Alert>
-        )}
-        {mode === "signup" && (
-          <label className="check-row age-check">
-            <input type="checkbox" checked={ageOk} disabled={loading}
-              onChange={(e) => { setAgeOk(e.target.checked); ageOkRef.current = e.target.checked; setStatus(""); }} />
-            <span>
-              I am 18 or older, or I am 16 or 17 and my parent or guardian has agreed to me using Crix Technology and to
-              the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
-            </span>
-          </label>
         )}
         {GOOGLE_CLIENT_ID && mode !== "forgot" && (
           <>
@@ -1859,38 +1881,30 @@ export function AuthModal() {
               )}
             </>
           )}
-          {mode === "signup" && (
-            <div className="field"><label htmlFor="auth-name">Full name</label>
-              <input id="auth-name" value={form.name} onChange={set("name")} placeholder="Your name" autoComplete="name" disabled={loading} /></div>
-          )}
-          {mode !== "forgot" && (
-            <div className="field"><label htmlFor="auth-email">Email</label>
-              <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="username" disabled={loading} /></div>
-          )}
-          {mode === "signup" && (
-            <div className="field"><label htmlFor="auth-phone">Phone</label>
-              <PhoneInput id="auth-phone" value={form.phone} onChange={(phone) => { setForm((f) => ({ ...f, phone })); setStatus(""); }} disabled={loading} /></div>
-          )}
-          {mode === "signup" && (
-            <div className="field"><label htmlFor="auth-ref">Referral code (optional)</label>
-              <input id="auth-ref" value={form.referralCode} onChange={set("referralCode")} placeholder="CRIX-XXXXXX" autoComplete="off" disabled={loading} /></div>
-          )}
-          {mode !== "forgot" && (
-            <div className="field"><label htmlFor="auth-password">Password</label>
-              <input id="auth-password" type="password" value={form.password} onChange={set("password")}
-                placeholder={mode === "login" ? "••••••••" : "At least 8 characters"}
-                autoComplete={mode === "login" ? "current-password" : "new-password"} disabled={loading} />
-              {mode === "login" && (
-                <button type="button" className="link-btn" style={{ marginTop: 6, fontSize: ".82rem" }}
-                  onClick={() => switchMode("forgot")}>Forgot password?</button>
+          {mode === "login" && (
+            <>
+              <div className="field"><label htmlFor="auth-email">Email</label>
+                <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="username" disabled={loading} /></div>
+              <div className="field"><label htmlFor="auth-password">Password</label>
+                <input id="auth-password" type="password" value={form.password} onChange={set("password")}
+                  placeholder={creating ? "At least 8 characters" : "••••••••"}
+                  autoComplete={creating ? "new-password" : "current-password"} disabled={loading} />
+                {!creating && (
+                  <button type="button" className="link-btn" style={{ marginTop: 6, fontSize: ".82rem" }}
+                    onClick={() => switchMode("forgot")}>Forgot password?</button>
+                )}
+              </div>
+              {creating && ageBox}
+              {!creating && (
+                <p className="form-note" style={{ marginTop: 0 }}>New to Crix? Enter your email and choose a password — we'll create your account.</p>
               )}
-            </div>
+            </>
           )}
           <Alert inline kind={statusKind}>{status}</Alert>
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
             {loading ? "Please wait..."
               : mode === "forgot" ? (resetStep === 1 ? "Send code" : "Reset password")
-              : mode === "login" ? "Log in" : "Create account"}
+              : creating ? "Create account" : "Continue"}
           </button>
         </form>
         <p className="form-note" style={{ marginTop: 14 }}>
@@ -1906,11 +1920,9 @@ export function AuthModal() {
               )}
               <button type="button" className="link-btn" onClick={() => switchMode("login")}>Back to log in</button>
             </>
-          ) : mode === "login" ? (
-            <>New here? <button type="button" className="link-btn" onClick={() => switchMode("signup")}>Create an account</button></>
-          ) : (
-            <>Already have an account? <button type="button" className="link-btn" onClick={() => switchMode("login")}>Log in</button></>
-          )}
+          ) : creating ? (
+            <>Already have an account? <button type="button" className="link-btn" onClick={() => switchMode("login")}>Use a different email</button></>
+          ) : null}
         </p>
       </div>
     </div>
@@ -2026,8 +2038,7 @@ export function Navbar() {
   }, [open]);
 
   const links = [
-    ["/programs#internships", "Internships"],
-    ["/programs#courses", "Courses"],
+    ["/programs", "Internships & Courses"],
     ["/services", "IT Services"],
     ["/about", "About"],
     ["/careers", "Careers"],
@@ -2056,10 +2067,8 @@ export function Navbar() {
         <ul id="primary-nav" className={`nav-links ${open ? "open" : ""}`}>
           {links.map(([to, label]) => {
             // NavLink's own isActive matches on pathname only, so it can't
-            // tell "/programs#internships" and "/programs#courses" apart —
-            // both would light up together any time the pathname is
-            // "/programs", which is exactly the "can't tell them apart" bug
-            // this session has been fixing everywhere else. Compare the
+            // tell two links to the same page with different #sections
+            // apart — both would light up together. Compare the
             // hash ourselves for a link that has one. Passing a *function*
             // to className (rather than a string) is required here — with a
             // string, NavLink always re-appends its own pathname-only
@@ -2183,10 +2192,10 @@ const FOOT_COLS = [
   {
     heading: "For Students",
     links: [
-      ["Internship Program", "/programs#internships"],
-      ["Web Development Track", "/programs#courses"],
-      ["Android Development", "/programs#internships"],
-      ["Online Courses", "/programs#courses"],
+      ["Internship Program", "/programs"],
+      ["Web Development Track", "/programs"],
+      ["Android Development", "/programs"],
+      ["Online Courses", "/programs"],
     ],
   },
   {
@@ -2215,16 +2224,18 @@ export function Footer() {
           </p>
           <div className="foot-contact">
             <ul className="foot-phones">
-              <li>
-                <span className="foot-phone-label">{site.phoneLabel}</span>
+              <li className="dept-block dept--it">
+                <span className="dept-tag">{site.phoneLabel}</span>
+                <span className="dept-hint">{site.phoneHint}</span>
                 <div className="foot-phone-row">
                   <a href={tel(site.phone)}>{site.phone}</a>
                   <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${site.phoneLabel}`}>WhatsApp</a>
                 </div>
               </li>
               {site.phoneAlt && (
-                <li>
-                  <span className="foot-phone-label">{site.phoneAltLabel}</span>
+                <li className="dept-block dept--programs">
+                  <span className="dept-tag">{site.phoneAltLabel}</span>
+                  <span className="dept-hint">{site.phoneAltHint}</span>
                   <div className="foot-phone-row">
                     <a href={tel(site.phoneAlt)}>{site.phoneAlt}</a>
                     <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${site.phoneAltLabel}`}>WhatsApp</a>
@@ -2451,7 +2462,7 @@ export function Chrome() {
       <div id="progress" ref={progressRef}></div>
       <div id="spotlight" ref={spotRef} aria-hidden="true"></div>
       <div id="cursor-ring" ref={ringRef} aria-hidden="true"></div>
-      <FaqBot peek={waPeek} />
+      <HelpAgent peek={waPeek} />
       {/* Invisible must also mean unreachable: hidden, it is out of the tab order and away from screen readers. */}
       <button id="toTop" className={showTop ? "show" : ""} aria-label="Back to top"
         tabIndex={showTop ? 0 : -1} aria-hidden={showTop ? undefined : true}

@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { UserContext } from "./context/UserContext.jsx";
 import { AuthModal, Chrome } from "./components/ui.jsx";
 import * as api from "./services/api.js";
@@ -28,8 +29,8 @@ const fill = (el, value) => {
 
 describe("messages inside a popup", () => {
   it("appear in the popup's form (not floating over its heading at the top of the screen)", async () => {
-    const value = { authModal: { mode: "login" }, closeAuthModal: jest.fn(), login: jest.fn().mockResolvedValue({ ok: false, error: "Invalid credentials" }), signup: jest.fn(), loginWithGoogle: jest.fn(), sessionExpired: false };
-    await act(async () => { root.render(<UserContext.Provider value={value}><AuthModal /></UserContext.Provider>); });
+    const value = { authModal: { mode: "login" }, closeAuthModal: jest.fn(), login: jest.fn().mockResolvedValue({ ok: false, error: "Invalid credentials" }), loginWithGoogle: jest.fn(), sessionExpired: false };
+    await act(async () => { root.render(<MemoryRouter><UserContext.Provider value={value}><AuthModal /></UserContext.Provider></MemoryRouter>); });
     await act(async () => { fill(q("#auth-email"), "someone@example.com"); });
     await act(async () => { fill(q("#auth-password"), "wrong-password"); });
     await act(async () => { q("#auth-password").closest("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
@@ -43,8 +44,8 @@ describe("messages inside a popup", () => {
   });
 
   it("keeps the 'signed out for inactivity' notice inside the popup too", async () => {
-    const value = { authModal: { mode: "login" }, closeAuthModal: jest.fn(), login: jest.fn(), signup: jest.fn(), loginWithGoogle: jest.fn(), sessionExpired: true };
-    await act(async () => { root.render(<UserContext.Provider value={value}><AuthModal /></UserContext.Provider>); });
+    const value = { authModal: { mode: "login" }, closeAuthModal: jest.fn(), login: jest.fn(), loginWithGoogle: jest.fn(), sessionExpired: true };
+    await act(async () => { root.render(<MemoryRouter><UserContext.Provider value={value}><AuthModal /></UserContext.Provider></MemoryRouter>); });
     expect(q(".modal-box .alert-inline")).not.toBeNull();
   });
 });

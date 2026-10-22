@@ -1,7 +1,7 @@
 import { ALL_FAQS, FAQ_TOPICS, searchFaqs } from "./faqData.js";
 
 // Pages the site actually has, so a bot answer can't link to a dead end.
-const ROUTES = ["/", "/programs", "/internships", "/courses", "/services", "/about", "/careers", "/contact", "/privacy-policy", "/terms-of-service", "/client-terms", "/dashboard", "/profile"];
+const ROUTES = ["/", "/programs", "/services", "/about", "/careers", "/contact", "/privacy-policy", "/terms-of-service", "/client-terms", "/dashboard", "/profile"];
 
 describe("help bot answers", () => {
   it("has unique ids, a question and an answer for every entry", () => {
@@ -20,7 +20,10 @@ describe("help bot answers", () => {
         expect(l.label).toBeTruthy();
         if (l.to) expect(ROUTES).toContain(l.to);
         else expect(l.href).toMatch(/^(https?:\/\/|mailto:)/);
+        // The chat never sends people to WhatsApp — a department card (`dept`) shows the right number instead.
+        expect(l.href || "").not.toMatch(/wa\.me/);
       }
+      if (f.dept) expect(["programs", "it", "both"]).toContain(f.dept);
     }
   });
 });

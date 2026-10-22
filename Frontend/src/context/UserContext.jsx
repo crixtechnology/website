@@ -1,17 +1,28 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getAdminToken, getStoredUser, adminLogout, logoutSession, setLastActivity, AUTH_CLEARED_EVENT,
-  login as loginRequest, signup as signupRequest, googleAuth as googleAuthRequest,
+  login as loginRequest, googleAuth as googleAuthRequest,
   fetchMe, updateMe,
 } from "../services/api.js";
 import { useIdleLogout, IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
 
-// The details a course purchase needs on file (see BuyModal). Missing any of
-// these sends the user to /profile to fill them in first.
-export function isProfileComplete(user) {
-  if (!user) return false;
+// The details every purchase needs on file (BuyModal, upgrades, payment
+// requests, the aptitude-test fee) — the server checks the same before any
+// payment (Backend utils/accounts.js profileMissing). An account made from the
+// login form starts with a placeholder name (profilePending) until its owner
+// saves their real one. Missing any of these sends the user to /profile first.
+export function profileMissing(user) {
+  if (!user) return [];
   const has = (v) => !!(v && String(v).trim());
-  return has(user.name) && has(user.email) && has(user.phone);
+  return [
+    (!has(user.name) || user.profilePending) && "full name",
+    !has(user.email) && "email",
+    !has(user.phone) && "phone number",
+  ].filter(Boolean);
+}
+
+export function isProfileComplete(user) {
+  return !!user && profileMissing(user).length === 0;
 }
 
 export const UserContext = createContext({
@@ -21,7 +32,6 @@ export const UserContext = createContext({
   isAdmin: false,
   profileComplete: false,
   login: async () => ({ ok: false }),
-  signup: async () => ({ ok: false }),
   loginWithGoogle: async () => ({ ok: false }),
   updateProfile: async () => ({ ok: false }),
   refreshUser: async () => {},
@@ -58,18 +68,12 @@ export function UserProvider({ children }) {
     return p;
   }, []);
 
-  const login = useCallback(async (email, password) => {
-    const res = await loginRequest(email, password);
+  const login = useCallback(async (email, password, options) => {
+    const res = await loginRequest(email, password, options);
     if (res.ok) {
       tempPasswordRef.current = res.user && res.user.mustChangePassword ? password : "";
       setUser(res.user); setToken(res.token); setSessionExpired(false); setLastActivity();
     }
-    return res;
-  }, []);
-
-  const signup = useCallback(async (form) => {
-    const res = await signupRequest(form);
-    if (res.ok) { setUser(res.user); setToken(res.token); setSessionExpired(false); setLastActivity(); }
     return res;
   }, []);
 
@@ -152,11 +156,11 @@ export function UserProvider({ children }) {
       isLoggedIn: !!user && !!token,
       isAdmin: user?.role === "admin",
       profileComplete: isProfileComplete(user),
-      login, signup, loginWithGoogle, updateProfile, refreshUser, takeTempPassword, logout,
+      login, loginWithGoogle, updateProfile, refreshUser, takeTempPassword, logout,
       sessionExpired, clearSessionExpired,
       authModal, openAuthModal, closeAuthModal,
     }),
-    [user, token, login, signup, loginWithGoogle, updateProfile, refreshUser, takeTempPassword, logout, sessionExpired, clearSessionExpired, authModal, openAuthModal, closeAuthModal]
+    [user, token, login, loginWithGoogle, updateProfile, refreshUser, takeTempPassword, logout, sessionExpired, clearSessionExpired, authModal, openAuthModal, closeAuthModal]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

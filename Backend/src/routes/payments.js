@@ -17,6 +17,7 @@ const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 const { rejectWithoutTerms } = require("../utils/terms");
+const { rejectIfProfileIncomplete } = require("../utils/accounts");
 
 const router = express.Router();
 
@@ -382,6 +383,7 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
       });
     }
     if (rejectWithoutTerms(req, res)) return;
+    if (await rejectIfProfileIncomplete(req, res)) return;
     // What this buyer really pays: the plan price, less any offer code and referral
     // welcome discount, less any referral credit they hold (utils/referrals.js) — all
     // worked out on the server, never taken from the client.
@@ -464,6 +466,7 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
 router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res, next) => {
   try {
     if (rejectWithoutTerms(req, res)) return;
+    if (await rejectIfProfileIncomplete(req, res)) return;
     const prepared = await prepareOrder(req);
     if (prepared.error) return res.status(prepared.error.status).json({ ok: false, error: prepared.error.message });
     const { application, course, plan, applied } = prepared;
@@ -595,6 +598,7 @@ router.post("/create-upgrade-order", publicWriteLimiter, requireAuth, async (req
       });
     }
     if (rejectWithoutTerms(req, res)) return;
+    if (await rejectIfProfileIncomplete(req, res)) return;
     const { courseSlug, tier: tierName } = req.body || {};
     if (!courseSlug) return res.status(400).json({ ok: false, error: "courseSlug is required" });
     if (!isTier(tierName)) return res.status(400).json({ ok: false, error: "Choose a plan to upgrade to." });

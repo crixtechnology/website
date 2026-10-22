@@ -71,6 +71,7 @@ function shapeOpening(o, { admin = false } = {}) {
     mode: o.mode,
     status: o.status,
     order: o.order,
+    feeRequired: o.feeRequired !== false,
     createdAt: o.createdAt,
     test: {
       durationMinutes: o.durationMinutes,
