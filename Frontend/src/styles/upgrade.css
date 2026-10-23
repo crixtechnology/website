@@ -37,7 +37,7 @@ h2{font-weight:700}
 .hero h1{font-weight:700;letter-spacing:-.03em}
 /* Soft top-to-bottom fade on section and page titles: reads as lit from above. */
 h2,.page-head h1{color:transparent;background:linear-gradient(180deg,var(--text) 35%,rgba(var(--text-rgb),.62));-webkit-background-clip:text;background-clip:text}
-.hero h1 em{background-size:200% auto;animation:gradShift 8s ease-in-out infinite alternate}
+.hero h1 em .rotator{background-size:200% auto;animation:gradShift 8s ease-in-out infinite alternate}
 @keyframes gradShift{to{background-position:100% 50%}}
 .page-head h1{font-weight:700}
 
@@ -574,7 +574,7 @@ input.admin-search{padding-left:42px;background:var(--panel) no-repeat 15px cent
    busy the whole time the page was loading. Everything still looks the same,
    it just doesn't move. */
 @media (max-width:820px),(pointer:coarse),(prefers-reduced-motion:reduce){
-  .card.lit::after,.band::before,.page-head,.section+.section::after,.hero h1 em,.eyebrow::before{animation:none!important}
+  .card.lit::after,.band::before,.page-head,.section+.section::after,.hero h1 em .rotator,.eyebrow::before{animation:none!important}
   /* The aurora's 80px blur is on its container, so every frame its blobs moved, the
      whole blur was recomputed. Still, they look the same. */
   .aurora span{animation:none!important}
