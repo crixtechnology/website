@@ -1,5 +1,6 @@
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 let app, prisma, adminToken;
@@ -16,7 +17,7 @@ const authed = (req, token) => req.set("Authorization", `Bearer ${token}`);
 
 describe("admin resets a student's password", () => {
   it("hands back a one-time password that works, logs the old session out, and asks for a new one", async () => {
-    const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Forgetful", email: "forgetful@example.com", phone: "9876500000", password: "old-password-1" });
+    const signup = await newStudent(app, { name: "Forgetful", email: "forgetful@example.com", phone: "9876500000", password: "old-password-1" });
     const userId = signup.body.user.id;
     const oldToken = signup.body.token;
 
@@ -42,7 +43,7 @@ describe("admin resets a student's password", () => {
   });
 
   it("is admin-only and won't reset an admin's password", async () => {
-    const student = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Nosy", email: "nosy@example.com", phone: "9876500001", password: "nosy-password-1" });
+    const student = await newStudent(app, { name: "Nosy", email: "nosy@example.com", phone: "9876500001", password: "nosy-password-1" });
     const victim = await prisma.user.create({ data: { name: "Victim", email: "victim@example.com", passwordHash: "x" } });
     expect((await authed(request(app).post(`/api/admin/users/${victim.id}/reset-password`), student.body.token)).status).toBe(403);
     expect((await request(app).post(`/api/admin/users/${victim.id}/reset-password`)).status).toBe(401);

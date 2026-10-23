@@ -725,7 +725,7 @@ export default function AptitudeTest() {
           <span className="eyebrow">Aptitude test</span>
           <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>{info === null ? "We couldn't open this test" : "This test is locked"}</h1>
           <p style={{ color: "var(--muted)", marginBottom: 24, lineHeight: 1.7 }}>
-            {info === null ? loadError : "Pay the test fee from My Dashboard to unlock it. You can take the test straight after paying."}
+            {info === null ? loadError : "Unlock it from My Dashboard → Apply / Aptitude Test — accept the terms (and pay the registration fee, if the role has one). You can take the test straight away."}
           </p>
           <Link className="btn btn-solid" to="/dashboard?tab=apply">Go to My Dashboard</Link>
         </div>

@@ -35,19 +35,10 @@ export const values = [
   { icon: "star", title: "Growth", desc: "Clear feedback, growing responsibility, and a path to a full-time role for those who earn it." },
 ];
 
-export const whyJoin = [
-  { icon: "gift", title: "Stipend up to ₹6,000/month", desc: "A performance-based stipend for the work you deliver." },
-  { icon: "award", title: "Internship Certificate", desc: "A verified certificate when you complete the internship." },
-  { icon: "tasks", title: "Real Projects", desc: "Hands-on work on live products and client projects." },
-  { icon: "mentor", title: "Mentorship", desc: "Guidance and code reviews from working industry professionals." },
-  { icon: "document", title: "Letter of Recommendation", desc: "A personal LOR for interns who perform well." },
-  { icon: "briefcase", title: "Chance of a Full-Time Offer", desc: "Outstanding interns are considered for full-time roles at Crix." },
-];
-
 // The hiring timeline. `fee`, `bonus` come from the live terms.
 export const hiringSteps = ({ testFee, signupBonus }) => [
-  { title: "Sign up", desc: `Create your free account and verify your email to get ${signupBonus} bonus credits.` },
-  { title: `Pay ₹${testFee} for the aptitude test`, desc: `Pay the registration fee right here on this page — the full amount comes back as ${testFee} credits in your Crix wallet.` },
+  { title: "Log in", desc: `Log in with your email and a password — a new email gets a free account straight away. Verify your email to get ${signupBonus} bonus credits.` },
+  { title: "Register for the aptitude test", desc: `Accept the Terms & Conditions. Free roles unlock straight away; a role with a registration fee (₹${testFee}) unlocks once it's paid, and the full amount comes back as ${testFee} credits in your Crix wallet.` },
   { title: "Take the aptitude test", desc: "Start it right away from My Dashboard — no waiting for a slot." },
   { title: "Get your result", desc: "You'll hear from us within 7 days of submitting the test." },
   { title: "Online interview", desc: "Shortlisted candidates are invited to an online interview." },
@@ -67,51 +58,8 @@ export const feeBoxPoints = ({ testFee, signupBonus, creditExpiryMonths, creditU
   "Paying for the test does not guarantee selection.",
 ];
 
-export const careersFaq = ({ testFee, signupBonus, creditExpiryMonths, creditUsagePercent }) => [
-  {
-    q: "Who can apply?",
-    a: "Students in any year, recent graduates and freshers with up to 1 year of experience, aged 18 or older. You don't need a particular degree — what matters is how you do in the test and the interview.",
-  },
-  {
-    q: "Is there a fee?",
-    a: `The internship itself is free. There is a ₹${testFee} fee for the aptitude test, and the whole amount comes back to you as ${testFee} credits in your Crix wallet the moment you pay.`,
-  },
-  {
-    q: `What happens to my ₹${testFee}?`,
-    a: `It is returned in full as ${testFee} Crix credits (1 credit = ₹1), on top of the ${signupBonus} bonus credits you get for signing up. You can spend credits on courses and other purchases on crixtechnology.com. ${creditExpiryMonths > 0 ? `They are valid for ${creditExpiryMonths} months` : "They don't expire"}${creditUsagePercent < 100 ? `, can cover up to ${creditUsagePercent}% of a purchase,` : ""} and can't be withdrawn as cash or transferred.`,
-  },
-  {
-    q: "What is the test format?",
-    a: "An online, timed, multiple-choice test taken in full-screen mode with your webcam on. It covers Quantitative Aptitude, Logical Reasoning, Verbal Ability and technical questions for the role you applied for. Each role's page shows how long its test is; wrong answers carry a small negative mark.",
-  },
-  {
-    q: "Can I retake the test?",
-    a: "Each payment gives you one attempt, and it can't be restarted once submitted. If you aren't shortlisted, you're welcome to apply again later, which needs a new test fee.",
-  },
-  {
-    q: "When will I get my result?",
-    a: "Within 7 days of submitting your test. You'll get an email, and your status is always visible under My Applications in My Dashboard.",
-  },
-  {
-    q: "What if my internet disconnects?",
-    a: "Every answer is saved the moment you pick it. If you lose your connection or the page closes, log in again and reopen the test — you'll continue with the same questions and answers. The timer keeps running while you're away, so come back as quickly as you can.",
-  },
-  {
-    q: "Is the internship remote?",
-    a: "Yes — interns can work remotely from anywhere in India. If you're in or near Ahmedabad you may also work with the team in person. Each opening shows its mode.",
-  },
-  {
-    q: "How is the stipend decided?",
-    a: "The stipend is performance based, up to ₹6,000 per month. It depends on the quality of your work, how reliably you deliver, and your mentor's review.",
-  },
-  {
-    q: "Will I get a certificate?",
-    a: "Yes. Interns who complete the internship receive an internship certificate, and those who perform well also receive a Letter of Recommendation.",
-  },
-];
-
 // Where the role someone chose on the Careers page is remembered while they
-// sign up or log in, so the dashboard can open on it.
+// log in (or create their account), so the dashboard can open on it.
 const ROLE_KEY = "crix_apply_role";
 export const rememberRole = (slug) => { try { window.sessionStorage.setItem(ROLE_KEY, slug); } catch (e) { /* storage blocked */ } };
 export const takeRememberedRole = () => {
@@ -166,7 +114,7 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
     title: role ? `Aptitude Test Rules — ${role}` : "Careers & Aptitude Test Rules",
     subtitle: `Crix Technology Careers · ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`,
     intro:
-      "These rules apply to every application made through the Crix Technology Careers page. They are part of our Terms of Service (section 8, \"Careers, Aptitude Test & Selection\"), which you accept before paying the registration fee.",
+      "These rules apply to every application made through the Crix Technology Careers page. They are part of our Terms of Service (section 8, \"Careers, Aptitude Test & Selection\"), which you accept before your aptitude test unlocks.",
     sections: [
       // Fee and hiring steps only when the live terms are known (the Careers page).
       ...(terms ? [
@@ -174,9 +122,9 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
         {
           title: "Registration fee & wallet credits",
           content:
-            `Each application needs an aptitude-test registration fee of ₹${terms.testFee}, paid through Razorpay after you accept the Terms & Conditions. Your test is unlocked as soon as the payment is confirmed, and a receipt is issued.\n\n` +
+            `Some roles are free to apply for; others have an aptitude-test registration fee of ₹${terms.testFee}. Each role on the Careers page shows which. A free role's test is unlocked as soon as you accept the Terms & Conditions. For a role with a fee, you pay it through Razorpay after accepting the Terms & Conditions; your test is unlocked as soon as the payment is confirmed, and a receipt is issued.\n\n` +
             bullets(feeBoxPoints(terms)) +
-            "\n\nThe fee is not refunded in cash for any reason — including if you don't take or finish the test, are disqualified, are not shortlisted or selected, or the role closes after you pay. It always comes back to your wallet as credit instead.",
+            "\n\nA fee is not refunded in cash for any reason — including if you don't take or finish the test, are disqualified, are not shortlisted or selected, or the role closes after you pay. It always comes back to your wallet as credit instead.",
         },
       ] : []),
       { title: "The aptitude test", content: bullets([...facts, ...testRuleLines(rules || {})]) },

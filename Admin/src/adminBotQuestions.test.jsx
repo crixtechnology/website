@@ -101,6 +101,44 @@ describe("admin help bot questions page", () => {
     expect(container.textContent).toContain("No questions match that search.");
   });
 
+  it("teaches the agent an answer to a visitor's question, with a link and a team's number", async () => {
+    api.adminGetBotQuestions.mockResolvedValue({ ok: true, questions: [weekend], summary: { open: 1, handled: 0, answered: 0 } });
+    api.adminAnswerBotQuestion.mockResolvedValue({ ok: true });
+    await render();
+
+    await act(async () => { button("Teach answer").click(); });
+    const fill = (el, value) => {
+      const proto = el.tagName === "SELECT" ? HTMLSelectElement.prototype : el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, "value").set.call(el, value);
+      el.dispatchEvent(new Event(el.tagName === "SELECT" ? "change" : "input", { bubbles: true }));
+    };
+    // An empty answer isn't sent.
+    await act(async () => { button("Save answer").click(); });
+    expect(api.adminAnswerBotQuestion).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Write the answer");
+
+    await act(async () => {
+      fill(container.querySelector("#ba-a-q1"), "Yes — on Saturdays and Sundays.");
+      fill(container.querySelector("#ba-l-q1"), "/programs");
+    });
+    await act(async () => { fill(container.querySelector("#ba-ll-q1"), "See programs"); fill(container.querySelector("#ba-d-q1"), "programs"); });
+    await act(async () => { button("Save answer").click(); });
+    await tick();
+    expect(api.adminAnswerBotQuestion).toHaveBeenCalledWith("q1", {
+      answer: "Yes — on Saturdays and Sundays.", keywords: "", linkTo: "/programs", linkLabel: "See programs", dept: "programs",
+    });
+  });
+
+  it("shows a taught answer under its question, and can remove it", async () => {
+    api.adminGetBotQuestions.mockResolvedValue({ ok: true, questions: [{ ...weekend, answer: "Yes — weekends too.", handled: true }], summary: { open: 0, handled: 1, answered: 1 } });
+    api.adminRemoveBotAnswer.mockResolvedValue({ ok: true });
+    await render();
+    expect(container.querySelector(".bot-q-answer").textContent).toBe("Yes — weekends too.");
+    expect(button("Taught answers").textContent).toBe("Taught answers (1)");
+    await act(async () => { button("Remove answer").click(); });
+    expect(api.adminRemoveBotAnswer).toHaveBeenCalledWith("q1");
+  });
+
   it("shows an error if the list can't be loaded", async () => {
     api.adminGetBotQuestions.mockResolvedValue({ ok: false, error: "Could not load the questions" });
     await render();

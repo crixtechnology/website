@@ -107,7 +107,7 @@ export default function AdminStudents() {
         <form onSubmit={grant} className="admin-form">
           <h3 style={{ margin: "0 0 16px" }}>Grant a subscription</h3>
           <p className="form-note" style={{ margin: "-8px 0 16px" }}>
-            The user must already have an account (ask them to sign up first) — this grants course access without a payment, exactly like a real purchase would.
+            The user must already have an account (ask them to log in once with their email — that creates it) — this grants course access without a payment, exactly like a real purchase would.
           </p>
           <div className="admin-form-grid">
             <div className="field"><label>User email</label>

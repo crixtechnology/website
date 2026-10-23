@@ -23,26 +23,12 @@
 .job-facts dd{margin:3px 0 0;color:var(--text);font-size:.85rem;line-height:1.45}
 .job-modal-heading{font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 0 4px}
 .detail-modal-box .deliverable-row{margin-top:10px}
+.detail-modal-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-right:36px}
+.detail-modal-box .careers-rules-download{margin-top:12px}
 
-/* Hiring timeline: a vertical rail of numbered steps (the site's .step-num circles). */
-.timeline{list-style:none;margin:44px 0 0;padding:0;display:grid;gap:0;max-width:760px}
-.timeline-step{position:relative;display:grid;grid-template-columns:56px minmax(0,1fr);gap:22px;padding-bottom:30px}
-.timeline-step:last-child{padding-bottom:0}
-.timeline-step:not(:last-child)::before{content:"";position:absolute;left:27px;top:56px;bottom:0;width:2px;background:linear-gradient(180deg,rgba(var(--teal-rgb),.55),rgba(var(--teal-rgb),.08))}
-.timeline-step .step-num{margin:0}
-.timeline-label{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan)}
-.timeline-step h3{font-size:1.02rem;margin:4px 0 6px}
-.timeline-step p{color:var(--muted);font-size:.9rem;line-height:1.6}
-@media(max-width:480px){.timeline-step{grid-template-columns:48px minmax(0,1fr);gap:16px}.timeline-step .step-num{width:48px;height:48px}.timeline-step:not(:last-child)::before{left:23px;top:48px}}
-
-/* "Where does my fee go?" highlight band. */
-.fee-band{align-items:start}
-.fee-sum{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:24px}
-.fee-sum>div{background:rgba(var(--teal-rgb),.08);border:1px solid rgba(var(--teal-rgb),.3);border-radius:14px;padding:14px 18px;min-width:0}
-.fee-sum b{display:block;font-family:'Unbounded',sans-serif;font-size:clamp(1.3rem,4vw,1.8rem);color:var(--teal);line-height:1.1}
-.fee-sum span{display:block;margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.fee-sum i{font-style:normal;font-family:'Unbounded',sans-serif;font-size:1.4rem;color:var(--muted)}
-.fee-points{position:relative;z-index:1}
+/* Per-role registration badge: amber for the fee, teal for a free role. */
+.fee-pill{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:4px 11px;border-radius:20px;line-height:1;white-space:nowrap;color:var(--amber);background:rgba(var(--amber-rgb),.12);border:1px solid rgba(var(--amber-rgb),.35)}
+.fee-pill--free{color:var(--teal);background:rgba(var(--teal-rgb),.12);border-color:rgba(var(--teal-rgb),.4)}
 
 /* Final call to action. */
 .careers-contact{display:grid;gap:8px;margin-top:20px}

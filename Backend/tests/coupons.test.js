@@ -1,6 +1,7 @@
 const request = require("supertest");
 const crypto = require("crypto");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 // No PDF work and no live Razorpay round-trip in tests. The order mock records
@@ -41,7 +42,7 @@ async function createPriced(overrides = {}) {
 
 async function createStudent(label) {
   const email = `${label}-${uniq()}@example.com`;
-  const signup = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Student", email, phone: "9876500000", password: "a-real-password" });
+  const signup = await newStudent(app, { name: "Student", email, phone: "9876500000", password: "a-real-password" });
   return { user: signup.body.user, token: signup.body.token, email };
 }
 

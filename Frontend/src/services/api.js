@@ -119,10 +119,21 @@ async function authFetch(path, options = {}) {
   });
 }
 
-// ---------- Help bot: questions it couldn't answer ----------
-// Tells the backend (routes/botQuestions.js) about a question the help bot had no
+// ---------- Help agent: questions it couldn't answer ----------
+// Tells the backend (routes/botQuestions.js) about a question the help agent had no
 // answer for, so the admin can see what to add. Fire-and-forget: it never throws and
 // never makes the chat wait or show an error. Only the typed text is sent.
+// Answers an admin taught the help agent (Admin → Help agent questions).
+export async function getTaughtAnswers() {
+  if (!API) return { ok: false, answers: [] };
+  try {
+    const res = await fetch(`${API}/bot/answers`);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, answers: [] };
+  }
+}
+
 export function reportUnansweredQuestion(question) {
   if (!API) return;
   try {
@@ -236,36 +247,21 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
 }
 
 // ---------- Auth (unified — students and admins both use these) ----------
-export async function signup({ name, email, phone, password, referralCode, ageConfirmed }) {
-  if (!API) return { ok: false, error: "Backend not configured yet." };
-  try {
-    const res = await fetch(`${API}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone, password, ageConfirmed: ageConfirmed === true, referralCode: (referralCode || "").trim() || undefined }),
-    });
-    const data = await res.json();
-    // The remembered friend's code (from a shared ?ref= link) is used up as soon as
-    // the server accepts a sign-up — including the neutral "check your email" reply
-    // for an address that already has an account, which carries no token. Only a
-    // rejected or failed attempt keeps it, so it can be corrected and retried.
-    if (data.ok) clearStoredReferral();
-    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); }
-    return data;
-  } catch (e) {
-    return { ok: false, error: "Could not sign up right now." };
-  }
-}
-
-export async function login(email, password) {
+// One login for everyone. For an email with no account the server answers
+// code NEW_ACCOUNT; sending again with { createAccount: true, ageConfirmed: true }
+// creates it with this password (and the friend's code from a shared ?ref= link).
+export async function login(email, password, { createAccount = false, ageConfirmed = false } = {}) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
     const res = await fetch(`${API}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(createAccount
+        ? { email, password, createAccount: true, ageConfirmed: ageConfirmed === true, referralCode: getStoredReferral() || undefined }
+        : { email, password }),
     });
     const data = await res.json();
+    if (data.ok && data.created) clearStoredReferral();
     if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); }
     return data;
   } catch (e) {
@@ -275,7 +271,7 @@ export async function login(email, password) {
 
 // credential is the ID token Google's Identity Services button hands back
 // (see AuthModal in components/ui.jsx) — verified server-side. `ageConfirmed`
-// is the sign-up popup's age box; a brand-new account can't be made without it.
+// is the login popup's age box; a brand-new account can't be made without it.
 export async function googleAuth(credential, { ageConfirmed = false } = {}) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
@@ -703,6 +699,19 @@ export async function createTestFeeOrder(applicationId) {
     return data;
   } catch (e) {
     return { ok: false, error: "Could not start payment right now." };
+  }
+}
+
+// A free role (no registration fee): unlocks the test once terms and 18+ are accepted.
+export async function unlockFreeTest(applicationId) {
+  try {
+    const res = await authFetch(`/me/job-applications/${applicationId}/unlock-free`, { method: "POST", body: JSON.stringify({ acceptTerms: true, confirmAdult: true }) });
+    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again." }; }
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not unlock the test" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not unlock the test right now." };
   }
 }
 

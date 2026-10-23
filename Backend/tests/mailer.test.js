@@ -39,6 +39,49 @@ describe("mailer via Brevo's HTTP API", () => {
     expect(body.attachment).toEqual([{ name: "Receipt-CRX-2026-00001.pdf", content: Buffer.from("fake-pdf").toString("base64") }]);
   });
 
+  it("welcomes a new account with the profile step first, and the bonus when one is waiting", async () => {
+    global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
+    const { sendWelcomeEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "", PUBLIC_SITE_URL: "https://www.crixtechnology.com" });
+    await sendWelcomeEmail({ to: "new@example.com", name: "", profileIncomplete: true, bonusCredits: 300 });
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.subject).toBe("Welcome to Crix Technology — your account is ready");
+    expect(body.htmlContent).toContain("Hi there");
+    expect(body.htmlContent).toContain("Complete your profile");
+    expect(body.htmlContent).toContain("300 bonus credits");
+    expect(body.htmlContent).toContain("/profile?reason=new");
+    expect(body.textContent).toMatch(/Complete your profile: Add your full name and phone number/);
+
+    global.fetch.mockClear();
+    await sendWelcomeEmail({ to: "g@example.com", name: "Asha", profileIncomplete: false, bonusCredits: 0 });
+    const second = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(second.htmlContent).toContain("Hi Asha");
+    expect(second.htmlContent).not.toContain("Complete your profile");
+    expect(second.htmlContent).not.toContain("bonus credits");
+  });
+
+  it("sends the owner the week's unanswered help-agent questions, escaped, with the admin link", async () => {
+    global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
+    const env = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development"; // notifyOwner is silent in test runs
+    try {
+      const { sendBotDigestEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "", ADMIN_ORIGIN: "https://admin.example.com", CONTACT_TO_EMAIL: "owner@example.com" });
+      await sendBotDigestEmail({ total: 12, questions: [{ question: "do you teach <b>rust</b>?", timesAsked: 5 }, { question: "weekend batch?", timesAsked: 1 }] });
+    } finally {
+      process.env.NODE_ENV = env;
+      delete process.env.ADMIN_ORIGIN;
+      delete process.env.CONTACT_TO_EMAIL;
+    }
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.to).toEqual([{ email: "owner@example.com" }]);
+    expect(body.subject).toBe("Help agent: 12 questions to teach this week");
+    expect(body.htmlContent).toContain("do you teach &lt;b&gt;rust&lt;/b&gt;?");
+    expect(body.htmlContent).not.toContain("<b>rust</b>");
+    expect(body.htmlContent).toContain("asked 5 times");
+    expect(body.htmlContent).toContain("and 10 more in the admin panel");
+    expect(body.htmlContent).toContain("https://admin.example.com/admin/bot-questions");
+    expect(body.textContent).toMatch(/1\. .do you teach <b>rust<\/b>\?. — asked 5 times/);
+  });
+
   it("defaults the sender to support@crixtechnology.com", async () => {
     global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
     const { sendPasswordChangedEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "" });

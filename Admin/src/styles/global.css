@@ -879,3 +879,8 @@ body.no-copy img{-webkit-user-drag:none}
 /* Admin → Users: the one-time temporary password after a reset. */
 .temp-pw-box{border:1px solid rgba(20,201,201,.4);background:rgba(20,201,201,.08);border-radius:12px;padding:14px 16px}
 .temp-pw-code{font-family:'JetBrains Mono',monospace;font-size:1.1rem;letter-spacing:.08em;padding:6px 12px;border-radius:8px;background:var(--panel);border:1px solid var(--line);user-select:all}
+
+/* Admin → Help agent questions: a taught answer under its question, and the inline form. */
+.bot-q-row{flex-wrap:wrap}
+.bot-q-answer{display:block;margin-top:8px;padding:8px 12px;border-left:3px solid var(--teal);background:rgba(20,201,201,.06);border-radius:4px;color:var(--text);font-size:.85rem;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
+.bot-q-row .bot-answer-form,.bot-answer-form{flex-basis:100%;width:100%;margin:12px 0 0}

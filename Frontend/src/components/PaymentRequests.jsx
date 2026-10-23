@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyPaymentRequests, createPaymentRequestOrder, verifyPaymentRequest, getReceipt } from "../services/api.js";
-import { loadRazorpayScript, Alert, TermsCheckbox } from "./ui.jsx";
+import { loadRazorpayScript, Alert, TermsCheckbox, ProfileGate } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { tierLabel, formatINR } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
@@ -98,7 +98,9 @@ export default function PaymentRequests({ onPaid }) {
       <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>Payment requests</h2>
       {msg.text && <Alert inline kind={msg.kind}>{msg.text}</Alert>}
       {requests.some((r) => r.status === "pending") && (
-        <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={!!busy} what="these payments" />
+        <ProfileGate>
+          <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={!!busy} what="these payments" />
+        </ProfileGate>
       )}
       <div className="admin-list">
         {requests.map((r) => (

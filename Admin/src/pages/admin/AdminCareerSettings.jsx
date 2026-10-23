@@ -4,7 +4,7 @@ import { getAdminToken, adminGetCareerSettings, adminUpdateCareerSettings } from
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
-const NUMBERS = ["testFeeRupees", "signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent"];
+const NUMBERS = ["testFeeRupees", "signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent", "reapplyCooldownDays"];
 const TOGGLES = ["requireWebcam", "requireDesktopApp"];
 
 // The rules of the careers flow: what the aptitude test costs, the credit new
@@ -63,7 +63,7 @@ export default function AdminCareerSettings() {
             <>
               <h3 style={{ margin: "0 0 16px" }}>Fee and credits</h3>
               <div className="admin-form-grid admin-form-grid--2">
-                <div className="field"><label htmlFor="cs-fee">Aptitude test fee (₹)</label>
+                <div className="field"><label htmlFor="cs-fee">Aptitude test registration fee (₹)</label>
                   <input id="cs-fee" type="number" min="1" step="1" value={settings.testFeeRupees} onChange={setField("testFeeRupees")} /></div>
                 <div className="field"><label htmlFor="cs-bonus">Signup bonus (credits, 0 = none)</label>
                   <input id="cs-bonus" type="number" min="0" step="1" value={settings.signupBonusCredits} onChange={setField("signupBonusCredits")} /></div>
@@ -73,6 +73,7 @@ export default function AdminCareerSettings() {
                   <input id="cs-usage" type="number" min="0" max="100" step="1" value={settings.creditUsagePercent} onChange={setField("creditUsagePercent")} /></div>
               </div>
               <p className="form-note" style={{ margin: "-4px 0 20px" }}>
+                Charged only for roles whose Registration fee is set to “Required” in Job openings — free roles skip it.
                 The whole test fee comes back to the candidate as wallet credit (1 credit = ₹1). The expiry applies to the signup bonus and the
                 test-fee credit added from now on — credit already in a wallet keeps the expiry it was given, and referral or admin credit doesn't expire.
                 The usage limit applies to every purchase: at 100% credit can pay for a whole course.
@@ -86,8 +87,12 @@ export default function AdminCareerSettings() {
                   <input id="cs-snap" type="number" min="20" max="600" step="1" value={settings.snapshotIntervalSeconds} onChange={setField("snapshotIntervalSeconds")} /></div>
                 <div className="field"><label htmlFor="cs-generated">Generated questions (% of each test)</label>
                   <input id="cs-generated" type="number" min="0" max="100" step="1" value={settings.generatedQuestionsPercent} onChange={setField("generatedQuestionsPercent")} /></div>
+                <div className="field"><label htmlFor="cs-cooldown">Re-apply wait for free roles (days, 0 = none)</label>
+                  <input id="cs-cooldown" type="number" min="0" max="365" step="1" value={settings.reapplyCooldownDays ?? 30} onChange={setField("reapplyCooldownDays")} /></div>
               </div>
               <p className="form-note" style={{ margin: "-4px 0 16px" }}>
+                After an application to a free role ends without an offer, the same candidate can apply to that role again only after the
+                re-apply wait, so a free test can't be retaken over and over. Paid roles need a new registration fee for each try instead.
                 Generated questions are written at the moment a test starts, with fresh numbers, words or code each time, so no two candidates
                 get the same ones. The rest of each test comes from the question bank. Set this to 0 to use the bank only.
               </p>

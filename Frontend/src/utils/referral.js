@@ -1,7 +1,7 @@
 // A friend's referral code travels in a shared link (https://site/?ref=CRIX-K7P3QZ).
-// Whoever opens it might not sign up until later, so the code is remembered in
-// localStorage (best effort — it's only a convenience) and used to pre-fill the
-// signup form and the checkout's referral box.
+// Whoever opens it might not create an account until later, so the code is
+// remembered in localStorage (best effort — it's only a convenience), sent with
+// the login that creates the account, and offered in the checkout's referral box.
 
 const KEY = "crix_ref";
 const CODE_SHAPE = /^[A-Za-z0-9-]{4,20}$/;

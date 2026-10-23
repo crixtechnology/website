@@ -122,7 +122,7 @@ function ApplicantReview({ id, onBack, onChanged }) {
         <p className="form-note" style={{ margin: 0 }}>
           Applied {ist(a.createdAt)} · {a.paidAt
             ? `paid ${data.payment ? money(data.payment.amount) : ""} on ${ist(a.paidAt)}${data.payment?.receiptNumber ? ` (receipt ${data.payment.receiptNumber})` : ""}`
-            : "test fee not paid"}
+            : a.opening?.feeRequired === false ? "free role — no fee" : "test fee not paid"}
         </p>
 
         <h3 style={{ margin: "22px 0 12px" }}>Decision</h3>
@@ -152,7 +152,7 @@ function ApplicantReview({ id, onBack, onChanged }) {
       </div>
 
       {!t ? (
-        <p style={{ color: "var(--muted)", marginTop: 24 }}>{a.paidAt ? "The candidate hasn't started the test yet." : "No test yet — the test fee hasn't been paid."}</p>
+        <p style={{ color: "var(--muted)", marginTop: 24 }}>{a.paidAt || a.status === "test_pending" ? "The candidate hasn't started the test yet." : a.opening?.feeRequired === false ? "No test yet — the candidate hasn't accepted the terms to unlock it." : "No test yet — the test fee hasn't been paid."}</p>
       ) : (
         <>
           <div className="ref-stats ref-stats--admin" style={{ marginTop: 28 }}>
@@ -340,7 +340,7 @@ export default function AdminApplicants() {
                       <b>{a.user?.name || "—"} <span className={`admin-pill ${STATUS_PILL[a.status] || "read"}`}>{a.statusLabel}</span></b>
                       <span className="admin-row-meta">{a.opening?.title} · {a.user?.email}{a.user?.phone ? ` · ${a.user.phone}` : ""}</span>
                       <span className="admin-row-meta">
-                        Payment: {a.paymentStatus === "paid" ? `paid ${ist(a.paidAt)}` : "pending"}
+                        Payment: {a.paymentStatus === "paid" ? `paid ${ist(a.paidAt)}` : a.paymentStatus === "free" ? "free role" : "pending"}
                         {a.interviewAt ? ` · interview ${ist(a.interviewAt)}` : ""}
                       </span>
                     </div>

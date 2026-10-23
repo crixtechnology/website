@@ -1,6 +1,7 @@
 const request = require("supertest");
 const crypto = require("crypto");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 // Same stand-ins payments.test.js uses: no PDF work, and no live Razorpay call
@@ -11,7 +12,7 @@ const { signToken } = require("../src/utils/jwt");
 jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/mailer", () => ({
   sendApplicationEmail: jest.fn(async () => ({})),
-  sendAccountExistsEmail: jest.fn(async () => ({})),
+  sendWelcomeEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
   sendWalletCreditEmail: jest.fn(async () => ({})),
@@ -39,8 +40,7 @@ let seq = 0;
 
 async function signup(label, extra = {}) {
   const email = `${label}${++seq}@example.com`;
-  const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true,
-    name: "Student Person", email, phone: "9876500000", password: "a-real-password", ...extra,
+  const res = await newStudent(app, { name: "Student Person", email, phone: "9876500000", password: "a-real-password", ...extra,
   });
   expect(res.status).toBe(201);
   return { id: res.body.user.id, email, token: res.body.token };

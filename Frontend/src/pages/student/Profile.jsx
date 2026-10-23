@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { UserContext, isProfileComplete } from "../../context/UserContext.jsx";
+import { UserContext, isProfileComplete, profileMissing } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { Alert } from "../../components/ui.jsx";
 import PhoneInput from "../../components/PhoneInput.jsx";
@@ -19,14 +19,16 @@ export default function Profile() {
   // finish their details before an enrollment. Kept relative-only so it
   // can't be used as an open redirect.
   const next = safeNextPath(params.get("next"));
-  const sentToComplete = params.get("reason") === "complete" || !!next;
+  const isNew = params.get("reason") === "new";
+  const sentToComplete = params.get("reason") === "complete" || isNew || !!next;
 
   const [form, setForm] = useState({ name: "", phone: "" });
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (user) setForm({ name: user.name || "", phone: user.phone || "" });
+    // An account made from the login form has a placeholder name: start the box empty.
+    if (user) setForm({ name: user.profilePending ? "" : user.name || "", phone: user.phone || "" });
   }, [user]);
 
   if (!isLoggedIn && params.get("deleted") === "1") {
@@ -59,11 +61,7 @@ export default function Profile() {
 
   const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus({ text: "", kind: "" }); };
 
-  const missing = [
-    !(user.name || "").trim() && "name",
-    !(user.email || "").trim() && "email",
-    !(user.phone || "").trim() && "phone number",
-  ].filter(Boolean);
+  const missing = profileMissing(user);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -71,14 +69,15 @@ export default function Profile() {
     // submit on Enter inside a text field — without this guard, pressing
     // Enter twice quickly (or a slow network) fires two concurrent saves.
     if (saving) return;
-    if (!form.name.trim()) { setStatus({ text: "Name can't be empty.", kind: "error" }); return; }
+    if (!form.name.trim()) { setStatus({ text: "Please add your full name.", kind: "error" }); return; }
     if (!form.phone.trim()) { setStatus({ text: "Please add a phone number.", kind: "error" }); return; }
     const phoneProblem = phoneError(form.phone);
     if (phoneProblem) { setStatus({ text: `Please add ${phoneProblem}.`, kind: "error" }); return; }
 
     setSaving(true);
     setStatus({ text: "Saving...", kind: "info" });
-    const res = await updateProfile({ name: form.name.trim(), phone: form.phone.trim() });
+    // confirmName: this is the owner's own name, not the placeholder made from their email.
+    const res = await updateProfile({ name: form.name.trim(), phone: form.phone.trim(), confirmName: true });
     setSaving(false);
 
     if (!res.ok) {
@@ -101,12 +100,13 @@ export default function Profile() {
           These details are used for your enrolments and payment receipts.
         </p>
 
-        {sentToComplete && missing.length > 0 && (
+        {(sentToComplete || user.profilePending) && missing.length > 0 && (
           <p className="form-note" role="status" style={{
             marginTop: 0, marginBottom: 24, padding: "14px 16px",
             background: "rgba(var(--teal-rgb),.08)", borderLeft: "3px solid var(--teal)", borderRadius: 10,
           }}>
-            Add your {missing.join(", ").replace(/, ([^,]*)$/, " and $1")} to continue to payment.
+            {isNew ? "Your account is ready. " : ""}Add your {missing.join(", ").replace(/, ([^,]*)$/, " and $1")}
+            {next ? " to continue to payment." : " — you'll need them before buying anything."}
           </p>
         )}
 

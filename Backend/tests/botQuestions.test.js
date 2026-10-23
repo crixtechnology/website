@@ -5,7 +5,7 @@ const { signToken } = require("../src/utils/jwt");
 // Everything else the app does by email is irrelevant here; keep the mailer quiet.
 jest.mock("../src/utils/mailer", () => ({
   sendApplicationEmail: jest.fn(async () => ({})),
-  sendAccountExistsEmail: jest.fn(async () => ({})),
+  sendWelcomeEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
   sendWalletCreditEmail: jest.fn(async () => ({})),
@@ -35,8 +35,10 @@ describe("the help bot reports a question it couldn't answer", () => {
     const stored = await prisma.botQuestion.findMany({ where: { question: "do you teach rust?" } });
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({ timesAsked: 3, handled: false });
-    // Only the text and counters are kept — no name, account or address.
-    expect(Object.keys(stored[0]).sort()).toEqual(["firstAskedAt", "handled", "id", "lastAskedAt", "question", "timesAsked"]);
+    // Only the text and counters are kept — no name, account or address (the
+    // other columns are the answer an admin may teach later, empty for now).
+    expect(Object.keys(stored[0]).sort()).toEqual(["answer", "answeredAt", "dept", "firstAskedAt", "handled", "id", "keywords", "lastAskedAt", "linkLabel", "linkTo", "question", "timesAsked"]);
+    expect(stored[0]).toMatchObject({ answer: null, keywords: "", linkTo: "", dept: "" });
   });
 
   it("masks emails, phone numbers and links before saving", async () => {
@@ -96,7 +98,7 @@ describe("the admin's review list", () => {
     ]);
     expect(res.body.questions[0]).toMatchObject({ timesAsked: 9, handled: false });
     expect(res.body.questions[0]._id).toBeTruthy();
-    expect(res.body.summary).toEqual({ open: 3, handled: 1 });
+    expect(res.body.summary).toEqual({ open: 3, handled: 1, answered: 0 });
   });
 
   it("filters by status and searches the text", async () => {
@@ -115,7 +117,7 @@ describe("the admin's review list", () => {
     const done = await admin(request(app).patch(`/api/admin/bot-questions/${target.id}`)).send({ handled: true });
     expect(done.status).toBe(200);
     expect(done.body.question.handled).toBe(true);
-    expect((await admin(request(app).get("/api/admin/bot-questions"))).body.summary).toEqual({ open: 2, handled: 2 });
+    expect((await admin(request(app).get("/api/admin/bot-questions"))).body.summary).toEqual({ open: 2, handled: 2, answered: 0 });
 
     await report("Do you give placement?");
     const reopened = await prisma.botQuestion.findUnique({ where: { id: target.id } });
@@ -129,6 +131,56 @@ describe("the admin's review list", () => {
     expect((await admin(request(app).delete("/api/admin/bot-questions/nope"))).status).toBe(404);
     expect((await admin(request(app).delete(`/api/admin/bot-questions/${target.id}`))).status).toBe(200);
     expect(await prisma.botQuestion.findUnique({ where: { id: target.id } })).toBeNull();
+  });
+});
+
+describe("teaching the help agent an answer", () => {
+  const answers = async () => (await request(app).get("/api/bot/answers")).body.answers;
+  let weekend;
+  beforeAll(async () => {
+    await prisma.botQuestion.deleteMany();
+    weekend = await prisma.botQuestion.create({ data: { question: "is there a weekend batch?", timesAsked: 5 } });
+  });
+
+  it("publishes nothing until an admin writes an answer", async () => {
+    expect(await answers()).toEqual([]);
+  });
+
+  it("lets an admin answer a visitor's question, which marks it handled and publishes it", async () => {
+    const res = await admin(request(app).put(`/api/admin/bot-questions/${weekend.id}/answer`)).send({
+      answer: "Yes — weekend batches run on Saturdays and Sundays.", keywords: "saturday sunday", linkTo: "/programs", linkLabel: "See programs", dept: "programs",
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.question).toMatchObject({ handled: true, linkTo: "/programs", dept: "programs" });
+    expect(await answers()).toEqual([{ q: "is there a weekend batch?", a: "Yes — weekend batches run on Saturdays and Sundays.", keywords: "saturday sunday", linkTo: "/programs", linkLabel: "See programs", dept: "programs" }]);
+    const list = await admin(request(app).get("/api/admin/bot-questions?status=answered"));
+    expect(list.body.questions.map((q) => q.question)).toEqual(["is there a weekend batch?"]);
+    expect(list.body.summary.answered).toBe(1);
+  });
+
+  it("only links inside the site, and checks every field", async () => {
+    const put = (body) => admin(request(app).put(`/api/admin/bot-questions/${weekend.id}/answer`)).send({ answer: "Yes.", ...body });
+    expect((await put({ answer: "" })).status).toBe(400);
+    expect((await put({ answer: "x".repeat(1501) })).status).toBe(400);
+    for (const linkTo of ["https://evil.example", "//evil", "javascript:alert(1)", "programs"]) expect((await put({ linkTo })).status).toBe(400);
+    expect((await put({ dept: "sales" })).status).toBe(400);
+    expect((await admin(request(app).put("/api/admin/bot-questions/nope/answer")).send({ answer: "Yes." })).status).toBe(404);
+  });
+
+  it("lets an admin add a question nobody asked yet, and remove an answer again", async () => {
+    const res = await admin(request(app).post("/api/admin/bot-questions")).send({ question: "Do you offer EMI?", answer: "Not yet — pay in full at checkout." });
+    expect(res.status).toBe(201);
+    expect(res.body.question).toMatchObject({ question: "do you offer emi?", timesAsked: 0, handled: true });
+    expect((await answers()).map((a) => a.q)).toContain("do you offer emi?");
+    expect((await admin(request(app).post("/api/admin/bot-questions")).send({ question: "x", answer: "y" })).status).toBe(400);
+
+    expect((await admin(request(app).delete(`/api/admin/bot-questions/${res.body.question._id}/answer`))).status).toBe(200);
+    expect((await answers()).map((a) => a.q)).not.toContain("do you offer emi?");
+  });
+
+  it("keeps the teaching endpoints admin-only", async () => {
+    expect((await request(app).put(`/api/admin/bot-questions/${weekend.id}/answer`).send({ answer: "Hacked" })).status).toBe(401);
+    expect((await request(app).post("/api/admin/bot-questions").set("Authorization", `Bearer ${studentToken}`).send({ question: "abc", answer: "x" })).status).toBeGreaterThanOrEqual(401);
   });
 });
 

@@ -18,7 +18,7 @@ const TILE_ICONS = {
   Referrals: <path d="M16 3h5v5 M21 3l-7 7 M8 21H3v-5 M3 21l7-7" />,
   "Payment requests": <path d="M3 6h18v12H3z M3 10h18 M15 14.5h3 M7 14.5h2" />,
   Messages: <path d="M4 5h16v11H8l-4 4z" />,
-  "Help bot questions": <path d="M4 5h16v11H9l-5 4z M10 9.5a2 2 0 1 1 2.5 1.9c-.4.2-.5.5-.5.9 M12 13.6h.01" />,
+  "Help agent questions": <path d="M4 5h16v11H9l-5 4z M10 9.5a2 2 0 1 1 2.5 1.9c-.4.2-.5.5-.5.9 M12 13.6h.01" />,
   Applications: <path d="M7 3h7l4 4v14H7z M14 3v4h4 M9.5 13h5 M9.5 16.5h5" />,
   "Job openings": <path d="M3 8h18v12H3z M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M12 12v4 M10 14h4" />,
   "Job applicants": <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6 M16 11l2 2 4-4" />,
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
     { label: "Offer codes", value: "Manage", sub: "discount codes for courses & internships", to: "/admin/coupons" },
     { label: "Referrals", value: stats.referrals, sub: `${stats.referralsRewarded} led to a purchase · rules & credit`, to: "/admin/referrals" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
-    { label: "Help bot questions", value: stats.botQuestions, sub: "questions the bot couldn't answer", to: "/admin/bot-questions" },
+    { label: "Help agent questions", value: stats.botQuestions, sub: "questions the help agent couldn't answer", to: "/admin/bot-questions" },
     { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },
     // Careers: the roles, the aptitude test and the people who took it.
     { label: "Job applicants", value: stats.jobApplicants, sub: `${stats.jobToReview} test${stats.jobToReview === 1 ? "" : "s"} waiting for a decision · ${stats.jobSelected} selected`, to: "/admin/applicants" },

@@ -79,75 +79,80 @@ describe("Contact form", () => {
   });
 });
 
-describe("login / sign-up popup", () => {
+describe("login popup — one form that logs in or creates the account", () => {
   const ctx = (overrides = {}) => ({
-    authModal: { mode: "signup" }, closeAuthModal: jest.fn(), login: jest.fn(), signup: jest.fn(), loginWithGoogle: jest.fn(),
+    authModal: { mode: "login" }, closeAuthModal: jest.fn(), login: jest.fn(), loginWithGoogle: jest.fn(),
     sessionExpired: false, ...overrides,
   });
-  const renderModal = (value) => render(<UserContext.Provider value={value}><AuthModal /></UserContext.Provider>);
-  const fillSignup = async () => {
-    await type("#auth-name", "Test Person");
-    await type("#auth-email", "test@example.com");
-    await type("#auth-phone", "9876543210");
+  const renderModal = (value) => render(
+    <MemoryRouter><UserContext.Provider value={value}><AuthModal /></UserContext.Provider></MemoryRouter>
+  );
+  const fillLogin = async () => {
+    await type("#auth-email", "new@example.com");
     await type("#auth-password", "a-long-password");
-    await act(async () => { q(".age-check input").click(); });
   };
 
-  it("empties every field after the 'check your email' reply to a sign-up", async () => {
-    const value = ctx();
-    value.signup.mockResolvedValue({ ok: true, token: null, message: "If this email already has an account, check your inbox." });
-    await renderModal(value);
-    await fillSignup();
-    expect(q("#auth-password").value).toBe("a-long-password");
+  it("has no separate sign-up form: just email, password and Continue", async () => {
+    await renderModal(ctx());
+    expect(q("#auth-name")).toBeNull();
+    expect(q("#auth-phone")).toBeNull();
+    expect(q(".age-check")).toBeNull();
+    expect(container.textContent).toContain("Log in or create an account");
+    expect(container.textContent).not.toMatch(/sign up/i);
+  });
 
+  it("logs an existing account straight in", async () => {
+    const value = ctx();
+    value.login.mockResolvedValue({ ok: true, token: "t", user: { name: "Asha" } });
+    await renderModal(value);
+    await fillLogin();
     await submit(q("#auth-password").closest("form"));
-    expect(value.signup).toHaveBeenCalledTimes(1);
-    expect(q("#auth-name").value).toBe("");
-    expect(q("#auth-email").value).toBe("");
-    expect(q("#auth-password").value).toBe("");
-    expect(q("#auth-phone").value).toBe("");
+    expect(value.login).toHaveBeenCalledWith("new@example.com", "a-long-password", undefined);
+    expect(value.closeAuthModal).toHaveBeenCalled();
   });
 
-  it("keeps the fields when sign-up fails, so the problem can be fixed", async () => {
+  it("asks to confirm a new email, needs the age box, then creates the account with that password", async () => {
     const value = ctx();
-    value.signup.mockResolvedValue({ ok: false, error: "Enter a valid name." });
+    value.login.mockResolvedValueOnce({ ok: false, code: "NEW_ACCOUNT", error: "There's no account with this email yet." });
     await renderModal(value);
-    await fillSignup();
+    await fillLogin();
     await submit(q("#auth-password").closest("form"));
-    expect(q("#auth-name").value).toBe("Test Person");
-    expect(q("#auth-password").value).toBe("a-long-password");
-  });
-});
-
-describe("age confirmation at sign-up", () => {
-  const ctx = (overrides = {}) => ({
-    authModal: { mode: "signup" }, closeAuthModal: jest.fn(), login: jest.fn(), signup: jest.fn(), loginWithGoogle: jest.fn(),
-    sessionExpired: false, ...overrides,
-  });
-  const renderModal = (value) => render(<UserContext.Provider value={value}><AuthModal /></UserContext.Provider>);
-
-  it("won't create an account until the 18+ / parent-permission box is ticked, and sends it", async () => {
-    const value = ctx();
-    value.signup.mockResolvedValue({ ok: true, token: "t", user: { name: "Test Person" } });
-    await renderModal(value);
+    expect(container.textContent).toContain("Create your account");
     expect(q(".age-check").textContent).toContain("18 or older");
-    await type("#auth-name", "Test Person");
-    await type("#auth-email", "test@example.com");
-    await type("#auth-phone", "9876543210");
-    await type("#auth-password", "a-long-password");
+    // The typed details stay for the second step.
+    expect(q("#auth-email").value).toBe("new@example.com");
+    expect(q("#auth-password").value).toBe("a-long-password");
 
     await submit(q("#auth-password").closest("form"));
-    expect(value.signup).not.toHaveBeenCalled();
+    expect(value.login).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("Please confirm your age");
 
+    value.login.mockResolvedValueOnce({ ok: true, created: true, token: "t", user: { name: "New", profilePending: true } });
     await act(async () => { q(".age-check input").click(); });
     await submit(q("#auth-password").closest("form"));
-    expect(value.signup).toHaveBeenCalledWith(expect.objectContaining({ email: "test@example.com", ageConfirmed: true }));
+    expect(value.login).toHaveBeenLastCalledWith("new@example.com", "a-long-password", { createAccount: true, ageConfirmed: true });
+    expect(value.closeAuthModal).toHaveBeenCalled();
   });
 
-  it("isn't asked when logging in", async () => {
-    await renderModal(ctx({ authModal: { mode: "login" } }));
+  it("goes back to a plain login when the email is changed after the 'new email' step", async () => {
+    const value = ctx();
+    value.login.mockResolvedValueOnce({ ok: false, code: "NEW_ACCOUNT", error: "There's no account with this email yet." });
+    await renderModal(value);
+    await fillLogin();
+    await submit(q("#auth-password").closest("form"));
+    expect(q(".age-check")).not.toBeNull();
+    await type("#auth-email", "asha@example.com");
     expect(q(".age-check")).toBeNull();
+  });
+
+  it("keeps the fields when login fails, so the problem can be fixed", async () => {
+    const value = ctx();
+    value.login.mockResolvedValue({ ok: false, error: "Invalid credentials" });
+    await renderModal(value);
+    await fillLogin();
+    await submit(q("#auth-password").closest("form"));
+    expect(container.textContent).toContain("Invalid credentials");
+    expect(q("#auth-password").value).toBe("a-long-password");
   });
 });
 
@@ -187,8 +192,8 @@ describe("idle sign-out notice", () => {
   it("states the real idle limit (30 minutes), not a stale number", async () => {
     // The limit is defined once and used both by the timer and by this message.
     expect(IDLE_TIMEOUT_MINUTES).toBe(30);
-    const value = { authModal: { mode: "login" }, closeAuthModal: jest.fn(), login: jest.fn(), signup: jest.fn(), loginWithGoogle: jest.fn(), sessionExpired: true };
-    await render(<UserContext.Provider value={value}><AuthModal /></UserContext.Provider>);
+    const value = { authModal: { mode: "login" }, closeAuthModal: jest.fn(), login: jest.fn(), loginWithGoogle: jest.fn(), sessionExpired: true };
+    await render(<MemoryRouter><UserContext.Provider value={value}><AuthModal /></UserContext.Provider></MemoryRouter>);
     // The notice is portaled to <body>, outside the test container.
     expect(document.body.textContent).toContain("signed out after 30 minutes of inactivity");
     expect(document.body.textContent).not.toContain("15 minutes");

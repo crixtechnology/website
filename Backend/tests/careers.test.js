@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
+const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 // The careers flow end to end: signup bonus and credit rules, applying and
@@ -15,7 +16,7 @@ jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next
 jest.mock("../src/utils/testRateLimit", () => ({ testApiLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/mailer", () => ({
   sendApplicationEmail: jest.fn(async () => ({})),
-  sendAccountExistsEmail: jest.fn(async () => ({})),
+  sendWelcomeEmail: jest.fn(async () => ({})),
   sendReceiptEmail: jest.fn(async () => ({})),
   sendContactEmail: jest.fn(async () => ({})),
   sendWalletCreditEmail: jest.fn(async () => ({})),
@@ -140,7 +141,7 @@ describe("signup bonus", () => {
 
   it("holds an email signup's bonus until the email is verified, then gives it once, with an expiry, and tells them", async () => {
     await setSettings({ signupBonusCredits: 300, creditExpiryMonths: 12 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Bonus Person", email: "bonus1@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "Bonus Person", email: "bonus1@example.com", phone: "9876500000", password: "a-real-password" });
     expect(res.status).toBe(201);
     const me = { id: res.body.user.id, token: res.body.token };
 
@@ -184,7 +185,7 @@ describe("signup bonus", () => {
 
   it("won't release a bonus twice, or to an account that has none waiting", async () => {
     await setSettings({ signupBonusCredits: 300 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Twice Person", email: "bonus3@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "Twice Person", email: "bonus3@example.com", phone: "9876500000", password: "a-real-password" });
     const me = { id: res.body.user.id, token: res.body.token };
     await sendCode(me);
     const code = lastCode();
@@ -200,7 +201,7 @@ describe("signup bonus", () => {
 
   it("keeps the bonus waiting when crediting it fails, so it can be claimed again", async () => {
     await setSettings({ signupBonusCredits: 300 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "Blip Person", email: "bonus5@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "Blip Person", email: "bonus5@example.com", phone: "9876500000", password: "a-real-password" });
     const me = { id: res.body.user.id, token: res.body.token };
     await sendCode(me);
     const create = jest.spyOn(prisma.creditEntry, "create").mockRejectedValueOnce(new Error("database blip"));
@@ -213,7 +214,7 @@ describe("signup bonus", () => {
 
   it("says so when the code email can't be sent, and lets them ask again straight away", async () => {
     await setSettings({ signupBonusCredits: 300 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "No Mail Person", email: "bonus4@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "No Mail Person", email: "bonus4@example.com", phone: "9876500000", password: "a-real-password" });
     const me = { id: res.body.user.id, token: res.body.token };
     mailer.sendOtpEmail.mockResolvedValueOnce({ sent: false, reason: "Email not configured" });
     const failed = await sendCode(me);
@@ -224,7 +225,7 @@ describe("signup bonus", () => {
 
   it("gives nothing when the bonus is set to 0", async () => {
     await setSettings({ signupBonusCredits: 0 });
-    const res = await request(app).post("/api/auth/signup").send({ ageConfirmed: true, name: "No Bonus", email: "bonus2@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "No Bonus", email: "bonus2@example.com", phone: "9876500000", password: "a-real-password" });
     expect((await walletOf({ token: res.body.token })).balance).toBe(0);
   });
 });
@@ -447,6 +448,81 @@ describe("applying and paying the test fee", () => {
     // Someone else's application can't be paid for (or even seen).
     const other = await student();
     expect((await createOrder(other, applied.body.application._id)).status).toBe(404);
+  });
+
+  it("refuses the fee until the profile has a real name and a phone number", async () => {
+    const s = await student();
+    await prisma.user.update({ where: { id: s.id }, data: { phone: "", profilePending: true } });
+    const id = (await apply(s, o)).body.application._id;
+    razorpay.orders.create.mockClear();
+    const refused = await createOrder(s, id);
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe("PROFILE_INCOMPLETE");
+    expect(refused.body.missing).toEqual(["full name", "phone number"]);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+
+    await authed(request(app).patch("/api/auth/me"), s.token).send({ name: "Real Name", phone: "9876500001" });
+    expect((await createOrder(s, id)).status).toBe(201);
+  });
+
+  it("makes a candidate wait before re-applying to a free role, but not to a paid one", async () => {
+    const free = await opening({ feeRequired: false });
+    const s = await student();
+    const first = (await apply(s, free)).body.application._id;
+    // The application ends without an offer, just now.
+    await prisma.jobApplication.update({ where: { id: first }, data: { status: "not_shortlisted", closedAt: new Date() } });
+    const refused = await apply(s, free);
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe("REAPPLY_COOLDOWN");
+    expect(refused.body.error).toMatch(/apply for this role again from/);
+
+    // Once the wait has passed (closed 31 days ago), a new application is allowed.
+    await prisma.jobApplication.update({ where: { id: first }, data: { closedAt: new Date(Date.now() - 31 * 86400000) } });
+    expect((await apply(s, free)).status).toBe(201);
+
+    // An admin can turn the wait off.
+    const t = await student();
+    const tFirst = (await apply(t, free)).body.application._id;
+    await prisma.jobApplication.update({ where: { id: tFirst }, data: { status: "rejected", closedAt: new Date() } });
+    expect((await setSettings({ reapplyCooldownDays: 0 })).status).toBe(200);
+    expect((await apply(t, free)).status).toBe(201);
+    await setSettings({ reapplyCooldownDays: 30 });
+
+    // Paid roles: no wait (each try needs a new fee).
+    const u = await student();
+    const paidFirst = (await apply(u, o)).body.application._id;
+    await prisma.jobApplication.update({ where: { id: paidFirst }, data: { status: "not_shortlisted", closedAt: new Date() } });
+    expect((await apply(u, o)).status).toBe(201);
+    expect((await setSettings({ reapplyCooldownDays: 400 })).status).toBe(400);
+  });
+
+  it("unlocks a free role's test without payment, once the terms and 18+ box are accepted", async () => {
+    const free = await opening({ feeRequired: false });
+    expect(free.feeRequired).toBe(false);
+    const listed = (await request(app).get("/api/careers/openings")).body.openings.find((x) => x.slug === free.slug);
+    expect(listed.feeRequired).toBe(false);
+
+    const s = await student();
+    const id = (await apply(s, free)).body.application._id;
+    const unlock = (body) => authed(request(app).post(`/api/me/job-applications/${id}/unlock-free`), s.token).send(body);
+    expect((await unlock({ confirmAdult: true })).status).toBe(400); // no terms
+    expect((await unlock({ acceptTerms: true })).body.code).toBe("ADULT_REQUIRED");
+    // A free role never opens the gateway.
+    razorpay.orders.create.mockClear();
+    expect((await createOrder(s, id)).status).toBe(400);
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+
+    const ok = await unlock({ acceptTerms: true, confirmAdult: true });
+    expect(ok.status).toBe(200);
+    expect(ok.body.application.status).toBe("test_pending");
+    expect((await walletOf(s)).balance).toBe(0); // nothing paid, nothing credited
+    expect((await start(s, id)).status).toBe(200);
+
+    // A paid role can't be unlocked this way.
+    const t = await student();
+    const paidId = (await apply(t, o)).body.application._id;
+    const refused = await authed(request(app).post(`/api/me/job-applications/${paidId}/unlock-free`), t.token).send({ acceptTerms: true, confirmAdult: true });
+    expect(refused.status).toBe(400);
   });
 
   it("doesn't unlock anything on a bad signature", async () => {

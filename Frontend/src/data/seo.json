@@ -78,7 +78,7 @@
     },
     "/careers": {
       "title": "Careers & Internships | Crix Technology",
-      "description": "Start your tech career at Crix Technology, Ahmedabad. Paid internships in web development, full stack and data science — freshers welcome, remote or on-site.",
+      "description": "Start your tech career at Crix Technology, Ahmedabad. Internship roles in web development, full stack and data science — freshers welcome, remote or on-site.",
       "priority": "0.8",
       "changefreq": "weekly",
       "crumb": "Careers",
@@ -88,14 +88,14 @@
         "web development intern",
         "full stack developer intern",
         "data science intern",
-        "paid internship Ahmedabad",
+        "internship in Ahmedabad",
         "remote internship India",
         "internship with stipend"
       ]
     },
     "/contact": {
       "title": "Contact Us | Crix Technology",
-      "description": "Contact Crix Technology about internships, online courses or IT services. Call or WhatsApp +91 97232 23588 (IT services) or +91 97123 65388 (internships & courses), or email us — we reply within two working days.",
+      "description": "Contact Crix Technology: +91 97123 65388 for internships, courses & careers; +91 97232 23588 for IT services. We reply within two working days.",
       "priority": "0.7",
       "changefreq": "monthly",
       "crumb": "Contact",

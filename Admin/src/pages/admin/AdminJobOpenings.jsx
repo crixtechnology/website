@@ -13,7 +13,7 @@ const COUNT_FIELDS = [["quantitative", "Quantitative"], ["logical", "Logical rea
 const EMPTY_FORM = {
   title: "", summary: "", techCategory: "web", skills: "", responsibilities: "", eligibility: "",
   stipend: "Up to ₹6,000/month (performance based)", experience: "0–1 year (freshers welcome)", duration: "3 months", mode: "Remote / Ahmedabad",
-  order: "", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
+  order: "", feeRequired: "yes", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
   marksPerQuestion: "1", negativeMarks: "0.25", cutoffScore: "0",
 };
 
@@ -25,7 +25,7 @@ function openingToForm(o) {
     responsibilities: (o.responsibilities || []).join("\n"),
     eligibility: (o.eligibility || []).join("\n"),
     stipend: o.stipend || "", experience: o.experience || "", duration: o.duration || "", mode: o.mode || "",
-    order: String(o.order ?? ""), durationMinutes: String(o.test.durationMinutes),
+    order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", durationMinutes: String(o.test.durationMinutes),
     quantitative: String(c.quantitative ?? 0), logical: String(c.logical ?? 0), verbal: String(c.verbal ?? 0), technical: String(c.technical ?? 0),
     marksPerQuestion: String(o.test.marksPerQuestion), negativeMarks: String(o.test.negativeMarks), cutoffScore: String(o.test.cutoffScore ?? 0),
   };
@@ -75,6 +75,7 @@ export default function AdminJobOpenings() {
       responsibilities: lines(form.responsibilities), eligibility: lines(form.eligibility),
       stipend: form.stipend.trim(), experience: form.experience.trim(), duration: form.duration.trim(), mode: form.mode.trim(),
       ...(form.order.trim() ? { order: Number(form.order) } : {}),
+      feeRequired: form.feeRequired === "yes",
       durationMinutes: Number(form.durationMinutes),
       questionCounts: Object.fromEntries(COUNT_FIELDS.map(([k]) => [k, Number(form[k])])),
       marksPerQuestion: Number(form.marksPerQuestion), negativeMarks: Number(form.negativeMarks), cutoffScore: Number(form.cutoffScore),
@@ -151,6 +152,11 @@ export default function AdminJobOpenings() {
 
           <h3 style={{ margin: "12px 0 16px" }}>Aptitude test for this role</h3>
           <div className="admin-form-grid">
+            <div className="field"><label htmlFor="jo-fee">Registration fee</label>
+              <select id="jo-fee" value={form.feeRequired} onChange={set("feeRequired")}>
+                <option value="yes">Required (amount from Careers settings)</option>
+                <option value="no">Free — no fee for this role</option>
+              </select></div>
             <div className="field"><label htmlFor="jo-mins">Duration (minutes)</label>
               <input id="jo-mins" type="number" min="5" max="300" step="1" value={form.durationMinutes} onChange={set("durationMinutes")} /></div>
             {COUNT_FIELDS.map(([k, label]) => (
@@ -188,7 +194,7 @@ export default function AdminJobOpenings() {
                   <div className="admin-row-main">
                     <b>{o.title}</b>
                     <span className="admin-row-meta">
-                      {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
+                      {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
                       {" "}+{o.test.marksPerQuestion} / −{o.test.negativeMarks} · cut-off {o.test.cutoffScore}
                     </span>
                     {short.length > 0 && (

@@ -197,7 +197,12 @@ Only do this after confirming it's really them (WhatsApp or phone). Their curren
                   onClick={() => openDetail(u._id)}
                 >
                   <div className="admin-row-main">
-                    <b>{u.name} {u.role === "admin" && <span className="admin-pill admin-role">admin</span>}</b>
+                    <b>
+                      {u.name} {u.role === "admin" && <span className="admin-pill admin-role">admin</span>}
+                      {u.role !== "admin" && (u.profilePending || !u.phone) && (
+                        <span className="admin-pill read" title="Name or phone not added yet — they can't buy anything until they are">profile incomplete</span>
+                      )}
+                    </b>
                     <span className="admin-row-meta">{u.email} {u.phone ? `· ${u.phone}` : ""} · joined {fmtDate(u.createdAt)}</span>
                   </div>
                 </div>

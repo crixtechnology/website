@@ -1,17 +1,17 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Reveal, TiltCard, BenefitIcon, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, TermsCheckbox, DownloadPdfButton,
+  Reveal, TiltCard, BenefitIcon, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, TermsCheckbox, DownloadPdfButton, ProfileGate,
   useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
-import { checkoutTestFee, openApplicationFor, StatusPill, AdultCheckbox } from "../components/CareersDashboard.jsx";
+import { checkoutTestFee, unlockFreeRole, isFreeRole, openApplicationFor, StatusPill, AdultCheckbox } from "../components/CareersDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL } from "../hooks/usePageMeta.js";
 import { getOpenings, getMyJobApplications, hasBackend } from "../services/api.js";
 import { formatINR } from "../utils/tiers.js";
+import { site } from "../data/content.js";
 import {
-  careersHero, careersContact, vision, mission, values, whyJoin, hiringSteps, feeBoxPoints, careersFaq,
-  defaultTerms, rememberRole, careersRulesDocument,
+  careersHero, careersContact, vision, mission, values, feeBoxPoints, defaultTerms, rememberRole, careersRulesDocument,
 } from "../data/careers.js";
 
 // Skeleton cards show while the live openings load — but never for longer than this.
@@ -19,11 +19,7 @@ const LOADING_CAP_MS = 4000;
 
 const CAREERS_INDEX = [
   { id: "vision", label: "Vision & mission" },
-  { id: "why-join", label: "Why join Crix" },
   { id: "openings", label: "Current openings" },
-  { id: "hiring-process", label: "How hiring works" },
-  { id: "test-fee", label: "Your test fee" },
-  { id: "faq", label: "FAQ" },
 ];
 
 const scrollToId = (id) => (e) => {
@@ -39,8 +35,16 @@ const openingFacts = (o) => [
   ["Mode", o.mode],
 ].filter(([, v]) => v);
 
+// Whether this role asks for the aptitude-test registration fee — the only
+// place on the page the fee is mentioned, role by role.
+function FeeBadge({ opening, terms }) {
+  return isFreeRole(opening)
+    ? <span className="fee-pill fee-pill--free">Free to apply</span>
+    : <span className="fee-pill">{formatINR(terms.testFee)} registration</span>;
+}
+
 /* ---------- one opening's card ---------- */
-function OpeningCard({ opening, i, onOpen, onApply }) {
+function OpeningCard({ opening, terms, i, onOpen, onApply }) {
   return (
     <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
       <TiltCard className="card-type-internship job-card">
@@ -51,6 +55,7 @@ function OpeningCard({ opening, i, onOpen, onApply }) {
               <span className="type-pill type-pill--internship">Internship</span>
               <span className="tag">Now hiring</span>
             </div>
+            <FeeBadge opening={opening} terms={terms} />
           </div>
           <h3>{opening.title}</h3>
           <p>{opening.summary}</p>
@@ -79,6 +84,7 @@ function OpeningModal({ opening, terms, onClose, onApply }) {
   useModalEscape(!!opening, onClose);
   if (!opening) return null;
   const test = opening.test || {};
+  const free = isFreeRole(opening);
   const lists = [
     ["Responsibilities", opening.responsibilities],
     ["Eligibility", opening.eligibility],
@@ -87,7 +93,10 @@ function OpeningModal({ opening, terms, onClose, onApply }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-box detail-modal-box" role="dialog" aria-modal="true" aria-labelledby="opening-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
-        <span className="eyebrow">Internship opening</span>
+        <div className="detail-modal-top">
+          <span className="eyebrow">Internship opening</span>
+          <FeeBadge opening={opening} terms={terms} />
+        </div>
         <h3 id="opening-modal-title" style={{ margin: "12px 0 8px" }}>{opening.title}</h3>
         <p style={{ color: "var(--muted)", fontSize: ".9rem", lineHeight: 1.65 }}>{opening.summary}</p>
 
@@ -114,10 +123,30 @@ function OpeningModal({ opening, terms, onClose, onApply }) {
           {test.questions ? `${test.questions} multiple-choice questions` : "A multiple-choice test"}
           {test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""} — quantitative, logical reasoning, verbal ability and
           technical questions for this role{test.negativeMarks ? `, with ${test.negativeMarks} taken off for each wrong answer` : ""}.
-          The ₹{terms.testFee} test fee comes back as {terms.testFee} wallet credits.
         </p>
 
-        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} onClick={() => onApply(opening)}>Apply Now</button>
+        <h4 className="job-modal-heading">Registration</h4>
+        {free ? (
+          <p className="form-note" style={{ marginTop: 0 }}>
+            There's no registration fee for this role. You'll accept the Terms &amp; Conditions and confirm you're 18 or older before the test unlocks.
+          </p>
+        ) : (
+          <>
+            <p className="form-note" style={{ marginTop: 0 }}>
+              This role has an aptitude-test registration fee of <b>{formatINR(terms.testFee)}</b>. You'll accept the Terms &amp; Conditions before paying.
+            </p>
+            <ul className="detail-points">
+              {feeBoxPoints(terms).filter((p) => !/signup bonus/i.test(p)).map((p) => <li key={p}>{p}</li>)}
+            </ul>
+          </>
+        )}
+
+        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} onClick={() => onApply(opening)}>
+          {free ? "Apply Now — Free" : "Apply Now"}
+        </button>
+        <div className="careers-rules-download">
+          <DownloadPdfButton label="Download hiring & test rules (PDF)" getDocument={() => careersRulesDocument(free ? null : terms, { role: opening.title })} />
+        </div>
       </div>
     </div>
   );
@@ -126,8 +155,9 @@ function OpeningModal({ opening, terms, onClose, onApply }) {
 /* ---------- pay the registration (aptitude-test) fee, right here ----------
    Opened by Apply Now for a logged-in student. Shows what they pay and what
    comes back, the Terms & Conditions box, and the Pay button (Razorpay); once
-   paid, the test can be started straight away. A role they've already paid
-   for shows where that application stands instead. */
+   paid, the test can be started straight away. A free role has the same boxes
+   and unlocks the test without payment. A role they've already applied for
+   shows where that application stands instead. */
 function TestFeeModal({ opening, terms, user, onClose }) {
   const [application, setApplication] = useState(undefined); // undefined = checking
   const [agreed, setAgreed] = useState(false);
@@ -161,16 +191,19 @@ function TestFeeModal({ opening, terms, user, onClose }) {
   if (!opening) return null;
   const test = opening.test || {};
   const status = application ? application.status : "none";
+  const free = isFreeRole(opening);
 
   const pay = async () => {
     if (busy || !agreed || !adult) return;
     setBusy(true);
     setMsg({ kind: "", text: "" });
-    const r = await checkoutTestFee({
-      opening,
-      user,
-      onConfirming: () => { if (alive.current) setMsg({ kind: "info", text: "Confirming your payment..." }); },
-    });
+    const r = free
+      ? await unlockFreeRole({ opening })
+      : await checkoutTestFee({
+        opening,
+        user,
+        onConfirming: () => { if (alive.current) setMsg({ kind: "info", text: "Confirming your payment..." }); },
+      });
     if (!alive.current) return;
     setBusy(false);
     if (r.ok) {
@@ -187,7 +220,7 @@ function TestFeeModal({ opening, terms, user, onClose }) {
     body = (
       <>
         <Alert inline kind="success">
-          Payment confirmed — {terms.testFee} credits are in your wallet and your aptitude test is unlocked.
+          {free ? "You're registered — your aptitude test is unlocked." : `Payment confirmed — ${terms.testFee} credits are in your wallet and your aptitude test is unlocked.`}
         </Alert>
         <p className="form-note">
           You have {test.durationMinutes || "the set"} minutes for {test.questions || "the"} questions, and one attempt. Find a quiet
@@ -202,7 +235,7 @@ function TestFeeModal({ opening, terms, user, onClose }) {
   } else if (status === "test_pending") {
     body = (
       <>
-        <p className="form-note">You've already paid for this role — your test is unlocked. <StatusPill application={application} /></p>
+        <p className="form-note">You've already {free ? "registered" : "paid"} for this role — your test is unlocked. <StatusPill application={application} /></p>
         <Link className="btn btn-solid" style={{ width: "100%" }} to={`/test/${application._id}`}>
           {application.attempt ? "Resume test →" : "Start test →"}
         </Link>
@@ -213,6 +246,20 @@ function TestFeeModal({ opening, terms, user, onClose }) {
       <>
         <p className="form-note">You've taken the test for this role. Current status: <StatusPill application={application} /></p>
         <Link className="btn btn-ghost" style={{ width: "100%" }} to="/dashboard?tab=applications">See My Applications →</Link>
+      </>
+    );
+  } else if (free) {
+    body = (
+      <>
+        <p className="form-note" style={{ marginTop: 0 }}>
+          There's no registration fee for this role. Accept the terms to unlock your aptitude test
+          {test.questions ? ` — ${test.questions} questions` : ""}{test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}. You can take it straight away.
+        </p>
+        <AdultCheckbox checked={adult} onChange={(v) => { setAdult(v); setMsg({ kind: "", text: "" }); }} disabled={busy} />
+        <TermsCheckbox checked={agreed} onChange={(v) => { setAgreed(v); setMsg({ kind: "", text: "" }); }} disabled={busy} what="the aptitude test" />
+        <button ref={payBtn} className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={pay}>
+          {busy ? "Please wait..." : "Unlock Free Test"}
+        </button>
       </>
     );
   } else {
@@ -230,11 +277,13 @@ function TestFeeModal({ opening, terms, user, onClose }) {
         <ul className="check-list apply-rules">
           {feeBoxPoints(terms).filter((p) => !/signup bonus/i.test(p)).map((p) => <li key={p}>{p}</li>)}
         </ul>
-        <AdultCheckbox checked={adult} onChange={(v) => { setAdult(v); setMsg({ kind: "", text: "" }); }} disabled={busy} />
-        <TermsCheckbox checked={agreed} onChange={(v) => { setAgreed(v); setMsg({ kind: "", text: "" }); }} disabled={busy} what="the aptitude test registration fee" />
-        <button ref={payBtn} className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={pay}>
-          {busy ? "Please wait..." : `Pay ${formatINR(terms.testFee)} & Unlock Test`}
-        </button>
+        <ProfileGate onLeave={onClose}>
+          <AdultCheckbox checked={adult} onChange={(v) => { setAdult(v); setMsg({ kind: "", text: "" }); }} disabled={busy} />
+          <TermsCheckbox checked={agreed} onChange={(v) => { setAgreed(v); setMsg({ kind: "", text: "" }); }} disabled={busy} what="the aptitude test registration fee" />
+          <button ref={payBtn} className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={pay}>
+            {busy ? "Please wait..." : `Pay ${formatINR(terms.testFee)} & Unlock Test`}
+          </button>
+        </ProfileGate>
       </>
     );
   }
@@ -302,13 +351,10 @@ export default function Careers() {
     return () => { alive = false; clearTimeout(cap); };
   }, []);
 
-  useJsonLd("jobs-jsonld", openings.length ? { "@context": "https://schema.org", "@graph": openings.map(jobPostingLd) } : null);
-  const faqs = careersFaq(terms);
-  useJsonLd("faq-jsonld", {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
-  });
+  // Search engines' job listings don't allow roles that charge applicants a
+  // fee, so only free roles are marked up (scripts/prerender-meta.js does the same).
+  const listedJobs = openings.filter(isFreeRole);
+  useJsonLd("jobs-jsonld", listedJobs.length ? { "@context": "https://schema.org", "@graph": listedJobs.map(jobPostingLd) } : null);
 
   // Apply Now on a role: the registration-fee popup opens right here on the
   // Careers page — after signing up or logging in first, if needed (the role is
@@ -325,7 +371,7 @@ export default function Careers() {
     const go = opening ? () => setPaying(opening) : () => navigate("/dashboard?tab=apply");
     if (!isLoggedIn) {
       if (opening) rememberRole(opening.slug);
-      openAuthModal("signup", go);
+      openAuthModal("login", go);
       return;
     }
     go();
@@ -344,7 +390,7 @@ export default function Careers() {
           <p>{careersHero.text}</p>
           <div className="hero-ctas">
             <a className="btn btn-solid" href="#openings" onClick={scrollToId("openings")}>View Openings</a>
-            <a className="btn btn-ghost" href="#hiring-process" onClick={scrollToId("hiring-process")}>How Hiring Works</a>
+            <a className="btn btn-ghost" href="#vision" onClick={scrollToId("vision")}>Our Vision</a>
           </div>
         </Reveal>
       </header>
@@ -378,24 +424,7 @@ export default function Careers() {
         </div>
       </section>
 
-      {/* 3. Why Join Crix */}
-      <section id="why-join" className="section anchor-section" style={{ paddingTop: 20 }}>
-        <div className="wrap">
-          <Reveal as="span" variant="reveal-top" className="eyebrow">Why Join Crix</Reveal>
-          <Reveal as="h2" variant="reveal-top">More than a line on your résumé.</Reveal>
-          <div className="grid3 stagger" style={{ marginTop: 40 }}>
-            {whyJoin.map((b, i) => (
-              <Reveal key={b.title} variant="reveal" className="benefit" style={{ "--i": i }}>
-                <span className="benefit-icon"><BenefitIcon name={b.icon} /></span>
-                <h3>{b.title}</h3>
-                <p>{b.desc}</p>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Current Openings */}
+      {/* 3. Current Openings */}
       <section id="openings" className="section section--internships anchor-section" style={{ paddingTop: 20 }}>
         <div className="orb orb-1"></div>
         <div className="wrap">
@@ -410,7 +439,7 @@ export default function Careers() {
             <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
           ) : openings.length ? (
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
-              {openings.map((o, i) => <OpeningCard key={o.slug} opening={o} i={i} onOpen={setDetail} onApply={apply} />)}
+              {openings.map((o, i) => <OpeningCard key={o.slug} opening={o} terms={terms} i={i} onOpen={setDetail} onApply={apply} />)}
             </div>
           ) : (
             <div className="card no-openings" role="status" style={{ marginTop: 24 }}>
@@ -427,67 +456,7 @@ export default function Careers() {
       <OpeningModal opening={detail} terms={terms} onClose={() => setDetail(null)} onApply={apply} />
       <TestFeeModal opening={paying} terms={terms} user={user} onClose={() => setPaying(null)} />
 
-      {/* 5. Hiring Process */}
-      <section id="hiring-process" className="section anchor-section" style={{ paddingTop: 20 }}>
-        <div className="wrap">
-          <Reveal as="span" variant="reveal-l" className="eyebrow">Hiring Process</Reveal>
-          <Reveal as="h2" variant="reveal-l">Six steps from sign-up to offer letter.</Reveal>
-          <ol className="timeline stagger">
-            {hiringSteps(terms).map((s, i) => (
-              <Reveal as="li" key={s.title} variant="reveal" className="timeline-step" style={{ "--i": i }}>
-                <span className="step-num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
-                <div>
-                  <span className="timeline-label">Step {i + 1}</span>
-                  <h3>{s.title}</h3>
-                  <p>{s.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </ol>
-          <div className="careers-rules-download">
-            <DownloadPdfButton label="Download hiring & test rules (PDF)" getDocument={() => careersRulesDocument(terms)} />
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Where does my fee go? */}
-      <section id="test-fee" className="section anchor-section" style={{ paddingTop: 20 }}>
-        <div className="wrap">
-          <Reveal variant="reveal-zoom" className="band fee-band">
-            <div>
-              <span className="eyebrow">Your test fee</span>
-              <h2>Where does my ₹{terms.testFee} go?</h2>
-              <p>Straight back to you. The test fee isn't a charge for applying — it returns to your wallet as credits you can spend on any Crix course.</p>
-              <div className="fee-sum" aria-label={`${terms.testFee} credits from your test fee plus ${terms.signupBonus} signup bonus credits`}>
-                <div><b>{terms.testFee}</b><span>credits from your test fee</span></div>
-                <i aria-hidden="true">+</i>
-                <div><b>{terms.signupBonus}</b><span>signup bonus credits</span></div>
-              </div>
-            </div>
-            <ul className="check-list fee-points">
-              {feeBoxPoints(terms).map((p) => <li key={p}>{p}</li>)}
-            </ul>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* 7. FAQ */}
-      <section id="faq" className="section anchor-section" style={{ paddingTop: 20 }}>
-        <div className="wrap" style={{ maxWidth: 860 }}>
-          <Reveal as="span" variant="reveal-top" className="eyebrow">FAQ</Reveal>
-          <Reveal as="h2" variant="reveal-top">Questions, answered.</Reveal>
-          <Reveal variant="reveal" className="faq-list" style={{ marginTop: 34 }}>
-            {faqs.map((f) => (
-              <details className="faq" key={f.q}>
-                <summary>{f.q}</summary>
-                <p>{f.a}</p>
-              </details>
-            ))}
-          </Reveal>
-        </div>
-      </section>
-
-      {/* 8. Final CTA */}
+      {/* 4. Final CTA */}
       <section className="section" style={{ paddingTop: 40 }}>
         <div className="wrap">
           <Reveal variant="reveal-zoom" className="band">
@@ -499,9 +468,13 @@ export default function Careers() {
                   <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>
                   <CopyButton value={careersContact.email} label="support email address" />
                 </div>
-                <div className="contact-line">
-                  <a href={tel}>{careersContact.phone}</a>
-                  <a className="wa-pill" href={`https://wa.me/${careersContact.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                <div className="dept-block dept--programs">
+                  <span className="dept-tag">{site.phoneAltLabel}</span>
+                  <span className="dept-hint">{site.phoneAltHint}</span>
+                  <div className="contact-line">
+                    <a href={tel}>{careersContact.phone}</a>
+                    <a className="wa-pill" href={`https://wa.me/${careersContact.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                  </div>
                 </div>
               </div>
             </div>

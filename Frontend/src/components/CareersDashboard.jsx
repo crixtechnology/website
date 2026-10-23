@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  getOpenings, getMyJobApplications, applyForRole, createTestFeeOrder, verifyTestFee, getReceipt,
+  getOpenings, getMyJobApplications, applyForRole, createTestFeeOrder, verifyTestFee, unlockFreeTest, getReceipt,
   getNotifications, markNotificationsRead,
 } from "../services/api.js";
-import { loadRazorpayScript, Alert, burstConfetti, TermsCheckbox } from "./ui.jsx";
+import { loadRazorpayScript, Alert, burstConfetti, TermsCheckbox, ProfileGate } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { formatINR } from "../utils/tiers.js";
 import { defaultTerms, feeBoxPoints, formatIST } from "../data/careers.js";
@@ -111,6 +111,25 @@ export async function checkoutTestFee({ opening, user, onConfirming }) {
   });
 }
 
+/* ---------- a free role: no fee, the test unlocks on the spot ----------
+   Same shape as checkoutTestFee's results. Only call it once the Terms &
+   Conditions and 18+ boxes are ticked. */
+export async function unlockFreeRole({ opening }) {
+  const applied = await applyForRole(opening.slug);
+  if (!applied.ok) return { ok: false, error: applied.error || "Could not apply right now." };
+  const applicationId = applied.application._id;
+  // Already unlocked: fine. Already taken (or closed): say so, don't claim it's unlocked.
+  if (applied.application.status === "test_pending") return { ok: true, applicationId };
+  if (applied.application.status !== "payment_pending") {
+    return { ok: false, applicationId, error: "You've already taken the test for this role — see My Applications for where it stands." };
+  }
+  const r = await unlockFreeTest(applicationId);
+  return r.ok ? { ok: true, applicationId } : { ok: false, applicationId, error: r.error };
+}
+
+// Free roles (the admin's choice per role) carry no registration fee.
+export const isFreeRole = (opening) => !!opening && opening.feeRequired === false;
+
 /* ---------- Apply / Aptitude Test ---------- */
 // `initialRole` is the slug of the role chosen on the Careers page, if any.
 // `onChange` lets the dashboard refresh anything that depends on the wallet.
@@ -159,20 +178,23 @@ export function ApplyTab({ user, initialRole, onGoToApplications, onChange }) {
   const application = openApplicationFor(applications, selected);
   const status = application ? application.status : "none";
   const attempt = application ? application.attempt : null;
+  const free = isFreeRole(selected);
 
   const pay = async () => {
     if (busy || !agreed || !adult) return;
     setBusy(true);
     setMsg({ kind: "", text: "" });
-    const r = await checkoutTestFee({
-      opening: selected,
-      user,
-      onConfirming: () => { if (mounted.current) setMsg({ kind: "info", text: "Confirming your payment..." }); },
-    });
+    const r = free
+      ? await unlockFreeRole({ opening: selected })
+      : await checkoutTestFee({
+        opening: selected,
+        user,
+        onConfirming: () => { if (mounted.current) setMsg({ kind: "info", text: "Confirming your payment..." }); },
+      });
     if (!mounted.current) return;
     setBusy(false);
     if (r.ok) {
-      setMsg({ kind: "success", text: `Payment confirmed — ${r.amount / 100} credits are in your wallet and your test is unlocked.` });
+      setMsg({ kind: "success", text: free ? "Your test is unlocked." : `Payment confirmed — ${r.amount / 100} credits are in your wallet and your test is unlocked.` });
       burstConfetti(payBtn.current);
       await load();
       onChange && onChange();
@@ -198,7 +220,7 @@ export function ApplyTab({ user, initialRole, onGoToApplications, onChange }) {
               </span>
               <span className="plan-option-sub">{o.summary}</span>
               <span className="plan-option-sub">
-                {o.test.questions} questions · {o.test.durationMinutes} minutes · {o.stipend}
+                {o.test.questions} questions · {o.test.durationMinutes} minutes · {isFreeRole(o) ? "Free" : formatINR(terms.testFee)} · {o.stipend}
               </span>
             </label>
           );
@@ -209,7 +231,18 @@ export function ApplyTab({ user, initialRole, onGoToApplications, onChange }) {
         <span className="eyebrow">Aptitude test</span>
         <h3>{selected.title}</h3>
 
-        {status === "none" || status === "payment_pending" ? (
+        {(status === "none" || status === "payment_pending") && free ? (
+          <>
+            <p className="form-note" style={{ marginTop: 0 }}>
+              There's no registration fee for this role. Accept the terms to unlock your aptitude test — you can take it straight away.
+            </p>
+            <AdultCheckbox checked={adult} onChange={setAdult} disabled={busy} />
+            <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={busy} what="the aptitude test" />
+            <button ref={payBtn} className="btn btn-solid" disabled={busy || !agreed || !adult} onClick={pay}>
+              {busy ? "Please wait..." : "Unlock Free Test"}
+            </button>
+          </>
+        ) : status === "none" || status === "payment_pending" ? (
           <>
             <p className="form-note" style={{ marginTop: 0 }}>
               Pay the test fee to unlock your aptitude test. You can take it straight away, and the whole fee comes back as wallet credit.
@@ -219,11 +252,13 @@ export function ApplyTab({ user, initialRole, onGoToApplications, onChange }) {
               <div className="is-off"><dt>Returned as wallet credit</dt><dd>+{terms.testFee} credits</dd></div>
               <div className="is-total"><dt>You pay</dt><dd>{formatINR(terms.testFee)}</dd></div>
             </dl>
-            <AdultCheckbox checked={adult} onChange={setAdult} disabled={busy} />
-            <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={busy} what="the aptitude test fee" />
-            <button ref={payBtn} className="btn btn-solid" disabled={busy || !agreed || !adult} onClick={pay}>
-              {busy ? "Please wait..." : `Pay ${formatINR(terms.testFee)} & Take Test`}
-            </button>
+            <ProfileGate>
+              <AdultCheckbox checked={adult} onChange={setAdult} disabled={busy} />
+              <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={busy} what="the aptitude test fee" />
+              <button ref={payBtn} className="btn btn-solid" disabled={busy || !agreed || !adult} onClick={pay}>
+                {busy ? "Please wait..." : `Pay ${formatINR(terms.testFee)} & Take Test`}
+              </button>
+            </ProfileGate>
             <ul className="check-list apply-rules">
               {feeBoxPoints(terms).filter((p) => !/signup bonus/i.test(p)).map((p) => <li key={p}>{p}</li>)}
             </ul>
@@ -233,7 +268,7 @@ export function ApplyTab({ user, initialRole, onGoToApplications, onChange }) {
             <p className="form-note" style={{ marginTop: 0 }}>
               {attempt
                 ? "Your test is in progress. The timer keeps running while you're away — go back to it now."
-                : `Payment received — your test is unlocked. You have ${selected.test.durationMinutes} minutes for ${selected.test.questions} questions, and one attempt. Find a quiet place with a steady connection and a working webcam before you start.`}
+                : `${free ? "Your" : "Payment received — your"} test is unlocked. You have ${selected.test.durationMinutes} minutes for ${selected.test.questions} questions, and one attempt. Find a quiet place with a steady connection and a working webcam before you start.`}
             </p>
             <Link ref={payBtn} className="btn btn-solid" to={`/test/${application._id}`}>{attempt ? "Resume test →" : "Start test →"}</Link>
           </>
@@ -325,7 +360,7 @@ export function ApplicationsTab({ onGoToApply }) {
                   <b>{a.opening?.title || "Role"} <StatusPill application={a} /></b>
                   <span className="admin-row-meta">
                     Applied {formatIST(a.createdAt, false)}
-                    {a.paidAt ? ` · test fee paid ${formatIST(a.paidAt, false)}` : " · test fee not paid yet"}
+                    {a.paidAt ? ` · test fee paid ${formatIST(a.paidAt, false)}` : a.opening?.feeRequired === false ? " · free role" : " · test fee not paid yet"}
                     {t && t.submittedAt ? ` · test submitted ${formatIST(t.submittedAt)}` : ""}
                   </span>
                 </div>

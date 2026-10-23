@@ -28,7 +28,7 @@ export default function MyCourses() {
   const tab = TABS.some(([id]) => id === params.get("tab")) ? params.get("tab") : "courses";
   const goToTab = (id) => setParams(id === "courses" ? {} : { tab: id });
   // The role picked on the Careers page: in the address, or remembered through
-  // the sign-up / log-in popup. Read once, when the dashboard opens.
+  // the log-in popup. Read once, when the dashboard opens.
   const [applyRole] = useState(() => params.get("role") || takeRememberedRole());
   const { isLoggedIn, isAdmin, user, logout, openAuthModal } = useContext(UserContext);
   const navigate = useNavigate();
@@ -140,7 +140,7 @@ export default function MyCourses() {
           <p style={{ color: "var(--muted)" }}>Loading...</p>
         ) : enrollments.length === 0 ? (
           <p style={{ color: "var(--muted)" }}>
-            You haven't purchased a course yet. <Link to="/programs#courses">Browse courses →</Link>
+            You haven't purchased a course yet. <Link to="/programs">Browse courses →</Link>
           </p>
         ) : (
           <div className="admin-list">

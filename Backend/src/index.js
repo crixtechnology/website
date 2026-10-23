@@ -7,6 +7,7 @@ const { checkSecretsOrExit } = require("./utils/startupChecks");
 const { startSnapshotCleanup } = require("./utils/proctorRetention");
 const { storageStatus } = require("./utils/proctorStorage");
 const { seedCareersOnce } = require("./utils/careersFirstRun");
+const { startBotDigest } = require("./utils/botDigest");
 
 // A guessable JWT_SECRET would let anyone forge an admin login: stop here in production.
 checkSecretsOrExit();
@@ -56,6 +57,8 @@ connectWithRetry().then((connected) => {
   console.log(storageStatus().message);
   // Deletes aptitude-test webcam photos past their retention period.
   startSnapshotCleanup();
+  // The weekly email of questions the help agent couldn't answer (utils/botDigest.js).
+  startBotDigest();
   // The starter job roles and question bank, the first time only (utils/careersFirstRun.js).
   if (connected) seedCareersOnce().catch((e) => console.error("[careers] first-run setup failed (will retry on next start):", e.message));
 });

@@ -20,6 +20,7 @@ const { requireAuth } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 const { rejectWithoutTerms } = require("../utils/terms");
+const { rejectIfProfileIncomplete } = require("../utils/accounts");
 const { queryText } = require("../utils/validators");
 const { sendPaymentRequestEmail } = require("../utils/mailer");
 const { attachReceipt } = require("./payments");
@@ -257,6 +258,7 @@ router.post("/me/payment-requests/:id/create-order", publicWriteLimiter, require
       });
     }
     if (rejectWithoutTerms(req, res)) return;
+    if (await rejectIfProfileIncomplete(req, res)) return;
     const request = await prisma.paymentRequest.findUnique({
       where: { id: req.params.id },
       include: { course: { select: COURSE_SUMMARY } },

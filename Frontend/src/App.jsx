@@ -54,9 +54,12 @@ const Careers = lazy(ROUTE_LOADERS["/careers"]);
 // — this only ever shows for the fraction of a second a lazy chunk takes to
 // download, so it should read as consistent with the rest of the app, not
 // like a separate, heavier loading state.
+// At least a screen tall, so the footer stays below the fold while a page loads
+// instead of showing and then being pushed down (a layout shift: Lighthouse
+// measured 0.39 on /careers with the old 60vh).
 function RouteLoading() {
   return (
-    <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
+    <section className="section" style={{ paddingTop: 140, minHeight: "100vh" }}>
       <div className="wrap"><p style={{ color: "var(--muted)" }}>Loading...</p></div>
     </section>
   );
@@ -78,7 +81,7 @@ function ScrollToTop() {
   const { pathname, hash, key, search } = useLocation();
 
   // A shared referral link (?ref=CODE) can land on any page — remember the code
-  // so it can pre-fill the signup form and checkout later.
+  // so it goes with the new account (login form) and checkout later.
   useEffect(() => { captureReferralFromUrl(search); }, [search]);
 
   const navType = useNavigationType();
@@ -135,7 +138,7 @@ function ScrollToTop() {
       }
     }
     if (!hash) { window.scrollTo(0, 0); return; }
-    // Nav links to /programs#internships / #courses land here — the target
+    // Links to a section (e.g. the old /programs#internships) land here — the target
     // section exists as soon as Programs mounts, but give it a tick so the
     // route has actually rendered before we look it up.
     const id = hash.slice(1);
@@ -192,8 +195,8 @@ export default function App() {
             {/* Internships and Courses used to be separate pages — keep the
                 old URLs working by sending them to the merged page, straight
                 to the section a bookmark of that old URL actually meant. */}
-            <Route path="/internships" element={<Navigate to="/programs#internships" replace />} />
-            <Route path="/courses" element={<Navigate to="/programs#courses" replace />} />
+            <Route path="/internships" element={<Navigate to="/programs" replace />} />
+            <Route path="/courses" element={<Navigate to="/programs" replace />} />
             <Route path="/services" element={<Services />} />
             <Route path="/about" element={<About />} />
             <Route path="/careers" element={<Careers />} />

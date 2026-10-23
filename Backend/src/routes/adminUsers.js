@@ -12,7 +12,7 @@ const { getWallet } = require("../utils/wallet");
 const { queryText } = require("../utils/validators");
 const router = express.Router();
 
-const SAFE_FIELDS = { id: true, name: true, email: true, phone: true, role: true, createdAt: true };
+const SAFE_FIELDS = { id: true, name: true, email: true, phone: true, role: true, profilePending: true, createdAt: true };
 
 // ---------- admin: user directory, search + full CRUD ----------
 // This is the "user data" section of the admin panel's search — separate
@@ -74,6 +74,7 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res, next) => {
       const n = String(name).trim();
       if (!n) return res.status(400).json({ ok: false, error: "Name can't be empty." });
       update.name = n;
+      update.profilePending = false; // a name an admin saved is a real one
     }
     if (phone !== undefined) update.phone = String(phone).trim();
     if (role !== undefined) {

@@ -29,6 +29,14 @@ export const formatINR = (amount) =>
     ? `₹${amount.toLocaleString("en-IN")}`
     : `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// Every plan priced at ₹0: a free opportunity, not something sold on the
+// Programs page (free roles live on Careers). Kept off the Programs grid,
+// "You might also like" and the sitemap (scripts/prerender-meta.js has a copy).
+export function isFreeProgram(item) {
+  const plans = offeredTiers(item);
+  return plans.length > 0 && plans.every((p) => !p.price);
+}
+
 // "Buy" is only offered when something is priced AND the admin has opened it.
 // A closed item hides its prices entirely and falls back to the request form.
 export function isOpenForBuy(item) {
