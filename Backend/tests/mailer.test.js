@@ -59,6 +59,29 @@ describe("mailer via Brevo's HTTP API", () => {
     expect(second.htmlContent).not.toContain("bonus credits");
   });
 
+  it("sends the owner the week's unanswered help-agent questions, escaped, with the admin link", async () => {
+    global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
+    const env = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development"; // notifyOwner is silent in test runs
+    try {
+      const { sendBotDigestEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "", ADMIN_ORIGIN: "https://admin.example.com", CONTACT_TO_EMAIL: "owner@example.com" });
+      await sendBotDigestEmail({ total: 12, questions: [{ question: "do you teach <b>rust</b>?", timesAsked: 5 }, { question: "weekend batch?", timesAsked: 1 }] });
+    } finally {
+      process.env.NODE_ENV = env;
+      delete process.env.ADMIN_ORIGIN;
+      delete process.env.CONTACT_TO_EMAIL;
+    }
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.to).toEqual([{ email: "owner@example.com" }]);
+    expect(body.subject).toBe("Help agent: 12 questions to teach this week");
+    expect(body.htmlContent).toContain("do you teach &lt;b&gt;rust&lt;/b&gt;?");
+    expect(body.htmlContent).not.toContain("<b>rust</b>");
+    expect(body.htmlContent).toContain("asked 5 times");
+    expect(body.htmlContent).toContain("and 10 more in the admin panel");
+    expect(body.htmlContent).toContain("https://admin.example.com/admin/bot-questions");
+    expect(body.textContent).toMatch(/1\. .do you teach <b>rust<\/b>\?. — asked 5 times/);
+  });
+
   it("defaults the sender to support@crixtechnology.com", async () => {
     global.fetch = jest.fn(async () => new Response("{}", { status: 201 }));
     const { sendPasswordChangedEmail } = loadMailer({ BREVO_API_KEY: "test-key", SMTP_HOST: "" });

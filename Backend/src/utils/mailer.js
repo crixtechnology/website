@@ -527,6 +527,29 @@ async function sendWelcomeEmail({ to, name, profileIncomplete = true, bonusCredi
   return deliver({ to, subject: "Welcome to Crix Technology — your account is ready", text, html });
 }
 
+// ---------- weekly: questions the help agent couldn't answer ----------
+// To the site owner (utils/botDigest.js). The question texts were masked when
+// saved (no emails, phone numbers or links) and carry no names or accounts.
+async function sendBotDigestEmail({ questions, total }) {
+  const link = adminLink("/admin/bot-questions");
+  const plural = total === 1 ? "question" : "questions";
+  const subject = `Help agent: ${total} ${plural} to teach this week`;
+  const lines = questions.map((q) => `“${q.question}” — asked ${q.timesAsked} ${q.timesAsked === 1 ? "time" : "times"}`);
+  const more = total > questions.length ? `, and ${total - questions.length} more in the admin panel` : "";
+  return notifyOwner({
+    path: "/",
+    subject,
+    title: "Teach the help agent this week",
+    summaryHtml:
+      `Visitors asked the help agent ${total} ${plural} it couldn't answer. The most asked${more}:` +
+      `<ol style="margin:12px 0 0;padding-left:20px">${lines.map((l) => `<li style="margin:4px 0">${escapeHtml(l)}</li>`).join("")}</ol>` +
+      `<br>Press “Teach answer” next to one and the agent starts using it straight away.`,
+    summaryText: `Visitors asked the help agent ${total} ${plural} it couldn't answer. The most asked${more}:\n${lines.map((l, i) => `${i + 1}. ${l}`).join("\n")}\n\nPress "Teach answer" next to one and the agent starts using it straight away.`,
+    link,
+    linkLabel: "Open Help agent questions",
+  });
+}
+
 // ---------- One-time code (OTP) ----------
 // purpose: "reset_password" (forgot-password) | "view_password" (profile).
 async function sendOtpEmail({ to, name, code, purpose, ttlMinutes }) {
@@ -813,6 +836,7 @@ module.exports = {
   sendApplicationEmail,
   sendReceiptEmail,
   sendWelcomeEmail,
+  sendBotDigestEmail,
   sendOtpEmail,
   sendPasswordChangedEmail,
   sendPaymentRequestEmail,

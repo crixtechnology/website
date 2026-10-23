@@ -2457,7 +2457,9 @@ export function Chrome() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), REDUCED ? 0 : 550);
+    // The splash goes as soon as the page has painted once — holding it longer
+    // only delayed the content behind it (Lighthouse: ~1 s on a mid-range phone).
+    const t = setTimeout(() => requestAnimationFrame(() => setLoaded(true)), 0);
     let lastY = window.scrollY;
     const onScroll = () => {
       const y = window.scrollY;
