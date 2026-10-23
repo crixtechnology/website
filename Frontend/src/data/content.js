@@ -8,7 +8,7 @@ export const site = {
   name: "Crix Technology",
   tagline: "Virtual Internship Program, industry-ready online courses and IT services — taught and built by working industry professionals.",
   city: "Ahmedabad, Gujarat, India",
-  eyebrow: "Ahmedabad · Serving pan-India & globally",
+  eyebrow: "Ahmedabad · Serving pan‑India & globally", // non-breaking hyphen: "pan-India" never splits across lines
   email: "crixtechnology@gmail.com",
   phone: "+91 97232 23588",
   phoneLabel: "IT Services",
