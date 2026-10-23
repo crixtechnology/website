@@ -1933,7 +1933,7 @@ export function AuthModal() {
 export function Logo({ className = "" }) {
   return (
     <span className={`logo ${className}`}>
-      <img src="/logo-icon.png" alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+      <img src="/logo-icon.png" alt="" width="81" height="72" onError={(e) => { e.currentTarget.style.display = "none"; }} />
       <span className="logo-text">
         <span className="logo-top">CRIX</span>
         <span className="logo-bottom">TECHNOLOGY</span>

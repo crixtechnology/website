@@ -416,7 +416,9 @@ footer::before{content:"";position:absolute;top:-1px;left:0;right:0;height:1px;p
 
 /* Hero description: words brighten one after another after the headline. */
 .hero-sub .hw{animation:hwLight .9s ease backwards;animation-delay:calc(1.05s + var(--w,0) * 45ms)}
-@keyframes hwLight{from{opacity:.12}45%{opacity:1;color:var(--text);text-shadow:0 0 14px rgba(var(--teal-rgb),.45)}}
+/* Opacity only: the GPU fades it. Animating color/text-shadow per word made the
+   browser restyle every word on every frame (Lighthouse: ~1.7 s of style work on a phone). */
+@keyframes hwLight{from{opacity:.12}to{opacity:1}}
 
 /* Trust strip under the hero: registration facts as small badges. */
 .trust-strip{border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(var(--teal-rgb),.045),transparent)}
