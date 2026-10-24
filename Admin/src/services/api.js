@@ -708,4 +708,5 @@ async function adminFile(path, fallbackError) {
 }
 export const adminExportJobApplications = (filters) => adminFile(`/admin/job-applications/export${qs(filters)}`, "Could not export the applicants");
 export const adminGetTestSnapshot = (id) => adminFile(`/admin/test-snapshots/${id}`, "Could not load this snapshot");
+export const adminGetApplicationCv = (id) => adminFile(`/admin/job-applications/${id}/cv`, "Could not load this CV");
 

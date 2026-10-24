@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { prisma } = require("../db");
-const { purgeUserSnapshots } = require("./proctorRetention");
+const { purgeUserSnapshots, purgeUserCvs } = require("./proctorRetention");
 
 // Deleting an account — the one path both a student's own request (Profile →
 // Delete my account, routes/account.js) and Admin → Users take, so the two can
@@ -49,11 +49,12 @@ async function deletionSummary(userId) {
 async function deleteAccount(target, { requestedBy, adminId = null }) {
   // The files first: if storage is unreachable, stop before anything else goes.
   const photos = await purgeUserSnapshots(target.id);
-  if (photos.failed) {
+  const cvs = photos.failed ? { failed: 0 } : await purgeUserCvs(target.id);
+  if (photos.failed || cvs.failed) {
     return {
       ok: false,
       status: 502,
-      error: "Couldn't delete the aptitude-test photos from storage right now. Nothing was deleted — please try again in a few minutes.",
+      error: "Couldn't delete the aptitude-test photos or CVs from storage right now. Nothing was deleted — please try again in a few minutes.",
     };
   }
 

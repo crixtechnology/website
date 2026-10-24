@@ -81,13 +81,59 @@ async function purgeExpiredSnapshots(now = new Date()) {
   return { deleted, failed };
 }
 
+// ---------- CVs (BCA internship applications) ----------
+// Same periods as the photos: 6 months after the application closes, 12 months
+// after it was made at the latest, and straight away when the account goes.
+// The key is cleared once the file is gone; the application row stays.
+async function deleteCvs(rows) {
+  let deleted = 0;
+  let failed = 0;
+  for (const row of rows) {
+    try {
+      await deleteSnapshot(row.cvKey);
+      await prisma.jobApplication.update({ where: { id: row.id }, data: { cvKey: "", cvFileName: "" } });
+      deleted += 1;
+    } catch (e) {
+      failed += 1;
+      console.error(`[proctoring] couldn't delete the CV of application ${row.id}:`, e.message);
+    }
+  }
+  return { deleted, failed };
+}
+
+async function purgeUserCvs(userId) {
+  const rows = await prisma.jobApplication.findMany({ where: { userId, cvKey: { not: "" } }, select: { id: true, cvKey: true } });
+  return deleteCvs(rows);
+}
+
+async function purgeExpiredCvs(now = new Date()) {
+  const closedBefore = monthsBefore(RETAIN_AFTER_CLOSE_MONTHS, now);
+  const rows = await prisma.jobApplication.findMany({
+    where: {
+      cvKey: { not: "" },
+      OR: [
+        { closedAt: { lt: closedBefore } },
+        { closedAt: null, status: { in: FINAL_STATUSES }, updatedAt: { lt: closedBefore } },
+        { createdAt: { lt: monthsBefore(MAX_AGE_MONTHS, now) } },
+      ],
+    },
+    select: { id: true, cvKey: true },
+    take: BATCH,
+  });
+  const result = await deleteCvs(rows);
+  if (result.deleted || result.failed) console.log(`[proctoring] retention: deleted ${result.deleted} CV(s)${result.failed ? `, ${result.failed} to retry` : ""}`);
+  return result;
+}
+
 // Runs the clean-up shortly after the server starts, then every 6 hours.
 function startSnapshotCleanup() {
-  const run = () => purgeExpiredSnapshots().catch((e) => console.error("[proctoring] retention run failed:", e.message));
+  const run = () => Promise.all([purgeExpiredSnapshots(), purgeExpiredCvs()]).catch((e) => console.error("[proctoring] retention run failed:", e.message));
   const first = setTimeout(run, 60 * 1000);
   const every = setInterval(run, 6 * 60 * 60 * 1000);
   first.unref();
   every.unref();
 }
 
-module.exports = { RETAIN_AFTER_CLOSE_MONTHS, MAX_AGE_MONTHS, FINAL_STATUSES, purgeUserSnapshots, purgeExpiredSnapshots, startSnapshotCleanup };
+module.exports = {
+  RETAIN_AFTER_CLOSE_MONTHS, MAX_AGE_MONTHS, FINAL_STATUSES, purgeUserSnapshots, purgeExpiredSnapshots, purgeUserCvs, purgeExpiredCvs, startSnapshotCleanup,
+};

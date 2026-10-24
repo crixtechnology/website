@@ -76,6 +76,10 @@ function openingData(body) {
     if (typeof b.feeRequired !== "boolean") return { error: "feeRequired must be true or false" };
     data.feeRequired = b.feeRequired;
   }
+  if (b.audience !== undefined) {
+    if (b.audience !== "general" && b.audience !== "bca") return { error: "audience must be general or bca" };
+    data.audience = b.audience;
+  }
   if (b.order !== undefined) {
     if (!Number.isInteger(b.order) || b.order < 0 || b.order > 10000) return { error: "The display order must be a whole number." };
     data.order = b.order;
@@ -428,13 +432,15 @@ const ATTEMPT_SUMMARY = {
   id: true, status: true, startedAt: true, endsAt: true, submittedAt: true, submitReason: true,
   score: true, maxScore: true, passed: true, correctCount: true, wrongCount: true, categoryScores: true, violationCount: true,
 };
-const LIST_INCLUDE = { user: { select: USER_SUMMARY }, opening: { select: { id: true, title: true, slug: true, feeRequired: true } }, attempt: { select: ATTEMPT_SUMMARY } };
+const OPENING_SUMMARY = { id: true, title: true, slug: true, feeRequired: true, audience: true };
+const LIST_INCLUDE = { user: { select: USER_SUMMARY }, opening: { select: OPENING_SUMMARY }, attempt: { select: ATTEMPT_SUMMARY } };
 
 function shapeApplicant(a) {
   return {
     _id: a.id,
     user: a.user ? { _id: a.user.id, name: a.user.name, email: a.user.email, phone: a.user.phone } : null,
-    opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug, feeRequired: a.opening.feeRequired !== false } : null,
+    opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug, feeRequired: a.opening.feeRequired !== false, audience: a.opening.audience || "general" } : null,
+    cv: a.cvKey ? { fileName: a.cvFileName, uploadedAt: a.cvUploadedAt } : null,
     status: a.status,
     statusLabel: STATUS_LABELS[a.status] || a.status,
     paymentStatus: a.paidAt ? "paid" : a.opening && a.opening.feeRequired === false ? "free" : "pending",
@@ -583,7 +589,7 @@ router.get("/admin/job-applications/:id", requireAdmin, async (req, res, next) =
       where: { id: req.params.id },
       include: {
         user: { select: USER_SUMMARY },
-        opening: { select: { id: true, title: true, slug: true, feeRequired: true } },
+        opening: { select: OPENING_SUMMARY },
         attempt: { include: { answers: true, violations: { orderBy: { createdAt: "asc" } }, snapshots: { where: { NOT: { storageKey: { startsWith: PENDING_PREFIX } } }, orderBy: { createdAt: "asc" }, select: { id: true, flag: true, createdAt: true } } } },
       },
     });
@@ -630,6 +636,26 @@ router.get("/admin/job-applications/:id", requireAdmin, async (req, res, next) =
       payment: payment ? { _id: payment.id, amount: payment.amount / 100, receiptNumber: payment.receiptNumber, razorpay_payment_id: payment.razorpayPaymentId } : null,
       review,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------- an applicant's CV (BCA internships) ----------
+router.get("/admin/job-applications/:id/cv", requireAdmin, async (req, res, next) => {
+  try {
+    const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { cvKey: true, cvFileName: true } });
+    if (!application || !application.cvKey) return res.status(404).json({ ok: false, error: "This application has no CV." });
+    let file;
+    try {
+      file = await readSnapshot(application.cvKey);
+    } catch (readErr) {
+      console.error("[careers] CV read failed:", readErr.message);
+      return res.status(404).json({ ok: false, error: "This CV's file is no longer available." });
+    }
+    const name = (application.cvFileName || "cv.pdf").replace(/[^\w .()-]/g, "");
+    res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${name}"`, "Cache-Control": "no-store" });
+    res.send(file);
   } catch (e) {
     next(e);
   }
@@ -708,8 +734,14 @@ router.post("/admin/job-applications/:id/status", requireAdmin, async (req, res,
       data.interviewLink = interviewLink.trim();
     }
 
+    // A BCA internship has no interview round: it can be decided straight from the test.
+    let from = rule.from;
+    if (action === "select") {
+      const target = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { opening: { select: { audience: true } } } });
+      if (target && target.opening && target.opening.audience === "bca") from = ["submitted", ...from];
+    }
     // Compare-and-swap on the current status: two admins acting at once can't both win.
-    const changed = await prisma.jobApplication.updateMany({ where: { id: req.params.id, status: { in: rule.from } }, data });
+    const changed = await prisma.jobApplication.updateMany({ where: { id: req.params.id, status: { in: from } }, data });
     if (changed.count === 0) {
       const existing = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { status: true } });
       if (!existing) return res.status(404).json({ ok: false, error: "Application not found" });
@@ -730,6 +762,7 @@ router.post("/admin/job-applications/:id/status", requireAdmin, async (req, res,
         status: application.status,
         interviewAt: application.interviewAt,
         interviewLink: application.interviewLink,
+        free: !!application.opening && application.opening.feeRequired === false,
       });
     }
     res.json({ ok: true, application: shapeApplicant(application) });

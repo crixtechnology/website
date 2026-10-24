@@ -72,6 +72,7 @@ function shapeOpening(o, { admin = false } = {}) {
     status: o.status,
     order: o.order,
     feeRequired: o.feeRequired !== false,
+    audience: o.audience || "general",
     createdAt: o.createdAt,
     test: {
       durationMinutes: o.durationMinutes,
