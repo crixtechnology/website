@@ -776,7 +776,8 @@ async function sendTestSubmittedEmail({ to, name, roleTitle, reason }) {
 }
 
 // ---------- application status changed (shortlisted / interview / offer / rejection) ----------
-async function sendApplicationStatusEmail({ to, name, roleTitle, status, interviewAt, interviewLink }) {
+// `free`: the role had no registration fee, so there are no wallet credits to mention.
+async function sendApplicationStatusEmail({ to, name, roleTitle, status, interviewAt, interviewLink, free = false }) {
   if (!to) return { sent: false, reason: "No email" };
   const link = `${siteOrigin()}/dashboard?tab=applications`;
   const hi = `Hi ${name || "there"},`;
@@ -798,7 +799,9 @@ async function sendApplicationStatusEmail({ to, name, roleTitle, status, intervi
     not_shortlisted: {
       subject: `Your aptitude test result — ${roleTitle}`,
       title: "Your aptitude test result",
-      lines: [`Thank you for taking the aptitude test for ${roleTitle}. After reviewing the results, we're not able to shortlist you for this role this time.`, "This isn't the end of the road — keep building your skills, and you're welcome to apply again. Your wallet credits are still yours to use on any Crix course or internship."],
+      lines: [`Thank you for taking the aptitude test for ${roleTitle}. After reviewing the results, we're not able to shortlist you for this role this time.`, free
+        ? "This isn't the end of the road — keep building your skills, and you're welcome to apply again."
+        : "This isn't the end of the road — keep building your skills, and you're welcome to apply again. Your wallet credits are still yours to use on any Crix course or internship."],
     },
     selected: {
       subject: `Congratulations — you're selected for ${roleTitle}`,

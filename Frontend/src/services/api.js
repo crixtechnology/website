@@ -670,6 +670,32 @@ export async function getOpenings() {
   }
 }
 
+// Open roles for the unlinked BCA internships page (pages/BcaInternships.jsx).
+export async function getBcaOpenings() {
+  if (!API) return { ok: false, openings: [] };
+  try {
+    const res = await fetch(`${API}/careers/bca/openings`);
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: "Could not load openings", openings: [] };
+  }
+}
+
+// Uploads (or replaces) the CV for an application. `file` is a PDF File.
+export async function uploadApplicationCv(applicationId, file) {
+  try {
+    const res = await authFetch(`/me/job-applications/${applicationId}/cv`, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": "application/pdf", "X-File-Name": encodeURIComponent(file.name || "cv.pdf") },
+    });
+    if (res.status === 413) return { ok: false, error: "That file is too large — the CV can be up to 2 MB." };
+    return await jsonOr(res, "Could not upload your CV");
+  } catch (e) {
+    return { ok: false, error: "Could not upload your CV right now." };
+  }
+}
+
 // The logged-in student's applications: { applications, terms }.
 export async function getMyJobApplications() {
   if (!API) return { ok: false, error: "Backend not configured yet." };

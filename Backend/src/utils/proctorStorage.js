@@ -96,6 +96,28 @@ async function saveSnapshot(attemptId, buffer) {
   return LOCAL_PREFIX + `${safeSegment(attemptId)}/${name}`;
 }
 
+// Stores a candidate's CV (a PDF) for an application, in the same private
+// storage as the snapshots, and returns its key. readSnapshot / deleteSnapshot
+// read and delete it like any snapshot.
+async function saveCv(applicationId, buffer) {
+  const name = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}.pdf`;
+  const folder = `cv-${safeSegment(applicationId)}`;
+  const cfg = bucketConfig();
+  if (cfg) {
+    const { PutObjectCommand } = require("@aws-sdk/client-s3");
+    const relative = `cvs/${safeSegment(applicationId)}/${name}`;
+    await clientFor(cfg).send(
+      new PutObjectCommand({ Bucket: cfg.bucket, Key: relative, Body: buffer, ContentType: "application/pdf" }),
+      withTimeout()
+    );
+    return S3_PREFIX + relative;
+  }
+  const file = path.join(localDir(), folder, name);
+  await fs.promises.mkdir(path.dirname(file), { recursive: true });
+  await fs.promises.writeFile(file, buffer);
+  return LOCAL_PREFIX + `${folder}/${name}`;
+}
+
 // Reads a stored snapshot back as a Buffer (throws if it is gone).
 async function readSnapshot(storageKey) {
   const key = String(storageKey || "");
@@ -139,4 +161,4 @@ async function deleteSnapshot(storageKey) {
   throw new Error("Unknown snapshot location");
 }
 
-module.exports = { PENDING_PREFIX, storageStatus, saveSnapshot, readSnapshot, deleteSnapshot };
+module.exports = { PENDING_PREFIX, storageStatus, saveSnapshot, saveCv, readSnapshot, deleteSnapshot };

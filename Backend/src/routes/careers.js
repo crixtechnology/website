@@ -20,12 +20,18 @@ const { rejectWithoutTerms } = require("../utils/terms");
 const { rejectIfProfileIncomplete } = require("../utils/accounts");
 const { lockUser } = require("../utils/wallet");
 const { getCareerSettings } = require("../utils/careerSettings");
+const { saveCv, deleteSnapshot } = require("../utils/proctorStorage");
 const { STATUS_LABELS, shapeOpening, grantTestForPayment, finalizeExpiredAttempts } = require("../utils/careers");
 
 const router = express.Router();
 
 // An application that ended without an offer no longer blocks applying again.
 const CLOSED_STATUSES = ["not_shortlisted", "rejected"];
+// A CV may be up to this size, and only before the test is taken.
+const MAX_CV_BYTES = 2 * 1024 * 1024;
+const CV_EDITABLE = ["payment_pending", "test_pending"];
+// A "bca" role's test only unlocks once a CV is on the application.
+const needsCv = (opening) => !!opening && opening.audience === "bca";
 // Statuses at which the candidate is shown their interview slot.
 const INTERVIEW_VISIBLE = ["interview_scheduled", "selected"];
 
@@ -48,7 +54,8 @@ function shapeApplication(a) {
     _id: a.id,
     status: a.status,
     statusLabel: STATUS_LABELS[a.status] || a.status,
-    opening: a.opening ? { _id: a.opening.id, slug: a.opening.slug, title: a.opening.title, status: a.opening.status, feeRequired: a.opening.feeRequired !== false, test: shapeOpening(a.opening).test } : undefined,
+    opening: a.opening ? { _id: a.opening.id, slug: a.opening.slug, title: a.opening.title, status: a.opening.status, feeRequired: a.opening.feeRequired !== false, audience: a.opening.audience || "general", test: shapeOpening(a.opening).test } : undefined,
+    cv: a.cvKey ? { fileName: a.cvFileName, uploadedAt: a.cvUploadedAt } : null,
     createdAt: a.createdAt,
     paidAt: a.paidAt,
     paidPaymentId: a.paymentId,
@@ -83,13 +90,24 @@ function respondToRazorpayError(e, res) {
 }
 
 // ---------- public: open roles (the /careers page) ----------
+// BCA roles are left out: they are listed only on the unlinked /bca-internships page.
 router.get("/careers/openings", async (req, res, next) => {
   try {
     const [openings, settings] = await Promise.all([
-      prisma.jobOpening.findMany({ where: { status: "open" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
+      prisma.jobOpening.findMany({ where: { status: "open", audience: "general" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
       getCareerSettings(),
     ]);
     res.json({ ok: true, openings: openings.map((o) => shapeOpening(o)), terms: publicTerms(settings) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------- public: open BCA roles (the /bca-internships page) ----------
+router.get("/careers/bca/openings", async (req, res, next) => {
+  try {
+    const openings = await prisma.jobOpening.findMany({ where: { status: "open", audience: "bca" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] });
+    res.json({ ok: true, openings: openings.map((o) => shapeOpening(o)) });
   } catch (e) {
     next(e);
   }
@@ -174,6 +192,40 @@ router.post("/me/job-applications", publicWriteLimiter, requireAuth, async (req,
   }
 });
 
+// ---------- candidate: upload a CV for an application ----------
+// The request body IS the PDF (Content-Type: application/pdf); the file name
+// comes in X-File-Name. Replaces any earlier CV, until the test is taken.
+router.put(
+  "/me/job-applications/:id/cv",
+  publicWriteLimiter,
+  requireAuth,
+  express.raw({ type: "application/pdf", limit: MAX_CV_BYTES }),
+  async (req, res, next) => {
+    try {
+      const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true, status: true, cvKey: true } });
+      if (!application || application.userId !== req.user.sub) return res.status(404).json({ ok: false, error: "Application not found" });
+      if (!CV_EDITABLE.includes(application.status)) return res.status(400).json({ ok: false, error: "Your CV can't be changed after the test has been taken." });
+      const body = req.body;
+      // Every PDF starts with "%PDF-".
+      const isPdf = Buffer.isBuffer(body) && body.length > 5 && body.subarray(0, 5).toString("latin1") === "%PDF-";
+      if (!isPdf) return res.status(400).json({ ok: false, error: "Upload your CV as a PDF file (up to 2 MB)." });
+
+      let fileName = "";
+      try { fileName = decodeURIComponent(String(req.get("x-file-name") || "")); } catch (err) { fileName = ""; }
+      fileName = fileName.replace(/[^\w .()-]/g, "").trim().slice(0, 150) || "cv.pdf";
+      if (!/\.pdf$/i.test(fileName)) fileName += ".pdf";
+
+      const cvKey = await saveCv(application.id, body);
+      await prisma.jobApplication.update({ where: { id: application.id }, data: { cvKey, cvFileName: fileName, cvUploadedAt: new Date() } });
+      // The replaced file goes after the new one is safely recorded.
+      if (application.cvKey) await deleteSnapshot(application.cvKey).catch((err) => console.error("[careers] old CV not deleted:", err.message));
+      res.json({ ok: true, cv: { fileName } });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 // ---------- candidate: start paying the test fee ----------
 // The amount is the admin's test fee, read here — never anything the browser sent.
 router.post("/me/job-applications/:id/create-order", publicWriteLimiter, requireAuth, async (req, res, next) => {
@@ -203,6 +255,9 @@ router.post("/me/job-applications/:id/create-order", publicWriteLimiter, require
     }
     if (application.opening.feeRequired === false) {
       return res.status(400).json({ ok: false, error: "This role has no registration fee — unlock the test for free instead." });
+    }
+    if (needsCv(application.opening) && !application.cvKey) {
+      return res.status(400).json({ ok: false, code: "CV_REQUIRED", error: "Upload your CV (PDF) to apply for this role." });
     }
 
     await prisma.jobApplication.update({ where: { id: application.id }, data: { adultConfirmedAt: new Date() } });
@@ -260,6 +315,9 @@ router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireA
     }
     if (application.opening.status !== "open") {
       return res.status(400).json({ ok: false, error: "This role is closed for applications right now." });
+    }
+    if (needsCv(application.opening) && !application.cvKey) {
+      return res.status(400).json({ ok: false, code: "CV_REQUIRED", error: "Upload your CV (PDF) to apply for this role." });
     }
     // Only an application still locked moves; a second click changes nothing.
     await prisma.jobApplication.updateMany({

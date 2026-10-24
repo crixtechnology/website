@@ -13,7 +13,7 @@ const COUNT_FIELDS = [["quantitative", "Quantitative"], ["logical", "Logical rea
 const EMPTY_FORM = {
   title: "", summary: "", techCategory: "web", skills: "", responsibilities: "", eligibility: "",
   stipend: "Up to ₹6,000/month (performance based)", experience: "0–1 year (freshers welcome)", duration: "3 months", mode: "Remote / Ahmedabad",
-  order: "", feeRequired: "yes", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
+  order: "", feeRequired: "yes", audience: "general", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
   marksPerQuestion: "1", negativeMarks: "0.25", cutoffScore: "0",
 };
 
@@ -25,7 +25,7 @@ function openingToForm(o) {
     responsibilities: (o.responsibilities || []).join("\n"),
     eligibility: (o.eligibility || []).join("\n"),
     stipend: o.stipend || "", experience: o.experience || "", duration: o.duration || "", mode: o.mode || "",
-    order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", durationMinutes: String(o.test.durationMinutes),
+    order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", audience: o.audience || "general", durationMinutes: String(o.test.durationMinutes),
     quantitative: String(c.quantitative ?? 0), logical: String(c.logical ?? 0), verbal: String(c.verbal ?? 0), technical: String(c.technical ?? 0),
     marksPerQuestion: String(o.test.marksPerQuestion), negativeMarks: String(o.test.negativeMarks), cutoffScore: String(o.test.cutoffScore ?? 0),
   };
@@ -76,6 +76,7 @@ export default function AdminJobOpenings() {
       stipend: form.stipend.trim(), experience: form.experience.trim(), duration: form.duration.trim(), mode: form.mode.trim(),
       ...(form.order.trim() ? { order: Number(form.order) } : {}),
       feeRequired: form.feeRequired === "yes",
+      audience: form.audience,
       durationMinutes: Number(form.durationMinutes),
       questionCounts: Object.fromEntries(COUNT_FIELDS.map(([k]) => [k, Number(form[k])])),
       marksPerQuestion: Number(form.marksPerQuestion), negativeMarks: Number(form.negativeMarks), cutoffScore: Number(form.cutoffScore),
@@ -152,6 +153,11 @@ export default function AdminJobOpenings() {
 
           <h3 style={{ margin: "12px 0 16px" }}>Aptitude test for this role</h3>
           <div className="admin-form-grid">
+            <div className="field"><label htmlFor="jo-audience">Listed on</label>
+              <select id="jo-audience" value={form.audience} onChange={set("audience")}>
+                <option value="general">Careers page (/careers)</option>
+                <option value="bca">BCA internships only (/bca-internships, CV required)</option>
+              </select></div>
             <div className="field"><label htmlFor="jo-fee">Registration fee</label>
               <select id="jo-fee" value={form.feeRequired} onChange={set("feeRequired")}>
                 <option value="yes">Required (amount from Careers settings)</option>
@@ -194,7 +200,7 @@ export default function AdminJobOpenings() {
                   <div className="admin-row-main">
                     <b>{o.title}</b>
                     <span className="admin-row-meta">
-                      {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
+                      {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.audience === "bca" ? "BCA page · " : ""}{o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
                       {" "}+{o.test.marksPerQuestion} / −{o.test.negativeMarks} · cut-off {o.test.cutoffScore}
                     </span>
                     {short.length > 0 && (

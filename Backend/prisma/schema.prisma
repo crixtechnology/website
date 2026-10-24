@@ -595,6 +595,9 @@ model JobOpening {
   order            Int           @default(0)
   // false = a free role: the aptitude test unlocks without the registration fee.
   feeRequired      Boolean       @default(true)
+  // Who the role is listed for: "general" (the /careers page and the dashboard)
+  // or "bca" (only the unlinked /bca-internships page, where a CV is required).
+  audience         String        @default("general") @db.VarChar(16)
   // --- this role's test ---
   durationMinutes  Int           @default(45)
   // { quantitative, logical, verbal, technical }: how many questions of each.
@@ -661,6 +664,12 @@ model JobApplication {
   // (webcam monitoring) is for adults only. Set when paying the fee or, for an
   // older application, when starting the test.
   adultConfirmedAt DateTime?
+  // The candidate's CV (a PDF), required for a "bca" role before its test
+  // unlocks. Stored like the webcam photos (utils/proctorStorage.js); only the
+  // key is kept here, and the file follows the same retention rules.
+  cvKey         String               @default("") @db.VarChar(255)
+  cvFileName    String               @default("") @db.VarChar(190)
+  cvUploadedAt  DateTime?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 

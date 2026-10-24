@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getAdminToken, adminGetJobApplications, adminGetJobApplication, adminSetJobApplicationStatus,
-  adminExportJobApplications, adminGetJobOpenings, adminGetTestSnapshot,
+  adminExportJobApplications, adminGetJobOpenings, adminGetTestSnapshot, adminGetApplicationCv,
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
@@ -89,7 +89,20 @@ function ApplicantReview({ id, onBack, onChanged }) {
   const a = data.application;
   const t = a.attempt;
   const review = data.review;
-  const can = (action) => CAN[action].includes(a.status);
+  // A BCA internship has no interview round: it can be selected straight from the test.
+  const can = (action) => CAN[action].includes(a.status) || (action === "select" && a.status === "submitted" && a.opening?.audience === "bca");
+
+  const openCv = async () => {
+    const res = await adminGetApplicationCv(a._id);
+    if (!res.ok) { setMsg({ kind: "error", text: res.error || "Could not open the CV." }); return; }
+    // Downloaded rather than opened in a tab: a tab opened after the fetch would be popup-blocked.
+    const url = URL.createObjectURL(res.blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = a.cv.fileName || "cv.pdf";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const act = async (action, label, extra = {}) => {
     if (busy) return;
@@ -124,6 +137,11 @@ function ApplicantReview({ id, onBack, onChanged }) {
             ? `paid ${data.payment ? money(data.payment.amount) : ""} on ${ist(a.paidAt)}${data.payment?.receiptNumber ? ` (receipt ${data.payment.receiptNumber})` : ""}`
             : a.opening?.feeRequired === false ? "free role — no fee" : "test fee not paid"}
         </p>
+        {a.cv ? (
+          <p className="form-note" style={{ margin: "4px 0 0" }}>
+            CV: <button type="button" className="link-btn" onClick={openCv}>{a.cv.fileName || "cv.pdf"}</button> · uploaded {ist(a.cv.uploadedAt)}
+          </p>
+        ) : a.opening?.audience === "bca" ? <p className="form-note" style={{ margin: "4px 0 0" }}>No CV uploaded yet.</p> : null}
 
         <h3 style={{ margin: "22px 0 12px" }}>Decision</h3>
         <div className="field"><label htmlFor="ap-note">Private note (only admins see it)</label>
