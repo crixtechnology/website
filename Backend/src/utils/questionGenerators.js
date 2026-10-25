@@ -549,7 +549,79 @@ const datascience = [
   },
 ];
 
-const GENERATORS = { quantitative, logical, verbal, web, fullstack, datascience };
+// ====================== python ======================
+const WORDS_BY_LENGTH = {
+  3: ["cat", "sun", "pen"], 4: ["tree", "book", "lamp"], 5: ["apple", "river", "chair"],
+  6: ["banana", "garden", "pencil"], 7: ["library", "picture", "teacher"],
+};
+const SENTENCE_WORDS = ["learn", "python", "every", "day", "with", "small", "steps", "and", "real", "projects"];
+const byName = (list, ...names) => list.filter((g) => names.includes(g.name));
+
+const python = [
+  ...byName(datascience, "listSlice", "comprehension"),
+  function floorDivMod() {
+    const b = rand(3, 9);
+    let a = rand(20, 99);
+    if (a % b === 0) a += 1;
+    const q = Math.floor(a / b), r = a % b;
+    return ask(`What does this Python code print?\nprint(${a} // ${b}, ${a} % ${b})`, `${q} ${r}`, [`${round2(a / b)} ${r}`, `${q + 1} ${r}`, `${r} ${q}`, `${q} ${b - r}`, `${q - 1} ${r}`]);
+  },
+  function stringRepeatLength() {
+    const word = pick(["ab", "cat", "code", "py", "data"]), n = rand(2, 5);
+    return askNumber(`What does this Python code print?\ns = "${word}"\nprint(len(s * ${n}))`, word.length * n, [word.length + n, n, word.length * (n + 1)]);
+  },
+  function rangeSum() {
+    const start = rand(1, 5), stop = rand(10, 20), step = rand(2, 4);
+    const values = [];
+    for (let i = start; i < stop; i += step) values.push(i);
+    const sum = values.reduce((a, b) => a + b, 0);
+    return askNumber(`What does this Python code print?\nprint(sum(range(${start}, ${stop}, ${step})))`, sum, [sum + stop, sum - start, values.length]);
+  },
+  function halvingLoop() {
+    const start = rand(10, 100);
+    let n = start, count = 0;
+    while (n > 1) { n = Math.floor(n / 2); count += 1; }
+    return askNumber(`What does this Python code print?\nn = ${start}\ncount = 0\nwhile n > 1:\n    n = n // 2\n    count += 1\nprint(count)`, count, [count + 1, count - 1, Math.floor(start / 2)]);
+  },
+  function dictUpdate() {
+    const x = rand(1, 9), y = rand(1, 9), z = rand(1, 9), k = rand(1, 9);
+    const total = x + k + y + z;
+    return askNumber(`What does this Python code print?\nd = {"a": ${x}, "b": ${y}}\nd["a"] += ${k}\nd["c"] = ${z}\nprint(sum(d.values()))`, total, [x + y + z, x + y + k, total + k]);
+  },
+  function appendVersusExtend() {
+    const n = rand(2, 5), m = rand(2, 4);
+    const start = Array.from({ length: n }, () => rand(1, 9)), more = Array.from({ length: m }, () => rand(1, 9));
+    return askNumber(`What does this Python code print?\nx = ${pyList(start)}\nx.append([${rand(1, 9)}, ${rand(1, 9)}])\nx.extend(${pyList(more)})\nprint(len(x))`, n + 1 + m, [n + 2 + m, n + m, n + 2]);
+  },
+  function splitWordCount() {
+    const words = sample(SENTENCE_WORDS, rand(3, 7));
+    const sentence = words.join(" ");
+    return askNumber(`What does this Python code print?\nprint(len("${sentence}".split()))`, words.length, [sentence.length, words.length - 1, words.length + 1]);
+  },
+  function setLength() {
+    const values = Array.from({ length: 7 }, () => rand(1, 5));
+    const distinct = new Set(values).size;
+    return askNumber(`What does this Python code print?\nprint(len(set(${pyList(values)})))`, distinct, [values.length, distinct - 1, distinct + 1]);
+  },
+  function longestWord() {
+    const words = shuffled(sample([3, 4, 5, 6, 7], 4).map((len) => pick(WORDS_BY_LENGTH[len])));
+    const longest = words.reduce((a, b) => (b.length > a.length ? b : a));
+    return ask(`What does this Python code print?\nwords = [${words.map((w) => `"${w}"`).join(", ")}]\nprint(max(words, key=len))`, longest, words.filter((w) => w !== longest));
+  },
+];
+
+// The newer role banks reuse the closest existing patterns; a foundation bank
+// uses the same patterns as its standard bank (they are school-level sums,
+// series and word questions).
+const GENERATORS = {
+  quantitative, logical, verbal,
+  quantitative_foundation: quantitative, logical_foundation: logical, verbal_foundation: verbal,
+  web, fullstack, datascience,
+  frontend: web,
+  python,
+  webfundamentals: [...web, ...byName(fullstack, "statusCode", "routeParams", "paginationOffset", "totalPages", "rateLimited")],
+  aiml: datascience.filter((g) => !["sqlAverage", "groupTotal"].includes(g.name)),
+};
 
 // Writes up to `count` questions for a category, each from a different pattern
 // so one paper never asks the same kind of question twice. A pattern that fails

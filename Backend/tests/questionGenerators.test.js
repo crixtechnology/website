@@ -158,4 +158,50 @@ describe("question generators", () => {
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
     expect(amount(answer)).toBeCloseTo(values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length, 9);
   }));
+
+  // ---- python patterns: the printed answer worked out again from the code shown ----
+  const code = (text) => text.slice(text.indexOf("\n") + 1);
+
+  it("python: floor division and remainder", () => each("floorDivMod", (text, answer) => {
+    const [a, b] = numbers(code(text));
+    expect(answer).toBe(`${Math.floor(a / b)} ${a % b}`);
+  }));
+
+  it("python: length of a repeated string", () => each("stringRepeatLength", (text, answer) => {
+    const word = /s = "(\w+)"/.exec(text)[1], n = Number(/s \* (\d+)/.exec(text)[1]);
+    expect(amount(answer)).toBe(word.length * n);
+  }));
+
+  it("python: sum of a range", () => each("rangeSum", (text, answer) => {
+    const [start, stop, step] = numbers(code(text));
+    let sum = 0;
+    for (let i = start; i < stop; i += step) sum += i;
+    expect(amount(answer)).toBe(sum);
+  }));
+
+  it("python: halving loop", () => each("halvingLoop", (text, answer) => {
+    let n = numbers(code(text))[0], count = 0;
+    while (n > 1) { n = Math.floor(n / 2); count += 1; }
+    expect(amount(answer)).toBe(count);
+  }));
+
+  it("python: dictionary update", () => each("dictUpdate", (text, answer) => {
+    const [x, y, k, z] = numbers(code(text));
+    expect(amount(answer)).toBe(x + y + k + z);
+  }));
+
+  it("python: append versus extend", () => each("appendVersusExtend", (text, answer) => {
+    const lists = [...text.matchAll(/\[([\d, ]+)\]/g)].map((m) => m[1].split(",").length);
+    expect(amount(answer)).toBe(lists[0] + 1 + lists[2]);
+  }));
+
+  it("python: split, set and max(key=len)", () => {
+    each("splitWordCount", (text, answer) => expect(amount(answer)).toBe(/"([a-z ]+)"\.split/.exec(text)[1].split(" ").length));
+    each("setLength", (text, answer) => expect(amount(answer)).toBe(new Set(numbers(/set\((.*)\)\)/.exec(text)[1])).size));
+    each("longestWord", (text, answer) => {
+      const words = [...text.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+      expect(words).toHaveLength(4);
+      for (const w of words) if (w !== answer) expect(w.length).toBeLessThan(answer.length);
+    });
+  });
 });

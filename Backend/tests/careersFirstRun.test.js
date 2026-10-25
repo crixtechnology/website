@@ -11,21 +11,27 @@ jest.mock("../src/utils/proctorStorage", () => ({
 }));
 const storage = require("../src/utils/proctorStorage");
 
+const bank = require("../src/scripts/careerQuestions");
+const roleBanks = require("../src/scripts/careerQuestionsRoles");
+const count = (b) => Object.values(b).reduce((n, rows) => n + rows.length, 0);
+
 let prisma;
 let seedCareersOnce;
+let addRoleBanksOnce;
 let FLAG;
+let ROLE_BANKS_FLAG;
 
 beforeAll(async () => {
   await setupTestDb();
   ({ prisma } = require("../src/db"));
-  ({ seedCareersOnce, FLAG } = require("../src/utils/careersFirstRun"));
+  ({ seedCareersOnce, addRoleBanksOnce, FLAG, ROLE_BANKS_FLAG } = require("../src/utils/careersFirstRun"));
 }, 180000);
 afterAll(async () => { await teardownTestDb(); });
 
 const wipe = async () => {
   await prisma.testQuestion.deleteMany({});
   await prisma.jobOpening.deleteMany({});
-  await prisma.setting.deleteMany({ where: { key: FLAG } });
+  await prisma.setting.deleteMany({ where: { key: { in: [FLAG, ROLE_BANKS_FLAG] } } });
 };
 
 describe("first-run careers setup", () => {
@@ -35,7 +41,7 @@ describe("first-run careers setup", () => {
     const first = await seedCareersOnce();
     expect(first).toMatchObject({ ran: true, openingStatus: "open" });
     expect(await prisma.jobOpening.count({ where: { status: "open" } })).toBe(3);
-    expect(await prisma.testQuestion.count()).toBe(300);
+    expect(await prisma.testQuestion.count()).toBe(count(bank));
 
     // Deleted by the admin afterwards: never comes back.
     await prisma.jobOpening.deleteMany({ where: { slug: "data-science-intern" } });
@@ -56,4 +62,39 @@ describe("first-run careers setup", () => {
     expect(await prisma.testQuestion.count()).toBe(0);
     expect(await prisma.setting.findUnique({ where: { key: FLAG } })).not.toBeNull();
   });
+});
+
+describe("free-internship role banks, added once on startup", () => {
+  beforeEach(wipe);
+
+  // A live database as it was before: the original six banks, 50 questions each.
+  const seedOriginalBank = async () => {
+    const original = { ...bank, datascience: bank.datascience.slice(0, 50) };
+    for (const c of Object.keys(roleBanks)) if (c !== "datascience") delete original[c];
+    const data = Object.entries(original).flatMap(([category, rows]) => rows.map(([text, options, correctIndex]) => ({ category, text, options, correctIndex })));
+    await prisma.testQuestion.createMany({ data });
+    return data.length;
+  };
+
+  it("adds the new banks to a database that already has its starter bank, once", async () => {
+    expect(await seedOriginalBank()).toBe(300);
+    expect(await addRoleBanksOnce()).toEqual({ ran: true, addedQuestions: count(roleBanks) });
+    expect(await prisma.testQuestion.count()).toBe(count(bank));
+    for (const category of ["frontend", "python", "webfundamentals", "aiml", "quantitative_foundation", "logical_foundation", "verbal_foundation"]) {
+      expect(await prisma.testQuestion.count({ where: { category } })).toBe(roleBanks[category].length);
+    }
+    expect(await prisma.testQuestion.count({ where: { category: "datascience" } })).toBe(50 + roleBanks.datascience.length);
+
+    // A question the admin deletes afterwards stays deleted.
+    await prisma.testQuestion.deleteMany({ where: { category: "python" } });
+    expect(await addRoleBanksOnce()).toMatchObject({ ran: false, reason: "already done" });
+    expect(await prisma.testQuestion.count({ where: { category: "python" } })).toBe(0);
+  }, 60000);
+
+  it("adds nothing after a first-run seed, which already has them", async () => {
+    await seedCareersOnce();
+    expect(await addRoleBanksOnce()).toEqual({ ran: true, addedQuestions: 0 });
+    expect(await prisma.testQuestion.count()).toBe(count(bank));
+    expect(await prisma.setting.findUnique({ where: { key: ROLE_BANKS_FLAG } })).not.toBeNull();
+  }, 60000);
 });

@@ -1150,12 +1150,16 @@ describe("applicants (admin)", () => {
     const sheet = wb.worksheets[0];
     const header = sheet.getRow(1).values.slice(1);
     expect(header).toEqual(expect.arrayContaining(["Name", "Email", "Role", "Status", "Payment", "Score", "Violations"]));
+    // One column per section, whichever bank the role drew from.
+    expect(header).toEqual(expect.arrayContaining(["Quantitative", "Logical Reasoning", "Verbal Ability", "Technical", "Technical questions from"]));
+    expect(header).not.toContain("Quantitative (foundation)");
     const emails = [];
     sheet.eachRow((row, n) => { if (n > 1) emails.push(row.getCell(header.indexOf("Email") + 1).text); });
     expect(emails).toContain(s.email);
     const mineRow = sheet.getRow(emails.indexOf(s.email) + 2);
     expect(mineRow.getCell(header.indexOf("Status") + 1).text).toBe("Selected");
     expect(mineRow.getCell(header.indexOf("Score") + 1).value).toBe(0.75);
+    expect(mineRow.getCell(header.indexOf("Technical questions from") + 1).text).toBe("Web Development");
   });
 
   it("lists wallet balances", async () => {

@@ -13,7 +13,7 @@ const { addNotification, sendCareerEmail } = require("../utils/notifications");
 const { readSnapshot, PENDING_PREFIX } = require("../utils/proctorStorage");
 const { lapsedCredit } = require("../utils/wallet");
 const {
-  CATEGORIES, TECH_CATEGORIES, MAX_PER_CATEGORY, STATUS_LABELS, isCategory, normalizeCounts, shapeOpening, finalizeExpiredAttempts,
+  CATEGORIES, GENERAL_CATEGORIES, TECH_CATEGORIES, MAX_PER_CATEGORY, STATUS_LABELS, isCategory, normalizeCounts, shapeOpening, finalizeExpiredAttempts,
 } = require("../utils/careers");
 
 const router = express.Router();
@@ -342,7 +342,7 @@ function categoryFromText(value) {
   for (const [key, label] of Object.entries(CATEGORIES)) {
     if (norm === key || norm === label.toLowerCase().replace(/[^a-z]/g, "")) return key;
   }
-  const aliases = { quant: "quantitative", aptitude: "quantitative", reasoning: "logical", english: "verbal", verbalability: "verbal", webdev: "web", fullstackdevelopment: "fullstack", ds: "datascience" };
+  const aliases = { quant: "quantitative", aptitude: "quantitative", reasoning: "logical", english: "verbal", verbalability: "verbal", webdev: "web", fullstackdevelopment: "fullstack", ds: "datascience", react: "frontend", py: "python", ai: "aiml", ml: "aiml", machinelearning: "aiml" };
   return aliases[norm] || null;
 }
 
@@ -432,7 +432,7 @@ const ATTEMPT_SUMMARY = {
   id: true, status: true, startedAt: true, endsAt: true, submittedAt: true, submitReason: true,
   score: true, maxScore: true, passed: true, correctCount: true, wrongCount: true, categoryScores: true, violationCount: true,
 };
-const OPENING_SUMMARY = { id: true, title: true, slug: true, feeRequired: true, audience: true };
+const OPENING_SUMMARY = { id: true, title: true, slug: true, feeRequired: true, audience: true, techCategory: true };
 const LIST_INCLUDE = { user: { select: USER_SUMMARY }, opening: { select: OPENING_SUMMARY }, attempt: { select: ATTEMPT_SUMMARY } };
 
 function shapeApplicant(a) {
@@ -525,7 +525,10 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "Crix Technology";
     const sheet = workbook.addWorksheet("Applicants");
-    const categoryKeys = Object.keys(CATEGORIES);
+    // One column per section: a free role's foundation sections share the
+    // general columns, and whichever technical bank a role uses goes under Technical.
+    const SECTIONS = [...GENERAL_CATEGORIES.map((c) => [c, CATEGORIES[c]]), ["technical", "Technical"]];
+    const sectionOf = (category) => (TECH_CATEGORIES.includes(category) ? "technical" : category.replace(/_foundation$/, ""));
     sheet.columns = [
       { header: "Name", key: "name", width: 24 },
       { header: "Email", key: "email", width: 30 },
@@ -544,7 +547,8 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
       { header: "Cleared cut-off", key: "passed", width: 14 },
       { header: "Correct", key: "correct", width: 9 },
       { header: "Wrong", key: "wrong", width: 9 },
-      ...categoryKeys.map((c) => ({ header: CATEGORIES[c], key: `cat_${c}`, width: 16 })),
+      ...SECTIONS.map(([c, label]) => ({ header: label, key: `cat_${c}`, width: 16 })),
+      { header: "Technical questions from", key: "techBank", width: 26 },
       { header: "Violations", key: "violations", width: 11 },
       { header: "Submitted at (IST)", key: "submittedAt", width: 22 },
       { header: "How it ended", key: "ended", width: 16 },
@@ -558,7 +562,8 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
     const safe = (v) => (typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
     for (const a of applications) {
       const t = a.attempt;
-      const cats = (t && t.categoryScores) || {};
+      const cats = {};
+      for (const [category, c] of Object.entries((t && t.categoryScores) || {})) cats[sectionOf(category)] = c;
       // The copy taken when they applied, else the profile as it is now.
       const edu = a.education || a.user || {};
       sheet.addRow({
@@ -579,7 +584,8 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
         passed: t && t.passed !== null ? (t.passed ? "Yes" : "No") : "",
         correct: t && t.correctCount !== null ? t.correctCount : "",
         wrong: t && t.wrongCount !== null ? t.wrongCount : "",
-        ...Object.fromEntries(categoryKeys.map((c) => [`cat_${c}`, cats[c] ? `${cats[c].score} / ${cats[c].max}` : ""])),
+        ...Object.fromEntries(SECTIONS.map(([c]) => [`cat_${c}`, cats[c] ? `${cats[c].score} / ${cats[c].max}` : ""])),
+        techBank: a.opening ? CATEGORIES[a.opening.techCategory] || "" : "",
         violations: t ? t.violationCount : "",
         submittedAt: t ? ist(t.submittedAt) : "",
         ended: t && t.status === "submitted" ? ENDED[t.submitReason] || "" : "",

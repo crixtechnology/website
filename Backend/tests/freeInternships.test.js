@@ -108,6 +108,42 @@ describe("Free internships", () => {
     expect(res.status).toBe(400);
   });
 
+  it("gives free roles the foundation general sections and their own technical bank", async () => {
+    const { buildPaper } = require("../src/utils/careers");
+    const counts = { quantitative: 2, logical: 2, verbal: 2, technical: 2 };
+    const sections = (paper) => [...new Set(paper.map((q) => q.category))].sort();
+
+    // No foundation bank yet: the standard general banks are used instead.
+    const python = await opening({ techCategory: "python", questionCounts: counts });
+    expect(python.techCategory).toBe("python");
+    const rows = [];
+    for (const category of ["quantitative_foundation", "logical_foundation", "verbal_foundation", "python"]) {
+      for (let n = 1; n <= 3; n++) rows.push({ category, text: `${category} ${n}`, options: ["right", "wrong"], correctIndex: 0 });
+    }
+    const fallback = await buildPaper({ ...python, audience: "free", questionCounts: counts }, { generatedQuestionsPercent: 0 });
+    expect(sections(fallback)).toEqual(["logical", "quantitative", "verbal"]);
+
+    await prisma.testQuestion.createMany({ data: rows });
+    try {
+      const free = await buildPaper({ ...python, audience: "free", questionCounts: counts }, { generatedQuestionsPercent: 0 });
+      expect(sections(free)).toEqual(["logical_foundation", "python", "quantitative_foundation", "verbal_foundation"]);
+      expect(free).toHaveLength(8);
+      const general = await buildPaper({ ...python, audience: "general", questionCounts: counts }, { generatedQuestionsPercent: 0 });
+      expect(sections(general)).toEqual(["logical", "python", "quantitative", "verbal"]);
+      // Generated questions exist for the new banks too.
+      const mixed = await buildPaper({ ...python, audience: "free", questionCounts: counts }, { generatedQuestionsPercent: 100 });
+      expect(mixed.filter((q) => q.generated && q.category === "python")).toHaveLength(2);
+    } finally {
+      await prisma.testQuestion.deleteMany({ where: { category: { in: ["quantitative_foundation", "logical_foundation", "verbal_foundation", "python"] } } });
+    }
+  });
+
+  it("accepts every new technical question set for a role", async () => {
+    for (const techCategory of ["frontend", "python", "webfundamentals", "aiml", "datascience"]) {
+      expect((await opening({ techCategory })).techCategory).toBe(techCategory);
+    }
+  });
+
   it("needs an account, then a PDF CV, before the free test unlocks", async () => {
     const o = await opening();
     expect((await request(app).post("/api/me/job-applications").send({ opening: o.slug })).status).toBe(401);

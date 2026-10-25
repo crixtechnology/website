@@ -9,7 +9,11 @@ import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 
 const CATEGORIES = [
   ["quantitative", "Quantitative"], ["logical", "Logical Reasoning"], ["verbal", "Verbal Ability"],
+  ["quantitative_foundation", "Quantitative (foundation)"], ["logical_foundation", "Logical Reasoning (foundation)"],
+  ["verbal_foundation", "Verbal Ability (foundation)"],
   ["web", "Web Development"], ["fullstack", "Full Stack Development"], ["datascience", "Data Science"],
+  ["frontend", "Frontend (React & JavaScript)"], ["python", "Python Programming"],
+  ["webfundamentals", "Web Fundamentals (HTML, CSS, JS, HTTP)"], ["aiml", "AI / Machine Learning"],
 ];
 const EMPTY_FORM = { category: "quantitative", text: "", options: ["", "", "", ""], correctIndex: 0 };
 const MAX_OPTIONS = 6;
@@ -177,7 +181,8 @@ export default function AdminTestQuestions() {
           <h3 style={{ margin: "0 0 10px" }}>Bulk upload from Excel or CSV</h3>
           <p className="form-note" style={{ margin: "0 0 14px" }}>
             First row: <b>category, question, option1, option2, option3, option4, correct</b> (up to option6). Category can be
-            quantitative, logical, verbal, web, fullstack or datascience. Correct is the option's number (1–6), its letter (A–F), or its exact text.
+            quantitative, logical, verbal (or quantitative_foundation, logical_foundation, verbal_foundation — used by
+            free-internship roles), web, fullstack, datascience, frontend, python, webfundamentals or aiml. Correct is the option's number (1–6), its letter (A–F), or its exact text.
           </p>
           <div className="admin-actions">
             <label className="btn btn-solid" style={{ cursor: upload.busy ? "wait" : "pointer" }}>

@@ -6,7 +6,7 @@ const { connectDB } = require("./db");
 const { checkSecretsOrExit } = require("./utils/startupChecks");
 const { startSnapshotCleanup } = require("./utils/proctorRetention");
 const { storageStatus } = require("./utils/proctorStorage");
-const { seedCareersOnce } = require("./utils/careersFirstRun");
+const { careersStartup } = require("./utils/careersFirstRun");
 const { switchServicesOnce } = require("./utils/servicesSwitch");
 const { startBotDigest } = require("./utils/botDigest");
 
@@ -60,8 +60,9 @@ connectWithRetry().then((connected) => {
   startSnapshotCleanup();
   // The weekly email of questions the help agent couldn't answer (utils/botDigest.js).
   startBotDigest();
-  // The starter job roles and question bank, the first time only (utils/careersFirstRun.js).
-  if (connected) seedCareersOnce().catch((e) => console.error("[careers] first-run setup failed (will retry on next start):", e.message));
+  // The starter job roles and question bank, the first time only, then the
+  // free-internship role banks, once (utils/careersFirstRun.js).
+  if (connected) careersStartup().catch((e) => console.error("[careers] first-run setup failed (will retry on next start):", e.message));
   // The switch to the new IT services list, once (utils/servicesSwitch.js).
   if (connected) switchServicesOnce().catch((e) => console.error("[services] switch to the new list failed (will retry on next start):", e.message));
 });

@@ -129,7 +129,8 @@ function FreeOpeningModal({ opening, fee, onClose, onApply }) {
         <p className="form-note" style={{ marginTop: 0 }}>
           {test.questions ? `${test.questions} multiple-choice questions` : "A multiple-choice test"}
           {test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}
-          {test.negativeMarks ? `, with ${test.negativeMarks} taken off for each wrong answer` : ""}. It unlocks once your CV is uploaded
+          {test.negativeMarks ? `, with ${test.negativeMarks} taken off for each wrong answer` : ""}: quantitative, logical reasoning and
+          verbal questions pitched for students of any field, and technical questions for this role. It unlocks once your CV is uploaded
           {fee > 0 ? ` and the ${formatINR(fee)} processing fee is paid (it comes back as ${fee} wallet credits)` : ""}.
           You'll get your result by email within {RESULT_DAYS} days of submitting it.
         </p>

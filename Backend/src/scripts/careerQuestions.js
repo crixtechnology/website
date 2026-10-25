@@ -2,7 +2,9 @@
 // pitched above the basics (multi-step arithmetic, reasoning puzzles, usage and
 // vocabulary, and "what does this code actually do" questions for each role).
 // Loaded into the database by seedCareers.js; after that the bank is managed in
-// Admin → Question bank.
+// Admin → Question bank. The banks for the free-internship roles (and the
+// gentler foundation sections they use) live in careerQuestionsRoles.js and are
+// merged in below.
 //
 // Each entry is [question, [four options], index of the correct option]. The
 // options are shuffled for every candidate, so their order here doesn't matter.
@@ -326,4 +328,17 @@ const datascience = [
   ["A regression model has an R² of 0.85. What does that mean?", ["85% of its predictions are exactly right", "The model explains 85% of the variance in the target", "The correlation between the features is 0.85", "The error is 15 units"], 1],
 ];
 
-module.exports = { quantitative, logical, verbal, web, fullstack, datascience };
+const roles = require("./careerQuestionsRoles");
+
+module.exports = {
+  quantitative, logical, verbal,
+  quantitative_foundation: roles.quantitative_foundation,
+  logical_foundation: roles.logical_foundation,
+  verbal_foundation: roles.verbal_foundation,
+  web, fullstack,
+  datascience: [...datascience, ...roles.datascience],
+  frontend: roles.frontend,
+  python: roles.python,
+  webfundamentals: roles.webfundamentals,
+  aiml: roles.aiml,
+};

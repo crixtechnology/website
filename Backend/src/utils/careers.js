@@ -17,14 +17,26 @@ const CATEGORIES = {
   quantitative: "Quantitative",
   logical: "Logical Reasoning",
   verbal: "Verbal Ability",
+  quantitative_foundation: "Quantitative (foundation)",
+  logical_foundation: "Logical Reasoning (foundation)",
+  verbal_foundation: "Verbal Ability (foundation)",
   web: "Web Development",
   fullstack: "Full Stack Development",
   datascience: "Data Science",
+  frontend: "Frontend (React & JavaScript)",
+  python: "Python Programming",
+  webfundamentals: "Web Fundamentals (HTML, CSS, JS, HTTP)",
+  aiml: "AI / Machine Learning",
 };
 const GENERAL_CATEGORIES = ["quantitative", "logical", "verbal"];
 // The role-specific banks; a JobOpening picks one as its techCategory.
-const TECH_CATEGORIES = ["web", "fullstack", "datascience"];
+const TECH_CATEGORIES = ["web", "fullstack", "datascience", "frontend", "python", "webfundamentals", "aiml"];
 const isCategory = (c) => Object.prototype.hasOwnProperty.call(CATEGORIES, c);
+
+// The bank a role's general section draws from. Free-internship roles are open
+// to students of every field, so they get the gentler "foundation" banks
+// (buildPaper falls back to the standard bank if the admin has emptied one).
+const generalBankFor = (opening, section) => (opening && opening.audience === "free" ? `${section}_foundation` : section);
 
 // How many questions of each kind a role's test asks, when the admin hasn't said.
 const DEFAULT_COUNTS = { quantitative: 10, logical: 10, verbal: 10, technical: 10 };
@@ -243,15 +255,17 @@ async function buildPaper(opening, settings = {}) {
   const share = Math.min(100, Math.max(0, Number(settings.generatedQuestionsPercent) || 0));
   const counts = normalizeCounts(opening.questionCounts);
   const plan = [
-    ["quantitative", counts.quantitative],
-    ["logical", counts.logical],
-    ["verbal", counts.verbal],
+    ...GENERAL_CATEGORIES.map((section) => [generalBankFor(opening, section), counts[section], section]),
     [TECH_CATEGORIES.includes(opening.techCategory) ? opening.techCategory : "web", counts.technical],
   ];
   const paper = [];
-  for (const [category, wanted] of plan) {
+  for (let [category, wanted, standard] of plan) {
     if (!wanted) continue;
-    const rows = await prisma.testQuestion.findMany({ where: { category, active: true } });
+    let rows = await prisma.testQuestion.findMany({ where: { category, active: true } });
+    if (!rows.length && standard && category !== standard) {
+      category = standard;
+      rows = await prisma.testQuestion.findMany({ where: { category, active: true } });
+    }
     // Generated questions take their share; a bank too small for the rest is topped up with more of them.
     const fromGenerators = Math.min(generatorCount(category), Math.max(Math.round((wanted * share) / 100), share > 0 ? wanted - rows.length : 0));
     const section = generateQuestions(category, fromGenerators).map((g) => ({
@@ -433,6 +447,7 @@ module.exports = {
   CATEGORIES,
   GENERAL_CATEGORIES,
   TECH_CATEGORIES,
+  generalBankFor,
   DEFAULT_COUNTS,
   MAX_PER_CATEGORY,
   STATUS_LABELS,

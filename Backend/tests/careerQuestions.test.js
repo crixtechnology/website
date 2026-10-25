@@ -2,12 +2,23 @@
 // and inserted straight into the database by the seed, so its shape is checked
 // here: a malformed entry would otherwise only show up in a candidate's test.
 const bank = require("../src/scripts/careerQuestions");
-const { CATEGORIES } = require("../src/utils/careers");
+const roleBanks = require("../src/scripts/careerQuestionsRoles");
+const { CATEGORIES, TECH_CATEGORIES, GENERAL_CATEGORIES } = require("../src/utils/careers");
 
 describe("starter question bank", () => {
-  it("has 50 questions in every category the test draws from", () => {
+  it("has enough questions in every category the test draws from for a varied paper", () => {
     expect(Object.keys(bank).sort()).toEqual(Object.keys(CATEGORIES).sort());
-    for (const rows of Object.values(bank)) expect(rows).toHaveLength(50);
+    for (const rows of Object.values(bank)) expect(rows.length).toBeGreaterThanOrEqual(30);
+    // The original banks keep their 50; data science has the added SQL and statistics questions too.
+    for (const c of ["quantitative", "logical", "verbal", "web", "fullstack"]) expect(bank[c]).toHaveLength(50);
+    expect(bank.datascience).toHaveLength(50 + roleBanks.datascience.length);
+  });
+
+  it("has a technical bank for every role's techCategory, and a foundation bank for every general section", () => {
+    for (const c of TECH_CATEGORIES) expect(bank[c].length).toBeGreaterThanOrEqual(30);
+    for (const c of GENERAL_CATEGORIES) expect(bank[`${c}_foundation`].length).toBeGreaterThanOrEqual(30);
+    // Everything in the role banks file is a real category.
+    for (const c of Object.keys(roleBanks)) expect(CATEGORIES[c]).toBeDefined();
   });
 
   it.each(Object.keys(bank))("%s: every question has four distinct options and a valid answer", (category) => {
