@@ -2038,8 +2038,8 @@ export function Navbar() {
   }, [open]);
 
   const links = [
-    ["/programs", "Internships & Courses"],
     ["/services", "IT Services"],
+    ["/programs", "Internships & Courses"],
     ["/about", "About"],
     ["/careers", "Careers"],
     ["/contact", "Contact"],

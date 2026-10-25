@@ -159,7 +159,7 @@ export const FAQ_TOPICS = [
     id: "it", icon: "💻", label: "IT services",
     faqs: [
       { id: "s-offer", q: "What IT services do you offer?", k: "services it build website app development offer list",
-        a: "• Static websites\n• Dynamic websites & web apps\n• Chatbot development\n• Website upgrade & redesign\n• Mobile app development\n• Digital marketing\n• AI / ML solutions\n• Software & IT consulting",
+        a: "• Website development & web solutions\n• Custom software, SaaS & business systems\n• AI, machine learning & generative AI\n• AI agents & business process automation\n• Chatbots, WhatsApp & customer automation\n• Mobile app development\n• API, payment & third-party integrations\n• Cloud computing, DevOps & infrastructure\n• Cybersecurity, software testing & QA\n• Data analytics & business intelligence\n• Digital marketing & business growth\n• IT consulting, maintenance & technical support",
         links: [{ to: "/services", label: "See all services" }] },
       { id: "s-cost", q: "How much does a project cost?", k: "cost price quote estimate budget charges rate pricing website app project",
         a: "It depends on the scope — pages, features, integrations and timeline. Every engagement starts with a clear written scope and cost estimate, with no surprise line items later. Share your requirements with our IT team for a quote." },

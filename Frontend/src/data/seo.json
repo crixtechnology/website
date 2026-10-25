@@ -5,8 +5,8 @@
   "image": "/og-image.png",
   "routes": {
     "/": {
-      "title": "Virtual Internships, Courses & IT Services | Crix Technology",
-      "description": "Virtual internships, industry-ready online courses and IT services by Crix Technology, Ahmedabad. Hands-on MERN stack & AI programs with certificates.",
+      "title": "IT Services, Software & AI Solutions | Crix Technology",
+      "description": "Websites, custom software, mobile apps, AI agents and automation by Crix Technology, Ahmedabad — for businesses across India and worldwide. Plus virtual internships and courses.",
       "priority": "1.0",
       "changefreq": "weekly",
       "keywords": [
