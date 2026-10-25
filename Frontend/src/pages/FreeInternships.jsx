@@ -55,10 +55,11 @@ function cvProblem(file) {
   return "";
 }
 
-// The badge on a role: the test processing fee, or "Free" when there is none.
+// The badge on a role: "Processing fee" (its amount changes, so it is shown
+// only at the payment step), or "Free" when there is none.
 function FeeBadge({ fee }) {
   return fee > 0
-    ? <span className="fee-pill">{formatINR(fee)} processing fee</span>
+    ? <span className="fee-pill">Processing fee</span>
     : <span className="fee-pill fee-pill--free">Free</span>;
 }
 
@@ -131,7 +132,7 @@ function FreeOpeningModal({ opening, fee, onClose, onApply }) {
           {test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}
           {test.negativeMarks ? `, with ${test.negativeMarks} taken off for each wrong answer` : ""}: quantitative, logical reasoning and
           verbal questions pitched for students of any field, and technical questions for this role. It unlocks once your CV is uploaded
-          {fee > 0 ? ` and the ${formatINR(fee)} processing fee is paid (it comes back as ${fee} wallet credits)` : ""}.
+          {fee > 0 ? " and the test processing fee is paid (it all comes back as wallet credits)" : ""}.
           You'll get your result by email within {RESULT_DAYS} days of submitting it.
         </p>
         <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} onClick={() => onApply(opening)}>{fee > 0 ? "Apply with CV" : "Apply with CV — Free"}</button>
@@ -469,7 +470,7 @@ export default function FreeInternships() {
       <section id="how" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
-          <Reveal as="h2" variant="reveal-l">Four steps, no fee.</Reveal>
+          <Reveal as="h2" variant="reveal-l">{terms.processingFee > 0 ? "Four simple steps." : "Four steps, no fee."}</Reveal>
           <div className="process stagger">
             {freeSteps(terms.processingFee).map((s, i) => (
               <Reveal key={s.n} variant="reveal" className="step" style={{ "--i": i }}>
