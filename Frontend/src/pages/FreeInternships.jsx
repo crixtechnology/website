@@ -4,7 +4,7 @@ import {
   Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, DownloadPdfButton,
   useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
-import { openApplicationFor, StatusPill, AdultCheckbox } from "../components/CareersDashboard.jsx";
+import { openApplicationFor, StatusPill, AdultCheckbox, checkoutTestFee } from "../components/CareersDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta } from "../hooks/usePageMeta.js";
 import { useNoIndex } from "../hooks/useNoIndex.js";
@@ -15,8 +15,9 @@ import { EducationFields, educationForm, educationPayload, educationMissing, emp
 import { careersContact } from "../data/careers.js";
 import { legal } from "../data/content.js";
 import {
-  freeHero, freeSteps, freeEligibility, freeRules, CV_MAX_MB, RESULT_DAYS,
+  freeHero, freeSteps, freeEligibility, freeRules, processingFeePoints, defaultFreeTerms, CV_MAX_MB, RESULT_DAYS,
 } from "../data/freeInternships.js";
+import { formatINR } from "../utils/tiers.js";
 
 // The free internships page, open to students of every field. Not linked from
 // anywhere on the site and kept out of search results (noindex, not in the
@@ -54,8 +55,15 @@ function cvProblem(file) {
   return "";
 }
 
+// The badge on a role: the test processing fee, or "Free" when there is none.
+function FeeBadge({ fee }) {
+  return fee > 0
+    ? <span className="fee-pill">{formatINR(fee)} processing fee</span>
+    : <span className="fee-pill fee-pill--free">Free</span>;
+}
+
 /* ---------- one opening's card ---------- */
-function FreeOpeningCard({ opening, i, onOpen, onApply }) {
+function FreeOpeningCard({ opening, i, fee, onOpen, onApply }) {
   return (
     <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
       <TiltCard className="card-type-internship job-card">
@@ -65,7 +73,7 @@ function FreeOpeningCard({ opening, i, onOpen, onApply }) {
               <span className="type-pill type-pill--internship">Internship</span>
               <span className="tag">Open</span>
             </div>
-            <span className="fee-pill fee-pill--free">Free</span>
+            <FeeBadge fee={fee} />
           </div>
           <h3>{opening.title}</h3>
           <p>{opening.summary}</p>
@@ -88,7 +96,7 @@ function FreeOpeningCard({ opening, i, onOpen, onApply }) {
 }
 
 /* ---------- full details of one opening ---------- */
-function FreeOpeningModal({ opening, onClose, onApply }) {
+function FreeOpeningModal({ opening, fee, onClose, onApply }) {
   useBodyScrollLock(!!opening);
   useModalFocus(!!opening);
   useModalEscape(!!opening, onClose);
@@ -104,7 +112,7 @@ function FreeOpeningModal({ opening, onClose, onApply }) {
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <div className="detail-modal-top">
           <span className="eyebrow">Free internship</span>
-          <span className="fee-pill fee-pill--free">Free</span>
+          <FeeBadge fee={fee} />
         </div>
         <h3 id="free-modal-title" style={{ margin: "12px 0 8px" }}>{opening.title}</h3>
         <p style={{ color: "var(--muted)", fontSize: ".9rem", lineHeight: 1.65 }}>{opening.summary}</p>
@@ -121,22 +129,25 @@ function FreeOpeningModal({ opening, onClose, onApply }) {
         <p className="form-note" style={{ marginTop: 0 }}>
           {test.questions ? `${test.questions} multiple-choice questions` : "A multiple-choice test"}
           {test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}
-          {test.negativeMarks ? `, with ${test.negativeMarks} taken off for each wrong answer` : ""}. It unlocks once your CV is uploaded.
+          {test.negativeMarks ? `, with ${test.negativeMarks} taken off for each wrong answer` : ""}. It unlocks once your CV is uploaded
+          {fee > 0 ? ` and the ${formatINR(fee)} processing fee is paid (it comes back as ${fee} wallet credits)` : ""}.
           You'll get your result by email within {RESULT_DAYS} days of submitting it.
         </p>
-        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} onClick={() => onApply(opening)}>Apply with CV — Free</button>
+        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} onClick={() => onApply(opening)}>{fee > 0 ? "Apply with CV" : "Apply with CV — Free"}</button>
       </div>
     </div>
   );
 }
 
-/* ---------- apply: details, CV upload, then the test unlocks ----------
+/* ---------- apply: details, CV upload, processing fee, then the test unlocks ----------
    Opened by "Apply with CV" for a logged-in student. The student's details and
    education come prefilled from Profile; whatever they confirm is saved back to
    Profile (and the server keeps a copy on the application). Then it applies for
-   the role (or reuses the open application), uploads the CV and unlocks the
-   free test. A role already applied for shows where that application stands. */
-function FreeApplyModal({ opening, onClose }) {
+   the role (or reuses the open application), uploads the CV, and takes the test
+   processing fee through Razorpay — the fee comes back as wallet credit — or,
+   when the fee is set to 0, unlocks the test straight away. A role already
+   applied for shows where that application stands. */
+function FreeApplyModal({ opening, terms, onClose }) {
   const { user, updateProfile } = useContext(UserContext);
   const [details, setDetails] = useState({ name: "", phone: "" });
   const [education, setEducation] = useState(emptyEducation);
@@ -179,6 +190,7 @@ function FreeApplyModal({ opening, onClose }) {
 
   if (!opening) return null;
   const test = opening.test || {};
+  const fee = terms.processingFee || 0;
   const status = application ? application.status : "none";
   const existingCv = application && application.cv;
 
@@ -221,10 +233,22 @@ function FreeApplyModal({ opening, onClose }) {
       if (!alive.current) return;
       if (!up.ok) { setBusy(false); setMsg({ kind: "error", text: up.error }); return; }
     }
-    const unlocked = await unlockFreeTest(id);
+    const unlocked = fee > 0
+      ? await checkoutTestFee({
+        opening,
+        user: saved.user || user,
+        description: `Test processing fee — ${opening.title}`,
+        onConfirming: () => { if (alive.current) setMsg({ kind: "info", text: "Confirming your payment…" }); },
+      })
+      : await unlockFreeTest(id);
     if (!alive.current) return;
     setBusy(false);
-    if (!unlocked.ok) { setMsg({ kind: "error", text: unlocked.error }); return; }
+    if (!unlocked.ok) {
+      setMsg(unlocked.dismissed
+        ? { kind: "info", text: "Payment cancelled. Your details and CV are saved — pay whenever you're ready." }
+        : { kind: "error", text: unlocked.error });
+      return;
+    }
     setMsg({ kind: "", text: "" });
     setDoneId(id);
     burstConfetti(submitBtn.current);
@@ -234,7 +258,11 @@ function FreeApplyModal({ opening, onClose }) {
   if (doneId) {
     body = (
       <>
-        <Alert inline kind="success">Application sent — your CV is in and you're eligible for the aptitude test.</Alert>
+        <Alert inline kind="success">
+          {fee > 0
+            ? `Payment confirmed — ${fee} credits are in your wallet and your aptitude test is unlocked.`
+            : "Application sent — your CV is in and you're eligible for the aptitude test."}
+        </Alert>
         <p className="form-note">
           You have {test.durationMinutes || "the set"} minutes for {test.questions || "the"} questions, and one attempt. Use a laptop or
           desktop with a webcam, somewhere quiet. You'll get your result by email within {RESULT_DAYS} days of submitting the test.
@@ -266,7 +294,8 @@ function FreeApplyModal({ opening, onClose }) {
     body = (
       <>
         <p className="form-note" style={{ marginTop: 0 }}>
-          Check your details and upload your CV to apply. Once it's in, your free aptitude test unlocks
+          Check your details and upload your CV to apply.
+          {fee > 0 ? ` Then pay the ${formatINR(fee)} test processing fee — it comes back as ${fee} wallet credits — and your aptitude test unlocks` : " Once it's in, your free aptitude test unlocks"}
           {test.questions ? ` — ${test.questions} questions` : ""}{test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}.
         </p>
         <h4 className="job-modal-heading">Your details</h4>
@@ -290,17 +319,29 @@ function FreeApplyModal({ opening, onClose }) {
           <input id="free-cv" type="file" accept="application/pdf,.pdf" onChange={pickFile} disabled={busy} />
           {existingCv && !file && <p className="form-note" style={{ margin: "6px 0 0" }}>Already uploaded: <b>{existingCv.fileName}</b> — choose a file only to replace it.</p>}
         </div>
+        {fee > 0 && (
+          <>
+            <h4 className="job-modal-heading">Test processing fee</h4>
+            <dl className="order-summary">
+              <div><dt>Test processing fee</dt><dd>{formatINR(fee)}</dd></div>
+              <div className="is-off"><dt>Returned as wallet credit</dt><dd>+{fee} credits</dd></div>
+              <div className="is-total"><dt>You pay</dt><dd>{formatINR(fee)}</dd></div>
+            </dl>
+            <ul className="check-list apply-rules">{processingFeePoints(terms).map((p) => <li key={p}>{p}</li>)}</ul>
+          </>
+        )}
         <AdultCheckbox checked={adult} onChange={(v) => { setAdult(v); setMsg({ kind: "", text: "" }); }} disabled={busy} />
         <label className="check-row">
           <input type="checkbox" checked={agreed} disabled={busy} onChange={(e) => { setAgreed(e.target.checked); setMsg({ kind: "", text: "" }); }} />
           <span>
             I have read and agree to the <a href="#rules" onClick={(e) => { e.preventDefault(); onClose(); setTimeout(() => document.getElementById("rules")?.scrollIntoView(), 0); }}>internship rules</a>,
-            {" "}and the <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a> and{" "}
+            {" "}and the <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
+            {fee > 0 ? <>, including the <a href="/terms-of-service#refunds" target="_blank" rel="noopener noreferrer">payment &amp; refund rules</a>,</> : ""} and{" "}
             <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
           </span>
         </label>
         <button ref={submitBtn} className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={submit}>
-          {busy ? "Please wait..." : "Send CV & Apply"}
+          {busy ? "Please wait..." : fee > 0 ? `Pay ${formatINR(fee)} & Apply` : "Send CV & Apply"}
         </button>
       </>
     );
@@ -329,6 +370,7 @@ export default function FreeInternships() {
   const { isLoggedIn, isAdmin, openAuthModal } = useContext(UserContext);
   const [openings, setOpenings] = useState([]);
   const [live, setLive] = useState(false);
+  const [terms, setTerms] = useState(defaultFreeTerms);
   const [loading, setLoading] = useState(hasBackend);
   const [detail, setDetail] = useState(null);
   const [applying, setApplying] = useState(null);
@@ -340,6 +382,7 @@ export default function FreeInternships() {
     getFreeOpenings().then((res) => {
       if (!alive) return;
       if (res.ok) { setOpenings((res.openings || []).filter((o) => o && o.status !== "closed")); setLive(true); }
+      if (res.ok && res.terms) setTerms({ ...defaultFreeTerms, ...res.terms });
       setLoading(false);
     });
     return () => { alive = false; clearTimeout(cap); };
@@ -354,6 +397,7 @@ export default function FreeInternships() {
     setApplying(opening);
   };
 
+  const hero = freeHero(terms.processingFee);
   const tel = `tel:${careersContact.phone.replace(/[^\d+]/g, "")}`;
 
   return (
@@ -361,9 +405,9 @@ export default function FreeInternships() {
       <header className="page-head careers-hero" style={{ position: "relative", overflow: "hidden" }}>
         <Aurora />
         <Reveal variant="reveal-top" style={{ position: "relative", zIndex: 2 }} className="wrap">
-          <span className="eyebrow">{freeHero.eyebrow}</span>
-          <h1 style={{ fontSize: "clamp(1.6rem,4vw + .6rem,3rem)", margin: "14px 0 18px" }}>{freeHero.title}</h1>
-          <p>{freeHero.text}</p>
+          <span className="eyebrow">{hero.eyebrow}</span>
+          <h1 style={{ fontSize: "clamp(1.6rem,4vw + .6rem,3rem)", margin: "14px 0 18px" }}>{hero.title}</h1>
+          <p>{hero.text}</p>
           <div className="hero-ctas">
             <a className="btn btn-solid" href="#openings" onClick={scrollToId("openings")}>View Openings</a>
             <a className="btn btn-ghost" href="#rules" onClick={scrollToId("rules")}>Read the Rules</a>
@@ -388,7 +432,7 @@ export default function FreeInternships() {
             <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
           ) : openings.length ? (
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
-              {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} onOpen={setDetail} onApply={apply} />)}
+              {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} fee={terms.processingFee} onOpen={setDetail} onApply={apply} />)}
             </div>
           ) : (
             <div className="card no-openings" role="status" style={{ marginTop: 24 }}>
@@ -417,8 +461,8 @@ export default function FreeInternships() {
           </div>
         </div>
       </section>
-      <FreeOpeningModal opening={detail} onClose={() => setDetail(null)} onApply={apply} />
-      <FreeApplyModal opening={applying} onClose={() => setApplying(null)} />
+      <FreeOpeningModal opening={detail} fee={terms.processingFee} onClose={() => setDetail(null)} onApply={apply} />
+      <FreeApplyModal opening={applying} terms={terms} onClose={() => setApplying(null)} />
 
       {/* How it works */}
       <section id="how" className="section anchor-section" style={{ paddingTop: 20 }}>
@@ -426,7 +470,7 @@ export default function FreeInternships() {
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
           <Reveal as="h2" variant="reveal-l">Four steps, no fee.</Reveal>
           <div className="process stagger">
-            {freeSteps.map((s, i) => (
+            {freeSteps(terms.processingFee).map((s, i) => (
               <Reveal key={s.n} variant="reveal" className="step" style={{ "--i": i }}>
                 <span className="step-num">{s.n}</span>
                 <h3>{s.title}</h3>
@@ -443,7 +487,7 @@ export default function FreeInternships() {
           <Reveal as="span" variant="reveal-l" className="eyebrow">Rules</Reveal>
           <Reveal as="h2" variant="reveal-l">Application &amp; test rules.</Reveal>
           <Reveal variant="reveal" className="vm-card" style={{ marginTop: 26 }}>
-            <ul className="dash-list">{freeRules.map((x) => <li key={x}>{x}</li>)}</ul>
+            <ul className="dash-list">{freeRules(terms).map((x) => <li key={x}>{x}</li>)}</ul>
           </Reveal>
           {/* The site's own Terms and Privacy Policy, as PDFs (same documents as /terms-of-service and /privacy-policy). */}
           <div className="legal-actions" style={{ marginTop: 18, justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}>

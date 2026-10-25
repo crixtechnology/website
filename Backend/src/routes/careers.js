@@ -21,7 +21,7 @@ const { rejectIfProfileIncomplete, profileMissing, educationMissing } = require(
 const { lockUser } = require("../utils/wallet");
 const { getCareerSettings } = require("../utils/careerSettings");
 const { saveCv, deleteSnapshot } = require("../utils/proctorStorage");
-const { STATUS_LABELS, shapeOpening, grantTestForPayment, finalizeExpiredAttempts } = require("../utils/careers");
+const { STATUS_LABELS, shapeOpening, grantTestForPayment, finalizeExpiredAttempts, testFeeFor } = require("../utils/careers");
 
 const router = express.Router();
 
@@ -32,6 +32,17 @@ const MAX_CV_BYTES = 2 * 1024 * 1024;
 const CV_EDITABLE = ["payment_pending", "test_pending"];
 // A "free" (free-internships page) role's test only unlocks once a CV is on the application.
 const needsCv = (opening) => !!opening && opening.audience === "free";
+// A free internship needs the student's details and education from Profile.
+// Returns { missing } (names of what's still empty) and the education to copy
+// onto the application once it goes ahead.
+async function freeInternshipProfile(userId) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  return {
+    missing: [...profileMissing(user), ...educationMissing(user)],
+    education: { college: user.college, course: user.course, department: user.department, semester: user.semester, passingYear: user.passingYear },
+  };
+}
+const profileIncompleteBody = (missing) => ({ ok: false, code: "PROFILE_INCOMPLETE", missing, error: `Please add your ${missing.join(", ")} to apply.` });
 // Statuses at which the candidate is shown their interview slot.
 const INTERVIEW_VISIBLE = ["interview_scheduled", "selected"];
 
@@ -106,8 +117,15 @@ router.get("/careers/openings", async (req, res, next) => {
 // ---------- public: open free-internship roles (the /free-internships page) ----------
 router.get("/careers/free/openings", async (req, res, next) => {
   try {
-    const openings = await prisma.jobOpening.findMany({ where: { status: "open", audience: "free" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] });
-    res.json({ ok: true, openings: openings.map((o) => shapeOpening(o)) });
+    const [openings, settings] = await Promise.all([
+      prisma.jobOpening.findMany({ where: { status: "open", audience: "free" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
+      getCareerSettings(),
+    ]);
+    res.json({
+      ok: true,
+      openings: openings.map((o) => shapeOpening(o)),
+      terms: { processingFee: settings.processingFeeRupees, creditExpiryMonths: settings.creditExpiryMonths, creditUsagePercent: settings.creditUsagePercent },
+    });
   } catch (e) {
     next(e);
   }
@@ -253,17 +271,24 @@ router.post("/me/job-applications/:id/create-order", publicWriteLimiter, require
     if (application.opening.status !== "open") {
       return res.status(400).json({ ok: false, error: "This role is closed for applications right now." });
     }
-    if (application.opening.feeRequired === false) {
-      return res.status(400).json({ ok: false, error: "This role has no registration fee — unlock the test for free instead." });
-    }
-    if (needsCv(application.opening) && !application.cvKey) {
-      return res.status(400).json({ ok: false, code: "CV_REQUIRED", error: "Upload your CV (PDF) to apply for this role." });
-    }
-
-    await prisma.jobApplication.update({ where: { id: application.id }, data: { adultConfirmedAt: new Date() } });
-
     const settings = await getCareerSettings();
-    const amountPaise = settings.testFeeRupees * 100;
+    const fee = testFeeFor(application.opening, settings);
+    if (!fee) {
+      return res.status(400).json({ ok: false, error: "This role has no fee — unlock the test for free instead." });
+    }
+    // A free internship: the CV and the student's education come first, and the
+    // education is copied onto the application as it is now.
+    let education;
+    if (needsCv(application.opening)) {
+      if (!application.cvKey) return res.status(400).json({ ok: false, code: "CV_REQUIRED", error: "Upload your CV (PDF) to apply for this role." });
+      const profile = await freeInternshipProfile(req.user.sub);
+      if (profile.missing.length) return res.status(400).json(profileIncompleteBody(profile.missing));
+      education = profile.education;
+    }
+
+    await prisma.jobApplication.update({ where: { id: application.id }, data: { adultConfirmedAt: new Date(), ...(education ? { education } : {}) } });
+
+    const amountPaise = fee * 100;
     const order = await razorpay.orders.create({
       amount: amountPaise,
       currency: "INR",
@@ -279,7 +304,7 @@ router.post("/me/job-applications/:id/create-order", publicWriteLimiter, require
         status: "created",
         userId: application.userId,
         jobApplicationId: application.id,
-        orderSnapshotBasePrice: settings.testFeeRupees,
+        orderSnapshotBasePrice: fee,
         orderSnapshotDiscountPercent: 0,
       },
     });
@@ -310,8 +335,8 @@ router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireA
     if (!application || application.userId !== req.user.sub) {
       return res.status(404).json({ ok: false, error: "Application not found" });
     }
-    if (application.opening.feeRequired !== false) {
-      return res.status(400).json({ ok: false, error: "This role needs the registration fee to unlock the test." });
+    if (testFeeFor(application.opening, await getCareerSettings()) > 0) {
+      return res.status(400).json({ ok: false, code: "FEE_REQUIRED", error: "This role needs its fee paid to unlock the test." });
     }
     if (application.opening.status !== "open") {
       return res.status(400).json({ ok: false, error: "This role is closed for applications right now." });
@@ -323,12 +348,9 @@ router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireA
     // Profile; a copy of the education is kept on the application.
     let education;
     if (needsCv(application.opening)) {
-      const user = await prisma.user.findUnique({ where: { id: req.user.sub } });
-      const missing = [...profileMissing(user), ...educationMissing(user)];
-      if (missing.length) {
-        return res.status(400).json({ ok: false, code: "PROFILE_INCOMPLETE", missing, error: `Please add your ${missing.join(", ")} to apply.` });
-      }
-      education = { college: user.college, course: user.course, department: user.department, semester: user.semester, passingYear: user.passingYear };
+      const profile = await freeInternshipProfile(req.user.sub);
+      if (profile.missing.length) return res.status(400).json(profileIncompleteBody(profile.missing));
+      education = profile.education;
     }
     // Only an application still locked moves; a second click changes nothing.
     await prisma.jobApplication.updateMany({

@@ -85,6 +85,16 @@ function shapeOpening(o, { admin = false } = {}) {
 }
 
 // ---------- paying the test fee ----------
+// What one role's test costs, in rupees (0 = it unlocks without payment): a
+// free-internship role takes the processing fee, any other role the test fee
+// when it has one. Both come back in full as wallet credit.
+function testFeeFor(opening, settings) {
+  if (!opening) return 0;
+  if (opening.audience === "free") return settings.processingFeeRupees || 0;
+  return opening.feeRequired === false ? 0 : settings.testFeeRupees;
+}
+const feeName = (opening) => (opening && opening.audience === "free" ? "Test processing fee" : "Aptitude test fee");
+
 // Marks a test-fee payment paid and does everything that follows from it:
 // unlocks the test (payment_pending -> test_pending), returns the fee to the
 // wallet as credit, mints the receipt, and emails it. Idempotent and safe to
@@ -126,7 +136,7 @@ async function grantTestForPayment(payment, razorpayPaymentId) {
         amount: payment.amount,
         kind: "test_fee_credit",
         paymentId: payment.id,
-        note: `Aptitude test fee — ${opening.title}`,
+        note: `${feeName(opening)} — ${opening.title}`,
         expiresAt: creditExpiryDate(settings.creditExpiryMonths),
       },
     });
@@ -146,7 +156,7 @@ async function attachTestReceipt(payment, user, opening, settings) {
   if (payment.receiptNumber) return;
   const totalPaid = round2((payment.amount || 0) / 100);
   // A plain hyphen: the receipt PDF's built-in font has no long dash.
-  const itemTitle = `Aptitude Test Fee - ${opening.title}`;
+  const itemTitle = opening.audience === "free" ? `Test Processing Fee - ${opening.title}` : `Aptitude Test Fee - ${opening.title}`;
 
   // Same shared counter as every other receipt (utils/receiptNumber.js).
   // null: the other concurrent caller (verify vs webhook) got there first.
@@ -419,6 +429,7 @@ function verifyDesktopAppToken(token, userId) {
 }
 
 module.exports = {
+  testFeeFor,
   CATEGORIES,
   GENERAL_CATEGORIES,
   TECH_CATEGORIES,

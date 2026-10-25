@@ -158,11 +158,16 @@ export default function AdminJobOpenings() {
                 <option value="general">Careers page (/careers)</option>
                 <option value="free">Free internships page only (/free-internships, CV required)</option>
               </select></div>
-            <div className="field"><label htmlFor="jo-fee">Registration fee</label>
-              <select id="jo-fee" value={form.feeRequired} onChange={set("feeRequired")}>
-                <option value="yes">Required (amount from Careers settings)</option>
-                <option value="no">Free — no fee for this role</option>
-              </select></div>
+            {form.audience === "free" ? (
+              <div className="field"><label>Fee</label>
+                <p className="form-note" style={{ margin: "6px 0 0" }}>Test processing fee from Careers settings (comes back as wallet credit).</p></div>
+            ) : (
+              <div className="field"><label htmlFor="jo-fee">Registration fee</label>
+                <select id="jo-fee" value={form.feeRequired} onChange={set("feeRequired")}>
+                  <option value="yes">Required (amount from Careers settings)</option>
+                  <option value="no">Free — no fee for this role</option>
+                </select></div>
+            )}
             <div className="field"><label htmlFor="jo-mins">Duration (minutes)</label>
               <input id="jo-mins" type="number" min="5" max="300" step="1" value={form.durationMinutes} onChange={set("durationMinutes")} /></div>
             {COUNT_FIELDS.map(([k, label]) => (
@@ -200,7 +205,7 @@ export default function AdminJobOpenings() {
                   <div className="admin-row-main">
                     <b>{o.title}</b>
                     <span className="admin-row-meta">
-                      {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.audience === "free" ? "Free internships page · " : ""}{o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
+                      {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.audience === "free" ? "Free internships page · processing fee" : o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
                       {" "}+{o.test.marksPerQuestion} / −{o.test.negativeMarks} · cut-off {o.test.cutoffScore}
                     </span>
                     {short.length > 0 && (

@@ -77,7 +77,7 @@ export function AdultCheckbox({ checked, onChange, disabled = false }) {
      { ok: false, dismissed: true }           the candidate closed Checkout
      { ok: false, error, applicationId? }     anything else, with a message to show
    `onConfirming` fires when Razorpay reports success and the server check starts. */
-export async function checkoutTestFee({ opening, user, onConfirming }) {
+export async function checkoutTestFee({ opening, user, onConfirming, description }) {
   const applied = await applyForRole(opening.slug);
   if (!applied.ok) return { ok: false, error: applied.error || "Could not apply right now." };
   const applicationId = applied.application._id;
@@ -94,7 +94,7 @@ export async function checkoutTestFee({ opening, user, onConfirming }) {
       amount: order.amount,
       currency: order.currency,
       name: "Crix Technology",
-      description: `Aptitude test — ${opening.title}`,
+      description: description || `Aptitude test — ${opening.title}`,
       prefill: { name: user?.name || "", email: user?.email || "", contact: user?.phone || "" },
       theme: { color: "#14C9C9" },
       handler: async (resp) => {
@@ -365,7 +365,10 @@ export function ApplicationsTab({ onGoToApply }) {
                   </span>
                 </div>
                 <div className="admin-row-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  {a.status === "payment_pending" && <button className="btn btn-solid" onClick={onGoToApply}>Pay &amp; take test</button>}
+                  {a.status === "payment_pending" && (a.opening && a.opening.audience === "free"
+                    // Free-internship roles aren't in the Apply tab: they're finished on their own page.
+                    ? <Link className="btn btn-solid" to="/free-internships">Finish applying</Link>
+                    : <button className="btn btn-solid" onClick={onGoToApply}>Pay &amp; take test</button>)}
                   {a.status === "test_pending" && <Link className="btn btn-solid" to={`/test/${a._id}`}>{t ? "Resume test →" : "Start test →"}</Link>}
                   {a.paidPaymentId && (
                     <button className="btn btn-ghost" disabled={!!busy} onClick={() => receipt(a)}>
