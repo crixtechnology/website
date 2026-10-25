@@ -77,7 +77,7 @@ function openingData(body) {
     data.feeRequired = b.feeRequired;
   }
   if (b.audience !== undefined) {
-    if (b.audience !== "general" && b.audience !== "bca") return { error: "audience must be general or bca" };
+    if (b.audience !== "general" && b.audience !== "free") return { error: "audience must be general or free" };
     data.audience = b.audience;
   }
   if (b.order !== undefined) {
@@ -427,7 +427,7 @@ router.post(
 );
 
 // ====================== applicants ======================
-const USER_SUMMARY = { id: true, name: true, email: true, phone: true };
+const USER_SUMMARY = { id: true, name: true, email: true, phone: true, college: true, course: true, department: true, semester: true, passingYear: true };
 const ATTEMPT_SUMMARY = {
   id: true, status: true, startedAt: true, endsAt: true, submittedAt: true, submitReason: true,
   score: true, maxScore: true, passed: true, correctCount: true, wrongCount: true, categoryScores: true, violationCount: true,
@@ -438,9 +438,16 @@ const LIST_INCLUDE = { user: { select: USER_SUMMARY }, opening: { select: OPENIN
 function shapeApplicant(a) {
   return {
     _id: a.id,
-    user: a.user ? { _id: a.user.id, name: a.user.name, email: a.user.email, phone: a.user.phone } : null,
+    user: a.user
+      ? {
+          _id: a.user.id, name: a.user.name, email: a.user.email, phone: a.user.phone,
+          education: { college: a.user.college, course: a.user.course, department: a.user.department, semester: a.user.semester, passingYear: a.user.passingYear },
+        }
+      : null,
     opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug, feeRequired: a.opening.feeRequired !== false, audience: a.opening.audience || "general" } : null,
     cv: a.cvKey ? { fileName: a.cvFileName, uploadedAt: a.cvUploadedAt } : null,
+    // As it was when they applied (free internships); null for other roles.
+    education: a.education || null,
     status: a.status,
     statusLabel: STATUS_LABELS[a.status] || a.status,
     paymentStatus: a.paidAt ? "paid" : a.opening && a.opening.feeRequired === false ? "free" : "pending",
@@ -523,6 +530,11 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
       { header: "Name", key: "name", width: 24 },
       { header: "Email", key: "email", width: 30 },
       { header: "Phone", key: "phone", width: 16 },
+      { header: "College", key: "college", width: 30 },
+      { header: "Course", key: "course", width: 14 },
+      { header: "Branch / department", key: "department", width: 22 },
+      { header: "Semester", key: "semester", width: 11 },
+      { header: "Year of passing", key: "passingYear", width: 14 },
       { header: "Role", key: "role", width: 28 },
       { header: "Status", key: "status", width: 20 },
       { header: "Payment", key: "payment", width: 10 },
@@ -547,10 +559,17 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
     for (const a of applications) {
       const t = a.attempt;
       const cats = (t && t.categoryScores) || {};
+      // The copy taken when they applied, else the profile as it is now.
+      const edu = a.education || a.user || {};
       sheet.addRow({
         name: safe(a.user ? a.user.name : ""),
         email: safe(a.user ? a.user.email : ""),
         phone: safe(a.user ? a.user.phone : ""),
+        college: safe(edu.college || ""),
+        course: safe(edu.course || ""),
+        department: safe(edu.department || ""),
+        semester: edu.semester ? (edu.semester === "graduated" ? "Graduated" : edu.semester) : "",
+        passingYear: edu.passingYear || "",
         role: safe(a.opening ? a.opening.title : ""),
         status: STATUS_LABELS[a.status] || a.status,
         payment: a.paidAt ? "Paid" : a.opening && a.opening.feeRequired === false ? "Free role" : "Pending",
@@ -641,7 +660,7 @@ router.get("/admin/job-applications/:id", requireAdmin, async (req, res, next) =
   }
 });
 
-// ---------- an applicant's CV (BCA internships) ----------
+// ---------- an applicant's CV (free internships) ----------
 router.get("/admin/job-applications/:id/cv", requireAdmin, async (req, res, next) => {
   try {
     const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { cvKey: true, cvFileName: true } });
@@ -734,11 +753,11 @@ router.post("/admin/job-applications/:id/status", requireAdmin, async (req, res,
       data.interviewLink = interviewLink.trim();
     }
 
-    // A BCA internship has no interview round: it can be decided straight from the test.
+    // A free internship has no interview round: it can be decided straight from the test.
     let from = rule.from;
     if (action === "select") {
       const target = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { opening: { select: { audience: true } } } });
-      if (target && target.opening && target.opening.audience === "bca") from = ["submitted", ...from];
+      if (target && target.opening && target.opening.audience === "free") from = ["submitted", ...from];
     }
     // Compare-and-swap on the current status: two admins acting at once can't both win.
     const changed = await prisma.jobApplication.updateMany({ where: { id: req.params.id, status: { in: from } }, data });

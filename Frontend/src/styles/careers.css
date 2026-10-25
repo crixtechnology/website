@@ -149,3 +149,28 @@
 .test-overlay-box p{color:var(--muted);font-size:.92rem;line-height:1.65;margin:0 0 10px}
 .test-overlay-box .btn{margin-top:14px}
 .test-toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:6;max-width:min(92%,560px);padding:12px 18px;border-radius:12px;background:rgba(var(--danger-rgb),.18);border:1px solid rgba(var(--danger-rgb),.5);color:var(--text);font-size:.86rem;line-height:1.5;text-align:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+
+/* ---------- Free internships page (pages/FreeInternships.jsx) ----------
+   Deliberately plain: one column of text, simple cards, no motion. */
+.free-page{max-width:880px;margin:0 auto}
+.free-head{padding-top:130px;padding-bottom:12px}
+.free-head h1{font-size:clamp(1.5rem,3vw + .6rem,2.3rem);line-height:1.25;margin:0 0 14px}
+.free-head p{color:var(--muted);font-size:1rem;line-height:1.7;margin:0 0 22px;max-width:640px}
+.free-section{padding-top:22px;padding-bottom:22px}
+.free-section h2{font-size:1.2rem;margin:0 0 14px}
+.free-steps{margin:0;padding-left:22px;display:grid;gap:10px}
+.free-steps li,.free-list li{color:var(--muted);font-size:.93rem;line-height:1.65}
+.free-steps b,.free-list b{color:var(--text)}
+.free-list{margin:0;padding-left:20px;display:grid;gap:6px}
+.free-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.free-card{display:flex;flex-direction:column;gap:8px;padding:20px}
+.free-card h3{font-size:1.02rem;margin:0}
+.free-card p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.6}
+.free-card .free-card-facts{font-size:.82rem}
+.free-card-actions{display:flex;gap:10px;margin-top:auto;padding-top:8px}
+.free-card-actions .btn{flex:1;text-align:center}
+.free-note{color:var(--muted);font-size:.88rem;line-height:1.7;margin:14px 0 0}
+.free-faqs{padding:0}
+.free-faqs .free-list,.free-faq-body{padding:0 18px 18px 38px}
+.free-faq-body{padding-left:18px}
+.free-faq-body p{margin:0 0 10px;font-size:.92rem;line-height:1.7;color:var(--muted)}

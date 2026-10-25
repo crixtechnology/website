@@ -18,7 +18,57 @@ function publicUser(user) {
     isGoogleAccount: !!user.googleId,
     mustChangePassword: !!user.mustChangePassword,
     profilePending: !!user.profilePending,
+    education: {
+      college: user.college || "",
+      course: user.course || "",
+      department: user.department || "",
+      semester: user.semester || "",
+      passingYear: user.passingYear || null,
+    },
   };
+}
+
+// ---------- education (Profile; required for a free internship) ----------
+const SEMESTERS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "graduated"];
+const MIN_PASSING_YEAR = 1990;
+const MAX_PASSING_YEAR = 2040;
+
+// The education details a free-internship application needs, by name; [] = complete.
+function educationMissing(user) {
+  const missing = [];
+  if (!String(user.college || "").trim()) missing.push("college name");
+  if (!String(user.course || "").trim()) missing.push("course");
+  if (!String(user.department || "").trim()) missing.push("branch / department");
+  if (!SEMESTERS.includes(user.semester)) missing.push("semester");
+  if (!user.passingYear) missing.push("year of passing");
+  return missing;
+}
+
+// Validates the education fields present in `body` (PATCH /auth/me). Returns
+// { data } ready for Prisma, or { error }.
+function educationData(body) {
+  const data = {};
+  const texts = [["college", 150, "College name"], ["course", 100, "Course"], ["department", 100, "Branch / department"]];
+  for (const [key, max, label] of texts) {
+    if (body[key] === undefined) continue;
+    if (typeof body[key] !== "string") return { error: `${label} must be text.` };
+    const v = body[key].trim().replace(/\s+/g, " ");
+    if (v.length > max) return { error: `${label} is too long (up to ${max} characters).` };
+    data[key] = v;
+  }
+  if (body.semester !== undefined) {
+    if (body.semester !== "" && !SEMESTERS.includes(body.semester)) return { error: "Choose your semester." };
+    data.semester = body.semester;
+  }
+  if (body.passingYear !== undefined) {
+    if (body.passingYear === null || body.passingYear === "") data.passingYear = null;
+    else {
+      const y = Number(body.passingYear);
+      if (!Number.isInteger(y) || y < MIN_PASSING_YEAR || y > MAX_PASSING_YEAR) return { error: `Enter the year of passing (${MIN_PASSING_YEAR}–${MAX_PASSING_YEAR}).` };
+      data.passingYear = y;
+    }
+  }
+  return { data };
 }
 
 // The profile details every purchase needs (course, internship, upgrade,
@@ -76,4 +126,4 @@ async function ensureDefaultPassword(user) {
   return prisma.user.findUnique({ where: { id: user.id } });
 }
 
-module.exports = { publicUser, ensureDefaultPassword, profileMissing, rejectIfProfileIncomplete, nameFromEmail };
+module.exports = { publicUser, ensureDefaultPassword, profileMissing, rejectIfProfileIncomplete, nameFromEmail, SEMESTERS, educationMissing, educationData };

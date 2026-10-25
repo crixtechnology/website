@@ -2,7 +2,7 @@ const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 const { signToken } = require("../src/utils/jwt");
 
-// BCA internships: roles listed only on the unlinked /bca-internships page,
+// Free internships: roles listed only on the unlinked /free-internships page,
 // free, and unlocked only once the candidate has uploaded a CV (a PDF). Same
 // stand-ins as careers.test.js: no real mail, storage or rate limiting.
 jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next) => next() }));
@@ -29,18 +29,20 @@ const authed = (req, token) => req.set("Authorization", `Bearer ${token}`);
 const asAdmin = (req) => authed(req, adminToken);
 const PDF = Buffer.from("%PDF-1.4\n% a tiny test CV\n%%EOF");
 
-async function student() {
+const EDUCATION = { college: "Gujarat University", course: "B.Com", department: "Commerce", semester: "4", passingYear: 2028 };
+
+async function student(extra = EDUCATION) {
   const user = await prisma.user.create({
-    data: { name: "BCA Student", email: `bca${++seq}@example.com`, phone: "9876500000", passwordHash: "x", role: "student" },
+    data: { name: "Free Intern Student", email: `free${++seq}@example.com`, phone: "9876500000", passwordHash: "x", role: "student", ...extra },
   });
   return { id: user.id, email: user.email, token: signToken({ sub: user.id, role: "student", email: user.email }, { expiresIn: "1h" }) };
 }
 
 async function opening(overrides = {}) {
   const res = await asAdmin(request(app).post("/api/admin/job-openings")).send({
-    title: `BCA Intern ${++seq}`, summary: "Learn by building.", techCategory: "web",
+    title: `Free Intern ${++seq}`, summary: "Learn by building.", techCategory: "web",
     durationMinutes: 20, questionCounts: { quantitative: 1, logical: 1, verbal: 1, technical: 1 },
-    feeRequired: false, audience: "bca",
+    feeRequired: false, audience: "free",
     ...overrides,
   });
   expect(res.status).toBe(201);
@@ -55,7 +57,7 @@ const unlock = (s, id) => authed(request(app).post(`/api/me/job-applications/${i
 beforeAll(async () => {
   app = await setupTestDb();
   ({ prisma } = require("../src/db"));
-  const admin = await prisma.user.create({ data: { name: "Admin", email: "admin-bca@test.com", passwordHash: "x", role: "admin" } });
+  const admin = await prisma.user.create({ data: { name: "Admin", email: "admin-free@test.com", passwordHash: "x", role: "admin" } });
   adminToken = signToken({ sub: admin.id, role: "admin", email: admin.email }, { expiresIn: "1h" });
   const rows = [];
   for (const category of ["quantitative", "logical", "verbal", "web"]) {
@@ -69,24 +71,24 @@ afterAll(async () => {
   await teardownTestDb();
 });
 
-describe("BCA internships", () => {
-  it("lists BCA roles only on their own endpoint, never on /careers", async () => {
-    const bca = await opening();
+describe("Free internships", () => {
+  it("lists free-internship roles only on their own endpoint, never on /careers", async () => {
+    const free = await opening();
     const general = await opening({ audience: "general", title: `General ${++seq}` });
 
     const careers = await request(app).get("/api/careers/openings");
     const slugs = careers.body.openings.map((o) => o.slug);
     expect(slugs).toContain(general.slug);
-    expect(slugs).not.toContain(bca.slug);
+    expect(slugs).not.toContain(free.slug);
 
-    const page = await request(app).get("/api/careers/bca/openings");
+    const page = await request(app).get("/api/careers/free/openings");
     expect(page.status).toBe(200);
-    expect(page.body.openings.map((o) => o.slug)).toEqual(expect.arrayContaining([bca.slug]));
-    expect(page.body.openings.every((o) => o.audience === "bca" && o.feeRequired === false)).toBe(true);
+    expect(page.body.openings.map((o) => o.slug)).toEqual(expect.arrayContaining([free.slug]));
+    expect(page.body.openings.every((o) => o.audience === "free" && o.feeRequired === false)).toBe(true);
   });
 
   it("refuses an unknown audience", async () => {
-    const res = await asAdmin(request(app).post("/api/admin/job-openings")).send({ title: "Odd", audience: "mba" });
+    const res = await asAdmin(request(app).post("/api/admin/job-openings")).send({ title: "Odd", audience: "bca" });
     expect(res.status).toBe(400);
   });
 
@@ -121,6 +123,33 @@ describe("BCA internships", () => {
     expect(storage.deleteSnapshot).toHaveBeenCalledWith(`local:cv-${id}/cv.pdf`);
   });
 
+  it("needs the student's education from Profile before the test unlocks", async () => {
+    const o = await opening();
+    const s = await student({});
+    const id = (await apply(s, o)).body.application._id;
+    await uploadCv(s, id);
+    const refused = await unlock(s, id);
+    expect(refused.status).toBe(400);
+    expect(refused.body).toMatchObject({ code: "PROFILE_INCOMPLETE", missing: ["college name", "course", "branch / department", "semester", "year of passing"] });
+
+    const me = (body) => authed(request(app).patch("/api/auth/me"), s.token).send(body);
+    expect((await me({ semester: "11" })).status).toBe(400);
+    expect((await me({ passingYear: 1800 })).status).toBe(400);
+    expect((await me({ college: "x".repeat(151) })).status).toBe(400);
+    const saved = await me({ ...EDUCATION, college: "  Gujarat   University " });
+    expect(saved.status).toBe(200);
+    expect(saved.body.user.education).toEqual({ ...EDUCATION, college: "Gujarat University" });
+
+    expect((await unlock(s, id)).status).toBe(200);
+    const detail = await asAdmin(request(app).get(`/api/admin/job-applications/${id}`));
+    expect(detail.body.application.user.education).toMatchObject({ college: "Gujarat University", semester: "4", passingYear: 2028 });
+    // The application keeps the details it was made with, even after the profile moves on.
+    await me({ semester: "5" });
+    const later = await asAdmin(request(app).get(`/api/admin/job-applications/${id}`));
+    expect(later.body.application.education).toEqual(EDUCATION);
+    expect(later.body.application.user.education.semester).toBe("5");
+  });
+
   it("refuses a CV larger than 2 MB", async () => {
     const o = await opening();
     const s = await student();
@@ -150,7 +179,7 @@ describe("BCA internships", () => {
     expect((await authed(request(app).get(`/api/admin/job-applications/${id}/cv`), s.token)).status).toBe(403);
 
     const list = await asAdmin(request(app).get("/api/admin/job-applications"));
-    expect(list.body.applications.find((a) => a._id === id)).toMatchObject({ cv: { fileName: "My CV (final).pdf" }, opening: { audience: "bca" } });
+    expect(list.body.applications.find((a) => a._id === id)).toMatchObject({ cv: { fileName: "My CV (final).pdf" }, opening: { audience: "free" } });
 
     mailer.sendApplicationStatusEmail.mockClear();
     const selected = await asAdmin(request(app).post(`/api/admin/job-applications/${id}/status`)).send({ action: "select" });

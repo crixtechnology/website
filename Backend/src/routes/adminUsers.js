@@ -12,7 +12,10 @@ const { getWallet } = require("../utils/wallet");
 const { queryText } = require("../utils/validators");
 const router = express.Router();
 
-const SAFE_FIELDS = { id: true, name: true, email: true, phone: true, role: true, profilePending: true, createdAt: true };
+const SAFE_FIELDS = {
+  id: true, name: true, email: true, phone: true, role: true, profilePending: true, createdAt: true,
+  college: true, course: true, department: true, semester: true, passingYear: true,
+};
 
 // ---------- admin: user directory, search + full CRUD ----------
 // This is the "user data" section of the admin panel's search — separate

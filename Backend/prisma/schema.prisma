@@ -58,6 +58,14 @@ model User {
   // only): its name is a placeholder taken from the email until the owner
   // saves their real one in Profile. Nothing can be bought until then.
   profilePending           Boolean   @default(false)
+  // Education, from Profile: optional, but needed before applying for a free
+  // internship (utils/accounts.js educationMissing). semester is "1".."10" or
+  // "graduated" (utils/accounts.js SEMESTERS).
+  college                  String    @default("") @db.VarChar(150)
+  course                   String    @default("") @db.VarChar(100)
+  department               String    @default("") @db.VarChar(100)
+  semester                 String    @default("") @db.VarChar(16)
+  passingYear              Int?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
@@ -596,7 +604,7 @@ model JobOpening {
   // false = a free role: the aptitude test unlocks without the registration fee.
   feeRequired      Boolean       @default(true)
   // Who the role is listed for: "general" (the /careers page and the dashboard)
-  // or "bca" (only the unlinked /bca-internships page, where a CV is required).
+  // or "free" (only the unlinked /free-internships page, where a CV is required).
   audience         String        @default("general") @db.VarChar(16)
   // --- this role's test ---
   durationMinutes  Int           @default(45)
@@ -664,12 +672,16 @@ model JobApplication {
   // (webcam monitoring) is for adults only. Set when paying the fee or, for an
   // older application, when starting the test.
   adultConfirmedAt DateTime?
-  // The candidate's CV (a PDF), required for a "bca" role before its test
+  // The candidate's CV (a PDF), required for a "free" role before its test
   // unlocks. Stored like the webcam photos (utils/proctorStorage.js); only the
   // key is kept here, and the file follows the same retention rules.
   cvKey         String               @default("") @db.VarChar(255)
   cvFileName    String               @default("") @db.VarChar(190)
   cvUploadedAt  DateTime?
+  // The student's education as it was when they applied for a free internship
+  // ({ college, course, department, semester, passingYear }), so a later
+  // profile change doesn't rewrite what the application was made with.
+  education     Json?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
