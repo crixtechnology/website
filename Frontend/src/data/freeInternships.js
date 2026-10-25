@@ -7,7 +7,9 @@
 //
 // The internship itself is free. The aptitude test has a processing fee (Admin
 // → Careers settings; 0 = none) that comes back in full as wallet credit, so the
-// text that mentions it is built from the live terms.
+// text that mentions it is built from the live terms. The amount changes from
+// time to time, so the page itself never quotes it: only the payment step
+// (FreeApplyModal) shows the exact figure, just before the applicant pays.
 // ============================================================
 import { testRuleLines } from "./careers.js";
 
@@ -18,13 +20,13 @@ export const RESULT_DAYS = 7;
 // What the page quotes until the live terms arrive from the backend.
 export const defaultFreeTerms = { processingFee: 94, creditExpiryMonths: 12, creditUsagePercent: 100 };
 
-const feeLine = (fee) => `a ₹${fee} test processing fee, which comes back to your Crix wallet as ${fee} credits`;
+const FEE_LINE = "a small test processing fee, which comes back in full to your Crix wallet as credits";
 
 export const freeHero = (fee) => ({
   eyebrow: "Free Internships",
   title: "Free internships for students of every field.",
   text: fee > 0
-    ? `Work on real projects with mentors from Crix Technology. The internship is free: create your account, send your CV for a role, pay ${feeLine(fee)}, take the online aptitude test, and get your result by email within ${RESULT_DAYS} days.`
+    ? `Work on real projects with mentors from Crix Technology. The internship is free: create your account, send your CV for a role, pay ${FEE_LINE}, take the online aptitude test, and get your result by email within ${RESULT_DAYS} days.`
     : `Work on real projects with mentors from Crix Technology. Applying is free: create your account, send your CV for a role, take the online aptitude test, and get your result by email within ${RESULT_DAYS} days.`,
 });
 
@@ -34,7 +36,7 @@ export const freeSteps = (fee) => [
     n: "02",
     title: "Apply with your CV",
     desc: `Pick a role, fill in your college, course, branch and semester, and upload your CV as a PDF (up to ${CV_MAX_MB} MB).` +
-      (fee > 0 ? ` Then pay the ₹${fee} test processing fee — it comes back as ${fee} credits in your wallet.` : " There is no fee."),
+      (fee > 0 ? " Then pay the test processing fee — the amount is shown before you pay, and it all comes back as credits in your wallet." : " There is no fee."),
   },
   { n: "03", title: "Take the aptitude test", desc: "Once you've applied, your online aptitude test unlocks. Take it straight away or later from My Dashboard." },
   { n: "04", title: "Get your result", desc: `Within ${RESULT_DAYS} days of submitting the test you'll get an email telling you whether you're selected or not selected.` },
@@ -60,13 +62,13 @@ export const processingFeePoints = ({ processingFee, creditExpiryMonths, creditU
 // ---------- the rules shown on the page ----------
 export const freeRules = (terms) => [
   terms.processingFee > 0
-    ? `The internship is free. The only charge is ${feeLine(terms.processingFee)} (1 credit = ₹1). Crix Technology never asks for any other payment — if anyone does, don't pay and tell us.`
+    ? `The internship is free. The only charge is ${FEE_LINE} (1 credit = ₹1); the amount is shown before you pay. Crix Technology never asks for any other payment — if anyone does, don't pay and tell us.`
     : "Applying, the aptitude test and the internship are free. Crix Technology never asks applicants for a fee — if anyone does, don't pay and tell us.",
   "You need your own Crix account to apply. Sign up (or log in) before sending your CV.",
   `Your CV must be a PDF of up to ${CV_MAX_MB} MB, in your own name, and true. You can replace it until you start the test.`,
   "You can hold one open application per role. You may apply for more than one role, but each has its own test.",
   terms.processingFee > 0
-    ? `Your test unlocks once your CV is uploaded, you accept these rules and the Terms & Conditions, and the ₹${terms.processingFee} processing fee is paid. The fee is not refunded in cash for any reason — including if you don't take the test or aren't selected — but it stays in your wallet as credit.`
+    ? `Your test unlocks once your CV is uploaded, you accept these rules and the Terms & Conditions, and the processing fee is paid. The fee is not refunded in cash for any reason — including if you don't take the test or aren't selected — but it stays in your wallet as credit.`
     : "Your test unlocks only after your CV is uploaded and you accept these rules and the Terms & Conditions.",
   "You get one attempt per application. It can be taken straight away or later from My Dashboard, while the role is open.",
   ...testRuleLines(),

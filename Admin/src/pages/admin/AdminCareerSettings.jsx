@@ -66,7 +66,8 @@ export default function AdminCareerSettings() {
                 <div className="field"><label htmlFor="cs-fee">Aptitude test registration fee (₹)</label>
                   <input id="cs-fee" type="number" min="1" step="1" value={settings.testFeeRupees} onChange={setField("testFeeRupees")} /></div>
                 <div className="field"><label htmlFor="cs-processing">Free internships test processing fee (₹, 0 = none)</label>
-                  <input id="cs-processing" type="number" min="0" step="1" value={settings.processingFeeRupees} onChange={setField("processingFeeRupees")} /></div>
+                  <input id="cs-processing" type="number" min="0" step="1" value={settings.processingFeeRupees} onChange={setField("processingFeeRupees")} />
+                  <p className="form-note" style={{ margin: "6px 0 0" }}>Change it here at any time. The free internships page never quotes the amount; applicants see it at the payment step.</p></div>
                 <div className="field"><label htmlFor="cs-bonus">Signup bonus (credits, 0 = none)</label>
                   <input id="cs-bonus" type="number" min="0" step="1" value={settings.signupBonusCredits} onChange={setField("signupBonusCredits")} /></div>
                 <div className="field"><label htmlFor="cs-expiry">Credit expiry (months, 0 = never)</label>
