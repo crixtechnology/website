@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, DownloadPdfButton,
+  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert,
   useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
 import { openApplicationFor, StatusPill, AdultCheckbox } from "../components/CareersDashboard.jsx";
@@ -14,7 +14,7 @@ import { phoneError } from "../utils/phone.js";
 import { EducationFields, educationForm, educationPayload, educationMissing, emptyEducation } from "../utils/education.js";
 import { careersContact } from "../data/careers.js";
 import {
-  freeHero, freeSteps, freeEligibility, freeRules, freePrivacy, freeTerms, freeFaqs, freeRulesDocument, CV_MAX_MB, RESULT_DAYS,
+  freeHero, freeSteps, freeEligibility, freeRules, CV_MAX_MB, RESULT_DAYS,
 } from "../data/freeInternships.js";
 
 // The free internships page, open to students of every field. Not linked from
@@ -29,7 +29,6 @@ const INDEX = [
   { id: "how", label: "How it works" },
   { id: "openings", label: "Openings" },
   { id: "rules", label: "Rules" },
-  { id: "privacy", label: "Privacy & terms" },
 ];
 
 const scrollToId = (id) => (e) => {
@@ -294,7 +293,7 @@ function FreeApplyModal({ opening, onClose }) {
         <label className="check-row">
           <input type="checkbox" checked={agreed} disabled={busy} onChange={(e) => { setAgreed(e.target.checked); setMsg({ kind: "", text: "" }); }} />
           <span>
-            I have read and agree to the <a href="#rules" onClick={(e) => { e.preventDefault(); onClose(); setTimeout(() => document.getElementById("rules")?.scrollIntoView(), 0); }}>internship rules, privacy notice and terms</a>,
+            I have read and agree to the <a href="#rules" onClick={(e) => { e.preventDefault(); onClose(); setTimeout(() => document.getElementById("rules")?.scrollIntoView(), 0); }}>internship rules</a>,
             {" "}and the <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a> and{" "}
             <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
           </span>
@@ -445,34 +444,6 @@ export default function FreeInternships() {
           <Reveal variant="reveal" className="vm-card" style={{ marginTop: 26 }}>
             <ul className="dash-list">{freeRules.map((x) => <li key={x}>{x}</li>)}</ul>
           </Reveal>
-        </div>
-      </section>
-
-      {/* Privacy, terms and questions */}
-      <section id="privacy" className="section anchor-section" style={{ paddingTop: 20 }}>
-        <div className="wrap" style={{ maxWidth: 900 }}>
-          <Reveal as="span" variant="reveal-l" className="eyebrow">Privacy &amp; Terms</Reveal>
-          <Reveal as="h2" variant="reveal-l">Your data, and the fine print.</Reveal>
-          <Reveal variant="reveal" className="card" style={{ marginTop: 26, padding: 0 }}>
-            <div className="faq-list">
-              {freePrivacy.map((p) => (
-                <details className="faq" key={p.q}><summary>Privacy — {p.q}</summary><p>{p.a}</p></details>
-              ))}
-              <details className="faq">
-                <summary>Terms of this programme</summary>
-                <p>{freeTerms.map((t) => `• ${t}`).join("\n")}</p>
-              </details>
-              {freeFaqs.map((f) => (
-                <details className="faq" key={f.q}><summary>{f.q}</summary><p>{f.a}</p></details>
-              ))}
-            </div>
-          </Reveal>
-          <p className="form-note" style={{ marginTop: 16 }}>
-            Full documents: <Link to="/terms-of-service">Terms of Service</Link> · <Link to="/privacy-policy">Privacy Policy</Link>
-          </p>
-          <div className="legal-actions" style={{ marginTop: 12 }}>
-            <DownloadPdfButton label="Download rules, privacy & terms (PDF)" getDocument={freeRulesDocument} />
-          </div>
         </div>
       </section>
 
