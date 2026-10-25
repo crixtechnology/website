@@ -134,6 +134,30 @@ describe("help agent", () => {
     expect(own.links).toBeUndefined();
   });
 
+  it("answers about the free internships when asked, without a link to the page", () => {
+    const fee = chat("what is the ₹94 processing fee?");
+    expect(fee.state.topic).toBe("free");
+    expect(fee.last.text).toMatch(/internship itself is free/);
+    expect(fee.last.text).toMatch(/94 credits/);
+    expect(fee.last.links).toBeUndefined();
+    const overview = chat("how do I apply for the free internship?").last.text;
+    expect(overview).toMatch(/Apply with your CV/);
+    expect(overview).toMatch(/within 7 days/i);
+    // Follow-ups stay on it, and the right team is the students' one.
+    expect(chat("free internship", "is the cv a pdf?").last.text).toMatch(/PDF of up to 2 MB/);
+    expect(chat("free internship", "how much?").last.text).toMatch(/₹94/);
+    expect(chat("free internship", "can I call you?").last.dept).toBe("programs");
+  });
+
+  it("never brings up the free internships page unasked", () => {
+    const quiet = (r) => expect(`${r.text} ${(r.chips || []).map((c) => c.say).join(" ")} ${(r.more || []).map((m) => m.q).join(" ")}`).not.toMatch(/free internship|₹94|processing fee/i);
+    const all = chat("hi", "internships", "is the internship free or paid?", "show all programs", "are you hiring?", "how much?", "aptitude test fee", "what is the wallet", "is there anything free?", "I need a website");
+    all.replies.forEach(quiet);
+    quiet(greeting({}));
+    quiet(respond(initialState(), "xyzzy qwertyuiop", ctx).replies[0]);
+    quiet(respond(initialState(), "internshp fre", ctx).replies[0]);
+  });
+
   it("flags what it couldn't understand and offers the main topics", () => {
     const r = respond(initialState(), "xyzzy qwertyuiop", ctx);
     expect(r.state.unanswered).toBe(true);

@@ -29,6 +29,13 @@ describe("help bot answers", () => {
 });
 
 describe("help bot answers say it in the chat", () => {
+  it("keeps the unlisted free internships page out of the answer bank (its questions show up as suggestions)", () => {
+    for (const f of ALL_FAQS) {
+      expect(`${f.q} ${f.a} ${f.k || ""}`).not.toMatch(/free internship|free-internships|₹94|processing fee/i);
+      for (const l of f.links || []) expect(l.to || "").not.toBe("/free-internships");
+    }
+  });
+
   it("never sends people to another page just to read the answer", () => {
     for (const f of ALL_FAQS) expect(f.a).not.toMatch(/\b(see|check|visit) (the|our) [a-z ]{0,25}page\b|\b(is|are) on (its|the|each) (?!same )[a-z ]{0,20}page\b/i);
   });

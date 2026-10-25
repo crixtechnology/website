@@ -29,6 +29,7 @@ import { ALL_FAQS, searchFaqs } from "./faqData.js";
 import { understand, buildVocab, similarity } from "./agentLanguage.js";
 import { findNamed, programAnswer, roleAnswer, programLine, fromPrice } from "./agentKnowledge.js";
 import { formatINR } from "../utils/tiers.js";
+import { defaultFreeTerms, freeSteps, freeEligibility, CV_MAX_MB, RESULT_DAYS } from "./freeInternships.js";
 
 export const DEPARTMENTS = {
   programs: {
@@ -46,7 +47,7 @@ export const DEPARTMENTS = {
 };
 
 // Each topic the agent can hold a conversation about, and which department owns it.
-const TOPIC_DEPT = { programs: "programs", careers: "programs", payments: "programs", account: "programs", wallet: "programs", services: "it" };
+const TOPIC_DEPT = { programs: "programs", careers: "programs", free: "programs", payments: "programs", account: "programs", wallet: "programs", services: "it" };
 
 const MAIN_CHIPS = [
   { icon: "🎓", label: "Internships & courses", hint: "Find a program to join", say: "Internships and courses" },
@@ -80,6 +81,8 @@ const WORDS = {
   careerList: ["hiring", "open role", "open roles", "openings", "vacancy", "vacancies", "jobs", "job opening", "any job", "careers and"],
   failure: ["deducted", "debited", "failed", "not received", "no access", "didnt get", "didn t get", "stuck", "pending", "not showing", "not visible", "not unlocked", "cant see", "can t see", "not working", "but no", "but course", "but not"],
   clientTerms: ["refund", "money back", "own", "ownership", "copyright", "intellectual property", "source code", "nda", "confidential", "late", "delay", "deadline", "cancel", "terms", "contract"],
+  // Naming the unlisted free internships page (see freeInternshipReply).
+  freeInternship: ["free internship", "free intern ", "processing fee", "₹94", "94 fee", "rs 94", "94 rupees", "bca internship"],
   allNumbers: ["contact numbers", "phone numbers", "your numbers", "all numbers", "both numbers", "contact details", "all your numbers"],
 };
 
@@ -228,7 +231,47 @@ function servicesReply(ctx, n) {
   };
 }
 
+// ---------- the free internships ----------
+// That page is shared only by its address and never advertised (data/freeInternships.js),
+// so these answers are given only to someone who names it ("free internship", "the ₹94
+// fee"): nothing else here mentions it, and it isn't in the answer bank, whose questions
+// show up as suggestions. No link to it either — they already have the address.
+const FREE_FEE = defaultFreeTerms.processingFee;
+
+function freeInternshipReply(n) {
+  const facts = [];
+  // ("free" is in its name, so it doesn't count as asking about the price.)
+  if (has(n, [...WORDS.price.filter((w) => w !== "free"), "refund", "credit", "wallet", "pay", "money", "94", "₹94"])) {
+    facts.push(`The internship itself is free. The only charge is a ₹${FREE_FEE} aptitude-test processing fee (the page shows the current amount), paid through Razorpay. The whole fee comes back to your Crix wallet as ${FREE_FEE} credits as soon as the payment is confirmed — 1 credit = ₹1, to use on Crix courses and internships. It's never refunded in cash and can't be withdrawn, and paying it doesn't guarantee selection. Crix Technology never asks for any other payment — if anyone does, don't pay and tell us.`);
+  }
+  if (has(n, ["cv", "resume", "pdf", "upload"])) {
+    facts.push(`Your CV must be a PDF of up to ${CV_MAX_MB} MB, in your own name, and true. You can replace it until you start the test.`);
+  }
+  if (has(n, ["eligib", "who can", "field", "stream", "branch", "bca", "age", "year"])) {
+    facts.push(`Who can apply:\n${freeEligibility.map((x) => `• ${x}`).join("\n")}`);
+  }
+  if (has(n, ["result", "selected", "when", "hear back"])) {
+    facts.push(`Results — selected or not selected — are emailed to you within ${RESULT_DAYS} days of submitting the test, and shown in My Dashboard → My Applications. If you're not selected, you can apply again after the waiting period shown when you try.`);
+  }
+  if (!facts.length) {
+    facts.push(
+      `The free internships are for students of any field, with real project work and mentors from Crix Technology. To apply:\n${freeSteps(FREE_FEE).map((s) => `• ${s.title} — ${s.desc}`).join("\n")}`,
+      `You need to be 18 or older and in India, with a laptop or desktop and a working webcam for the test. You can apply for more than one role; each has its own test, and you get one attempt per application.`,
+    );
+  }
+  return {
+    text: facts.join("\n"),
+    chips: [
+      { label: "About the fee", say: "free internship processing fee" },
+      { label: "Who can apply?", say: "free internship eligibility" },
+      { label: "The test rules", say: "What are the test rules? What do I need?" },
+      { label: "When's the result?", say: "free internship result when" },
+    ],
+  };
+}
+
 function priceReply(state, ctx) {
+  if (state.topic === "free") return freeInternshipReply(norm("fee"));
   if (state.topic === "careers") {
     const roles = openRoles(ctx);
     return {
@@ -450,7 +493,14 @@ export function respond(state, text, ctx = {}) {
   }
   if (has(n, ["other tracks", "all programs", "all program", "show everything", "everything"])) return out(allProgramsReply(ctx), "programs");
   if (has(n, WORDS.human) && !has(n, ["change my phone", "change phone", "update phone", "phone number change"])) {
-    return out(handoffReply({ topic: ctxTopic }), ctxTopic);
+    return out(handoffReply({ topic: state.topic === "free" && !topic ? "free" : ctxTopic }), ctxTopic);
+  }
+
+  // The free internships — only when the message names them, or follows up on them.
+  const namesFree = has(n, WORDS.freeInternship);
+  const followsFree = state.topic === "free" && words.length <= 6 && !topic;
+  if (namesFree || (followsFree && has(n, [...WORDS.price, ...WORDS.apply, "cv", "resume", "eligib", "who can", "result", "when", "refund", "credit"]))) {
+    return out(freeInternshipReply(n), "free");
   }
 
   // A program or role named outright ("price of MERN?", "stipend for the data science intern").
