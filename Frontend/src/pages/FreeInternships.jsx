@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert,
+  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, DownloadPdfButton,
   useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
 import { openApplicationFor, StatusPill, AdultCheckbox } from "../components/CareersDashboard.jsx";
@@ -13,6 +13,7 @@ import PhoneInput from "../components/PhoneInput.jsx";
 import { phoneError } from "../utils/phone.js";
 import { EducationFields, educationForm, educationPayload, educationMissing, emptyEducation } from "../utils/education.js";
 import { careersContact } from "../data/careers.js";
+import { legal } from "../data/content.js";
 import {
   freeHero, freeSteps, freeEligibility, freeRules, CV_MAX_MB, RESULT_DAYS,
 } from "../data/freeInternships.js";
@@ -26,8 +27,8 @@ const LOADING_CAP_MS = 4000;
 const CV_MAX_BYTES = CV_MAX_MB * 1024 * 1024;
 
 const INDEX = [
-  { id: "how", label: "How it works" },
   { id: "openings", label: "Openings" },
+  { id: "how", label: "How it works" },
   { id: "rules", label: "Rules" },
 ];
 
@@ -372,23 +373,6 @@ export default function FreeInternships() {
       <SectionIndex items={INDEX} />
       <Alert kind="info">{notice}</Alert>
 
-      {/* How it works */}
-      <section id="how" className="section anchor-section" style={{ paddingTop: 20 }}>
-        <div className="wrap">
-          <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
-          <Reveal as="h2" variant="reveal-l">Four steps, no fee.</Reveal>
-          <div className="process stagger">
-            {freeSteps.map((s, i) => (
-              <Reveal key={s.n} variant="reveal" className="step" style={{ "--i": i }}>
-                <span className="step-num">{s.n}</span>
-                <h3>{s.title}</h3>
-                <p>{s.desc}</p>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Openings */}
       <section id="openings" className="section section--internships anchor-section" style={{ paddingTop: 20 }}>
         <div className="orb orb-1"></div>
@@ -436,6 +420,23 @@ export default function FreeInternships() {
       <FreeOpeningModal opening={detail} onClose={() => setDetail(null)} onApply={apply} />
       <FreeApplyModal opening={applying} onClose={() => setApplying(null)} />
 
+      {/* How it works */}
+      <section id="how" className="section anchor-section" style={{ paddingTop: 20 }}>
+        <div className="wrap">
+          <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
+          <Reveal as="h2" variant="reveal-l">Four steps, no fee.</Reveal>
+          <div className="process stagger">
+            {freeSteps.map((s, i) => (
+              <Reveal key={s.n} variant="reveal" className="step" style={{ "--i": i }}>
+                <span className="step-num">{s.n}</span>
+                <h3>{s.title}</h3>
+                <p>{s.desc}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Rules */}
       <section id="rules" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap" style={{ maxWidth: 900 }}>
@@ -444,6 +445,13 @@ export default function FreeInternships() {
           <Reveal variant="reveal" className="vm-card" style={{ marginTop: 26 }}>
             <ul className="dash-list">{freeRules.map((x) => <li key={x}>{x}</li>)}</ul>
           </Reveal>
+          {/* The site's own Terms and Privacy Policy, as PDFs (same documents as /terms-of-service and /privacy-policy). */}
+          <div className="legal-actions" style={{ marginTop: 18, justifyContent: "flex-start", flexWrap: "wrap", gap: 12 }}>
+            {[["Terms of Service", legal.terms], ["Privacy Policy", legal.privacy]].map(([title, doc]) => (
+              <DownloadPdfButton key={title} label={`Download ${title} (PDF)`}
+                getDocument={() => ({ title, subtitle: legal.updated, intro: doc.intro, sections: doc.sections })} />
+            ))}
+          </div>
         </div>
       </section>
 
