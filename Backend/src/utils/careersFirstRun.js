@@ -1,5 +1,6 @@
 const { prisma } = require("../db");
-const { seedCareers } = require("../scripts/seedCareers");
+const { seedCareers, addQuestions } = require("../scripts/seedCareers");
+const roleBanks = require("../scripts/careerQuestionsRoles");
 const { storageStatus } = require("./proctorStorage");
 
 // The starter job roles and question bank, added once, by the server itself, the
@@ -37,4 +38,29 @@ async function seedCareersOnce() {
   return result;
 }
 
-module.exports = { seedCareersOnce, FLAG };
+// The question banks for the free-internship roles (scripts/careerQuestionsRoles.js:
+// frontend, python, web fundamentals, AI/ML, more data-science questions and the
+// foundation general sections), added once to a database that already had its
+// starter bank. Runs after seedCareersOnce, so on a brand-new database (which
+// the starter seed already filled with these) it adds nothing. Questions already
+// in the bank are skipped, and after this has run once, nothing is re-added —
+// one the admin deletes stays deleted.
+const ROLE_BANKS_FLAG = "career_role_banks_added";
+
+async function addRoleBanksOnce() {
+  const done = await prisma.setting.findUnique({ where: { key: ROLE_BANKS_FLAG } });
+  if (done) return { ran: false, reason: "already done" };
+  const addedQuestions = await addQuestions(roleBanks);
+  if (addedQuestions) console.log(`[careers] added ${addedQuestions} question(s) for the free-internship roles.`);
+  await prisma.setting.upsert({
+    where: { key: ROLE_BANKS_FLAG },
+    create: { key: ROLE_BANKS_FLAG, value: { at: new Date().toISOString(), addedQuestions } },
+    update: {},
+  });
+  return { ran: true, addedQuestions };
+}
+
+// What the server runs on start: the first-run seed, then the later additions.
+const careersStartup = () => seedCareersOnce().then(addRoleBanksOnce);
+
+module.exports = { seedCareersOnce, addRoleBanksOnce, careersStartup, FLAG, ROLE_BANKS_FLAG };

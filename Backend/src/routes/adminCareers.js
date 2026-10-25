@@ -342,7 +342,7 @@ function categoryFromText(value) {
   for (const [key, label] of Object.entries(CATEGORIES)) {
     if (norm === key || norm === label.toLowerCase().replace(/[^a-z]/g, "")) return key;
   }
-  const aliases = { quant: "quantitative", aptitude: "quantitative", reasoning: "logical", english: "verbal", verbalability: "verbal", webdev: "web", fullstackdevelopment: "fullstack", ds: "datascience" };
+  const aliases = { quant: "quantitative", aptitude: "quantitative", reasoning: "logical", english: "verbal", verbalability: "verbal", webdev: "web", fullstackdevelopment: "fullstack", ds: "datascience", react: "frontend", py: "python", ai: "aiml", ml: "aiml", machinelearning: "aiml" };
   return aliases[norm] || null;
 }
 

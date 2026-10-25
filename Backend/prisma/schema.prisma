@@ -590,7 +590,8 @@ model JobOpening {
   title            String
   summary          String        @db.Text
   // Which technical question bank this role's test draws from:
-  // "web" | "fullstack" | "datascience" (utils/careers.js TECH_CATEGORIES).
+  // "web" | "fullstack" | "datascience" | "frontend" | "python" | "webfundamentals"
+  // | "aiml" (utils/careers.js TECH_CATEGORIES).
   techCategory     String        @default("web")
   skills           Json          @default("[]")
   responsibilities Json          @default("[]")

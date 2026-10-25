@@ -1,7 +1,7 @@
 // Starter data for the careers page and the aptitude test: the three job
-// openings and a question bank of 50 questions for every category (general:
-// quantitative, logical reasoning, verbal ability; technical: web, full stack,
-// data science).
+// openings and a question bank for every category (general: quantitative,
+// logical reasoning, verbal ability, and their foundation versions; technical:
+// web, full stack, data science, frontend, python, web fundamentals, AI/ML).
 // Everything here is admin-editable afterwards (Admin → Job openings / Question bank).
 //
 // Safe to re-run — an opening whose slug already exists is skipped, and so is a
@@ -87,7 +87,7 @@ const openings = [
   },
 ];
 
-// 50 questions per category, all above the basics: see careerQuestions.js.
+// The starter bank: see careerQuestions.js (and careerQuestionsRoles.js).
 const questions = require("./careerQuestions");
 
 // Two questions may share their wording ("Which word is spelled correctly?") and
@@ -105,15 +105,22 @@ async function seedCareers({ openingStatus = "open" } = {}) {
     addedOpenings += 1;
   }
 
-  let addedQuestions = 0;
-  for (const [category, rows] of Object.entries(questions)) {
+  const addedQuestions = await addQuestions(questions);
+  return { addedOpenings, addedQuestions };
+}
+
+// Adds the questions of `bank` ({ category: [[text, options, correctIndex], ...] })
+// that aren't in the database yet. Returns how many were added.
+async function addQuestions(bank) {
+  let added = 0;
+  for (const [category, rows] of Object.entries(bank)) {
     const inBank = await prisma.testQuestion.findMany({ where: { category }, select: { text: true, options: true } });
     const existing = new Set(inBank.map((q) => sameQuestion(q.text, Array.isArray(q.options) ? q.options : [])));
     const fresh = rows.filter(([text, options]) => !existing.has(sameQuestion(text, options))).map(([text, options, correctIndex]) => ({ category, text, options, correctIndex }));
     if (fresh.length) await prisma.testQuestion.createMany({ data: fresh });
-    addedQuestions += fresh.length;
+    added += fresh.length;
   }
-  return { addedOpenings, addedQuestions };
+  return added;
 }
 
 async function main() {
@@ -127,4 +134,4 @@ if (require.main === module) {
     .finally(() => prisma.$disconnect());
 }
 
-module.exports = { seedCareers, openings, questions, COMMON };
+module.exports = { seedCareers, addQuestions, openings, questions, COMMON };

@@ -7,7 +7,11 @@ import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
 // Which technical question bank a role's test draws from.
-const TECH = [["web", "Web Development"], ["fullstack", "Full Stack Development"], ["datascience", "Data Science"]];
+const TECH = [
+  ["web", "Web Development"], ["fullstack", "Full Stack Development"], ["datascience", "Data Science"],
+  ["frontend", "Frontend (React & JavaScript)"], ["python", "Python Programming"],
+  ["webfundamentals", "Web Fundamentals (HTML, CSS, JS, HTTP)"], ["aiml", "AI / Machine Learning"],
+];
 const COUNT_FIELDS = [["quantitative", "Quantitative"], ["logical", "Logical reasoning"], ["verbal", "Verbal ability"], ["technical", "Technical"]];
 
 const EMPTY_FORM = {
@@ -99,9 +103,11 @@ export default function AdminJobOpenings() {
   };
 
   // A role that asks for more questions than its banks hold gets a shorter test.
+  // Free-internship roles take their general sections from the foundation banks.
   const shortBanks = (o) => {
     const c = o.test.questionCounts || {};
-    const need = [["quantitative", c.quantitative], ["logical", c.logical], ["verbal", c.verbal], [o.techCategory, c.technical]];
+    const general = (k) => (o.audience === "free" && bank[`${k}_foundation`] ? `${k}_foundation` : k);
+    const need = [[general("quantitative"), c.quantitative], [general("logical"), c.logical], [general("verbal"), c.verbal], [o.techCategory, c.technical]];
     return need.filter(([cat, n]) => n > (bank[cat] || 0)).map(([cat, n]) => `${cat} (needs ${n}, bank has ${bank[cat] || 0})`);
   };
   const totalMarks = COUNT_FIELDS.reduce((sum, [k]) => sum + (Number(form[k]) || 0), 0) * (Number(form.marksPerQuestion) || 0);
@@ -160,7 +166,8 @@ export default function AdminJobOpenings() {
               </select></div>
             {form.audience === "free" ? (
               <div className="field"><label>Fee</label>
-                <p className="form-note" style={{ margin: "6px 0 0" }}>Test processing fee from Careers settings (comes back as wallet credit).</p></div>
+                <p className="form-note" style={{ margin: "6px 0 0" }}>Test processing fee from Careers settings (comes back as wallet credit).
+                  The quantitative, logical and verbal questions come from the gentler foundation banks.</p></div>
             ) : (
               <div className="field"><label htmlFor="jo-fee">Registration fee</label>
                 <select id="jo-fee" value={form.feeRequired} onChange={set("feeRequired")}>
