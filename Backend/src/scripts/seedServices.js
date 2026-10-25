@@ -13,6 +13,8 @@
 // other service is set to inactive — hidden from /services, not deleted, so
 // an admin can bring one back from /admin/services.
 //   node src/scripts/seedServices.js --replace
+// The server also does this switch once by itself on its next start
+// (utils/servicesSwitch.js), so a host without a shell needs nothing.
 require("dotenv").config();
 const { prisma } = require("../db");
 
@@ -91,9 +93,8 @@ const services = [
   },
 ];
 
-async function run() {
-  const replace = process.argv.includes("--replace");
-  let created = 0, skipped = 0, updated = 0;
+async function seedServices({ replace = false } = {}) {
+  let created = 0, skipped = 0, updated = 0, hidden = 0;
   for (let i = 0; i < services.length; i++) {
     const entry = services[i];
     const existing = await prisma.service.findFirst({ where: { title: entry.title } });
@@ -107,19 +108,25 @@ async function run() {
     created++;
   }
   if (replace) {
-    const hidden = await prisma.service.updateMany({
+    ({ count: hidden } = await prisma.service.updateMany({
       where: { title: { notIn: services.map((s) => s.title) }, status: "active" },
       data: { status: "inactive" },
-    });
-    console.log(`services: ${created} created, ${updated} updated, ${hidden.count} old ones set inactive`);
-  } else {
-    console.log(`services: ${created} created, ${skipped} already existed (skipped)`);
+    }));
   }
-  await prisma.$disconnect();
-  process.exit(0);
+  return { created, skipped, updated, hidden };
 }
 
-run().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+async function main() {
+  const replace = process.argv.includes("--replace");
+  const { created, skipped, updated, hidden } = await seedServices({ replace });
+  if (replace) console.log(`services: ${created} created, ${updated} updated, ${hidden} old ones set inactive`);
+  else console.log(`services: ${created} created, ${skipped} already existed (skipped)`);
+}
+
+if (require.main === module) {
+  main()
+    .catch((e) => { console.error(e); process.exitCode = 1; })
+    .finally(() => prisma.$disconnect());
+}
+
+module.exports = { seedServices, services };
