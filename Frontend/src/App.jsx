@@ -40,7 +40,7 @@ const ROUTE_LOADERS = {
   // Public, but its code (application, payment, the test's rules) is only needed there.
   "/careers": () => import("./pages/Careers.jsx"),
   // Not linked anywhere on the site: reached by its address only.
-  "/bca-internships": () => import("./pages/BcaInternships.jsx"),
+  "/free-internships": () => import("./pages/FreeInternships.jsx"),
 };
 registerPrefetch(ROUTE_LOADERS);
 
@@ -49,7 +49,7 @@ const Learn = lazy(ROUTE_LOADERS["/learn/"]);
 const Profile = lazy(ROUTE_LOADERS["/profile"]);
 const AptitudeTest = lazy(ROUTE_LOADERS["/test/"]);
 const Careers = lazy(ROUTE_LOADERS["/careers"]);
-const BcaInternships = lazy(ROUTE_LOADERS["/bca-internships"]);
+const FreeInternships = lazy(ROUTE_LOADERS["/free-internships"]);
 
 
 // Matches the "Loading..." convention every data-fetching page here already
@@ -204,7 +204,8 @@ export default function App() {
             <Route path="/about" element={<About />} />
             <Route path="/careers" element={<Careers />} />
             {/* Unlisted: no menu, footer or sitemap link, and noindex — shared by URL only. */}
-            <Route path="/bca-internships" element={<BcaInternships />} />
+            <Route path="/free-internships" element={<FreeInternships />} />
+            <Route path="/bca-internships" element={<Navigate to="/free-internships" replace />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />

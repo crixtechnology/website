@@ -12,7 +12,7 @@ const { hasLiveSession } = require("../utils/sessionPolicy");
 const { sendWelcomeEmail } = require("../utils/mailer");
 const { getCareerSettings } = require("../utils/careerSettings");
 const { respondNoEarlierThan } = require("../utils/authTiming");
-const { publicUser, ensureDefaultPassword, nameFromEmail } = require("../utils/accounts");
+const { publicUser, ensureDefaultPassword, nameFromEmail, educationData } = require("../utils/accounts");
 const { applyReferralCode } = require("../utils/referrals");
 const { grantSignupBonus, holdSignupBonus, claimSignupBonus } = require("../utils/wallet");
 
@@ -336,6 +336,10 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       }
       update.phone = p;
     }
+
+    const education = educationData(req.body || {});
+    if (education.error) return res.status(400).json({ ok: false, error: education.error });
+    Object.assign(update, education.data);
 
     const user = await prisma.user.update({ where: { id: req.user.sub }, data: update });
     res.json({ ok: true, user: publicUser(user) });

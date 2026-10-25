@@ -670,11 +670,11 @@ export async function getOpenings() {
   }
 }
 
-// Open roles for the unlinked BCA internships page (pages/BcaInternships.jsx).
-export async function getBcaOpenings() {
+// Open roles for the unlinked free internships page (pages/FreeInternships.jsx).
+export async function getFreeOpenings() {
   if (!API) return { ok: false, openings: [] };
   try {
-    const res = await fetch(`${API}/careers/bca/openings`);
+    const res = await fetch(`${API}/careers/free/openings`);
     return await res.json();
   } catch (e) {
     return { ok: false, error: "Could not load openings", openings: [] };

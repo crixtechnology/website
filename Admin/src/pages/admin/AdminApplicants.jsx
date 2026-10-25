@@ -32,6 +32,13 @@ const CAN = {
   reject: ["shortlisted", "interview_scheduled"],
 };
 
+// A student's education, on one line: "Gujarat University · B.Com, Commerce · Semester 4 · passing 2028".
+const hasEducation = (e) => !!e && !!(e.college || e.course || e.department || e.semester || e.passingYear);
+function educationLine(e) {
+  const semester = e.semester === "graduated" ? "Graduated" : e.semester ? `Semester ${e.semester}` : "";
+  return [e.college, [e.course, e.department].filter(Boolean).join(", "), semester, e.passingYear ? `passing ${e.passingYear}` : ""].filter(Boolean).join(" · ");
+}
+
 // "2026-10-14T15:30" typed as Indian time -> the moment in UTC.
 const istInputToIso = (value) => (value ? new Date(`${value}:00+05:30`).toISOString() : "");
 const isoToIstInput = (iso) => {
@@ -89,8 +96,10 @@ function ApplicantReview({ id, onBack, onChanged }) {
   const a = data.application;
   const t = a.attempt;
   const review = data.review;
-  // A BCA internship has no interview round: it can be selected straight from the test.
-  const can = (action) => CAN[action].includes(a.status) || (action === "select" && a.status === "submitted" && a.opening?.audience === "bca");
+  // A free internship has no interview round: it can be selected straight from the test.
+  // The copy taken when they applied (free internships), else the profile as it is now.
+  const education = hasEducation(a.education) ? a.education : hasEducation(a.user?.education) ? a.user.education : null;
+  const can = (action) => CAN[action].includes(a.status) || (action === "select" && a.status === "submitted" && a.opening?.audience === "free");
 
   const openCv = async () => {
     const res = await adminGetApplicationCv(a._id);
@@ -141,7 +150,12 @@ function ApplicantReview({ id, onBack, onChanged }) {
           <p className="form-note" style={{ margin: "4px 0 0" }}>
             CV: <button type="button" className="link-btn" onClick={openCv}>{a.cv.fileName || "cv.pdf"}</button> · uploaded {ist(a.cv.uploadedAt)}
           </p>
-        ) : a.opening?.audience === "bca" ? <p className="form-note" style={{ margin: "4px 0 0" }}>No CV uploaded yet.</p> : null}
+        ) : a.opening?.audience === "free" ? <p className="form-note" style={{ margin: "4px 0 0" }}>No CV uploaded yet.</p> : null}
+        {education && (
+          <p className="form-note" style={{ margin: "4px 0 0" }}>
+            {educationLine(education)}{a.education ? "" : " (from their profile now)"}
+          </p>
+        )}
 
         <h3 style={{ margin: "22px 0 12px" }}>Decision</h3>
         <div className="field"><label htmlFor="ap-note">Private note (only admins see it)</label>

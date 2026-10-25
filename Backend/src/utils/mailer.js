@@ -608,7 +608,7 @@ async function sendAccountDeletedEmail({ to, name, paymentsKept }) {
   const kept = paymentsKept > 0
     ? `We have kept the records of your ${paymentsKept} payment${paymentsKept === 1 ? "" : "s"} and ${paymentsKept === 1 ? "its receipt" : "their receipts"}, with no link to an account, because Indian tax and accounting law requires us to.`
     : "We held no payment records for your account, so nothing was kept.";
-  const erased = "Your profile, course access, wallet credit, referrals, careers applications, aptitude tests and webcam photos, notifications and contact-form messages have been erased.";
+  const erased = "Your profile, course access, wallet credit, referrals, careers applications and CVs, aptitude tests and webcam photos, notifications and contact-form messages have been erased.";
   const grievance = "If you have a question or a complaint about how your data was handled, write to our Grievance Officer at crixtechnology@gmail.com.";
   const html = layout({
     preheader: "Your Crix Technology account and personal data have been deleted.",

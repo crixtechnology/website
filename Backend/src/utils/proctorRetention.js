@@ -81,7 +81,7 @@ async function purgeExpiredSnapshots(now = new Date()) {
   return { deleted, failed };
 }
 
-// ---------- CVs (BCA internship applications) ----------
+// ---------- CVs (free internship applications) ----------
 // Same periods as the photos: 6 months after the application closes, 12 months
 // after it was made at the latest, and straight away when the account goes.
 // The key is cleared once the file is gone; the application row stays.

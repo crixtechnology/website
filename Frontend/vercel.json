@@ -5,7 +5,8 @@
     { "source": "/internships", "destination": "/programs#internships", "permanent": true },
     { "source": "/courses", "destination": "/programs#courses", "permanent": true },
     { "source": "/payment", "destination": "/programs", "permanent": true },
-    { "source": "/ambassador", "destination": "/", "permanent": true }
+    { "source": "/ambassador", "destination": "/", "permanent": true },
+    { "source": "/bca-internships", "destination": "/free-internships", "permanent": true }
   ],
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
@@ -22,7 +23,7 @@
       ]
     },
     {
-      "source": "/bca-internships",
+      "source": "/free-internships",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
       ]

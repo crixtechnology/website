@@ -8,6 +8,7 @@ import PasswordSettings from "../../components/PasswordSettings.jsx";
 import WalletCard from "../../components/WalletCard.jsx";
 import DeleteAccount from "../../components/DeleteAccount.jsx";
 import { phoneError } from "../../utils/phone.js";
+import { EducationFields, educationForm, educationPayload, emptyEducation } from "../../utils/education.js";
 import { safeNextPath } from "../../utils/safePath.js";
 
 export default function Profile() {
@@ -23,12 +24,14 @@ export default function Profile() {
   const sentToComplete = params.get("reason") === "complete" || isNew || !!next;
 
   const [form, setForm] = useState({ name: "", phone: "" });
+  const [education, setEducation] = useState(emptyEducation);
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     // An account made from the login form has a placeholder name: start the box empty.
     if (user) setForm({ name: user.profilePending ? "" : user.name || "", phone: user.phone || "" });
+    if (user) setEducation(educationForm(user));
   }, [user]);
 
   if (!isLoggedIn && params.get("deleted") === "1") {
@@ -77,7 +80,7 @@ export default function Profile() {
     setSaving(true);
     setStatus({ text: "Saving...", kind: "info" });
     // confirmName: this is the owner's own name, not the placeholder made from their email.
-    const res = await updateProfile({ name: form.name.trim(), phone: form.phone.trim(), confirmName: true });
+    const res = await updateProfile({ name: form.name.trim(), phone: form.phone.trim(), confirmName: true, ...educationPayload(education) });
     setSaving(false);
 
     if (!res.ok) {
@@ -130,6 +133,13 @@ export default function Profile() {
             <PhoneInput id="pf-phone" value={form.phone} disabled={saving}
               onChange={(phone) => { setForm((f) => ({ ...f, phone })); setStatus({ text: "", kind: "" }); }} />
           </div>
+
+          <h2 style={{ fontSize: "1.05rem", margin: "28px 0 4px" }}>Education</h2>
+          <p className="form-note" style={{ marginTop: 0, marginBottom: 14 }}>
+            Optional — but needed to apply for a free internship.
+          </p>
+          <EducationFields form={education} disabled={saving} idPrefix="pf-edu"
+            onChange={(next) => { setEducation(next); setStatus({ text: "", kind: "" }); }} />
 
           <button className="btn btn-solid" type="submit" disabled={saving} style={{ width: "100%", marginTop: 4 }}>
             {saving ? "Saving..." : next ? "Save and continue" : "Save changes"}

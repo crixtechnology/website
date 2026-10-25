@@ -17,7 +17,7 @@ const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { requireAuth } = require("../middleware/requireAuth");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 const { rejectWithoutTerms } = require("../utils/terms");
-const { rejectIfProfileIncomplete } = require("../utils/accounts");
+const { rejectIfProfileIncomplete, profileMissing, educationMissing } = require("../utils/accounts");
 const { lockUser } = require("../utils/wallet");
 const { getCareerSettings } = require("../utils/careerSettings");
 const { saveCv, deleteSnapshot } = require("../utils/proctorStorage");
@@ -30,8 +30,8 @@ const CLOSED_STATUSES = ["not_shortlisted", "rejected"];
 // A CV may be up to this size, and only before the test is taken.
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const CV_EDITABLE = ["payment_pending", "test_pending"];
-// A "bca" role's test only unlocks once a CV is on the application.
-const needsCv = (opening) => !!opening && opening.audience === "bca";
+// A "free" (free-internships page) role's test only unlocks once a CV is on the application.
+const needsCv = (opening) => !!opening && opening.audience === "free";
 // Statuses at which the candidate is shown their interview slot.
 const INTERVIEW_VISIBLE = ["interview_scheduled", "selected"];
 
@@ -90,7 +90,7 @@ function respondToRazorpayError(e, res) {
 }
 
 // ---------- public: open roles (the /careers page) ----------
-// BCA roles are left out: they are listed only on the unlinked /bca-internships page.
+// Free-internship roles are left out: they are listed only on the unlinked /free-internships page.
 router.get("/careers/openings", async (req, res, next) => {
   try {
     const [openings, settings] = await Promise.all([
@@ -103,10 +103,10 @@ router.get("/careers/openings", async (req, res, next) => {
   }
 });
 
-// ---------- public: open BCA roles (the /bca-internships page) ----------
-router.get("/careers/bca/openings", async (req, res, next) => {
+// ---------- public: open free-internship roles (the /free-internships page) ----------
+router.get("/careers/free/openings", async (req, res, next) => {
   try {
-    const openings = await prisma.jobOpening.findMany({ where: { status: "open", audience: "bca" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] });
+    const openings = await prisma.jobOpening.findMany({ where: { status: "open", audience: "free" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] });
     res.json({ ok: true, openings: openings.map((o) => shapeOpening(o)) });
   } catch (e) {
     next(e);
@@ -319,10 +319,21 @@ router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireA
     if (needsCv(application.opening) && !application.cvKey) {
       return res.status(400).json({ ok: false, code: "CV_REQUIRED", error: "Upload your CV (PDF) to apply for this role." });
     }
+    // A free internship also needs the student's details and education from
+    // Profile; a copy of the education is kept on the application.
+    let education;
+    if (needsCv(application.opening)) {
+      const user = await prisma.user.findUnique({ where: { id: req.user.sub } });
+      const missing = [...profileMissing(user), ...educationMissing(user)];
+      if (missing.length) {
+        return res.status(400).json({ ok: false, code: "PROFILE_INCOMPLETE", missing, error: `Please add your ${missing.join(", ")} to apply.` });
+      }
+      education = { college: user.college, course: user.course, department: user.department, semester: user.semester, passingYear: user.passingYear };
+    }
     // Only an application still locked moves; a second click changes nothing.
     await prisma.jobApplication.updateMany({
       where: { id: application.id, status: "payment_pending" },
-      data: { status: "test_pending", adultConfirmedAt: new Date() },
+      data: { status: "test_pending", adultConfirmedAt: new Date(), ...(education ? { education } : {}) },
     });
     const updated = await prisma.jobApplication.findUnique({ where: { id: application.id }, include: WITH_DETAIL });
     res.json({ ok: true, application: shapeApplication(updated) });

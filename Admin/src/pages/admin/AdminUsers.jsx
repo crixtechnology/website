@@ -235,6 +235,13 @@ Only do this after confirming it's really them (WhatsApp or phone). Their curren
                       </select>
                     </div>
                     <p className="form-note" style={{ margin: "-8px 0 16px" }}>Email: {detail.user.email} (not editable — it's the login identifier)</p>
+                    {detail.user.role !== "admin" && (detail.user.college || detail.user.course || detail.user.semester) && (
+                      <p className="form-note" style={{ margin: "-8px 0 16px" }}>
+                        Education: {[detail.user.college, [detail.user.course, detail.user.department].filter(Boolean).join(", "),
+                          detail.user.semester === "graduated" ? "Graduated" : detail.user.semester ? `Semester ${detail.user.semester}` : "",
+                          detail.user.passingYear ? `passing ${detail.user.passingYear}` : ""].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
                     {detailError && <p className="form-error">{detailError}</p>}
                     <div className="admin-actions" style={{ marginBottom: 28 }}>
                       <button className="btn btn-solid" type="submit" disabled={savingUser}>{savingUser ? "Saving..." : "Save changes"}</button>
