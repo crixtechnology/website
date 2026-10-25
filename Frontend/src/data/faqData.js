@@ -2,6 +2,7 @@
 // taken from what the site itself says (content.js, the Terms and the program
 // pages) — keep them in step when those change. No prices, fees or other
 // amounts of money are quoted: those live on each program's page / depend on the project.
+// (The wallet's rate, 1 credit = ₹1, isn't a price and is fine.)
 //
 // Answer text: plain lines; a line starting with "• " becomes a bullet. Say the
 // answer in full here — don't send people to another page to read it.
@@ -71,7 +72,7 @@ export const FAQ_TOPICS = [
         a: "• Log in with your email and a password (a new email gets an account)\n• Pick a role on the Careers page, or in My Dashboard → Apply / Aptitude Test\n• Accept the terms — and, if the role has a registration fee, pay it (the whole fee comes back to your wallet as credit)\n• Take the online aptitude test\n• If you're shortlisted, we schedule an online interview, then share the result",
         links: [{ to: "/careers", label: "Careers page" }, { to: "/dashboard", label: "My Dashboard" }] },
       { id: "k-fee", q: "Do I have to pay to take the aptitude test?", k: "test fee registration fee cost charge money back refund credit aptitude",
-        a: "It depends on the role. Each role on the Careers page shows either its registration fee or “Free to apply”. Where there is a fee, the whole fee comes back to your wallet as credit, which you can use on any Crix course or internship before it expires. It can't be withdrawn as cash, and paying for the test doesn't guarantee selection.",
+        a: "It depends on the role. Each role on the Careers page shows either its registration fee or “Free to apply”. Where there is a fee, the whole fee comes back to your wallet as credit — 1 credit = ₹1 — which you can use on any Crix course or internship before it expires. It can't be withdrawn as cash, and paying for the test doesn't guarantee selection.",
         links: [{ to: "/careers", label: "Careers page" }] },
       { id: "k-test", q: "What is the aptitude test like?", k: "aptitude test exam questions pattern syllabus marks negative marking time duration sections",
         a: "It's an online, timed test you take once, with sections on quantitative aptitude, logical reasoning, verbal ability and a technical section for your role. Wrong answers can cost marks (negative marking), so it's fine to leave a question you don't know. Each role sets its own number of questions and time limit — ask me about the test for a role by name and I'll tell you. The full rules can be downloaded as a PDF from the Careers page.",
@@ -143,7 +144,7 @@ export const FAQ_TOPICS = [
     id: "referrals", icon: "🎁", label: "Wallet, referrals & offers",
     faqs: [
       { id: "r-wallet", q: "What is the wallet and how do I use it?", k: "wallet credit balance history pay spend add money top up",
-        a: "Your wallet holds credit you can spend on Crix courses and internships. It comes from:\n• Your signup bonus, once your email is verified\n• Aptitude test fees, which come back as credit\n• Referral rewards, and credit our team adds\nAt checkout the credit is taken off the price automatically, and if it covers the whole price you can pay with the wallet alone. Your balance, history and each credit's expiry date are in My Dashboard → My Wallet.\nBonus and test-fee credit is valid for a limited time, and there may be a limit on how much of one purchase credit can pay for — the wallet shows both.",
+        a: "Your wallet holds credit (1 credit = ₹1). It comes from:\n• Your signup bonus, once your email is verified\n• Aptitude test fees, which come back as credit\n• Referral rewards, and credit our team adds\nAt checkout the credit is taken off the price automatically, and if it covers the whole price you can pay with the wallet alone. Your balance, history and each credit's expiry date are in My Dashboard → My Wallet.\nBonus and test-fee credit is valid for a limited time, and there may be a limit on how much of one purchase credit can pay for — the wallet shows both.",
         links: [{ to: "/dashboard", label: "Open my wallet" }] },
       { id: "r-bonus", q: "How do I get my signup bonus?", k: "signup bonus welcome credit free credits new account verify email code",
         a: "New accounts get bonus credits. If you signed up with Google, they're added straight away. If you signed up with an email and password, open My Dashboard → My Wallet and choose “Email me a code” — enter the code we send you and the credits are added. Like test-fee credit, the bonus is valid for a limited time.",

@@ -191,7 +191,8 @@ describe("help agent", () => {
 
   it("never states an amount of money — no price, fee, discount or stipend", () => {
     const money = /₹|\brs\.? ?\d|\binr\b|\d+ ?(rupees|credits)|\d+% off|\bwas \d/i;
-    const said = (r) => `${r.text} ${(r.chips || []).map((c) => `${c.label} ${c.say}`).join(" ")}`;
+    // The wallet's rate isn't a price, so it's allowed.
+    const said = (r) => `${r.text} ${(r.chips || []).map((c) => `${c.label} ${c.say}`).join(" ")}`.replace(/1 credit = ₹1/g, "");
     const asks = [
       ["price of SQL & Databases"], ["how much is SQL & Databases"], ["courses in sql"], ["show all programs"], ["internships", "how much?"],
       ["what courses do you offer"], ["are you hiring?", "how much?"], ["stipend for the web development intern"], ["Web Development Intern"],
@@ -199,7 +200,10 @@ describe("help agent", () => {
       ["how much does a website cost"], ["signup bonus"], ["referral"],
     ];
     for (const lines of asks) for (const r of chat(...lines).replies) expect(said(r)).not.toMatch(money);
-    for (const id of ["i-offer", "c-offer", "k-open", "k-fee", "r-wallet"]) expect(answerFor(id, ctx).text).not.toMatch(money);
+    for (const id of ["i-offer", "c-offer", "k-open", "k-fee", "r-wallet"]) expect(answerFor(id, ctx).text.replace(/1 credit = ₹1/g, "")).not.toMatch(money);
+    // …and the wallet answers still give it.
+    expect(answerFor("r-wallet").text).toContain("1 credit = ₹1");
+    expect(chat("are you hiring?", "how much?").last.text).toContain("1 credit = ₹1");
   });
 
   it("gives engagement models with the price of IT work, and roles with the careers fee", () => {

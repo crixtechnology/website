@@ -37,7 +37,8 @@ describe("help bot answers say it in the chat", () => {
   });
 
   it("never states an amount of money", () => {
-    for (const f of ALL_FAQS) expect(f.a).not.toMatch(/₹|\brs\.? ?\d|\binr\b|\d+ ?(rupees|credits)|\d+% off/i);
+    // (The wallet's rate, 1 credit = ₹1, isn't a price.)
+    for (const f of ALL_FAQS) expect(f.a.replace(/1 credit = ₹1/g, "")).not.toMatch(/₹|\brs\.? ?\d|\binr\b|\d+ ?(rupees|credits)|\d+% off/i);
   });
 
   it("never sends people to another page just to read the answer", () => {

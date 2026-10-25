@@ -23,6 +23,7 @@
 //            itself is always in `text`; a link is never a substitute for it.
 //   No reply states an amount of money (a price, fee, discount or stipend): those
 //   are shown on the program's page or the role's card, where they're always current.
+//   The wallet's rate (1 credit = ₹1) isn't a price and is said where it helps.
 //     chips  quick replies: [{ label, say, icon?, hint? }] — `say` is sent back as the user's message
 //     dept   "it" | "programs" | "both": show that department's contact card
 //     more   related answer-bank entries: [{ id, q }]
@@ -249,7 +250,7 @@ function freeInternshipReply(n) {
   const facts = [];
   // ("free" is in its name, so it doesn't count as asking about the price.)
   if (has(n, [...WORDS.price.filter((w) => w !== "free"), "refund", "credit", "wallet", "pay", "money", "94", "₹94"])) {
-    facts.push(`The internship itself is free. The only charge is the aptitude-test processing fee shown on the page, paid through Razorpay. The whole fee comes back to your Crix wallet as credit as soon as the payment is confirmed, to use on Crix courses and internships. It's never refunded in cash and can't be withdrawn, and paying it doesn't guarantee selection. Crix Technology never asks for any other payment — if anyone does, don't pay and tell us.`);
+    facts.push(`The internship itself is free. The only charge is the aptitude-test processing fee shown on the page, paid through Razorpay. The whole fee comes back to your Crix wallet as credit as soon as the payment is confirmed — 1 credit = ₹1, to use on Crix courses and internships. It's never refunded in cash and can't be withdrawn, and paying it doesn't guarantee selection. Crix Technology never asks for any other payment — if anyone does, don't pay and tell us.`);
   }
   if (has(n, ["cv", "resume", "pdf", "upload"])) {
     facts.push(`Your CV must be a PDF of up to ${CV_MAX_MB} MB, in your own name, and true. You can replace it until you start the test.`);
@@ -282,7 +283,7 @@ function priceReply(state, ctx) {
   if (state.topic === "careers") {
     const roles = openRoles(ctx);
     return {
-      text: `It depends on the role: each one is either “Free to apply” or has an aptitude-test registration fee.${roles.length ? `\n${roles.slice(0, 6).map(roleLine).join("\n")}` : ""}\nWhere there is a fee, the whole amount comes back to your wallet as credit, to use on any Crix course or internship. It can't be withdrawn as cash.`,
+      text: `It depends on the role: each one is either “Free to apply” or has an aptitude-test registration fee.${roles.length ? `\n${roles.slice(0, 6).map(roleLine).join("\n")}` : ""}\nWhere there is a fee, the whole amount comes back to your wallet as credit (1 credit = ₹1), to use on any Crix course or internship. It can't be withdrawn as cash.`,
       links: roles.length ? [{ to: "/careers", label: "Apply on the Careers page" }] : [],
     };
   }
