@@ -18,14 +18,17 @@
 //     taught: answers an admin wrote for questions visitors asked
 //             (Admin → Help agent questions): [{ q, a, keywords, linkTo, linkLabel, dept }]
 //   A reply: { text, links?, chips?, dept?, more? }
-//     links  [{ to | href, label }]
+//     links  [{ to | href, label }] — only where the next step happens on another
+//            page (a form, checkout, applying, a legal document). The answer
+//            itself is always in `text`; a link is never a substitute for it.
 //     chips  quick replies: [{ label, say, icon?, hint? }] — `say` is sent back as the user's message
 //     dept   "it" | "programs" | "both": show that department's contact card
 //     more   related answer-bank entries: [{ id, q }]
-import { site } from "./content.js";
+import { site, programDeliverables, clientProcess, engagementModels } from "./content.js";
 import { ALL_FAQS, searchFaqs } from "./faqData.js";
 import { understand, buildVocab, similarity } from "./agentLanguage.js";
-import { findNamed, programAnswer, roleAnswer } from "./agentKnowledge.js";
+import { findNamed, programAnswer, roleAnswer, programLine, fromPrice } from "./agentKnowledge.js";
+import { formatINR } from "../utils/tiers.js";
 
 export const DEPARTMENTS = {
   programs: {
@@ -110,6 +113,13 @@ const firstName = (user) => {
 };
 
 // ---------- what the agent knows ----------
+const HOURS_LINE = `We're available ${site.hours}. You can also email ${site.email} — we reply within two working days.`;
+const PROCESS_LINES = clientProcess.map((s) => `• ${s.title} — ${s.desc}`).join("\n");
+const MODEL_LINES = engagementModels.map((m) => `• ${m.title} — ${m.desc}`).join("\n");
+
+// A service in one line: what it covers, from its points (or its description).
+const serviceLine = (s) => `• ${s.title} — ${(s.points || []).length ? s.points.slice(0, 5).join(", ") : s.desc || ""}`;
+
 const programText = (p) => `${p.title} ${(p.points || []).join(" ")} ${p.desc || ""}`.toLowerCase();
 const programLink = (p) => (p.slug ? { to: `/programs/${p.slug}`, label: p.title } : { to: "/programs", label: p.title });
 const kindOf = (p) => (p.type === "internship" ? "Internship" : p.type === "course" ? "Course" : p.kind === "internship" ? "Internship" : "Course");
@@ -129,6 +139,10 @@ function matchPrograms(programs, n) {
   return { track, list };
 }
 
+// What each kind of program is and what comes with it, said in full in the chat.
+const INTERNSHIP_LINE = `• Virtual internships (15 days, 1, 3 or 6 months) — real project tasks by email, built with mentor guidance. You get: ${programDeliverables.internship.join(", ").toLowerCase()}.`;
+const COURSE_LINE = `• Self-paced courses — live classes and recorded lectures in My Dashboard, with mentor support. You get: ${programDeliverables.course.join(", ").toLowerCase()}.`;
+
 function programsReply(ctx, n) {
   const programs = ctx.programs || [];
   const { track, list } = matchPrograms(programs, n);
@@ -138,15 +152,14 @@ function programsReply(ctx, n) {
     const shown = list.filter((p) => (wantsInternship ? kindOf(p) === "Internship" : wantsCourse ? kindOf(p) === "Course" : true));
     const pick = (shown.length ? shown : list).slice(0, 4);
     return {
-      text: `For ${track.label}, these would suit you:\n${pick.map((p) => `• ${p.title} (${kindOf(p)})`).join("\n")}\nEach page shows the plans, price and what's included.`,
+      text: `For ${track.label}, these would suit you:\n${pick.map(programLine).join("\n")}\nAll are fully online, open to anyone in India. Ask me about any of them — its plans and price, what it covers or how long it runs — or open it below to enrol.`,
       links: pick.map(programLink),
       chips: [{ label: "How do I join?", say: "How do I join?" }, { label: "Is there a certificate?", say: "Do I get a certificate?" }, { label: "Other tracks", say: "Show me other tracks" }],
     };
   }
   return {
-    text: `Happy to help you pick. ${wantsCourse ? "Courses are self-paced with mentor support" : wantsInternship ? "Internships are virtual, with an offer letter, a certificate and an LOR" : "We run virtual internships (offer letter, certificate, LOR) and self-paced courses (certificate)"} — all fully online, from anywhere in India.\nWhich area interests you?`,
+    text: `Happy to help you pick. ${wantsCourse ? "Here's how our courses work" : wantsInternship ? "Here's how our internships work" : "We run two kinds of programs"} — fully online, from anywhere in India:\n${[!wantsCourse && INTERNSHIP_LINE, !wantsInternship && COURSE_LINE].filter(Boolean).join("\n")}\nWhich area interests you?`,
     chips: [...TRACKS.map((t) => ({ label: t.label, say: `${wantsCourse ? "Courses" : wantsInternship ? "Internships" : "Programs"} in ${t.words[0]}` })), { label: "Show everything", say: "Show all programs" }],
-    links: [{ to: "/programs", label: "All internships & courses" }],
   };
 }
 
@@ -155,61 +168,88 @@ function allProgramsReply(ctx) {
   const intern = programs.filter((p) => kindOf(p) === "Internship");
   const course = programs.filter((p) => kindOf(p) === "Course");
   const lines = [
-    intern.length && `Internships:\n${intern.slice(0, 6).map((p) => `• ${p.title}`).join("\n")}`,
-    course.length && `Courses:\n${course.slice(0, 8).map((p) => `• ${p.title}`).join("\n")}`,
+    intern.length && `Internships — each with ${programDeliverables.internship.join(", ").toLowerCase()}:\n${intern.slice(0, 6).map(programLine).join("\n")}`,
+    course.length && `Courses — each with a ${programDeliverables.course[0].toLowerCase()}:\n${course.slice(0, 8).map(programLine).join("\n")}`,
   ].filter(Boolean);
   return {
-    text: lines.length ? lines.join("\n") : "All our internships and courses are on the Programs page.",
-    links: [{ to: "/programs", label: "Open the Programs page" }],
+    text: lines.length ? `${lines.join("\n")}\nAsk me about any of them by name.` : "Our internships and courses are being updated — the Programs page shows what's open right now.",
+    links: [{ to: "/programs", label: "Browse & enrol" }],
     chips: TRACKS.map((t) => ({ label: t.label, say: `Programs in ${t.words[0]}` })),
   };
 }
 
+const CAREER_STEPS = "How it works:\n• Log in and press Apply Now on the role\n• Accept the terms, and pay the registration fee if the role has one — the whole fee comes back to your wallet as credit\n• Take the online aptitude test (laptop, webcam on, full screen)\n• You hear within 7 days whether you're shortlisted; shortlisted candidates get an online interview";
+
+const openRoles = (ctx) => (ctx.openings || []).filter((o) => o && o.status !== "closed");
+const roleLine = (o) => `• ${o.title} — ${o.feeRequired === false ? "free to apply" : "registration fee applies"}${o.stipend ? ` · ${o.stipend}` : ""}${o.duration ? ` · ${o.duration}` : ""}`;
+
 function careersReply(ctx) {
-  const roles = (ctx.openings || []).filter((o) => o && o.status !== "closed");
+  const roles = openRoles(ctx);
   if (!roles.length) {
     return {
-      text: "There's no open role right now — new openings are posted on the Careers page first, so do check back.\nMeanwhile, our internships on the Programs page are open to join any time.",
-      links: [{ to: "/careers", label: "Careers page" }, { to: "/programs", label: "Internships & courses" }],
+      text: `There's no open role right now — new openings are posted on the Careers page first, so do check back.\nMeanwhile, our paid internships are open to join any time:\n${INTERNSHIP_LINE}`,
+      links: [{ to: "/programs", label: "Browse internships" }],
+      chips: [{ label: "Internships", say: "Internships and courses" }],
     };
   }
   return {
-    text: `We're hiring for:\n${roles.slice(0, 6).map((o) => `• ${o.title} — ${o.feeRequired === false ? "free to apply" : "registration fee applies"}${o.stipend ? ` · ${o.stipend}` : ""}`).join("\n")}\nFreshers are welcome. You apply on the Careers page, take an online aptitude test, and shortlisted candidates get an interview.`,
-    links: [{ to: "/careers", label: "See roles & apply" }],
+    text: `We're hiring for:\n${roles.slice(0, 6).map(roleLine).join("\n")}\nFreshers aged 18+ from anywhere in India are welcome.\n${CAREER_STEPS}`,
+    links: [{ to: "/careers", label: "Apply on the Careers page" }],
     chips: [{ label: "How does the test work?", say: "What is the aptitude test like?" }, { label: "Is there a fee?", say: "Is there a fee for careers?" }, { label: "When do I get results?", say: "When will I get my result?" }],
   };
 }
 
 function servicesReply(ctx, n) {
+  const services = ctx.services || [];
   const need = SERVICE_NEEDS.find((s) => has(n, s.words));
   if (!need) {
     return {
-      text: "We build for businesses in India and abroad — websites, web & mobile apps, chatbots and AI tools, and digital marketing. What do you need?",
+      text: services.length
+        ? `We build for businesses in India and around the world. Our IT services:\n${services.slice(0, 12).map(serviceLine).join("\n")}\nWhat do you need? I can tell you how a project works, how pricing works, and who to talk to.`
+        : "We build for businesses in India and around the world — websites, custom software, web & mobile apps, chatbots and AI tools, integrations, cloud, and digital marketing. What do you need?",
       chips: SERVICE_NEEDS.map((s) => ({ label: s.label, say: s.say })),
-      links: [{ to: "/services", label: "All IT services" }],
     };
   }
-  const services = ctx.services || [];
   // Most specific word first, and a service's title before its description.
   const lower = (x) => String(x || "").toLowerCase();
   const match = need.words.map((w) => services.find((s) => lower(s.title).includes(w.trim()))).find(Boolean)
     || services.find((s) => need.words.some((w) => lower(s.desc).includes(w.trim())));
   return {
-    text: `${need.label} — yes, we do that${match ? ` (see “${match.title}”)` : ""}. Every project is quoted on what you need, so there's no fixed price list.\nThe quickest way: send a short description through the inquiry form on the Services page, and our IT team will get back to you with a plan and a quote.`,
-    links: [{ to: "/services", label: "Request a quote" }, { to: "/contact", label: "Contact form" }],
-    chips: [{ label: "How long does it take?", say: "How long does a project take?" }, { label: "Talk to the IT team", say: "Talk to the IT services team" }],
+    text: [
+      `${need.label} — yes, we do that${match ? `, as part of “${match.title}”` : ""}.`,
+      match && match.desc,
+      `How a project runs:\n${PROCESS_LINES}`,
+      "Pricing: every project is quoted on its scope — pages, features, integrations and timeline — with a written estimate before any work starts, so there's no fixed price list.",
+      `To get a quote, send a short description through the inquiry form, or call our IT Services team on ${site.phone} (${site.hours}).`,
+    ].filter(Boolean).join("\n"),
+    links: [{ to: "/services", label: "Send an inquiry" }],
+    chips: [{ label: "Ways to work with us", say: "How can we work together?" }, { label: "Which technologies?", say: "Which technologies do you use?" }, { label: "Talk to the IT team", say: "Talk to the IT services team" }],
   };
 }
 
 function priceReply(state, ctx) {
   if (state.topic === "careers") {
-    return { text: "It depends on the role: each role on the Careers page shows either “Free to apply” or its aptitude-test registration fee. Where there is a fee, the whole amount comes back to your wallet as credit.", links: [{ to: "/careers", label: "See roles" }] };
+    const roles = openRoles(ctx);
+    return {
+      text: `It depends on the role: each one is either “Free to apply” or has an aptitude-test registration fee.${roles.length ? `\n${roles.slice(0, 6).map(roleLine).join("\n")}` : ""}\nWhere there is a fee, the whole amount comes back to your wallet as credit (1 credit = ₹1), to use on any Crix course or internship. It can't be withdrawn as cash.`,
+      links: roles.length ? [{ to: "/careers", label: "Apply on the Careers page" }] : [],
+    };
   }
   if (state.topic === "services") {
-    return { text: "IT projects are quoted individually — the price depends on what you need (pages, features, integrations). Send your requirements through the Services page and we'll send a quote.", links: [{ to: "/services", label: "Request a quote" }] };
+    return {
+      text: `IT projects are quoted individually — the price depends on what you need (pages, features, integrations, timeline), and you get a clear written estimate before any work starts. There are three ways to work with us:\n${MODEL_LINES}\nShare your requirements through the inquiry form, or call our IT Services team on ${site.phone}, for a quote.`,
+      links: [{ to: "/services", label: "Request a quote" }],
+    };
   }
   if (state.topic === "programs") {
-    return { text: "Each program's price is on its own page — most have Basic, Plus and Pro plans, and any discount running is shown there too. Wallet credit and offer codes are taken off at checkout.", links: [{ to: "/programs", label: "See programs & prices" }] };
+    const priced = (ctx.programs || []).map((p) => [p, fromPrice(p)]).filter(([, from]) => from != null);
+    if (priced.length) {
+      return {
+        text: `Current prices (the lowest plan, with any discount running):\n${priced.slice(0, 10).map(([p, from]) => `• ${p.title} — from ${formatINR(from)}`).join("\n")}\nMost programs have Basic, Plus and Pro plans — ask “price of” a program to see all its plans. Wallet credit and offer codes come off at checkout.`,
+        chips: priced.slice(0, 3).map(([p]) => ({ label: p.title, say: `price of ${p.title}` })),
+      };
+    }
+    return { text: "Each program has its own price, usually in Basic, Plus and Pro plans, with any discount running taken off. Ask me “price of” a program's name and I'll list its plans. Wallet credit and offer codes come off at checkout." };
   }
   return {
     text: "Happy to help with pricing — which one is it about?",
@@ -221,14 +261,17 @@ function applyReply(state, ctx) {
   const missing = ctx.user && (ctx.user.profilePending || !String(ctx.user.phone || "").trim());
   const profileNote = missing ? "\nBefore paying, add your full name and phone number in your Profile — checkout asks for them." : "";
   if (state.topic === "careers") {
-    return { text: `• Log in (a new email gets an account straight away)\n• Pick a role on the Careers page and press Apply Now\n• Accept the terms — and pay the registration fee if the role has one\n• Take the online aptitude test${profileNote}`, links: [{ to: "/careers", label: "Careers page" }] };
+    return { text: `• Log in (a new email gets an account straight away)\n• Pick a role on the Careers page and press Apply Now\n• Accept the terms — and pay the registration fee if the role has one (it comes back as wallet credit)\n• Take the online aptitude test\n• Hear back within 7 days; if shortlisted, you get an online interview${profileNote}`, links: [{ to: "/careers", label: "Apply on the Careers page" }] };
   }
   if (state.topic === "services") {
-    return { text: "Send us your requirements from the Services page (or the contact form). Our IT team replies, sets up a quick call, and shares a plan and quote.", links: [{ to: "/services", label: "Services page" }] };
+    return {
+      text: `Starting a project:\n• Send a short description of what you need through the inquiry form — or call our IT Services team on ${site.phone}\n• We set up a quick call to understand your goals, users and constraints\n• You get a written proposal with the timeline, deliverables and cost\n• Once you approve it, we build in short, reviewable iterations and stay on for support`,
+      links: [{ to: "/services", label: "Send an inquiry" }],
+    };
   }
   return {
-    text: `• Open the program on the Programs page\n• Choose a plan and press Buy\n• Log in with your email and a password (a new email gets an account)\n• Accept the terms and pay — access is instant${profileNote}`,
-    links: [{ to: "/programs", label: "Programs" }, ...(missing ? [{ to: "/profile", label: "Complete your profile" }] : [])],
+    text: `• Open the program on the Programs page\n• Choose a plan and press Buy\n• Log in with your email and a password (a new email gets an account)\n• Accept the terms and pay by card, UPI, net-banking or wallet — access is instant${profileNote}`,
+    links: [{ to: "/programs", label: "Browse & enrol" }, ...(missing ? [{ to: "/profile", label: "Complete your profile" }] : [])],
   };
 }
 
@@ -244,7 +287,6 @@ function accountReply(ctx) {
   return {
     text: u ? `You're logged in as ${u.email}. What do you need help with?` : "There's one Log in box for everyone: enter your email and a password. If the email is new, we ask you to confirm and your account is created with that password. What do you need help with?",
     chips: [{ label: "Forgot password", say: "I forgot my password" }, { label: "Why was I logged out?", say: "Why was I logged out?" }, { label: "Change my details", say: "How do I change my phone number?" }, { label: "Delete my account", say: "How do I delete my account?" }],
-    links: u ? [{ to: "/profile", label: "My profile" }] : [],
   };
 }
 
@@ -272,14 +314,14 @@ function handoffReply(state) {
     };
   }
   return {
-    text: dept === "it" ? "Here's our IT services team — for websites, apps and business projects:" : "Here's our Internships & Courses team — for programs, careers, payments and student accounts:",
+    text: `${dept === "it" ? "Here's our IT services team — for websites, apps and business projects." : "Here's our Internships & Courses team — for programs, careers, payments and student accounts."}\n${HOURS_LINE}`,
     dept,
   };
 }
 
 // `prefer`: the message's own topic — among close matches, an answer from that
 // topic goes first ("refund rule for a course" is about payments, not courses).
-function faqReply(text, prefer) {
+function faqReply(text, prefer, ctx) {
   const found = searchFaqs(text);
   if (!found.length) return null;
   // Look a little further down the list for an answer from the message's own topic.
@@ -287,7 +329,27 @@ function faqReply(text, prefer) {
   const preferred = wider.find((f) => FAQ_TOPIC_MAP[f.topic] === prefer);
   const hits = preferred && preferred !== found[0] ? [preferred, ...found.filter((f) => f !== preferred)].slice(0, 3) : found;
   const [best, ...more] = hits;
-  return { text: best.a, links: best.links, dept: best.dept, more: more.map((f) => ({ id: f.id, q: f.q })), topicFromFaq: best.topic, matchedQ: best.q };
+  return { ...faqAnswer(best, ctx), more: more.map((f) => ({ id: f.id, q: f.q })), topicFromFaq: best.topic, matchedQ: best.q };
+}
+
+// "What do you offer?" answers listed from the live data when it has any, so the
+// chat shows what's actually open (with prices) instead of the static list.
+const LIVE_ANSWERS = {
+  "i-offer": (ctx) => {
+    const list = (ctx.programs || []).filter((p) => kindOf(p) === "Internship");
+    return list.length && `Our virtual internships right now:\n${list.map(programLine).join("\n")}\nEvery internship includes: ${programDeliverables.internship.join(", ").toLowerCase()}. All fully online, from anywhere in India.`;
+  },
+  "c-offer": (ctx) => {
+    const list = (ctx.programs || []).filter((p) => kindOf(p) === "Course");
+    return list.length && `Our online courses right now:\n${list.map(programLine).join("\n")}\nEach is self-paced with mentor support and ends with a ${programDeliverables.course[0].toLowerCase()}.`;
+  },
+  "s-offer": (ctx) => (ctx.services || []).length && `Our IT services, for businesses in India and around the world:\n${ctx.services.slice(0, 12).map(serviceLine).join("\n")}`,
+  "k-open": (ctx) => openRoles(ctx).length && careersReply(ctx).text,
+};
+
+function faqAnswer(f, ctx = {}) {
+  const live = LIVE_ANSWERS[f.id] && LIVE_ANSWERS[f.id](ctx);
+  return { text: live || f.a, links: f.links, dept: f.dept };
 }
 
 const FAQ_TOPIC_MAP = { internships: "programs", courses: "programs", careers: "careers", payments: "payments", account: "account", referrals: "wallet", it: "services", company: null };
@@ -330,7 +392,7 @@ function closestQuestions(u, taught) {
 export function greeting(ctx) {
   const name = firstName(ctx && ctx.user);
   return {
-    text: `Hi${name ? ` ${name}` : ""}! 👋 I'm the Crix help agent. Tell me what you're looking for — a program to join, a job, or a project for your business — and I'll point you to the right place.`,
+    text: `Hi${name ? ` ${name}` : ""}! 👋 I'm the Crix help agent. Tell me what you're looking for — a program to join, a job, or a project for your business — and I'll answer right here.`,
     chips: MAIN_CHIPS,
   };
 }
@@ -383,9 +445,9 @@ export function respond(state, text, ctx = {}) {
 
   // "What are your numbers?" — both teams, each labelled with who it's for.
   if (has(n, WORDS.allNumbers)) {
-    return out({ text: "We have two separate teams, each with its own number — please call the one your question is for:", dept: "both", links: [{ to: "/contact", label: "Contact page" }] });
+    return out({ text: `We have two separate teams, each with its own number — please call the one your question is for.\n${HOURS_LINE}`, dept: "both", links: [{ to: "/contact", label: "Or send the contact form" }] });
   }
-  if (has(n, ["other tracks", "all programs", "show everything", "everything"])) return out(allProgramsReply(ctx), "programs");
+  if (has(n, ["other tracks", "all programs", "all program", "show everything", "everything"])) return out(allProgramsReply(ctx), "programs");
   if (has(n, WORDS.human) && !has(n, ["change my phone", "change phone", "update phone", "phone number change"])) {
     return out(handoffReply({ topic: ctxTopic }), ctxTopic);
   }
@@ -429,7 +491,7 @@ export function respond(state, text, ctx = {}) {
   // A specific question: the answer bank.
   // An answer found only after typo-correcting the message must also look like
   // its question — otherwise "random words" -> "random works" finds "how does it work".
-  const faq = faqReply(u, topic);
+  const faq = faqReply(u, topic, ctx);
   const trusted = faq && (searchFaqs(text).length > 0 || words.length <= 3 || similarity(u, faq.matchedQ) >= 0.3);
   if (faq && trusted) return out(faq, FAQ_TOPIC_MAP[faq.topicFromFaq] || ctxTopic);
 
@@ -456,7 +518,7 @@ export function respond(state, text, ctx = {}) {
 }
 
 // An answer-bank entry picked from a "Related" button.
-export function answerFor(id) {
+export function answerFor(id, ctx) {
   const f = ALL_FAQS.find((x) => x.id === id);
-  return f ? { text: f.a, links: f.links, dept: f.dept } : null;
+  return f ? faqAnswer(f, ctx) : null;
 }

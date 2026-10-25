@@ -3,22 +3,25 @@
 // pages) — keep them in step when those change. No prices or timelines are
 // quoted: those live on each program's page / depend on the project.
 //
-// Answer text: plain lines; a line starting with "• " becomes a bullet.
-// `links`: [{ to: "/path", label }] for in-site pages, [{ href, label }] for external.
+// Answer text: plain lines; a line starting with "• " becomes a bullet. Say the
+// answer in full here — don't send people to another page to read it.
+// `links`: [{ to: "/path", label }] for in-site pages, [{ href, label }] for external —
+// only where the next step happens there (a form, checkout, applying, a legal document).
 // `dept`: "programs" | "it" | "both" — the help agent shows that team's number card.
 // `k`: extra keywords the free-text search should match on.
-import { site, internships, courses } from "./content.js";
+import { site, internships, courses, services, clientProcess, engagementModels, programDeliverables } from "./content.js";
 import { careersContact } from "./careers.js";
 
-const list = (items) => items.map((i) => `• ${i.title}`).join("\n");
+const list = (items) => items.map((i) => `• ${i.title}${i.desc ? ` — ${i.desc}` : ""}`).join("\n");
+const steps = (items) => items.map((i) => `• ${i.title} — ${i.desc}`).join("\n");
 
 export const FAQ_TOPICS = [
   {
     id: "internships", icon: "🎓", label: "Internships",
     faqs: [
       { id: "i-offer", q: "What internships do you offer?", k: "internship tracks mern ai agentic android guided virtual program list",
-        a: `Our virtual internships include:\n${list(internships)}\nThe internships page always shows what is open right now.`,
-        links: [{ to: "/programs", label: "See internships" }] },
+        a: `Our virtual internships include:\n${list(internships)}\nEvery internship includes: ${programDeliverables.internship.join(", ").toLowerCase()}. All fully online, from anywhere in India.`,
+        links: [{ to: "/programs", label: "Browse & enrol" }] },
       { id: "i-who", q: "Who can apply?", k: "eligibility eligible age student graduate college qualify requirement",
         a: "Internships are open to:\n• Students currently enrolled in a college or university\n• Recent graduates (within 1 year of graduation)\n• Anyone who is at least 16 years old" },
       { id: "i-paid", q: "Is the internship free or paid?", k: "free paid fee cost price charge apply payment",
@@ -40,11 +43,11 @@ export const FAQ_TOPICS = [
     id: "courses", icon: "📚", label: "Courses",
     faqs: [
       { id: "c-offer", q: "Which courses do you have?", k: "course list online learn programming react node sql python kotlin price",
-        a: `Our online courses include:\n${list(courses)}\nThe courses page always shows what is open and its price.`,
-        links: [{ to: "/programs", label: "See courses" }] },
+        a: `Our online courses include:\n${list(courses)}\nEach is self-paced with mentor support and ends with a ${programDeliverables.course[0].toLowerCase()}.`,
+        links: [{ to: "/programs", label: "Browse & enrol" }] },
       { id: "c-begin", q: "I'm a beginner — where should I start?", k: "beginner start fresher basics new first",
-        a: "The Web Development Track is beginner friendly — HTML, CSS and JavaScript through to the full MERN stack, self-paced with mentor support.",
-        links: [{ to: "/programs", label: "Browse courses" }] },
+        a: "The Web Development Track is beginner friendly — HTML, CSS and JavaScript through to the full MERN stack, self-paced with mentor support. It covers:\n• Frontend fundamentals\n• React in depth\n• Node.js & MongoDB\n• Deploying your own projects\nFor Android, start with Kotlin & Java for Android; for data, SQL & Databases.",
+        links: [{ to: "/programs", label: "Browse & enrol" }] },
       { id: "c-cert", q: "Do courses give a certificate?", k: "certificate completion credential recognized",
         a: "Yes — a certificate of completion, issued once you meet the attendance, assessment and project requirements. Courses are training, so there's no offer letter or LOR (those are internship-only).\nA certificate does not guarantee a job or any career outcome." },
       { id: "c-access", q: "How do I watch my course after buying?", k: "access watch lectures recorded live class learn dashboard login video",
@@ -62,8 +65,8 @@ export const FAQ_TOPICS = [
     id: "careers", icon: "💼", label: "Careers & aptitude test",
     faqs: [
       { id: "k-open", q: "Are you hiring? Which roles are open?", k: "hiring jobs job openings vacancy vacancies roles career careers opening position",
-        a: "Every role we're hiring for is listed on the Careers page, with its skills, stipend, duration and test details. If no role is open, the page says so — new openings are posted there first.",
-        links: [{ to: "/careers", label: "See open roles" }] },
+        a: "We post every role we're hiring for on the Careers page first, each with its skills, stipend, duration and test details — and freshers aged 18+ from anywhere in India are welcome. You apply, take an online aptitude test, and hear within 7 days whether you're shortlisted for an online interview.",
+        links: [{ to: "/careers", label: "Apply on the Careers page" }] },
       { id: "k-apply", q: "How do I apply for a role?", k: "apply application job role register hiring process steps",
         a: "• Log in with your email and a password (a new email gets an account)\n• Pick a role on the Careers page, or in My Dashboard → Apply / Aptitude Test\n• Accept the terms — and, if the role has a registration fee, pay it (the whole fee comes back to your wallet as credit)\n• Take the online aptitude test\n• If you're shortlisted, we schedule an online interview, then share the result",
         links: [{ to: "/careers", label: "Careers page" }, { to: "/dashboard", label: "My Dashboard" }] },
@@ -71,7 +74,7 @@ export const FAQ_TOPICS = [
         a: "It depends on the role. Each role on the Careers page shows either its registration fee or “Free to apply”. Where there is a fee, the whole fee comes back to your wallet as credit — 1 credit = ₹1 — which you can use on any Crix course or internship before it expires. It can't be withdrawn as cash, and paying for the test doesn't guarantee selection.",
         links: [{ to: "/careers", label: "Careers page" }] },
       { id: "k-test", q: "What is the aptitude test like?", k: "aptitude test exam questions pattern syllabus marks negative marking time duration sections",
-        a: "It's an online, timed test you take once, with sections on quantitative aptitude, logical reasoning, verbal ability and a technical section for your role. Wrong answers can cost marks (negative marking), so it's fine to leave a question you don't know. Each role's question count and time are on the Careers page, and you can download the full rules there as a PDF.",
+        a: "It's an online, timed test you take once, with sections on quantitative aptitude, logical reasoning, verbal ability and a technical section for your role. Wrong answers can cost marks (negative marking), so it's fine to leave a question you don't know. Each role sets its own number of questions and time limit — ask me about the test for a role by name and I'll tell you. The full rules can be downloaded as a PDF from the Careers page.",
         links: [{ to: "/careers", label: "Test details & rules" }] },
       { id: "k-rules", q: "What are the test rules? What do I need?", k: "rules webcam camera fullscreen full screen tab switch laptop browser cheating violation warning",
         a: "• Use a laptop or desktop with Chrome, Edge or Firefox, a working webcam and a steady connection\n• The test runs in full screen with your webcam on — a photo is taken from time to time\n• Leaving full screen or switching tabs/apps counts as a warning; at the limit the test is submitted automatically\n• Your answers are saved as you pick them, and if your connection drops you can resume — the timer keeps running",
@@ -109,8 +112,8 @@ export const FAQ_TOPICS = [
         a: "Go to your Profile page and choose “Delete my account”. We email a code to your account's email address to confirm it's you; once you enter it, your account and personal data are deleted straight away and you'll get a confirmation email.\nUnused wallet credit and course access are lost and not refunded. Payment records and receipts are kept, with no link to an account, as Indian tax law requires.",
         links: [{ to: "/profile", label: "My Profile" }, { to: "/privacy-policy", label: "Privacy Policy" }] },
       { id: "p-failed", q: "My payment failed or money was deducted", k: "failed deducted stuck pending error not received access",
-        a: "If money left your account but you didn't get access, please contact us with your name, email, the program name and the payment reference from your bank / UPI app, and we'll check it.",
-        links: [{ to: "/dashboard", label: "My Dashboard" }, { to: "/contact", label: "Contact page" }], dept: "programs" },
+        a: "• Wait 10 minutes and refresh My Dashboard — most payments confirm on their own\n• If money was taken but nothing unlocked, Razorpay confirms or returns it automatically, usually within 5–7 working days\n• Still stuck? Call our Internships & Courses team with your name, email, the program name and the payment reference from your bank / UPI app, and we'll check it",
+        links: [{ to: "/dashboard", label: "My Dashboard" }], dept: "programs" },
       { id: "p-request", q: "What is a payment request?", k: "payment request pay admin closed price link",
         a: "Sometimes we send a payment request to your registered account for a specific course or internship (even one that's closed or has no listed price). It appears under “Payment requests” in My Dashboard, is personal to your account, and you pay it through Razorpay. Offer codes and wallet credit don't apply to it.",
         links: [{ to: "/dashboard", label: "My Dashboard" }] },
@@ -159,26 +162,25 @@ export const FAQ_TOPICS = [
     id: "it", icon: "💻", label: "IT services",
     faqs: [
       { id: "s-offer", q: "What IT services do you offer?", k: "services it build website app development offer list",
-        a: "• Website development & web solutions\n• Custom software, SaaS & business systems\n• AI, machine learning & generative AI\n• AI agents & business process automation\n• Chatbots, WhatsApp & customer automation\n• Mobile app development\n• API, payment & third-party integrations\n• Cloud computing, DevOps & infrastructure\n• Cybersecurity, software testing & QA\n• Data analytics & business intelligence\n• Digital marketing & business growth\n• IT consulting, maintenance & technical support",
-        links: [{ to: "/services", label: "See all services" }] },
+        a: `We work with businesses in India and around the world:\n${services.map((s) => `• ${s.title} — ${s.points.slice(0, 5).join(", ")}`).join("\n")}` },
       { id: "s-cost", q: "How much does a project cost?", k: "cost price quote estimate budget charges rate pricing website app project",
-        a: "It depends on the scope — pages, features, integrations and timeline. Every engagement starts with a clear written scope and cost estimate, with no surprise line items later. Share your requirements with our IT team for a quote." },
+        a: `It depends on the scope — pages, features, integrations and timeline — so there's no fixed price list. Every engagement starts with a clear written scope and cost estimate, with no surprise line items later. You can work with us in three ways:\n${steps(engagementModels)}\nShare your requirements with our IT Services team for a quote.`,
+        links: [{ to: "/services", label: "Request a quote" }], dept: "it" },
       { id: "s-models", q: "How can we work together?", k: "engagement model fixed price dedicated team hourly retainer hire developer contract",
-        a: "Three ways:\n• Fixed price — a clear scope, agreed cost and timeline up front, paid in milestones\n• Dedicated team — a developer or small team embedded in your business, billed monthly\n• Hourly / retainer — ad-hoc support and maintenance, billed hourly or monthly" },
+        a: `Three ways:\n${steps(engagementModels)}` },
       { id: "s-process", q: "What is your process?", k: "process steps workflow discover estimate build deliver support timeline how long time",
-        a: "• Discover — understand your goals, users and constraints\n• Estimate — a clear proposal with timeline, deliverables and cost\n• Build — design and develop in short, reviewable iterations\n• Deliver & Support — ship, test, and stay on for fixes and enhancements\nTimelines depend on the project; we confirm one once we know your requirements." },
+        a: `${steps(clientProcess)}\nTimelines depend on the project; we confirm one in the estimate, once we know your requirements.` },
       { id: "s-start", q: "How do I start a project with you?", k: "start begin get started contact project enquiry inquiry hire",
-        a: "Send the inquiry form on the Services page (or the contact form) with a short description of what you need, or call our IT Services team. We'll reply and set up a quick discussion.",
-        links: [{ to: "/services", label: "Services page" }, { to: "/contact", label: "Open contact form" }], dept: "it" },
+        a: `Send a short description of what you need through the inquiry form, or call our IT Services team (${site.hours}). Then:\n${steps(clientProcess)}`,
+        links: [{ to: "/services", label: "Send an inquiry" }], dept: "it" },
       { id: "s-redo", q: "Can you redesign my existing website?", k: "redesign upgrade revamp existing site migrate seo performance",
         a: "Yes — from a visual refresh to a full rebuild on a modern stack, with performance and SEO fixes and your redirects preserved." },
       { id: "s-bot", q: "Do you build chatbots?", k: "chatbot bot ai assistant faq lead",
         a: "Yes — rule-based FAQ and lead-capture bots, and AI assistants trained on your own content, for your website and WhatsApp, with hand-off to your team when a human is needed." },
       { id: "s-tech", q: "Which technologies do you use?", k: "technology tech stack react node python flutter database cloud",
-        a: "• Web: HTML, CSS, JavaScript, TypeScript, PHP, Python, React, Next.js, Node.js, Express\n• Mobile: Java, Kotlin, Swift, Dart, React Native, Flutter\n• Databases: MongoDB, MySQL, PostgreSQL, MSSQL\n• AI / ML: Python, TensorFlow / PyTorch, LLM APIs, RAG\n• Cloud & tools: AWS / GCP / Azure, Docker, CI/CD, Git",
-        links: [{ to: "/about", label: "About us" }] },
+        a: "• Web: HTML, CSS, JavaScript, TypeScript, PHP, Python, React, Next.js, Node.js, Express\n• Mobile: Java, Kotlin, Swift, Dart, React Native, Flutter\n• Databases: MongoDB, MySQL, PostgreSQL, MSSQL\n• AI / ML: Python, TensorFlow / PyTorch, LLM APIs, RAG\n• Cloud & tools: AWS / GCP / Azure, Docker, CI/CD, Git" },
       { id: "s-terms", q: "Where are the client terms?", k: "client terms agreement contract nda confidentiality ownership",
-        a: "Our client terms cover scope, fees and taxes, timelines, IP, confidentiality, warranties and termination.",
+        a: "Every project starts from a written scope and estimate that you approve. Our Client Services Terms then cover:\n• Scope and changes to it\n• Fees, taxes and payment milestones\n• Timelines and what each side provides\n• Ownership of the work (IP) and confidentiality\n• Warranties, support and termination\nThe full terms are a legal document — read them in full before you sign off a project.",
         links: [{ to: "/client-terms", label: "Read client terms" }] },
     ],
   },
@@ -186,14 +188,13 @@ export const FAQ_TOPICS = [
     id: "company", icon: "🏢", label: "About & contact",
     faqs: [
       { id: "o-who", q: "Who is Crix Technology?", k: "about company who crix what do you do",
-        a: "Crix Technology Private Limited is an Ahmedabad-based technology company with three pillars: structured virtual internships, industry-ready online courses, and IT services for businesses. We're virtual-first, serving clients across India and around the world, and learners across India.",
-        links: [{ to: "/about", label: "About us" }] },
+        a: "Crix Technology Private Limited is an Ahmedabad-based technology company with three pillars: structured virtual internships, industry-ready online courses, and IT services for businesses. We're virtual-first, serving clients across India and around the world, and learners across India.\nOur curricula and products are built by working developers, so students learn — and clients get — what industry actually uses in production. Registered as ${site.legalName} (CIN ${site.cin})." },
       { id: "o-phone", q: "What are your contact numbers?", k: "phone number call whatsapp contact mobile reach",
-        a: "We have two separate teams, each with its own number — please call the one your question is for:",
-        links: [{ to: "/contact", label: "Contact page" }], dept: "both" },
+        a: `We have two separate teams, each with its own number — please call the one your question is for. We're available ${site.hours}, or email ${site.email}.`,
+        links: [{ to: "/contact", label: "Or send the contact form" }], dept: "both" },
       { id: "o-hours", q: "What are your working hours?", k: "hours timing time open available when reach",
-        a: `We're available ${site.hours}. Outside those hours, send the contact form or an email and we'll reply when we're back.`,
-        links: [{ to: "/contact", label: "Contact form" }] },
+        a: `We're available ${site.hours}. Outside those hours, email ${site.email} or send the contact form and we'll reply when we're back — within two working days.`,
+        links: [{ to: "/contact", label: "Contact form" }], dept: "both" },
       { id: "o-email", q: "What is your email address?", k: "email mail write reply response",
         a: `Email us at ${site.email}. We reply within two working days.`,
         links: [{ href: `mailto:${site.email}`, label: "Send an email" }] },

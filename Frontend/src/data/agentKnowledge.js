@@ -62,13 +62,26 @@ function priceLine(p) {
   return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\nWallet credit and offer codes are taken off at checkout.`;
 }
 
+// The lowest price someone can pay for a program today, or null when it can't be bought online.
+export function fromPrice(p) {
+  return isOpenForBuy(p) ? Math.min(...offeredTiers(p).map(planPrice)) : null;
+}
+
+// One bullet line about a program, for lists in the chat:
+// "• MERN Stack (Internship · 1 month · from ₹2,999) — Full-stack development…"
+export function programLine(p) {
+  const from = fromPrice(p);
+  const facts = [kind(p) === "internship" ? "Internship" : "Course", formatDuration(p.durationDays), from != null && `from ${formatINR(from)}`].filter(Boolean);
+  return `• ${p.title} (${facts.join(" · ")})${p.desc ? ` — ${p.desc}` : ""}`;
+}
+
 // A program named in the message: answers the aspect asked about, or a short overview.
 export function programAnswer(p, n) {
   const facts = [];
   const dur = formatDuration(p.durationDays);
   const starts = startsInFuture(p) ? formatStartDate(p.startsAt) : "";
   if (asked(n, "price")) facts.push(priceLine(p));
-  if (asked(n, "duration")) facts.push(dur ? `${p.title} runs for ${dur}.` : `The length of ${p.title} is on its page.`);
+  if (asked(n, "duration")) facts.push(dur ? `${p.title} runs for ${dur}.` : `${p.title} has no fixed length listed yet — our Internships & Courses team can confirm it.`);
   if (asked(n, "start")) facts.push(starts ? `The next batch starts on ${starts}.` : "You get access as soon as you enrol — there's no waiting for a batch.");
   if (asked(n, "certificate")) {
     facts.push(kind(p) === "internship"
@@ -78,7 +91,7 @@ export function programAnswer(p, n) {
   if (asked(n, "syllabus") && (p.points || []).length) facts.push(`What it covers:\n${p.points.slice(0, 6).map((x) => `• ${x}`).join("\n")}`);
 
   if (!facts.length) {
-    const from = isOpenForBuy(p) ? Math.min(...offeredTiers(p).map(planPrice)) : null;
+    const from = fromPrice(p);
     facts.push([
       `${p.title} — ${kind(p) === "internship" ? "a virtual internship" : "a self-paced course"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${formatINR(from)}` : ""}.`,
       p.desc || "",

@@ -28,6 +28,22 @@ describe("help bot answers", () => {
   });
 });
 
+describe("help bot answers say it in the chat", () => {
+  it("never sends people to another page just to read the answer", () => {
+    for (const f of ALL_FAQS) expect(f.a).not.toMatch(/\b(see|check|visit) (the|our) [a-z ]{0,25}page\b|\b(is|are) on (its|the|each) (?!same )[a-z ]{0,20}page\b/i);
+  });
+
+  it("lists every IT service with what it covers, and the process and engagement models in full", () => {
+    const byId = Object.fromEntries(ALL_FAQS.map((x) => [x.id, x]));
+    expect(byId["s-offer"].a.split("\n").filter((l) => l.startsWith("• ")).length).toBe(12);
+    expect(byId["s-offer"].a).toMatch(/• Website Development & Web Solutions — Static websites/);
+    expect(byId["s-offer"].links).toBeUndefined();
+    expect(byId["s-process"].a).toMatch(/Discover[\s\S]*Estimate[\s\S]*Build[\s\S]*Deliver & Support/);
+    expect(byId["s-cost"].a).toMatch(/Fixed Price[\s\S]*Dedicated Team[\s\S]*Hourly \/ Retainer/);
+    expect(byId["o-phone"].a).toMatch(/Mon–Sat/);
+  });
+});
+
 describe("help bot search", () => {
   const top = (text) => (searchFaqs(text)[0] || {}).id;
 
