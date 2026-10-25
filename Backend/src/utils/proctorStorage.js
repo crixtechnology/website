@@ -24,22 +24,33 @@ const S3_PREFIX = "s3:";
 // Nothing is stored under it yet.
 const PENDING_PREFIX = "pending:";
 
+// The endpoint may be typed with or without "https://" (and a trailing slash);
+// the client always gets "https://<host>", so both work. Spaces pasted along
+// with any setting are dropped too.
+const setting = (name) => String(process.env[name] || "").trim();
+const hostOnly = (endpoint) => endpoint.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+
 function bucketConfig() {
-  const { PROCTOR_BUCKET, PROCTOR_KEY_ID, PROCTOR_APP_KEY } = process.env;
-  const endpoint = process.env.PROCTOR_S3_ENDPOINT || process.env.B2_S3_ENDPOINT;
-  const region = process.env.PROCTOR_REGION || process.env.B2_REGION;
-  if (![PROCTOR_BUCKET, PROCTOR_KEY_ID, PROCTOR_APP_KEY, endpoint, region].every(Boolean)) return null;
-  return { bucket: PROCTOR_BUCKET, keyId: PROCTOR_KEY_ID, appKey: PROCTOR_APP_KEY, endpoint, region };
+  const bucket = setting("PROCTOR_BUCKET"), keyId = setting("PROCTOR_KEY_ID"), appKey = setting("PROCTOR_APP_KEY");
+  const endpoint = hostOnly(setting("PROCTOR_S3_ENDPOINT") || setting("B2_S3_ENDPOINT"));
+  const region = setting("PROCTOR_REGION") || setting("B2_REGION");
+  if (![bucket, keyId, appKey, endpoint, region].every(Boolean)) return null;
+  return { bucket, keyId, appKey, endpoint, region };
+}
+
+// A storage failure in words an admin can act on: the error's name, the
+// bucket's HTTP status and its message (never a key — the SDK doesn't put one there).
+function describeStorageError(err) {
+  if (!err) return "Unknown error";
+  const status = err.$metadata && err.$metadata.httpStatusCode;
+  const name = err.name === "TimeoutError" || err.name === "AbortError" ? "Timed out" : err.name || "Error";
+  return `${name}${status ? ` (HTTP ${status})` : ""}: ${err.message || "no details"}`;
 }
 
 // One line for the server log at startup, so a missing or mistyped setting on
 // the host shows in its logs (Render → Logs) without needing a shell.
 // Returns { inBucket, message }; never includes a key.
 function storageStatus() {
-  const endpoint = process.env.PROCTOR_S3_ENDPOINT || process.env.B2_S3_ENDPOINT || "";
-  if (/^https?:\/\//i.test(endpoint)) {
-    return { inBucket: false, message: `⚠ Webcam photos: the storage endpoint must be written without "https://" (e.g. s3.us-east-005.backblazeb2.com) — uploads will fail until it's fixed.` };
-  }
   const cfg = bucketConfig();
   if (cfg) return { inBucket: true, message: `Webcam photos: stored in bucket "${cfg.bucket}" (${cfg.region}).` };
   const someSet = ["PROCTOR_BUCKET", "PROCTOR_KEY_ID", "PROCTOR_APP_KEY"].some((k) => process.env[k]);
@@ -161,4 +172,27 @@ async function deleteSnapshot(storageKey) {
   throw new Error("Unknown snapshot location");
 }
 
-module.exports = { PENDING_PREFIX, storageStatus, saveSnapshot, saveCv, readSnapshot, deleteSnapshot };
+// Admin → Careers settings → "Check storage": saves a tiny test file the same
+// way a CV and a webcam photo are saved, reads it back and deletes it, and says
+// what failed — so a storage problem on a host without a shell can be found.
+async function checkStorage() {
+  const status = storageStatus();
+  const probe = Buffer.from("%PDF-1.4\n% Crix storage check\n%%EOF");
+  const steps = [["CVs", () => saveCv("_storage-check", probe)], ["Webcam photos", () => saveSnapshot("_storage-check", probe)]];
+  const results = [];
+  for (const [area, save] of steps) {
+    let key = null;
+    try {
+      key = await save();
+      await readSnapshot(key);
+      results.push({ area, ok: true });
+    } catch (err) {
+      results.push({ area, ok: false, error: describeStorageError(err) });
+    } finally {
+      if (key) await deleteSnapshot(key).catch(() => {});
+    }
+  }
+  return { inBucket: status.inBucket, message: status.message, results };
+}
+
+module.exports = { PENDING_PREFIX, storageStatus, saveSnapshot, saveCv, readSnapshot, deleteSnapshot, describeStorageError, checkStorage };

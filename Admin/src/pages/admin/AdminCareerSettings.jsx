@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAdminToken, adminGetCareerSettings, adminUpdateCareerSettings } from "../../services/api.js";
+import { getAdminToken, adminGetCareerSettings, adminUpdateCareerSettings, adminCheckStorage } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
@@ -16,6 +16,13 @@ export default function AdminCareerSettings() {
   const [settings, setSettings] = useState(null); // numbers held as the text typed
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ kind: "", text: "" });
+  const [storage, setStorage] = useState({ busy: false, result: null });
+
+  const checkStorage = async () => {
+    if (storage.busy) return;
+    setStorage({ busy: true, result: null });
+    setStorage({ busy: false, result: await adminCheckStorage() });
+  };
 
   useEffect(() => {
     adminGetCareerSettings().then((res) => {
@@ -120,6 +127,25 @@ export default function AdminCareerSettings() {
             <p style={{ color: "var(--muted)" }}>Loading…</p>
           )}
         </form>
+
+        <div className="admin-form" style={{ marginTop: 24 }}>
+          <h3 style={{ margin: "0 0 10px" }}>File storage (CVs and webcam photos)</h3>
+          <p className="form-note" style={{ margin: "0 0 14px" }}>
+            Saves a tiny test file where CVs and webcam photos go, reads it back and deletes it. If a CV upload or the test's
+            photos fail, run this to see why.
+          </p>
+          <button type="button" className="btn btn-ghost" onClick={checkStorage} disabled={storage.busy}>{storage.busy ? "Checking…" : "Check storage"}</button>
+          {storage.result && (storage.result.ok ? (
+            <div style={{ marginTop: 14 }}>
+              <p className="form-note" style={{ margin: "0 0 8px" }}>{storage.result.message}</p>
+              <ul className="admin-check-list" style={{ margin: 0, paddingLeft: 18 }}>
+                {storage.result.results.map((r) => (
+                  <li key={r.area} className={r.ok ? "ref-ok" : "form-error"}>{r.area}: {r.ok ? "working" : r.error}</li>
+                ))}
+              </ul>
+            </div>
+          ) : <p className="form-error" style={{ marginTop: 14 }}>{storage.result.error}</p>)}
+        </div>
       </div>
     </section>
   );

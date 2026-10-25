@@ -10,7 +10,7 @@ const { FINAL_STATUSES } = require("../utils/proctorRetention");
 const { queryText, isValidHttpUrl } = require("../utils/validators");
 const { getCareerSettings, saveCareerSettings } = require("../utils/careerSettings");
 const { addNotification, sendCareerEmail } = require("../utils/notifications");
-const { readSnapshot, PENDING_PREFIX } = require("../utils/proctorStorage");
+const { readSnapshot, checkStorage, PENDING_PREFIX } = require("../utils/proctorStorage");
 const { lapsedCredit } = require("../utils/wallet");
 const {
   CATEGORIES, GENERAL_CATEGORIES, TECH_CATEGORIES, MAX_PER_CATEGORY, STATUS_LABELS, isCategory, normalizeCounts, shapeOpening, finalizeExpiredAttempts,
@@ -832,6 +832,17 @@ router.get("/admin/wallets", requireAdmin, async (req, res, next) => {
 });
 
 // ====================== settings ======================
+// Saves, reads back and deletes a test file where CVs and webcam photos go, and
+// reports each result (utils/proctorStorage.js checkStorage).
+router.get("/admin/careers/storage-check", requireAdmin, async (req, res, next) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true, ...(await checkStorage()) });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/admin/careers/settings", requireAdmin, async (req, res, next) => {
   try {
     res.json({ ok: true, settings: await getCareerSettings() });
