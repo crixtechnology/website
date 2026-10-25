@@ -28,6 +28,8 @@ jest.mock("../src/utils/proctorStorage", () => ({
   saveSnapshot: jest.fn(async (attemptId) => `local:${attemptId}/test.jpg`),
   saveCv: jest.fn(async (applicationId) => `local:cv-${applicationId}/cv.pdf`),
   readSnapshot: jest.fn(async () => Buffer.from("%PDF-1.4 stored")),
+  describeStorageError: (err) => `${err.name}: ${err.message}`,
+  checkStorage: jest.fn(async () => ({ inBucket: true, message: "stored in bucket", results: [{ area: "CVs", ok: false, error: "AccessDenied (HTTP 403): not entitled" }, { area: "Webcam photos", ok: true }] })),
 }));
 const storage = require("../src/utils/proctorStorage");
 const mailer = require("../src/utils/mailer");
@@ -142,6 +144,32 @@ describe("Free internships", () => {
     for (const techCategory of ["frontend", "python", "webfundamentals", "aiml", "datascience"]) {
       expect((await opening({ techCategory })).techCategory).toBe(techCategory);
     }
+  });
+
+  it("answers a storage failure during the CV upload with a clear message, and lets the student retry", async () => {
+    const o = await opening();
+    const s = await student();
+    const applied = await apply(s, o);
+    const id = applied.body.application._id;
+    storage.saveCv.mockRejectedValueOnce(Object.assign(new Error("not entitled"), { name: "AccessDenied" }));
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const failed = await uploadCv(s, id);
+    expect(failed.status).toBe(503);
+    expect(failed.body).toMatchObject({ ok: false, code: "CV_STORAGE", error: expect.stringMatching(/couldn't save your CV/) });
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining("AccessDenied: not entitled"));
+    spy.mockRestore();
+    expect((await prisma.jobApplication.findUnique({ where: { id } })).cvKey).toBeFalsy();
+
+    expect((await uploadCv(s, id)).status).toBe(200);
+    expect((await prisma.jobApplication.findUnique({ where: { id } })).cvKey).toBe(`local:cv-${id}/cv.pdf`);
+  });
+
+  it("lets an admin, and only an admin, run the storage check", async () => {
+    const s = await student();
+    expect((await authed(request(app).get("/api/admin/careers/storage-check"), s.token)).status).toBe(403);
+    const res = await asAdmin(request(app).get("/api/admin/careers/storage-check"));
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, inBucket: true, results: [{ area: "CVs", ok: false, error: "AccessDenied (HTTP 403): not entitled" }, { area: "Webcam photos", ok: true }] });
   });
 
   it("needs an account, then a PDF CV, before the free test unlocks", async () => {

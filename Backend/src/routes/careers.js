@@ -20,7 +20,7 @@ const { rejectWithoutTerms } = require("../utils/terms");
 const { rejectIfProfileIncomplete, profileMissing, educationMissing } = require("../utils/accounts");
 const { lockUser } = require("../utils/wallet");
 const { getCareerSettings } = require("../utils/careerSettings");
-const { saveCv, deleteSnapshot } = require("../utils/proctorStorage");
+const { saveCv, deleteSnapshot, describeStorageError } = require("../utils/proctorStorage");
 const { STATUS_LABELS, shapeOpening, grantTestForPayment, finalizeExpiredAttempts, testFeeFor } = require("../utils/careers");
 
 const router = express.Router();
@@ -233,7 +233,15 @@ router.put(
       fileName = fileName.replace(/[^\w .()-]/g, "").trim().slice(0, 150) || "cv.pdf";
       if (!/\.pdf$/i.test(fileName)) fileName += ".pdf";
 
-      const cvKey = await saveCv(application.id, body);
+      // A storage failure is ours, not the student's: say so plainly, and log
+      // the real reason (Admin → Careers settings → Check storage shows it too).
+      let cvKey;
+      try {
+        cvKey = await saveCv(application.id, body);
+      } catch (err) {
+        console.error(`[careers] CV upload failed for application ${application.id}: ${describeStorageError(err)}`);
+        return res.status(503).json({ ok: false, code: "CV_STORAGE", error: "We couldn't save your CV just now. Please try again in a few minutes — if it keeps happening, email us and we'll sort it out." });
+      }
       await prisma.jobApplication.update({ where: { id: application.id }, data: { cvKey, cvFileName: fileName, cvUploadedAt: new Date() } });
       // The replaced file goes after the new one is safely recorded.
       if (application.cvKey) await deleteSnapshot(application.cvKey).catch((err) => console.error("[careers] old CV not deleted:", err.message));

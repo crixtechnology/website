@@ -688,6 +688,8 @@ export const adminSetJobApplicationStatus = (id, payload) => adminCall(`/admin/j
 
 export const adminGetCareerSettings = () => adminCall("/admin/careers/settings", {}, "Could not load the careers settings");
 export const adminUpdateCareerSettings = (settings) => adminCall("/admin/careers/settings", jsonBody("PUT", settings), "Could not save the careers settings");
+// Saves, reads back and deletes a test file where CVs and webcam photos are kept.
+export const adminCheckStorage = () => adminCall("/admin/careers/storage-check", {}, "Could not run the storage check");
 export const adminGetWallets = (q) => adminCall(`/admin/wallets${qs({ q })}`, {}, "Could not load the wallet balances");
 
 // A file from the API (the Excel export, a webcam snapshot): these need the
