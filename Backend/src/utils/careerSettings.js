@@ -4,6 +4,8 @@ const { prisma } = require("../db");
 // in the same key/value Setting table as the referral rules.
 //
 //   testFeeRupees          what the aptitude test costs (it comes back as credit)
+//   processingFeeRupees    the test processing fee for a free-internship role
+//                          (/free-internships); it also comes back as credit (0 = none)
 //   signupBonusCredits     credit a new student account starts with (0 = none)
 //   creditExpiryMonths     how long that credit and the test-fee credit last (0 = forever)
 //   creditUsagePercent     the most of one purchase that wallet credit may pay for
@@ -19,6 +21,7 @@ const { prisma } = require("../db");
 const SETTINGS_KEY = "careers";
 const DEFAULT_SETTINGS = {
   testFeeRupees: 289,
+  processingFeeRupees: 94,
   signupBonusCredits: 300,
   creditExpiryMonths: 12,
   creditUsagePercent: 100,
@@ -33,6 +36,7 @@ const DEFAULT_SETTINGS = {
 // [min, max] for each whole-number setting.
 const INT_RANGES = {
   testFeeRupees: [1, 100000, "The test fee must be a whole number of rupees from 1 to 100000"],
+  processingFeeRupees: [0, 100000, "The processing fee must be a whole number of rupees from 0 (none) to 100000"],
   signupBonusCredits: [0, 100000, "The signup bonus must be a whole number from 0 to 100000"],
   creditExpiryMonths: [0, 120, "Credit expiry must be a whole number of months from 0 (never) to 120"],
   creditUsagePercent: [0, 100, "The credit usage limit must be a whole number from 0 to 100 percent"],

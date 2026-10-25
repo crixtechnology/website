@@ -1,16 +1,26 @@
+const crypto = require("crypto");
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 const { signToken } = require("../src/utils/jwt");
 
 // Free internships: roles listed only on the unlinked /free-internships page,
-// free, and unlocked only once the candidate has uploaded a CV (a PDF). Same
-// stand-ins as careers.test.js: no real mail, storage or rate limiting.
+// unlocked only once the candidate has uploaded a CV (a PDF) and filled in their
+// education — and, while the processing fee setting is above 0, paid it (it
+// comes back as wallet credit). Same stand-ins as careers.test.js: no real
+// mail, storage, Razorpay call or rate limiting.
+process.env.RAZORPAY_KEY_SECRET = "free-internships-key-secret";
 jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/testRateLimit", () => ({ testApiLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/mailer", () => ({
   sendWelcomeEmail: jest.fn(async () => ({})),
   sendTestSubmittedEmail: jest.fn(async () => ({})),
   sendApplicationStatusEmail: jest.fn(async () => ({})),
+  sendTestPaymentEmail: jest.fn(async () => ({})),
+}));
+jest.mock("../src/utils/receiptPdf", () => ({ buildReceiptPdfBuffer: jest.fn(() => Buffer.from("fake-pdf")) }));
+jest.mock("../src/utils/razorpay", () => ({
+  isLiveBlocked: false,
+  razorpay: { orders: { create: jest.fn(async () => ({ id: `order_free_${Math.random().toString(36).slice(2)}`, currency: "INR" })) } },
 }));
 jest.mock("../src/utils/proctorStorage", () => ({
   PENDING_PREFIX: "pending:",
@@ -52,6 +62,12 @@ async function opening(overrides = {}) {
 const apply = (s, o) => authed(request(app).post("/api/me/job-applications"), s.token).send({ opening: o.slug });
 const uploadCv = (s, id, body = PDF, type = "application/pdf") =>
   authed(request(app).put(`/api/me/job-applications/${id}/cv`), s.token).set("Content-Type", type).set("X-File-Name", encodeURIComponent("My CV (final).pdf")).send(body);
+const setFee = (processingFeeRupees) => asAdmin(request(app).put("/api/admin/careers/settings")).send({ processingFeeRupees });
+const createOrder = (s, id) => authed(request(app).post(`/api/me/job-applications/${id}/create-order`), s.token).send({ acceptTerms: true, confirmAdult: true });
+const verify = (orderId, paymentId) => request(app).post("/api/careers/verify").send({
+  razorpay_order_id: orderId, razorpay_payment_id: paymentId,
+  razorpay_signature: crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(`${orderId}|${paymentId}`).digest("hex"),
+});
 const unlock = (s, id) => authed(request(app).post(`/api/me/job-applications/${id}/unlock-free`), s.token).send({ acceptTerms: true, confirmAdult: true });
 
 beforeAll(async () => {
@@ -64,7 +80,7 @@ beforeAll(async () => {
     for (let n = 1; n <= 3; n++) rows.push({ category, text: `${category} ${n}`, options: ["right", "wrong"], correctIndex: 0 });
   }
   await prisma.testQuestion.createMany({ data: rows });
-  await asAdmin(request(app).put("/api/admin/careers/settings")).send({ generatedQuestionsPercent: 0 });
+  await asAdmin(request(app).put("/api/admin/careers/settings")).send({ generatedQuestionsPercent: 0, processingFeeRupees: 0 });
 }, 180000); // wiping every table outruns the default in a full --runInBand run
 
 afterAll(async () => {
@@ -201,5 +217,66 @@ describe("Free internships", () => {
     const res = await asAdmin(request(app).post(`/api/admin/job-applications/${id}/status`)).send({ action: "not_shortlist" });
     expect(res.body.application.status).toBe("not_shortlisted");
     expect(mailer.sendApplicationStatusEmail).toHaveBeenCalledWith(expect.objectContaining({ status: "not_shortlisted", free: true }));
+  });
+
+  describe("with the ₹94 processing fee", () => {
+    beforeAll(async () => { expect((await setFee(94)).status).toBe(200); });
+    afterAll(async () => { await setFee(0); });
+
+    it("lists the fee with the openings and refuses to unlock without paying", async () => {
+      const page = await request(app).get("/api/careers/free/openings");
+      expect(page.body.terms).toMatchObject({ processingFee: 94 });
+
+      const o = await opening();
+      const s = await student();
+      const id = (await apply(s, o)).body.application._id;
+      await uploadCv(s, id);
+      const refused = await unlock(s, id);
+      expect(refused.status).toBe(400);
+      expect(refused.body.code).toBe("FEE_REQUIRED");
+    });
+
+    it("needs the CV and education before taking payment", async () => {
+      const o = await opening();
+      const s = await student({});
+      const id = (await apply(s, o)).body.application._id;
+      expect((await createOrder(s, id)).body.code).toBe("CV_REQUIRED");
+      await uploadCv(s, id);
+      expect((await createOrder(s, id)).body.code).toBe("PROFILE_INCOMPLETE");
+    });
+
+    it("charges ₹94, unlocks the test, credits 94 and issues a processing-fee receipt", async () => {
+      const o = await opening();
+      const s = await student();
+      const id = (await apply(s, o)).body.application._id;
+      await uploadCv(s, id);
+      const order = await createOrder(s, id);
+      expect(order.status).toBe(201);
+      expect(order.body.amount).toBe(9400);
+
+      const paymentId = `pay_${Math.random().toString(36).slice(2)}`;
+      expect((await verify(order.body.orderId, paymentId)).body).toMatchObject({ ok: true, unlocked: true });
+      // A second confirmation (the webhook) changes nothing.
+      await verify(order.body.orderId, paymentId);
+
+      const app1 = await prisma.jobApplication.findUnique({ where: { id }, include: { payments: true } });
+      expect(app1.status).toBe("test_pending");
+      expect(app1.education).toEqual(EDUCATION);
+      expect(app1.payments[0]).toMatchObject({ status: "paid", amount: 9400, receiptItemTitle: `Test Processing Fee - ${o.title}` });
+
+      const credits = await prisma.creditEntry.findMany({ where: { userId: s.id } });
+      expect(credits).toHaveLength(1);
+      expect(credits[0]).toMatchObject({ amount: 9400, kind: "test_fee_credit" });
+      expect(credits[0].note).toMatch(/^Test processing fee/);
+      expect(mailer.sendTestPaymentEmail).toHaveBeenCalledWith(expect.objectContaining({ to: s.email, amount: 94, credits: 94 }));
+    });
+
+    it("leaves a regular paid role on the normal test fee", async () => {
+      const general = await opening({ audience: "general", feeRequired: true, title: `Paid ${++seq}` });
+      const s = await student();
+      const id = (await apply(s, general)).body.application._id;
+      const order = await createOrder(s, id);
+      expect(order.body.amount).toBe(28900);
+    });
   });
 });

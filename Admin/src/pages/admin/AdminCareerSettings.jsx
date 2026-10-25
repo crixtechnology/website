@@ -4,7 +4,7 @@ import { getAdminToken, adminGetCareerSettings, adminUpdateCareerSettings } from
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
-const NUMBERS = ["testFeeRupees", "signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent", "reapplyCooldownDays"];
+const NUMBERS = ["testFeeRupees", "processingFeeRupees", "signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent", "reapplyCooldownDays"];
 const TOGGLES = ["requireWebcam", "requireDesktopApp"];
 
 // The rules of the careers flow: what the aptitude test costs, the credit new
@@ -65,6 +65,8 @@ export default function AdminCareerSettings() {
               <div className="admin-form-grid admin-form-grid--2">
                 <div className="field"><label htmlFor="cs-fee">Aptitude test registration fee (₹)</label>
                   <input id="cs-fee" type="number" min="1" step="1" value={settings.testFeeRupees} onChange={setField("testFeeRupees")} /></div>
+                <div className="field"><label htmlFor="cs-processing">Free internships test processing fee (₹, 0 = none)</label>
+                  <input id="cs-processing" type="number" min="0" step="1" value={settings.processingFeeRupees} onChange={setField("processingFeeRupees")} /></div>
                 <div className="field"><label htmlFor="cs-bonus">Signup bonus (credits, 0 = none)</label>
                   <input id="cs-bonus" type="number" min="0" step="1" value={settings.signupBonusCredits} onChange={setField("signupBonusCredits")} /></div>
                 <div className="field"><label htmlFor="cs-expiry">Credit expiry (months, 0 = never)</label>
