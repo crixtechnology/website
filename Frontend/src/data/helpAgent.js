@@ -79,6 +79,7 @@ const WORDS = {
   want: ["want", "looking for", "interested", "suggest", "recommend", "need", "help with", "show me", "which", "chahiye"],
   careerList: ["hiring", "open role", "open roles", "openings", "vacancy", "vacancies", "jobs", "job opening", "any job", "careers and"],
   failure: ["deducted", "debited", "failed", "not received", "no access", "didnt get", "didn t get", "stuck", "pending", "not showing", "not visible", "not unlocked", "cant see", "can t see", "not working", "but no", "but course", "but not"],
+  clientTerms: ["refund", "money back", "own", "ownership", "copyright", "intellectual property", "source code", "nda", "confidential", "late", "delay", "deadline", "cancel", "terms", "contract"],
   allNumbers: ["contact numbers", "phone numbers", "your numbers", "all numbers", "both numbers", "contact details", "all your numbers"],
 };
 
@@ -479,7 +480,10 @@ export function respond(state, text, ctx = {}) {
   if (topic === "careers" && wants) return out(careersReply(ctx), "careers");
   if ((topic === "payments" || has(n, [" paid", "payment"])) && has(n, WORDS.failure)) return out(paymentsReply(n), "payments");
   if (topic === "account" && (wants || bare(["account", "help", "with", "login", "profile"]))) return out(accountReply(ctx), "account");
-  if (topic === "services" && (wants || has(n, ["it services", "it service"]) || SERVICE_NEEDS.some((x) => has(n, x.words)))) {
+  // A question about the client terms ("who owns my website's code?") is answered
+  // from the answer bank, not with the pitch for that kind of project.
+  const termsQuestion = has(n, WORDS.clientTerms);
+  if (topic === "services" && !termsQuestion && (wants || has(n, ["it services", "it service"]) || SERVICE_NEEDS.some((x) => has(n, x.words)))) {
     return out(servicesReply(ctx, n), "services");
   }
   if (topic === "programs" && (wants || track || bare(["internship", "internships", "course", "courses", "program", "programs", "training"]))) {

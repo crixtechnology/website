@@ -75,6 +75,15 @@ describe("help bot search", () => {
     ["where is my receipt", "p-receipt"],
     ["how do i pay", "p-pay"],
     ["certificates", "c-cert"],
+    ["client terms", "s-terms"],
+    ["is the project fee refundable", "s-refund"],
+    ["who owns the source code", "s-own"],
+    ["will you sign an nda", "s-nda"],
+    ["what if the project is late", "s-change"],
+    // The client-terms answers mustn't take over the student ones.
+    ["refund policy", "p-refund"],
+    ["how is my data used", "o-privacy"],
+    ["can i use my own referral code", "r-self"],
   ])("answers “%s” with %s first", (text, id) => {
     expect(top(text)).toBe(id);
   });

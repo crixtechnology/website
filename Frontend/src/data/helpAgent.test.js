@@ -126,6 +126,14 @@ describe("help agent", () => {
     expect(chat("do you charge gst").last.text).toMatch(/GST/);
   });
 
+  it("answers client-terms questions in the chat, apart from the student ones", () => {
+    expect(chat("is my website project fee refundable?").last.text).toMatch(/final and non-refundable/);
+    expect(chat("what is your refund policy").last.text).toMatch(/course and internship purchases are final/);
+    const own = chat("who owns the code you build").last;
+    expect(own.text).toMatch(/once you've paid in full/);
+    expect(own.links).toBeUndefined();
+  });
+
   it("flags what it couldn't understand and offers the main topics", () => {
     const r = respond(initialState(), "xyzzy qwertyuiop", ctx);
     expect(r.state.unanswered).toBe(true);
