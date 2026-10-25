@@ -105,8 +105,8 @@ export function Home() {
             </span>
           </p>
           <div className="hero-ctas">
-            <Link className="btn btn-solid" to="/programs">Explore programs</Link>
-            <Link className="btn btn-ghost" to="/services">Our IT services</Link>
+            <Link className="btn btn-solid" to="/services">Our IT services</Link>
+            <Link className="btn btn-ghost" to="/programs">Explore programs</Link>
           </div>
           <div className="hero-meta">
             {hero.meta.map((m) => <div key={m.big}><b>{m.big}</b>{m.small}</div>)}
@@ -125,6 +125,23 @@ export function Home() {
           <Reveal variant="reveal-r">
             <LiveDevice />
           </Reveal>
+        </div>
+      </section>
+
+      <section className="section" style={{ paddingTop: 70 }}>
+        <div className="orb orb-2"></div>
+        <div className="wrap">
+          <Reveal as="span" variant="reveal-r" className="eyebrow">IT Services</Reveal>
+          <Reveal as="h2" variant="reveal-r">Technology that grows your business.</Reveal>
+          <div className="grid3 stagger">
+            {services.slice(0, 3).map((it, i) => (
+              <InfoCard key={it.title} item={it} i={i} onDetail={setDetailData} onServiceInquire={setServiceInquiryItem} />
+            ))}
+          </div>
+          <div className="hero-ctas">
+            <Link className="btn btn-ghost" to="/services">All services →</Link>
+            <Link className="btn btn-ghost" to="/contact">Start a project →</Link>
+          </div>
         </div>
       </section>
 
@@ -161,23 +178,6 @@ export function Home() {
               </div>
             ))}
           </Reveal>
-        </div>
-      </section>
-
-      <section className="section" style={{ paddingTop: 70 }}>
-        <div className="orb orb-2"></div>
-        <div className="wrap">
-          <Reveal as="span" variant="reveal-r" className="eyebrow">IT Services</Reveal>
-          <Reveal as="h2" variant="reveal-r">We don't just teach it. We build it.</Reveal>
-          <div className="grid3 stagger">
-            {services.slice(0, 3).map((it, i) => (
-              <InfoCard key={it.title} item={it} i={i} onDetail={setDetailData} onServiceInquire={setServiceInquiryItem} />
-            ))}
-          </div>
-          <div className="hero-ctas">
-            <Link className="btn btn-ghost" to="/services">All services →</Link>
-            <Link className="btn btn-ghost" to="/programs">Browse courses →</Link>
-          </div>
         </div>
       </section>
 
