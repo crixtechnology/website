@@ -1,7 +1,8 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  SkeletonCards, Alert, DownloadPdfButton, useBodyScrollLock, useModalEscape, useModalFocus, REDUCED,
+  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, DownloadPdfButton,
+  useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
 import { openApplicationFor, StatusPill, AdultCheckbox } from "../components/CareersDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
@@ -16,15 +17,20 @@ import {
   freeHero, freeSteps, freeEligibility, freeRules, freePrivacy, freeTerms, freeFaqs, freeRulesDocument, CV_MAX_MB, RESULT_DAYS,
 } from "../data/freeInternships.js";
 
-// The free internships page, open to students of every field. Kept plain on
-// purpose: no animated background or card effects, and the long rules, privacy
-// and terms folded into collapsible rows. Not linked from anywhere on the site
-// and kept out of search results (noindex, not in the sitemap): it is shared by
-// its address only. Roles are free; applying needs an account and a CV (PDF), which makes
+// The free internships page, open to students of every field. Not linked from
+// anywhere on the site and kept out of search results (noindex, not in the
+// sitemap): it is shared by its address only. Roles are free; applying needs an account and a CV (PDF), which makes
 // the candidate eligible for the aptitude test (pages/student/AptitudeTest.jsx).
 
 const LOADING_CAP_MS = 4000;
 const CV_MAX_BYTES = CV_MAX_MB * 1024 * 1024;
+
+const INDEX = [
+  { id: "how", label: "How it works" },
+  { id: "openings", label: "Openings" },
+  { id: "rules", label: "Rules" },
+  { id: "privacy", label: "Privacy & terms" },
+];
 
 const scrollToId = (id) => (e) => {
   e.preventDefault();
@@ -49,20 +55,35 @@ function cvProblem(file) {
 }
 
 /* ---------- one opening's card ---------- */
-function FreeOpeningCard({ opening, onOpen, onApply }) {
-  const facts = openingFacts(opening);
+function FreeOpeningCard({ opening, i, onOpen, onApply }) {
   return (
-    <div className="card free-card">
-      <h3>{opening.title}</h3>
-      <p>{opening.summary}</p>
-      {facts.length > 0 && (
-        <p className="free-card-facts">{facts.map(([label, value]) => `${label}: ${value}`).join(" · ")}</p>
-      )}
-      <div className="free-card-actions">
-        <button className="btn btn-solid" onClick={() => onApply(opening)}>Apply</button>
-        <button className="btn btn-ghost" onClick={() => onOpen(opening)} aria-haspopup="dialog">Details</button>
-      </div>
-    </div>
+    <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
+      <TiltCard className="card-type-internship job-card">
+        <div className="job-card-body" onClick={() => onOpen(opening)}>
+          <div className="card-top">
+            <div className="card-top-left">
+              <span className="type-pill type-pill--internship">Internship</span>
+              <span className="tag">Open</span>
+            </div>
+            <span className="fee-pill fee-pill--free">Free</span>
+          </div>
+          <h3>{opening.title}</h3>
+          <p>{opening.summary}</p>
+          <div className="deliverable-row">
+            {(opening.skills || []).map((s) => <span key={s} className="deliverable-chip">{s}</span>)}
+          </div>
+          <dl className="job-facts">
+            {openingFacts(opening).map(([label, value]) => (
+              <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+            ))}
+          </dl>
+        </div>
+        <div className="card-btn-row">
+          <button className="btn btn-solid buy-btn" onClick={() => onApply(opening)}>Apply with CV</button>
+          <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
+        </div>
+      </TiltCard>
+    </Reveal>
   );
 }
 
@@ -126,6 +147,7 @@ function FreeApplyModal({ opening, onClose }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ kind: "", text: "" });
   const [doneId, setDoneId] = useState("");
+  const submitBtn = useRef(null);
   const alive = useRef(true);
   useBodyScrollLock(!!opening);
   useModalFocus(!!opening);
@@ -205,6 +227,7 @@ function FreeApplyModal({ opening, onClose }) {
     if (!unlocked.ok) { setMsg({ kind: "error", text: unlocked.error }); return; }
     setMsg({ kind: "", text: "" });
     setDoneId(id);
+    burstConfetti(submitBtn.current);
   };
 
   let body;
@@ -276,7 +299,7 @@ function FreeApplyModal({ opening, onClose }) {
             <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
           </span>
         </label>
-        <button className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={submit}>
+        <button ref={submitBtn} className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={submit}>
           {busy ? "Please wait..." : "Send CV & Apply"}
         </button>
       </>
@@ -334,90 +357,149 @@ export default function FreeInternships() {
   const tel = `tel:${careersContact.phone.replace(/[^\d+]/g, "")}`;
 
   return (
-    <div className="free-page">
-      <header className="section free-head">
-        <div className="wrap">
-          <h1>{freeHero.title}</h1>
+    <>
+      <header className="page-head careers-hero" style={{ position: "relative", overflow: "hidden" }}>
+        <Aurora />
+        <Reveal variant="reveal-top" style={{ position: "relative", zIndex: 2 }} className="wrap">
+          <span className="eyebrow">{freeHero.eyebrow}</span>
+          <h1 style={{ fontSize: "clamp(1.6rem,4vw + .6rem,3rem)", margin: "14px 0 18px" }}>{freeHero.title}</h1>
           <p>{freeHero.text}</p>
-          <a className="btn btn-solid" href="#openings" onClick={scrollToId("openings")}>See open roles</a>
-        </div>
+          <div className="hero-ctas">
+            <a className="btn btn-solid" href="#openings" onClick={scrollToId("openings")}>View Openings</a>
+            <a className="btn btn-ghost" href="#rules" onClick={scrollToId("rules")}>Read the Rules</a>
+          </div>
+        </Reveal>
       </header>
+      <SectionIndex items={INDEX} />
       <Alert kind="info">{notice}</Alert>
 
-      <section className="section free-section">
+      {/* How it works */}
+      <section id="how" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
-          <h2>How it works</h2>
-          <ol className="free-steps">
-            {freeSteps.map((s) => <li key={s.n}><b>{s.title}.</b> {s.desc}</li>)}
-          </ol>
+          <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
+          <Reveal as="h2" variant="reveal-l">Four steps, no fee.</Reveal>
+          <div className="process stagger">
+            {freeSteps.map((s, i) => (
+              <Reveal key={s.n} variant="reveal" className="step" style={{ "--i": i }}>
+                <span className="step-num">{s.n}</span>
+                <h3>{s.title}</h3>
+                <p>{s.desc}</p>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section id="openings" className="section free-section anchor-section">
+      {/* Openings */}
+      <section id="openings" className="section section--internships anchor-section" style={{ paddingTop: 20 }}>
+        <div className="orb orb-1"></div>
         <div className="wrap">
-          <h2>Open roles</h2>
+          <Reveal as="span" variant="reveal-l" className="eyebrow">Free Openings</Reveal>
+          <Reveal as="h2" variant="reveal-l">Pick your role.</Reveal>
+          {(loading || openings.length > 0) && (
+            <Reveal as="p" variant="reveal-l" className="section-lede">
+              Every role below is free. Sign up, send your CV for the role you want, and take the aptitude test.
+            </Reveal>
+          )}
           {loading ? (
-            <div className="free-grid"><SkeletonCards count={2} /></div>
+            <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
           ) : openings.length ? (
-            <div className="free-grid">
-              {openings.map((o) => <FreeOpeningCard key={o.slug} opening={o} onOpen={setDetail} onApply={apply} />)}
+            <div className="grid3 stagger" style={{ marginTop: 24 }}>
+              {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} onOpen={setDetail} onApply={apply} />)}
             </div>
           ) : (
-            <div className="card" role="status">
-              <p style={{ margin: 0 }}>
+            <div className="card no-openings" role="status" style={{ marginTop: 24 }}>
+              <h3>{live ? "No open roles right now" : "We couldn't load the open roles"}</h3>
+              <p>
                 {live
-                  ? <>There are no open roles right now. Please check back soon, or email <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>.</>
-                  : <>We couldn't load the open roles. Please refresh in a moment, or email <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>.</>}
+                  ? <>New free internships are posted here first, so check back soon. Questions? Email <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>.</>
+                  : <>Please refresh the page in a moment. If it keeps happening, email <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>.</>}
               </p>
             </div>
           )}
+
+          <div className="vm-grid">
+            <Reveal variant="reveal-l" className="vm-card">
+              <span className="vm-label">Who can apply</span>
+              <ul className="check-list">{freeEligibility.map((x) => <li key={x}>{x}</li>)}</ul>
+            </Reveal>
+            <Reveal variant="reveal-r" className="vm-card">
+              <span className="vm-label">After the test</span>
+              <p>
+                Every candidate gets an email within <b>{RESULT_DAYS} days</b> of submitting the test — whether you're <b>selected</b> or
+                {" "}<b>not selected</b>. Selected candidates also get their offer letter and joining details. Your result is shown in
+                My Dashboard → My Applications too.
+              </p>
+            </Reveal>
+          </div>
         </div>
       </section>
       <FreeOpeningModal opening={detail} onClose={() => setDetail(null)} onApply={apply} />
       <FreeApplyModal opening={applying} onClose={() => setApplying(null)} />
 
-      <section className="section free-section">
-        <div className="wrap">
-          <h2>Who can apply</h2>
-          <ul className="free-list">{freeEligibility.map((x) => <li key={x}>{x}</li>)}</ul>
-          <p className="free-note">
-            You'll get an email within {RESULT_DAYS} days of submitting the test, telling you whether you're selected or not selected.
-          </p>
+      {/* Rules */}
+      <section id="rules" className="section anchor-section" style={{ paddingTop: 20 }}>
+        <div className="wrap" style={{ maxWidth: 900 }}>
+          <Reveal as="span" variant="reveal-l" className="eyebrow">Rules</Reveal>
+          <Reveal as="h2" variant="reveal-l">Application &amp; test rules.</Reveal>
+          <Reveal variant="reveal" className="vm-card" style={{ marginTop: 26 }}>
+            <ul className="dash-list">{freeRules.map((x) => <li key={x}>{x}</li>)}</ul>
+          </Reveal>
         </div>
       </section>
 
-      <section id="rules" className="section free-section anchor-section">
-        <div className="wrap">
-          <h2>Rules, privacy &amp; terms</h2>
-          <div className="card free-faqs">
-            <details className="faq">
-              <summary>Application &amp; test rules</summary>
-              <ul className="free-list">{freeRules.map((x) => <li key={x}>{x}</li>)}</ul>
-            </details>
-            <details className="faq">
-              <summary>Privacy</summary>
-              <div className="free-faq-body">
-                {freePrivacy.map((p) => <p key={p.q}><b>{p.q}.</b> {p.a}</p>)}
-              </div>
-            </details>
-            <details className="faq">
-              <summary>Terms</summary>
-              <ul className="free-list">{freeTerms.map((x) => <li key={x}>{x}</li>)}</ul>
-            </details>
-            {freeFaqs.map((f) => (
-              <details className="faq" key={f.q}><summary>{f.q}</summary><p>{f.a}</p></details>
-            ))}
-          </div>
-          <p className="free-note">
+      {/* Privacy, terms and questions */}
+      <section id="privacy" className="section anchor-section" style={{ paddingTop: 20 }}>
+        <div className="wrap" style={{ maxWidth: 900 }}>
+          <Reveal as="span" variant="reveal-l" className="eyebrow">Privacy &amp; Terms</Reveal>
+          <Reveal as="h2" variant="reveal-l">Your data, and the fine print.</Reveal>
+          <Reveal variant="reveal" className="card" style={{ marginTop: 26, padding: 0 }}>
+            <div className="faq-list">
+              {freePrivacy.map((p) => (
+                <details className="faq" key={p.q}><summary>Privacy — {p.q}</summary><p>{p.a}</p></details>
+              ))}
+              <details className="faq">
+                <summary>Terms of this programme</summary>
+                <p>{freeTerms.map((t) => `• ${t}`).join("\n")}</p>
+              </details>
+              {freeFaqs.map((f) => (
+                <details className="faq" key={f.q}><summary>{f.q}</summary><p>{f.a}</p></details>
+              ))}
+            </div>
+          </Reveal>
+          <p className="form-note" style={{ marginTop: 16 }}>
             Full documents: <Link to="/terms-of-service">Terms of Service</Link> · <Link to="/privacy-policy">Privacy Policy</Link>
-            {" · "}<DownloadPdfButton className="link-btn" label="Download as PDF" getDocument={freeRulesDocument} />
           </p>
-          <p className="free-note">
-            Questions? Email <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>, call <a href={tel}>{careersContact.phone}</a>
-            {" "}or <a href={`https://wa.me/${careersContact.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp us</a>.
-          </p>
+          <div className="legal-actions" style={{ marginTop: 12 }}>
+            <DownloadPdfButton label="Download rules, privacy & terms (PDF)" getDocument={freeRulesDocument} />
+          </div>
         </div>
       </section>
-    </div>
+
+      {/* Contact */}
+      <section className="section" style={{ paddingTop: 40 }}>
+        <div className="wrap">
+          <Reveal variant="reveal-zoom" className="band">
+            <div>
+              <h2>Questions about free internships?</h2>
+              <p>We're happy to help with your application or the test.</p>
+              <div className="careers-contact">
+                <div className="contact-line">
+                  <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>
+                  <CopyButton value={careersContact.email} label="support email address" />
+                </div>
+                <div className="contact-line">
+                  <a href={tel}>{careersContact.phone}</a>
+                  <a className="wa-pill" href={`https://wa.me/${careersContact.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                </div>
+              </div>
+            </div>
+            <div className="careers-cta-actions">
+              <a className="btn btn-solid" href="#openings" onClick={scrollToId("openings")}>See Openings</a>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+    </>
   );
 }

@@ -13,6 +13,7 @@ export const CV_MAX_MB = 2;
 export const RESULT_DAYS = 7;
 
 export const freeHero = {
+  eyebrow: "Free Internships",
   title: "Free internships for students of every field.",
   text: "Work on real projects with mentors from Crix Technology. Applying is free: create your account, send your CV for a role, take the online aptitude test, and get your result by email within 7 days.",
 };
