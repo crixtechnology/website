@@ -3,7 +3,9 @@
 // MERN internship?", "how long is Android Development?", "stipend for the data
 // science intern?". Nothing here is invented — a fact the data doesn't have is
 // simply left out, and the program's own page is always linked.
-import { offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
+// No amounts of money: prices, discounts and stipends are left to the program's
+// page and the role's card, where they're always current.
+import { offeredTiers, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 
@@ -54,24 +56,15 @@ const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/programs", lab
 
 function priceLine(p) {
   if (!isOpenForBuy(p)) return `${p.title} isn't open for online enrolment right now — use “Request to ${p.type === "internship" ? "apply" : "enroll"}” on its page and the team will tell you about the next batch and price.`;
-  const plans = offeredTiers(p);
-  const lines = plans.map((t) => {
-    const now = planPrice(t);
-    return `• ${tierLabel(t.tier)}: ${formatINR(now)}${t.discountPercent ? ` (was ${formatINR(t.price)}, ${t.discountPercent}% off)` : ""}`;
-  });
-  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\nWallet credit and offer codes are taken off at checkout.`;
-}
-
-// The lowest price someone can pay for a program today, or null when it can't be bought online.
-export function fromPrice(p) {
-  return isOpenForBuy(p) ? Math.min(...offeredTiers(p).map(planPrice)) : null;
+  const plans = offeredTiers(p).map((t) => tierLabel(t.tier));
+  const discount = offeredTiers(p).some((t) => t.discountPercent);
+  return `${p.title} is open to enrol${plans.length > 1 ? `, in ${plans.length} plans (${plans.join(", ")}), each with its own features` : ""}. The price${discount ? ", and the discount running now," : ""} is shown on its page when you enrol. Wallet credit and offer codes are taken off at checkout.`;
 }
 
 // One bullet line about a program, for lists in the chat:
-// "• MERN Stack (Internship · 1 month · from ₹2,999) — Full-stack development…"
+// "• MERN Stack (Internship · 1 month) — Full-stack development…"
 export function programLine(p) {
-  const from = fromPrice(p);
-  const facts = [kind(p) === "internship" ? "Internship" : "Course", formatDuration(p.durationDays), from != null && `from ${formatINR(from)}`].filter(Boolean);
+  const facts = [kind(p) === "internship" ? "Internship" : "Course", formatDuration(p.durationDays)].filter(Boolean);
   return `• ${p.title} (${facts.join(" · ")})${p.desc ? ` — ${p.desc}` : ""}`;
 }
 
@@ -91,9 +84,8 @@ export function programAnswer(p, n) {
   if (asked(n, "syllabus") && (p.points || []).length) facts.push(`What it covers:\n${p.points.slice(0, 6).map((x) => `• ${x}`).join("\n")}`);
 
   if (!facts.length) {
-    const from = fromPrice(p);
     facts.push([
-      `${p.title} — ${kind(p) === "internship" ? "a virtual internship" : "a self-paced course"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${formatINR(from)}` : ""}.`,
+      `${p.title} — ${kind(p) === "internship" ? "a virtual internship" : "a self-paced course"}${dur ? `, ${dur}` : ""}.`,
       p.desc || "",
       (p.points || []).length ? (p.points || []).slice(0, 4).map((x) => `• ${x}`).join("\n") : "",
     ].filter(Boolean).join("\n"));
@@ -102,7 +94,7 @@ export function programAnswer(p, n) {
     text: facts.join("\n"),
     links: [pageLink(p)],
     chips: [
-      !asked(n, "price") && { label: "Price & plans", say: `price of ${p.title}` },
+      !asked(n, "price") && { label: "Plans", say: `plans of ${p.title}` },
       !asked(n, "syllabus") && (p.points || []).length && { label: "What it covers", say: `what does ${p.title} cover` },
       !asked(n, "duration") && { label: "How long?", say: `how long is ${p.title}` },
       { label: "How do I join?", say: "How do I join?" },
@@ -115,7 +107,7 @@ export function roleAnswer(o, n) {
   const facts = [];
   const test = o.test || {};
   const free = o.feeRequired === false;
-  if (asked(n, "stipend") && o.stipend) facts.push(`Stipend: ${o.stipend}.`);
+  if (asked(n, "stipend")) facts.push(o.stipend ? "This role comes with a stipend — the amount is shown on its card on the Careers page." : "No stipend is listed for this role.");
   if (asked(n, "duration") && o.duration) facts.push(`Duration: ${o.duration}.`);
   if (asked(n, "mode") && o.mode) facts.push(`Mode: ${o.mode}.`);
   if (asked(n, "eligibility")) facts.push(`Eligibility: ${[o.experience, ...(o.eligibility || [])].filter(Boolean).join("; ") || "freshers are welcome"}.`);
@@ -124,7 +116,7 @@ export function roleAnswer(o, n) {
   if (!facts.length) {
     facts.push([
       `${o.title}${o.summary ? ` — ${o.summary}` : ""}`,
-      [o.stipend && `• Stipend: ${o.stipend}`, o.duration && `• Duration: ${o.duration}`, o.mode && `• Mode: ${o.mode}`, o.experience && `• Experience: ${o.experience}`, `• ${free ? "Free to apply" : "Registration fee applies"}`].filter(Boolean).join("\n"),
+      [o.stipend && "• Comes with a stipend (amount on its card)", o.duration && `• Duration: ${o.duration}`, o.mode && `• Mode: ${o.mode}`, o.experience && `• Experience: ${o.experience}`, `• ${free ? "Free to apply" : "Registration fee applies"}`].filter(Boolean).join("\n"),
     ].join("\n"));
   }
   return {

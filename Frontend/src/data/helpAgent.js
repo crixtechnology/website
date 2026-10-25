@@ -21,15 +21,16 @@
 //     links  [{ to | href, label }] — only where the next step happens on another
 //            page (a form, checkout, applying, a legal document). The answer
 //            itself is always in `text`; a link is never a substitute for it.
+//   No reply states an amount of money (a price, fee, discount or stipend): those
+//   are shown on the program's page or the role's card, where they're always current.
 //     chips  quick replies: [{ label, say, icon?, hint? }] — `say` is sent back as the user's message
 //     dept   "it" | "programs" | "both": show that department's contact card
 //     more   related answer-bank entries: [{ id, q }]
 import { site, programDeliverables, clientProcess, engagementModels } from "./content.js";
 import { ALL_FAQS, searchFaqs } from "./faqData.js";
 import { understand, buildVocab, similarity } from "./agentLanguage.js";
-import { findNamed, programAnswer, roleAnswer, programLine, fromPrice } from "./agentKnowledge.js";
-import { formatINR } from "../utils/tiers.js";
-import { defaultFreeTerms, freeSteps, freeEligibility, CV_MAX_MB, RESULT_DAYS } from "./freeInternships.js";
+import { findNamed, programAnswer, roleAnswer, programLine } from "./agentKnowledge.js";
+import { freeEligibility, CV_MAX_MB, RESULT_DAYS } from "./freeInternships.js";
 
 export const DEPARTMENTS = {
   programs: {
@@ -156,7 +157,7 @@ function programsReply(ctx, n) {
     const shown = list.filter((p) => (wantsInternship ? kindOf(p) === "Internship" : wantsCourse ? kindOf(p) === "Course" : true));
     const pick = (shown.length ? shown : list).slice(0, 4);
     return {
-      text: `For ${track.label}, these would suit you:\n${pick.map(programLine).join("\n")}\nAll are fully online, open to anyone in India. Ask me about any of them — its plans and price, what it covers or how long it runs — or open it below to enrol.`,
+      text: `For ${track.label}, these would suit you:\n${pick.map(programLine).join("\n")}\nAll are fully online, open to anyone in India. Ask me about any of them — its plans, what it covers or how long it runs — or open it below to see the price and enrol.`,
       links: pick.map(programLink),
       chips: [{ label: "How do I join?", say: "How do I join?" }, { label: "Is there a certificate?", say: "Do I get a certificate?" }, { label: "Other tracks", say: "Show me other tracks" }],
     };
@@ -185,7 +186,7 @@ function allProgramsReply(ctx) {
 const CAREER_STEPS = "How it works:\n• Log in and press Apply Now on the role\n• Accept the terms, and pay the registration fee if the role has one — the whole fee comes back to your wallet as credit\n• Take the online aptitude test (laptop, webcam on, full screen)\n• You hear within 7 days whether you're shortlisted; shortlisted candidates get an online interview";
 
 const openRoles = (ctx) => (ctx.openings || []).filter((o) => o && o.status !== "closed");
-const roleLine = (o) => `• ${o.title} — ${o.feeRequired === false ? "free to apply" : "registration fee applies"}${o.stipend ? ` · ${o.stipend}` : ""}${o.duration ? ` · ${o.duration}` : ""}`;
+const roleLine = (o) => `• ${o.title} — ${o.feeRequired === false ? "free to apply" : "registration fee applies"}${o.stipend ? " · with a stipend" : ""}${o.duration ? ` · ${o.duration}` : ""}`;
 
 function careersReply(ctx) {
   const roles = openRoles(ctx);
@@ -233,16 +234,22 @@ function servicesReply(ctx, n) {
 
 // ---------- the free internships ----------
 // That page is shared only by its address and never advertised (data/freeInternships.js),
-// so these answers are given only to someone who names it ("free internship", "the ₹94
-// fee"): nothing else here mentions it, and it isn't in the answer bank, whose questions
-// show up as suggestions. No link to it either — they already have the address.
-const FREE_FEE = defaultFreeTerms.processingFee;
+// so these answers are given only to someone who names it ("free internship", "the
+// processing fee"): nothing else here mentions it, and it isn't in the answer bank, whose
+// questions show up as suggestions. No link to it either — they already have the address.
+const FREE_STEPS = [
+  "Sign up — create your free Crix account with your email, or log in",
+  "Apply with your CV — pick a role, add your college, course, branch and semester, and upload your CV",
+  "Pay the test processing fee shown on the page — it comes back to your wallet as credit",
+  "Take the online aptitude test — straight away, or later from My Dashboard",
+  `Get your result — by email within ${RESULT_DAYS} days of submitting the test, selected or not selected`,
+];
 
 function freeInternshipReply(n) {
   const facts = [];
   // ("free" is in its name, so it doesn't count as asking about the price.)
   if (has(n, [...WORDS.price.filter((w) => w !== "free"), "refund", "credit", "wallet", "pay", "money", "94", "₹94"])) {
-    facts.push(`The internship itself is free. The only charge is a ₹${FREE_FEE} aptitude-test processing fee (the page shows the current amount), paid through Razorpay. The whole fee comes back to your Crix wallet as ${FREE_FEE} credits as soon as the payment is confirmed — 1 credit = ₹1, to use on Crix courses and internships. It's never refunded in cash and can't be withdrawn, and paying it doesn't guarantee selection. Crix Technology never asks for any other payment — if anyone does, don't pay and tell us.`);
+    facts.push(`The internship itself is free. The only charge is the aptitude-test processing fee shown on the page, paid through Razorpay. The whole fee comes back to your Crix wallet as credit as soon as the payment is confirmed, to use on Crix courses and internships. It's never refunded in cash and can't be withdrawn, and paying it doesn't guarantee selection. Crix Technology never asks for any other payment — if anyone does, don't pay and tell us.`);
   }
   if (has(n, ["cv", "resume", "pdf", "upload"])) {
     facts.push(`Your CV must be a PDF of up to ${CV_MAX_MB} MB, in your own name, and true. You can replace it until you start the test.`);
@@ -255,7 +262,7 @@ function freeInternshipReply(n) {
   }
   if (!facts.length) {
     facts.push(
-      `The free internships are for students of any field, with real project work and mentors from Crix Technology. To apply:\n${freeSteps(FREE_FEE).map((s) => `• ${s.title} — ${s.desc}`).join("\n")}`,
+      `The free internships are for students of any field, with real project work and mentors from Crix Technology. To apply:\n${FREE_STEPS.map((x) => `• ${x}`).join("\n")}`,
       `You need to be 18 or older and in India, with a laptop or desktop and a working webcam for the test. You can apply for more than one role; each has its own test, and you get one attempt per application.`,
     );
   }
@@ -275,7 +282,7 @@ function priceReply(state, ctx) {
   if (state.topic === "careers") {
     const roles = openRoles(ctx);
     return {
-      text: `It depends on the role: each one is either “Free to apply” or has an aptitude-test registration fee.${roles.length ? `\n${roles.slice(0, 6).map(roleLine).join("\n")}` : ""}\nWhere there is a fee, the whole amount comes back to your wallet as credit (1 credit = ₹1), to use on any Crix course or internship. It can't be withdrawn as cash.`,
+      text: `It depends on the role: each one is either “Free to apply” or has an aptitude-test registration fee.${roles.length ? `\n${roles.slice(0, 6).map(roleLine).join("\n")}` : ""}\nWhere there is a fee, the whole amount comes back to your wallet as credit, to use on any Crix course or internship. It can't be withdrawn as cash.`,
       links: roles.length ? [{ to: "/careers", label: "Apply on the Careers page" }] : [],
     };
   }
@@ -286,14 +293,10 @@ function priceReply(state, ctx) {
     };
   }
   if (state.topic === "programs") {
-    const priced = (ctx.programs || []).map((p) => [p, fromPrice(p)]).filter(([, from]) => from != null);
-    if (priced.length) {
-      return {
-        text: `Current prices (the lowest plan, with any discount running):\n${priced.slice(0, 10).map(([p, from]) => `• ${p.title} — from ${formatINR(from)}`).join("\n")}\nMost programs have Basic, Plus and Pro plans — ask “price of” a program to see all its plans. Wallet credit and offer codes come off at checkout.`,
-        chips: priced.slice(0, 3).map(([p]) => ({ label: p.title, say: `price of ${p.title}` })),
-      };
-    }
-    return { text: "Each program has its own price, usually in Basic, Plus and Pro plans, with any discount running taken off. Ask me “price of” a program's name and I'll list its plans. Wallet credit and offer codes come off at checkout." };
+    return {
+      text: "Each program has its own price, usually in Basic, Plus and Pro plans with different features, and any discount running is taken off. You'll see the price on the program's page when you enrol. Wallet credit and offer codes come off at checkout, and if your credit covers the whole price you can pay with the wallet alone.",
+      links: [{ to: "/programs", label: "See prices & enrol" }],
+    };
   }
   return {
     text: "Happy to help with pricing — which one is it about?",

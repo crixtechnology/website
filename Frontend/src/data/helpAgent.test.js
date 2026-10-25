@@ -60,7 +60,7 @@ describe("help agent", () => {
   });
 
   it("answers “how much?” for whatever was being discussed", () => {
-    expect(chat("I want an internship in react", "how much?").last.text).toMatch(/SQL & Databases — from ₹900/);
+    expect(chat("I want an internship in react", "how much?").last.text).toMatch(/price on the program's page when you enrol/);
     expect(chat("open jobs", "how much?").last.text).toMatch(/Free to apply/);
     expect(chat("I need a website for my shop", "how much?").last.text).toMatch(/quoted individually/i);
     // No context yet: it asks which one.
@@ -138,14 +138,14 @@ describe("help agent", () => {
     const fee = chat("what is the ₹94 processing fee?");
     expect(fee.state.topic).toBe("free");
     expect(fee.last.text).toMatch(/internship itself is free/);
-    expect(fee.last.text).toMatch(/94 credits/);
+    expect(fee.last.text).toMatch(/comes back to your Crix wallet as credit/);
     expect(fee.last.links).toBeUndefined();
     const overview = chat("how do I apply for the free internship?").last.text;
     expect(overview).toMatch(/Apply with your CV/);
     expect(overview).toMatch(/within 7 days/i);
     // Follow-ups stay on it, and the right team is the students' one.
     expect(chat("free internship", "is the cv a pdf?").last.text).toMatch(/PDF of up to 2 MB/);
-    expect(chat("free internship", "how much?").last.text).toMatch(/₹94/);
+    expect(chat("free internship", "how much?").last.text).toMatch(/processing fee shown on the page/);
     expect(chat("free internship", "can I call you?").last.dept).toBe("programs");
   });
 
@@ -185,8 +185,21 @@ describe("help agent", () => {
     expect(last.text).toMatch(/offer letter on day one/i);
     expect(last.text).toMatch(/letter of recommendation/i);
     expect(last.links).toBeUndefined();
-    // Program lists say each one's length and starting price right in the chat.
-    expect(chat("show all programs").last.text).toContain("SQL & Databases (Course · 1 month · from ₹900) — Design schemas and write queries.");
+    // Program lists say how long each one runs right in the chat.
+    expect(chat("show all programs").last.text).toContain("SQL & Databases (Course · 1 month) — Design schemas and write queries.");
+  });
+
+  it("never states an amount of money — no price, fee, discount or stipend", () => {
+    const money = /₹|\brs\.? ?\d|\binr\b|\d+ ?(rupees|credits)|\d+% off|\bwas \d/i;
+    const said = (r) => `${r.text} ${(r.chips || []).map((c) => `${c.label} ${c.say}`).join(" ")}`;
+    const asks = [
+      ["price of SQL & Databases"], ["how much is SQL & Databases"], ["courses in sql"], ["show all programs"], ["internships", "how much?"],
+      ["what courses do you offer"], ["are you hiring?", "how much?"], ["stipend for the web development intern"], ["Web Development Intern"],
+      ["aptitude test fee"], ["what is the wallet"], ["what is the ₹94 processing fee?"], ["free internship", "how much?"], ["free internship"],
+      ["how much does a website cost"], ["signup bonus"], ["referral"],
+    ];
+    for (const lines of asks) for (const r of chat(...lines).replies) expect(said(r)).not.toMatch(money);
+    for (const id of ["i-offer", "c-offer", "k-open", "k-fee", "r-wallet"]) expect(answerFor(id, ctx).text).not.toMatch(money);
   });
 
   it("gives engagement models with the price of IT work, and roles with the careers fee", () => {

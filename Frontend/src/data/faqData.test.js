@@ -36,6 +36,10 @@ describe("help bot answers say it in the chat", () => {
     }
   });
 
+  it("never states an amount of money", () => {
+    for (const f of ALL_FAQS) expect(f.a).not.toMatch(/₹|\brs\.? ?\d|\binr\b|\d+ ?(rupees|credits)|\d+% off/i);
+  });
+
   it("never sends people to another page just to read the answer", () => {
     for (const f of ALL_FAQS) expect(f.a).not.toMatch(/\b(see|check|visit) (the|our) [a-z ]{0,25}page\b|\b(is|are) on (its|the|each) (?!same )[a-z ]{0,20}page\b/i);
   });

@@ -47,16 +47,17 @@ describe("understanding what people type", () => {
 });
 
 describe("answers about a named program or role", () => {
-  it("quotes a program's real prices and discount, in Hinglish with a typo", () => {
+  it("names a program's real plans and a running discount, in Hinglish with a typo — without amounts", () => {
     const { last, state } = chat("mern internshp ka price kitna hai");
-    expect(last.text).toContain("Basic: ₹3,999 (was ₹4,999, 20% off)");
-    expect(last.text).toContain("Pro: ₹8,999");
+    expect(last.text).toContain("in 2 plans (Basic, Pro)");
+    expect(last.text).toContain("the discount running now");
+    expect(last.text).not.toMatch(/₹|\d+%/);
     expect(last.links[0].to).toBe("/programs/mern");
     expect(state.about.title).toBe("MERN Stack with AI Integration");
   });
 
   it("follows up on the same program: “how much?”, “kitne din ka hai”", () => {
-    expect(chat("tell me about mern", "how much?").last.text).toContain("₹3,999");
+    expect(chat("tell me about mern", "how much?").last.text).toContain("MERN Stack with AI Integration is open to enrol");
     expect(chat("tell me about mern", "kitne din ka hai").last.text).toBe("MERN Stack with AI Integration runs for 3 months.");
     expect(chat("how long is android").last.text).toBe("Android Development runs for 1 month.");
   });
@@ -64,7 +65,7 @@ describe("answers about a named program or role", () => {
   it("finds programs whose titles have a dot, like React.js", () => {
     const withReact = { ...ctx, programs: [...ctx.programs, { slug: "react-js", title: "React.js Programming", type: "course", status: "open", durationDays: 30, tiers: [{ tier: "basic", price: 999 }] }] };
     const r = respond(initialState(), "price of react.js course", withReact);
-    expect(r.replies[0].text).toContain("React.js Programming costs");
+    expect(r.replies[0].text).toContain("React.js Programming is open to enrol");
     expect(r.state.about.title).toBe("React.js Programming");
   });
 
@@ -85,7 +86,7 @@ describe("answers about a named program or role", () => {
   });
 
   it("answers about a Careers role: stipend, then its test as a follow-up", () => {
-    expect(chat("data science intern stipend").last.text).toBe("Stipend: Up to ₹6,000/month.");
+    expect(chat("data science intern stipend").last.text).toBe("This role comes with a stipend — the amount is shown on its card on the Careers page.");
     expect(chat("data science intern", "test kaisa hota hai").last.text).toContain("40 questions in 45 minutes");
   });
 });
