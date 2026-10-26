@@ -135,5 +135,5 @@ function startSnapshotCleanup() {
 }
 
 module.exports = {
-  RETAIN_AFTER_CLOSE_MONTHS, MAX_AGE_MONTHS, FINAL_STATUSES, purgeUserSnapshots, purgeExpiredSnapshots, purgeUserCvs, purgeExpiredCvs, startSnapshotCleanup,
+  RETAIN_AFTER_CLOSE_MONTHS, MAX_AGE_MONTHS, FINAL_STATUSES, deleteSnapshotRows, purgeUserSnapshots, purgeExpiredSnapshots, purgeUserCvs, purgeExpiredCvs, startSnapshotCleanup,
 };
