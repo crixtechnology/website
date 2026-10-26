@@ -381,13 +381,26 @@ export default function FreeInternships() {
   useEffect(() => {
     let alive = true;
     const cap = setTimeout(() => setLoading(false), LOADING_CAP_MS);
-    getFreeOpenings().then((res) => {
+    const load = () => getFreeOpenings().then((res) => {
       if (!alive) return;
       if (res.ok) { setOpenings((res.openings || []).filter((o) => o && o.status !== "closed")); setLive(true); }
       if (res.ok && res.terms) setTerms({ ...defaultFreeTerms, ...res.terms });
       setLoading(false);
     });
-    return () => { alive = false; clearTimeout(cap); };
+    load();
+    // Phones keep tabs in memory and bring them back without reloading, so a page
+    // opened before roles were added kept saying "no open roles". Coming back to
+    // the tab (or returning to it with Back) fetches the list again.
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
+    const onPageShow = (e) => { if (e.persisted) load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      alive = false;
+      clearTimeout(cap);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, []);
 
   // Sign up (or log in) first; the CV form opens right after.
