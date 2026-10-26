@@ -101,6 +101,9 @@ describe("Free internships", () => {
 
     const page = await request(app).get("/api/careers/free/openings");
     expect(page.status).toBe(200);
+    // Never cached: a phone that kept an old copy showed "no open roles" after roles opened.
+    expect(page.headers["cache-control"]).toBe("no-store");
+    expect(careers.headers["cache-control"]).toBe("no-store");
     expect(page.body.openings.map((o) => o.slug)).toEqual(expect.arrayContaining([free.slug]));
     expect(page.body.openings.every((o) => o.audience === "free" && o.feeRequired === false)).toBe(true);
   });

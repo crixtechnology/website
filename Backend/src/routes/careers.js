@@ -108,6 +108,8 @@ router.get("/careers/openings", async (req, res, next) => {
       prisma.jobOpening.findMany({ where: { status: "open", audience: "general" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
       getCareerSettings(),
     ]);
+    // Roles open and close from Admin: never let a browser or a data-saver proxy keep an old list.
+    res.set("Cache-Control", "no-store");
     res.json({ ok: true, openings: openings.map((o) => shapeOpening(o)), terms: publicTerms(settings) });
   } catch (e) {
     next(e);
@@ -121,6 +123,7 @@ router.get("/careers/free/openings", async (req, res, next) => {
       prisma.jobOpening.findMany({ where: { status: "open", audience: "free" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
       getCareerSettings(),
     ]);
+    res.set("Cache-Control", "no-store");
     res.json({
       ok: true,
       openings: openings.map((o) => shapeOpening(o)),

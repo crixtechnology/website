@@ -674,7 +674,8 @@ export async function getOpenings() {
 export async function getFreeOpenings() {
   if (!API) return { ok: false, openings: [] };
   try {
-    const res = await fetch(`${API}/careers/free/openings`);
+    // no-store: a phone that kept an old copy showed "no open roles" after roles opened.
+    const res = await fetch(`${API}/careers/free/openings`, { cache: "no-store" });
     return await res.json();
   } catch (e) {
     return { ok: false, error: "Could not load openings", openings: [] };
