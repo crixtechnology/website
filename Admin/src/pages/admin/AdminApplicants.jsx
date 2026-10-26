@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getAdminToken, adminGetJobApplications, adminGetJobApplication, adminSetJobApplicationStatus,
+  getAdminToken, adminGetJobApplications, adminGetJobApplication, adminSetJobApplicationStatus, adminAllowRetest,
   adminExportJobApplications, adminGetJobOpenings, adminGetTestSnapshot, adminGetApplicationCv,
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
@@ -31,6 +31,8 @@ const CAN = {
   select: ["shortlisted", "interview_scheduled"],
   reject: ["shortlisted", "interview_scheduled"],
 };
+// When a finished test can be reset for a retake (mirrors the server's RETEST_FROM).
+const RETEST_FROM = ["submitted", "shortlisted", "not_shortlisted", "rejected"];
 
 // A student's education, on one line: "Gujarat University · B.Com, Commerce · Semester 4 · passing 2028".
 const hasEducation = (e) => !!e && !!(e.college || e.course || e.department || e.semester || e.passingYear);
@@ -124,6 +126,18 @@ function ApplicantReview({ id, onBack, onChanged }) {
     else setMsg({ kind: "error", text: res.error || "Could not update the application." });
   };
 
+  const canRetest = !!t && t.status === "submitted" && RETEST_FROM.includes(a.status);
+  const retest = async () => {
+    if (busy) return;
+    if (!window.confirm(`Allow ${a.user?.name || "this candidate"} to retake the test? Their current score, answers and webcam photos are deleted, and they get a fresh paper with no new fee.`)) return;
+    setBusy(true);
+    setMsg({ kind: "", text: "" });
+    const res = await adminAllowRetest(id);
+    setBusy(false);
+    if (res.ok) { setMsg({ kind: "ok", text: "Done — the test is reset and the candidate has been notified to retake it." }); await load(); onChanged && onChanged(); }
+    else setMsg({ kind: "error", text: res.error || "Could not reset the test." });
+  };
+
   const schedule = () => {
     if (!interview.at) { setMsg({ kind: "error", text: "Choose the interview date and time." }); return; }
     if (!/^https?:\/\//i.test(interview.link.trim())) { setMsg({ kind: "error", text: "Enter the meeting link (starting with https://)." }); return; }
@@ -165,6 +179,7 @@ function ApplicantReview({ id, onBack, onChanged }) {
           <button className="btn btn-ghost admin-danger" disabled={busy || !can("not_shortlist")} onClick={() => act("not_shortlist", "Mark as not shortlisted")}>Not shortlisted</button>
           <button className="btn btn-solid" disabled={busy || !can("select")} onClick={() => act("select", "Select (send the final offer)")}>Select</button>
           <button className="btn btn-ghost admin-danger" disabled={busy || !can("reject")} onClick={() => act("reject", "Reject")}>Reject</button>
+          <button className="btn btn-ghost" disabled={busy || !canRetest} onClick={retest}>Allow retest</button>
         </div>
 
         <h3 style={{ margin: "22px 0 12px" }}>Interview</h3>

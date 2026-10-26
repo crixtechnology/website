@@ -6,7 +6,7 @@
 const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
-const { FINAL_STATUSES } = require("../utils/proctorRetention");
+const { FINAL_STATUSES, deleteSnapshotRows } = require("../utils/proctorRetention");
 const { queryText, isValidHttpUrl } = require("../utils/validators");
 const { getCareerSettings, saveCareerSettings } = require("../utils/careerSettings");
 const { addNotification, sendCareerEmail } = require("../utils/notifications");
@@ -788,6 +788,58 @@ router.post("/admin/job-applications/:id/status", requireAdmin, async (req, res,
         interviewAt: application.interviewAt,
         interviewLink: application.interviewLink,
         free: !!application.opening && application.opening.feeRequired === false,
+      });
+    }
+    res.json({ ok: true, application: shapeApplicant(application) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------- allow a retest ----------
+// Wipes the finished attempt (answers, violations, webcam photos) and puts the
+// application back to "test pending", so the candidate sits a fresh paper on
+// the same application — no new fee. Not once they're in the interview round
+// or selected, and never while a test is still running.
+const RETEST_FROM = ["submitted", "shortlisted", "not_shortlisted", "rejected"];
+
+router.post("/admin/job-applications/:id/retest", requireAdmin, async (req, res, next) => {
+  try {
+    await finalizeExpiredAttempts({ applicationId: req.params.id });
+    const target = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { status: true, attempt: { select: { id: true, status: true } } } });
+    if (!target) return res.status(404).json({ ok: false, error: "Application not found" });
+    if (!target.attempt || target.attempt.status !== "submitted") return res.status(400).json({ ok: false, error: "There's no finished test to retake." });
+    if (!RETEST_FROM.includes(target.status)) {
+      return res.status(400).json({ ok: false, error: `A retest isn't possible while the application is "${STATUS_LABELS[target.status] || target.status}".` });
+    }
+
+    // The photo files go first (their rows only once each file is gone), so a
+    // storage hiccup stops here instead of leaving photos nobody can find.
+    const photos = await prisma.testSnapshot.findMany({ where: { attemptId: target.attempt.id }, select: { id: true, storageKey: true } });
+    const { failed } = await deleteSnapshotRows(photos);
+    if (failed) return res.status(503).json({ ok: false, error: "Some webcam photos couldn't be deleted from storage just now. Please try again in a few minutes." });
+
+    // Compare-and-swap on the status, as for the other actions; the attempt's
+    // answers and violations go with it.
+    const reset = await prisma.$transaction(async (tx) => {
+      const changed = await tx.jobApplication.updateMany({
+        where: { id: req.params.id, status: { in: RETEST_FROM } },
+        data: { status: "test_pending", closedAt: null, interviewAt: null, interviewLink: "" },
+      });
+      if (changed.count === 0) return false;
+      await tx.testAttempt.delete({ where: { id: target.attempt.id } });
+      return true;
+    });
+    if (!reset) return res.status(400).json({ ok: false, error: "This application changed meanwhile — reload it and try again." });
+
+    const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, include: LIST_INCLUDE });
+    console.log(`[admin] ${req.admin.sub} allowed a retest on job application ${application.id}`);
+    if (application.user) {
+      const roleTitle = application.opening ? application.opening.title : "the role";
+      await addNotification(application.user.id, {
+        title: "You can retake your aptitude test",
+        body: `Your ${roleTitle} aptitude test has been reset. Take it again from My Applications whenever you're ready.`,
+        link: "/dashboard?tab=applications",
       });
     }
     res.json({ ok: true, application: shapeApplicant(application) });

@@ -1180,3 +1180,48 @@ describe("applicants (admin)", () => {
     expect(res.body.wallets).toEqual([expect.objectContaining({ email: away.email, balance: 100 })]);
   });
 });
+
+describe("allowing a retest (admin)", () => {
+  let o;
+  beforeAll(async () => { o = await opening({ title: "Retest Role" }); });
+
+  it("wipes the finished attempt and its photos, and lets the candidate sit a fresh paper", async () => {
+    const { s, applicationId, t } = await sitting(o);
+    const retest = () => asAdmin(request(app).post(`/api/admin/job-applications/${applicationId}/retest`));
+
+    // Not while the test is still running.
+    expect((await retest()).status).toBe(400);
+    await answer(s, t, t.questions[0].id, 1);
+    await violate(s, t, "tab_switch");
+    await submit(s, t);
+    await prisma.testSnapshot.create({ data: { attemptId: t.attempt._id, storageKey: "local:retest/a.jpg" } });
+
+    expect((await authed(request(app).post(`/api/admin/job-applications/${applicationId}/retest`), s.token)).status).toBe(403);
+    const res = await retest();
+    expect(res.status).toBe(200);
+    expect(res.body.application).toMatchObject({ status: "test_pending", attempt: null });
+    expect(await prisma.testAttempt.findUnique({ where: { id: t.attempt._id } })).toBeNull();
+    expect(await prisma.testSnapshot.count({ where: { attemptId: t.attempt._id } })).toBe(0);
+    expect(await prisma.testAnswer.count({ where: { attemptId: t.attempt._id } })).toBe(0);
+    const notes = (await authed(request(app).get("/api/me/notifications"), s.token)).body.notifications;
+    expect(notes[0].title).toMatch(/retake/i);
+
+    // Nothing left to reset; then a brand-new attempt on the same application, no new fee.
+    expect((await retest()).status).toBe(400);
+    const info = await authed(request(app).get(`/api/me/job-applications/${applicationId}/test`), s.token);
+    expect(info.body.state).toBe("ready");
+    const again = await start(s, applicationId);
+    expect(again.status).toBe(200);
+    expect(again.body.attempt._id).not.toBe(t.attempt._id);
+  });
+
+  it("isn't offered once the candidate is in the interview round or selected", async () => {
+    const { s, applicationId, t } = await sitting(o);
+    await submit(s, t);
+    expect((await asAdmin(request(app).post(`/api/admin/job-applications/${applicationId}/status`)).send({ action: "shortlist" })).status).toBe(200);
+    const future = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString();
+    await asAdmin(request(app).post(`/api/admin/job-applications/${applicationId}/status`)).send({ action: "schedule_interview", interviewAt: future, interviewLink: "https://meet.example.com/r" });
+    expect((await asAdmin(request(app).post(`/api/admin/job-applications/${applicationId}/retest`))).status).toBe(400);
+    expect((await asAdmin(request(app).post("/api/admin/job-applications/nope/retest"))).status).toBe(404);
+  });
+});

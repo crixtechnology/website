@@ -685,6 +685,7 @@ export const adminGetJobApplications = (filters) => adminCall(`/admin/job-applic
 export const adminGetJobApplication = (id) => adminCall(`/admin/job-applications/${id}`, {}, "Could not load this applicant");
 // action: "shortlist" | "not_shortlist" | "schedule_interview" | "select" | "reject"
 export const adminSetJobApplicationStatus = (id, payload) => adminCall(`/admin/job-applications/${id}/status`, jsonBody("POST", payload), "Could not update the application");
+export const adminAllowRetest = (id) => adminCall(`/admin/job-applications/${id}/retest`, jsonBody("POST", {}), "Could not reset the test");
 
 export const adminGetCareerSettings = () => adminCall("/admin/careers/settings", {}, "Could not load the careers settings");
 export const adminUpdateCareerSettings = (settings) => adminCall("/admin/careers/settings", jsonBody("PUT", settings), "Could not save the careers settings");
