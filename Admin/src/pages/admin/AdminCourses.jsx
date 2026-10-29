@@ -8,6 +8,18 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, formatINR } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate, toStartDateInput } from "../../utils/startDate.js";
 import { formatDuration, INTERNSHIP_DURATIONS } from "../../utils/duration.js";
+import { useJobOpenings, OpeningForm, OpeningList } from "./AdminJobOpenings.jsx";
+
+// What the one form adds — the same three choices as the site's
+// "Internships & Courses" menu. A free internship is a job opening listed on
+// /free-internships (with a CV and an aptitude test); the other two are
+// courses-table entries sold on /paid-internships and /programs.
+const KINDS = [
+  { id: "free", label: "Free Internship", sub: "/free-internships · CV + aptitude test" },
+  { id: "internship", label: "Paid Internship", sub: "/paid-internships · sold in plans" },
+  { id: "course", label: "Course", sub: "/programs (Courses + Internship)" },
+];
+const kindFromParam = (v) => (KINDS.some((k) => k.id === v) ? v : "course");
 
 const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", discountPercent: "0", features: "" }]));
 // outcomes / audience / prerequisites are typed one per line; faqs is a list of { q, a } rows.
@@ -46,6 +58,10 @@ export default function AdminCourses() {
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
   const [params, setParams] = useSearchParams();
+  // Which of the three the form is for; ?type=free|internship|course picks it on arrival.
+  const [kind, setKind] = useState(() => kindFromParam(params.get("type")));
+  const jobs = useJobOpenings();
+  const [editingOpening, setEditingOpening] = useState(null);
 
   // AdminGuard (see App.jsx) already keeps this route from mounting unless
   // logged in as admin — this only has to handle the session expiring
@@ -78,14 +94,52 @@ export default function AdminCourses() {
   const addFaq = () => setForm((f) => (f.faqs.length >= MAX_FAQS ? f : { ...f, faqs: [...f.faqs, { q: "", a: "" }] }));
   const removeFaq = (i) => setForm((f) => ({ ...f, faqs: f.faqs.filter((_, j) => j !== i) }));
 
-  const startEdit = (c) => { setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const cancelEdit = () => { setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() }); };
+  const startEdit = (c) => {
+    setEditingOpening(null);
+    setKind(c.type === "internship" ? "internship" : "course");
+    setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const cancelEdit = () => { setEditingId(null); setForm({ ...EMPTY_FORM, type: kind === "internship" ? "internship" : "course", plans: emptyPlans() }); };
+  const startEditOpening = (o) => {
+    setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() });
+    setKind("free"); setEditingOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Switching between Paid Internship and Course just changes the entry's type
+  // (also while editing one); a free internship is a different kind of record,
+  // so the picker is locked to its side while one of either is being edited.
+  const pickKind = (next) => {
+    setKind(next);
+    setError("");
+    if (next === "free") return;
+    // An internship can only run 15 days / 1 / 3 / 6 months: drop any other length so it is re-picked.
+    setForm((f) => ({ ...f, type: next, durationDays: next === "internship" && f.durationDays && !INTERNSHIP_DURATIONS.includes(Number(f.durationDays)) ? "" : f.durationDays }));
+  };
+  const kindPicker = (
+    <div className="kind-picker" role="radiogroup" aria-label="What are you adding?">
+      {KINDS.map((k) => {
+        const locked = (editingOpening && k.id !== "free") || (editingId && k.id === "free");
+        return (
+          <button type="button" key={k.id} role="radio" aria-checked={kind === k.id} disabled={!!locked}
+            className={`kind-option${kind === k.id ? " is-selected" : ""}`} onClick={() => pickKind(k.id)}>
+            <b>{k.label}</b><span>{k.sub}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 
   // Landed here as ?edit=<id> — from AdminApplications.jsx linking a course
   // application's title straight to its entry here. Same deep-link pattern
   // as Programs' own ?buy=<slug> (pages.jsx): open edit mode for the match
   // once `entries` has loaded, then drop the param so a refresh doesn't
   // re-trigger it.
+  useEffect(() => {
+    if (!params.get("type")) return;
+    const nextParams = new URLSearchParams(params);
+    nextParams.delete("type");
+    setParams(nextParams, { replace: true });
+  }, [params, setParams]);
   useEffect(() => {
     const id = params.get("edit");
     if (!id) return;
@@ -123,7 +177,7 @@ export default function AdminCourses() {
     // A question needs an answer and the other way round; a row left completely blank is just ignored.
     const halfFilled = form.faqs.findIndex((f) => (f.q.trim() && !f.a.trim()) || (!f.q.trim() && f.a.trim()));
     if (halfFilled !== -1) { setError(`Question ${halfFilled + 1} needs both a question and an answer (or remove it).`); return; }
-    if (form.type === "course" && !tiers.some((t) => t.price !== null)) {
+    if (kind === "course" && !tiers.some((t) => t.price !== null)) {
       setError("Set a price on at least one plan (Basic, Plus or Pro) for a course.");
       return;
     }
@@ -131,7 +185,7 @@ export default function AdminCourses() {
     setSaving(true);
     setError("");
     const payload = {
-      type: form.type,
+      type: kind,
       title: form.title.trim(),
       tag: form.tag.trim(),
       desc: form.desc.trim(),
@@ -172,6 +226,7 @@ export default function AdminCourses() {
   };
   const courses = entries.filter((c) => c.type !== "internship" && matches(c));
   const internships = entries.filter((c) => c.type === "internship" && matches(c));
+  const freeInternships = jobs.openings.filter((o) => o.audience === "free" && matches({ title: o.title, tag: (o.skills || []).join(" ") }));
 
   const renderRow = (c) => {
     const plans = offeredTiers(c);
@@ -215,28 +270,25 @@ export default function AdminCourses() {
           <div>
             <span className="eyebrow">Admin</span>
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Courses & Internships</h1>
+            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Free internships, paid internships and courses, from one form. Careers roles are on Job openings.</p>
           </div>
           <button className="btn btn-ghost" onClick={() => { logout(); navigate("/admin"); }}>Log out</button>
         </div>
 
+        {kind === "free" ? (
+          <OpeningForm audience="free" editing={editingOpening} head={kindPicker}
+            title={editingOpening ? "Edit free internship" : "Add a free internship"}
+            onSaved={() => { setEditingOpening(null); jobs.load(); }} onCancel={() => setEditingOpening(null)} />
+        ) : (
         <form onSubmit={onSubmit} className="admin-form">
-          <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit entry" : "Add a new course or internship"}</h3>
+          <h3 style={{ margin: "0 0 16px" }}>{`${editingId ? "Edit" : "Add"} ${editingId ? "this" : "a"} ${kind === "internship" ? "paid internship" : "course"}`}</h3>
+          {kindPicker}
           <div className="admin-form-grid">
-            <div className="field"><label>Type</label>
-              <select value={form.type} onChange={(e) => {
-                const type = e.target.value;
-                // An internship can only run 15 days / 1 / 3 / 6 months: drop any other length so it is re-picked.
-                setForm((f) => ({ ...f, type, durationDays: type === "internship" && f.durationDays && !INTERNSHIP_DURATIONS.includes(Number(f.durationDays)) ? "" : f.durationDays }));
-              }}>
-                <option value="course">Course</option>
-                <option value="internship">Internship</option>
-              </select>
-            </div>
             <div className="field"><label>Title</label>
               <input value={form.title} onChange={set("title")} placeholder="Full Stack (MERN) Development" /></div>
             <div className="field"><label>Tag</label>
               <input value={form.tag} onChange={set("tag")} placeholder="Beginner friendly" /></div>
-            {form.type === "internship" ? (
+            {kind === "internship" ? (
               <div className="field"><label htmlFor="ac-duration">Duration</label>
                 <select id="ac-duration" value={form.durationDays} onChange={set("durationDays")}>
                   <option value="">Not set (access never expires)</option>
@@ -289,7 +341,7 @@ export default function AdminCourses() {
             <legend>Plans &amp; pricing</legend>
             <p className="form-note" style={{ margin: "0 0 14px" }}>
               Offer up to three plans. A plan with a blank price isn't offered.
-              {form.type === "internship"
+              {kind === "internship"
                 ? " Leave all three blank to keep this an apply-only internship (shows \"Request to apply\")."
                 : " A course needs at least one priced plan."}
               {" "}Saving prices doesn't put it on sale yet — use the Open/Closed toggle in the list below when you're ready for
@@ -319,12 +371,13 @@ export default function AdminCourses() {
             {editingId && <button type="button" className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>}
           </div>
         </form>
+        )}
 
         <input
           className="admin-search"
           type="search"
           style={{ marginTop: 40 }}
-          placeholder="Search courses & internships by title or tag..."
+          placeholder="Search internships & courses by title, tag or skill..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -333,18 +386,25 @@ export default function AdminCourses() {
           <p style={{ color: "var(--muted)", marginTop: 32 }}>Loading...</p>
         ) : (
           <>
-            <h3 style={{ margin: "40px 0 16px" }}>Courses</h3>
-            {courses.length === 0 ? (
-              <p style={{ color: "var(--muted)" }}>{q ? "No courses match that search." : "No courses yet — add one above."}</p>
-            ) : (
-              <div className="admin-list">{courses.map(renderRow)}</div>
+            <h3 style={{ margin: "40px 0 16px" }}>Free internships</h3>
+            {jobs.error && <p className="form-error">{jobs.error}</p>}
+            {jobs.loading ? <p style={{ color: "var(--muted)" }}>Loading...</p> : (
+              <OpeningList openings={freeInternships} bank={jobs.bank} onEdit={startEditOpening} onChanged={jobs.load}
+                empty={q ? "No free internships match that search." : "No free internships yet — pick Free Internship above to add one."} />
             )}
 
-            <h3 style={{ margin: "40px 0 16px" }}>Internships</h3>
+            <h3 style={{ margin: "40px 0 16px" }}>Paid internships</h3>
             {internships.length === 0 ? (
-              <p style={{ color: "var(--muted)" }}>{q ? "No internships match that search." : "No internships yet — add one above."}</p>
+              <p style={{ color: "var(--muted)" }}>{q ? "No paid internships match that search." : "No paid internships yet — pick Paid Internship above to add one."}</p>
             ) : (
               <div className="admin-list">{internships.map(renderRow)}</div>
+            )}
+
+            <h3 style={{ margin: "40px 0 16px" }}>Courses</h3>
+            {courses.length === 0 ? (
+              <p style={{ color: "var(--muted)" }}>{q ? "No courses match that search." : "No courses yet — pick Course above to add one."}</p>
+            ) : (
+              <div className="admin-list">{courses.map(renderRow)}</div>
             )}
           </>
         )}

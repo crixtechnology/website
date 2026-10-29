@@ -32,6 +32,9 @@ const base = {
   durationDays: null, status: "open", outcomes: [], audience: [], prerequisites: [], faqs: [],
 };
 
+// The "what are you adding?" choice above the form.
+const pick = (label) => act(async () => { qa(".kind-option").find((b) => b.querySelector("b").textContent === label).click(); });
+
 const ctx = (over = {}) => ({ isLoggedIn: false, isAdmin: false, user: null, ...over });
 
 describe("admin course form", () => {
@@ -41,11 +44,12 @@ describe("admin course form", () => {
     el.dispatchEvent(new Event("input", { bubbles: true }));
   };
   const submit = () => act(async () => { q("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
-  const renderAdmin = async (entries = []) => {
+  const renderAdmin = async (entries = [], openings = []) => {
     api.getAdminToken.mockReturnValue("token");
     api.adminGetCourses.mockResolvedValue({ ok: true, courses: entries });
     api.adminCreateCourse.mockResolvedValue({ ok: true, course: { ...base, _id: "new" } });
     api.adminUpdateCourse.mockResolvedValue({ ok: true, course: base });
+    api.adminGetJobOpenings.mockResolvedValue({ ok: true, openings, bank: {} });
     await act(async () => {
       root.render(
         <UserContext.Provider value={ctx({ isLoggedIn: true, isAdmin: true, logout: jest.fn() })}>
@@ -165,13 +169,13 @@ describe("admin course form", () => {
     it("drops an odd length when a course is switched to an internship, so it has to be re-picked", async () => {
       await renderAdmin();
       await act(async () => { fill(q("#ac-duration"), "45"); });
-      await act(async () => { choose(q("select"), "internship"); });
+      await pick("Paid Internship");
       expect(q("#ac-duration").tagName).toBe("SELECT");
       expect(q("#ac-duration").value).toBe("");
       // ...but a valid one survives the switch.
-      await act(async () => { choose(q("select"), "course"); });
+      await pick("Course");
       await act(async () => { fill(q("#ac-duration"), "30"); });
-      await act(async () => { choose(q("select"), "internship"); });
+      await pick("Paid Internship");
       expect(q("#ac-duration").value).toBe("30");
     });
 
@@ -187,6 +191,54 @@ describe("admin course form", () => {
       await renderAdmin([{ ...internship, durationDays: 90 }, { ...base, _id: "c2", title: "Other course", durationDays: 45 }]);
       expect(container.textContent).toContain("3 months");
       expect(container.textContent).toContain("45 days");
+    });
+  });
+
+  describe("one form for free internships, paid internships and courses", () => {
+    const freeRole = {
+      _id: "o9", slug: "free-web", title: "Free Web Intern", audience: "free", status: "open", feeRequired: true, applicants: 0,
+      summary: "", techCategory: "web", skills: [], responsibilities: [], eligibility: [], stipend: "", experience: "", duration: "", mode: "",
+      positions: { total: 4, filled: 1, left: 3 }, order: 1,
+      test: { durationMinutes: 30, questions: 40, marksPerQuestion: 1, negativeMarks: 0.25, cutoffScore: 0, questionCounts: { quantitative: 10, logical: 10, verbal: 10, technical: 10 } },
+    };
+    const careersRole = { ...freeRole, _id: "o8", slug: "careers-web", title: "Careers Web Intern", audience: "general" };
+
+    it("lists the three kinds apart, and leaves Careers roles out", async () => {
+      await renderAdmin([base, { ...base, _id: "i1", type: "internship", title: "Paid Android Internship" }], [freeRole, careersRole]);
+      const headings = qa("h3").map((h) => h.textContent);
+      expect(headings).toEqual(expect.arrayContaining(["Free internships", "Paid internships", "Courses"]));
+      expect(container.textContent).toContain("Free Web Intern");
+      expect(container.textContent).toContain("1 of 4 positions filled");
+      expect(container.textContent).not.toContain("Careers Web Intern");
+    });
+
+    it("saves a free internship as a free-internships-page opening", async () => {
+      await renderAdmin();
+      api.adminCreateJobOpening.mockResolvedValue({ ok: true, opening: freeRole });
+      await pick("Free Internship");
+      expect(q("#plan-basic-price")).toBeNull(); // no plans: it isn't sold
+      await act(async () => { fill(q("#jo-title"), "Free Data Intern"); });
+      await act(async () => { fill(q("#jo-positions"), "6"); });
+      await submit();
+      expect(api.adminCreateJobOpening).toHaveBeenCalledTimes(1);
+      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6 });
+      expect(api.adminCreateCourse).not.toHaveBeenCalled();
+    });
+
+    it("saves a paid internship as an internship entry", async () => {
+      await renderAdmin();
+      await pick("Paid Internship");
+      await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
+      await submit();
+      expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ type: "internship", title: "Paid Cloud Internship" });
+    });
+
+    it("opens a free internship's Edit in the free-internship form", async () => {
+      await renderAdmin([], [freeRole]);
+      await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
+      expect(q("#jo-title").value).toBe("Free Web Intern");
+      expect(q("#jo-positions").value).toBe("4");
+      expect(qa(".kind-option").find((b) => b.textContent.startsWith("Course")).disabled).toBe(true);
     });
   });
 });

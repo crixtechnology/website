@@ -85,8 +85,8 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    { label: "Courses", value: stats.courses, sub: `${stats.openCourses} open`, to: "/admin/courses" },
-    { label: "Internships", value: stats.internships, sub: `${stats.openInternships} open`, to: "/admin/courses" },
+    { label: "Courses", value: stats.courses, sub: `${stats.openCourses} open`, to: "/admin/courses?type=course" },
+    { label: "Internships", value: stats.internships, sub: `${stats.openInternships} paid open · free internships here too`, to: "/admin/courses?type=internship" },
     { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },
     { label: "Subscriptions", value: stats.enrollments, sub: "paid & granted", to: "/admin/students" },
     { label: "Live class schedule", value: "Manage", sub: "Google Meet sessions", to: "/admin/lectures" },
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
     { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },
     // Careers: the roles, the aptitude test and the people who took it.
     { label: "Job applicants", value: stats.jobApplicants, sub: `${stats.jobToReview} test${stats.jobToReview === 1 ? "" : "s"} waiting for a decision · ${stats.jobSelected} selected`, to: "/admin/applicants" },
-    { label: "Job openings", value: "Manage", sub: "roles on the Careers page & their test settings", to: "/admin/job-openings" },
+    { label: "Job openings", value: "Manage", sub: "Careers page roles only & their test settings", to: "/admin/job-openings" },
     { label: "Question bank", value: "Manage", sub: "aptitude test questions · Excel/CSV upload", to: "/admin/test-questions" },
     { label: "Careers settings", value: "Manage", sub: "test fee, credits, violation limit", to: "/admin/careers-settings" },
   ];
