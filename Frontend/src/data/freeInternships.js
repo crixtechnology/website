@@ -1,7 +1,6 @@
 // ============================================================
-// Text for the free internships page (pages/FreeInternships.jsx). The page is
-// deliberately not linked from anywhere on the site (no menu, footer, sitemap
-// or search listing) — it is shared by its address, /free-internships, only.
+// Text for the free internships page (pages/FreeInternships.jsx), linked from
+// the menu's Internships & Courses → Free Internship.
 // The roles come from the backend (/careers/free/openings): Admin → Job openings,
 // "Listed on: Free internships page only".
 //

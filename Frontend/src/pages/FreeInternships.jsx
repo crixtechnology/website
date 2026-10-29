@@ -6,8 +6,7 @@ import {
 } from "../components/ui.jsx";
 import { openApplicationFor, StatusPill, AdultCheckbox, checkoutTestFee } from "../components/CareersDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
-import { usePageMeta } from "../hooks/usePageMeta.js";
-import { useNoIndex } from "../hooks/useNoIndex.js";
+import { usePageMeta, routeMeta } from "../hooks/usePageMeta.js";
 import { getFreeOpenings, getMyJobApplications, applyForRole, uploadApplicationCv, unlockFreeTest, hasBackend } from "../services/api.js";
 import PhoneInput from "../components/PhoneInput.jsx";
 import { phoneError, phoneFieldError } from "../utils/phone.js";
@@ -17,13 +16,12 @@ import { EducationFields, educationForm, educationPayload, educationMissing, emp
 import { careersContact } from "../data/careers.js";
 import { legal } from "../data/content.js";
 import {
-  freeHero, freeSteps, freeEligibility, freeRules, processingFeePoints, defaultFreeTerms, CV_MAX_MB, RESULT_DAYS,
+  FREE_PATH, freeHero, freeSteps, freeEligibility, freeRules, processingFeePoints, defaultFreeTerms, CV_MAX_MB, RESULT_DAYS,
 } from "../data/freeInternships.js";
 import { formatINR } from "../utils/tiers.js";
 
-// The free internships page, open to students of every field. Not linked from
-// anywhere on the site and kept out of search results (noindex, not in the
-// sitemap): it is shared by its address only. Roles are free; applying needs an account and a CV (PDF), which makes
+// The free internships page, open to students of every field (the menu's
+// Internships & Courses → Free Internship). Roles are free; applying needs an account and a CV (PDF), which makes
 // the candidate eligible for the aptitude test (pages/student/AptitudeTest.jsx).
 
 const LOADING_CAP_MS = 4000;
@@ -378,11 +376,7 @@ function FreeApplyModal({ opening, terms, onClose }) {
 
 /* ================= FREE INTERNSHIPS ================= */
 export default function FreeInternships() {
-  usePageMeta({
-    title: "Free Internships | Crix Technology",
-    description: "Free internships for students of every field at Crix Technology: apply with your CV, take the online aptitude test, and get your result within 7 days.",
-  });
-  useNoIndex(true);
+  usePageMeta(routeMeta(FREE_PATH));
   const { isLoggedIn, isAdmin, openAuthModal } = useContext(UserContext);
   const [openings, setOpenings] = useState([]);
   const [live, setLive] = useState(false);

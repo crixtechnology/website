@@ -101,7 +101,7 @@ function respondToRazorpayError(e, res) {
 }
 
 // ---------- public: open roles (the /careers page) ----------
-// Free-internship roles are left out: they are listed only on the unlinked /free-internships page.
+// Free-internship roles are left out: they are listed only on the /free-internships page.
 router.get("/careers/openings", async (req, res, next) => {
   try {
     const [openings, settings] = await Promise.all([
