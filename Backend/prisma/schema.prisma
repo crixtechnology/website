@@ -618,6 +618,10 @@ model JobOpening {
   order            Int           @default(0)
   // false = a free role: the aptitude test unlocks without the registration fee.
   feeRequired      Boolean       @default(true)
+  // Free internships only (audience "free"): true = no test processing fee for
+  // this role. Kept apart from feeRequired, which free internships store as
+  // false for their re-apply wait and emails while still charging the fee.
+  waiveFee         Boolean       @default(false)
   // Who the role is listed for: "general" (the /careers page and the dashboard)
   // or "free" (only the unlinked /free-internships page, where a CV is required).
   audience         String        @default("general") @db.VarChar(16)

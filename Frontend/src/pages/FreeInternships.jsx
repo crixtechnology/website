@@ -59,6 +59,10 @@ function cvProblem(file) {
   return "";
 }
 
+// What this role charges for its test: the processing fee from Careers settings,
+// unless the admin waived it for this role.
+const feeFor = (opening, terms) => (opening && opening.waiveFee ? 0 : terms.processingFee || 0);
+
 // The badge on a role: "Processing fee" (its amount changes, so it is shown
 // only at the payment step), or "Free" when there is none.
 function FeeBadge({ fee }) {
@@ -199,7 +203,7 @@ function FreeApplyModal({ opening, terms, onClose }) {
 
   if (!opening) return null;
   const test = opening.test || {};
-  const fee = terms.processingFee || 0;
+  const fee = feeFor(opening, terms);
   // Live errors under the two detail fields (hooks/useTouched.js).
   const detailErrors = {
     "free-name": details.name.trim() ? "" : "Enter your full name.",
@@ -469,7 +473,7 @@ export default function FreeInternships() {
             <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
           ) : openings.length ? (
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
-              {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} fee={terms.processingFee} mine={openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />)}
+              {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} fee={feeFor(o, terms)} mine={openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />)}
             </div>
           ) : (
             <div className="card no-openings" role="status" style={{ marginTop: 24 }}>
@@ -498,7 +502,7 @@ export default function FreeInternships() {
           </div>
         </div>
       </section>
-      <FreeOpeningModal opening={detail} fee={terms.processingFee} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} onApply={apply} />
+      <FreeOpeningModal opening={detail} fee={feeFor(detail, terms)} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} onApply={apply} />
       <FreeApplyModal opening={applying} terms={terms} onClose={() => { setApplying(null); reloadApplications(); }} />
 
       {/* How it works */}

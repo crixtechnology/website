@@ -895,3 +895,8 @@ body.no-copy img{-webkit-user-drag:none}
 .kind-option.is-selected b{color:var(--teal)}
 .kind-option:disabled{opacity:.45;cursor:not-allowed}
 @media (max-width:640px){.kind-picker{grid-template-columns:1fr}}
+
+/* The free internships' fee amount, saved on its own inside the opening form (AdminJobOpenings.jsx). */
+.fee-editor-row{display:flex;gap:8px;align-items:stretch}
+.fee-editor-row input{flex:1;min-width:0}
+.fee-editor-row .btn{white-space:nowrap;padding:10px 14px}

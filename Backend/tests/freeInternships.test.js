@@ -303,6 +303,31 @@ describe("Free internships", () => {
       expect(refused.body.code).toBe("FEE_REQUIRED");
     });
 
+    it("skips the fee for a role the admin waived it on, and only that role", async () => {
+      expect((await opening({ waiveFee: "yes" }).catch(() => null))).toBeNull(); // must be true/false
+      const waived = await opening({ waiveFee: true });
+      const charged = await opening();
+      expect(waived.waiveFee).toBe(true);
+      expect(charged.waiveFee).toBe(false);
+      const listed = (await request(app).get("/api/careers/free/openings")).body.openings;
+      expect(listed.find((o) => o._id === waived._id).waiveFee).toBe(true);
+
+      const s = await student();
+      const id = (await apply(s, waived)).body.application._id;
+      await uploadCv(s, id);
+      const res = await unlock(s, id);
+      expect(res.status).toBe(200);
+      expect((await prisma.jobApplication.findUnique({ where: { id } })).status).toBe("test_pending");
+
+      const other = (await apply(s, charged)).body.application._id;
+      await uploadCv(s, other);
+      expect((await unlock(s, other)).body.code).toBe("FEE_REQUIRED");
+
+      // Turning the waiver off brings the fee back.
+      const off = await asAdmin(request(app).put(`/api/admin/job-openings/${waived._id}`)).send({ waiveFee: false });
+      expect(off.body.opening.waiveFee).toBe(false);
+    });
+
     it("needs the CV and education before taking payment", async () => {
       const o = await opening();
       const s = await student({});

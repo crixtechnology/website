@@ -50,6 +50,8 @@ describe("admin course form", () => {
     api.adminCreateCourse.mockResolvedValue({ ok: true, course: { ...base, _id: "new" } });
     api.adminUpdateCourse.mockResolvedValue({ ok: true, course: base });
     api.adminGetJobOpenings.mockResolvedValue({ ok: true, openings, bank: {} });
+    api.adminGetCareerSettings.mockResolvedValue({ ok: true, settings: { processingFeeRupees: 94 } });
+    api.adminUpdateCareerSettings.mockResolvedValue({ ok: true, settings: {} });
     await act(async () => {
       root.render(
         <UserContext.Provider value={ctx({ isLoggedIn: true, isAdmin: true, logout: jest.fn() })}>
@@ -221,8 +223,39 @@ describe("admin course form", () => {
       await act(async () => { fill(q("#jo-positions"), "6"); });
       await submit();
       expect(api.adminCreateJobOpening).toHaveBeenCalledTimes(1);
-      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6 });
+      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6, waiveFee: false });
       expect(api.adminCreateCourse).not.toHaveBeenCalled();
+    });
+
+    it("sets the free internships' fee amount right in the form, the same setting as Careers settings", async () => {
+      await renderAdmin();
+      await pick("Free Internship");
+      const input = q("#jo-fee-amount");
+      expect(input.value).toBe("94");
+      await act(async () => { fill(input, "120"); });
+      await act(async () => { qa("button").find((b) => b.textContent === "Save fee").click(); });
+      expect(api.adminUpdateCareerSettings).toHaveBeenCalledWith({ processingFeeRupees: 120 });
+      expect(container.textContent).toContain("Saved — free internships now charge ₹120.");
+      expect(api.adminCreateJobOpening).not.toHaveBeenCalled(); // saving the fee doesn't submit the form
+      await act(async () => { fill(input, "-5"); });
+      await act(async () => { qa("button").find((b) => b.textContent === "Save fee").click(); });
+      expect(api.adminUpdateCareerSettings).toHaveBeenCalledTimes(1);
+    });
+
+    it("can waive the test processing fee on one free internship", async () => {
+      await renderAdmin();
+      api.adminCreateJobOpening.mockResolvedValue({ ok: true, opening: freeRole });
+      await pick("Free Internship");
+      const select = q("#jo-fee");
+      expect([...select.options].map((o) => o.textContent)).toEqual(["Required (the amount set below)", "No fee for this internship"]);
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(select, "yes");
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await act(async () => { fill(q("#jo-title"), "No-fee Intern"); });
+      await act(async () => { fill(q("#jo-positions"), "3"); });
+      await submit();
+      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ audience: "free", waiveFee: true });
     });
 
     it("saves a paid internship as an internship entry", async () => {
