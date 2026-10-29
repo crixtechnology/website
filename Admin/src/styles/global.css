@@ -884,3 +884,14 @@ body.no-copy img{-webkit-user-drag:none}
 .bot-q-row{flex-wrap:wrap}
 .bot-q-answer{display:block;margin-top:8px;padding:8px 12px;border-left:3px solid var(--teal);background:rgba(20,201,201,.06);border-radius:4px;color:var(--text);font-size:.85rem;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
 .bot-q-row .bot-answer-form,.bot-answer-form{flex-basis:100%;width:100%;margin:12px 0 0}
+
+/* ---------- Courses & Internships: what the form adds (AdminCourses.jsx) ---------- */
+.kind-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 20px}
+.kind-option{display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;cursor:pointer;transition:border-color .2s,background .2s}
+.kind-option b{font-weight:600}
+.kind-option span{font-size:.76rem;color:var(--muted)}
+.kind-option:hover:not(:disabled){border-color:rgba(20,201,201,.45)}
+.kind-option.is-selected{border-color:var(--teal);background:rgba(20,201,201,.1)}
+.kind-option.is-selected b{color:var(--teal)}
+.kind-option:disabled{opacity:.45;cursor:not-allowed}
+@media (max-width:640px){.kind-picker{grid-template-columns:1fr}}
