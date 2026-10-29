@@ -20,6 +20,25 @@ const WITH_TIERS = {
   },
 };
 
+// WITH_TIERS plus how many places are taken (one per enrollment), for the
+// course routes that show positions — see seatsOf / withSeats.
+const WITH_SEATS = { ...WITH_TIERS, _count: { select: { enrollments: true } } };
+
+// { total, filled, left } for a course/internship, or null when it states no
+// number. `filled` needs the query to have included WITH_SEATS.
+function seatsOf(course) {
+  if (!course || !Number.isInteger(course.positions) || course.positions < 1) return null;
+  const filled = (course._count && course._count.enrollments) || 0;
+  return { total: course.positions, filled, left: Math.max(course.positions - filled, 0) };
+}
+
+// A course row as the API sends it: `positions` as { total, filled, left }, no _count.
+function withSeats(course) {
+  if (!course) return course;
+  const { _count, ...rest } = course;
+  return { ...rest, positions: seatsOf(course) };
+}
+
 // "plus" -> "Plus", for receipts and emails; empty for an untiered record.
 function tierLabel(tier) {
   return isTier(tier) ? tier[0].toUpperCase() + tier.slice(1) : "";
@@ -87,4 +106,4 @@ function tierTotal(tier) {
   return Math.round(tier.price * (1 - (tier.discountPercent || 0) / 100));
 }
 
-module.exports = { TIERS, WITH_TIERS, isTier, tierRank, tierLabel, parseTiers, tierTotal };
+module.exports = { TIERS, WITH_TIERS, WITH_SEATS, seatsOf, withSeats, isTier, tierRank, tierLabel, parseTiers, tierTotal };

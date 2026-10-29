@@ -252,3 +252,35 @@ describe("the sticky enroll bar", () => {
     root = createRoot(container);
   });
 });
+
+describe("the details a free internship shows", () => {
+  const detailed = {
+    ...base, type: "internship", title: "Android Internship",
+    skills: ["Kotlin", "Jetpack"], responsibilities: ["Build app screens"], eligibility: ["Students of any year"],
+    stipend: "Up to ₹4,000/month", experience: "Freshers welcome", mode: "Remote",
+    positions: { total: 10, filled: 4, left: 6 },
+  };
+  const facts = () => Object.fromEntries(qa(".course-facts > div").map((d) => [d.querySelector("dt").textContent, d.querySelector("dd").textContent]));
+
+  it("shows positions, stipend, experience, mode, skills, what you'll do and eligibility", async () => {
+    await renderPage(detailed);
+    expect(facts()).toMatchObject({ Positions: "6 of 10 positions open", Stipend: "Up to ₹4,000/month", Experience: "Freshers welcome", Mode: "Remote" });
+    const headings = qa("h2").map((h) => h.textContent);
+    expect(headings).toEqual(expect.arrayContaining(["Skills", "What you'll do", "Eligibility"]));
+    expect(container.textContent).toContain("Kotlin");
+    expect(container.textContent).toContain("Build app screens");
+  });
+
+  it("calls a course's places seats", async () => {
+    await renderPage({ ...base, positions: { total: 30, filled: 0, left: 30 } });
+    expect(facts().Seats).toBe("30 seats open");
+  });
+
+  it("offers a request instead of the plans once every place is taken", async () => {
+    await renderPage({ ...detailed, positions: { total: 10, filled: 10, left: 0 } });
+    expect(facts().Positions).toBe("All filled");
+    expect(q("#plans")).toBeNull();
+    expect(container.textContent).toContain("All 10 positions are filled right now.");
+    expect([...container.querySelectorAll("#course-cta button")].map((b) => b.textContent)).toContain("Request to apply");
+  });
+});

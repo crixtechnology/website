@@ -7,7 +7,7 @@ const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
 const { issueReceiptNumber } = require("../utils/receiptNumber");
 const { round2 } = require("../utils/money");
-const { WITH_TIERS, isTier, tierRank, tierTotal } = require("../utils/tiers");
+const { WITH_TIERS, WITH_SEATS, seatsOf, isTier, tierRank, tierTotal } = require("../utils/tiers");
 const { getUpgradeOptions } = require("../utils/upgrades");
 const { requireAuth } = require("../middleware/requireAuth");
 const { priceOrder, rewardReferrerForPurchase, redeemCreditForPurchase } = require("../utils/referrals");
@@ -242,7 +242,7 @@ async function attachReceipt(payment, application) {
 // can be bought right now — shared by create-order and the price quote so they
 // can never disagree. Returns { course, plan } or { error: { status, message } }.
 async function loadPurchasablePlan(courseSlug, tierName, userId) {
-  const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_TIERS });
+  const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_SEATS });
   if (!course) return { error: { status: 404, message: "Course not found" } };
   if (course.status === "closed") {
     return { error: { status: 400, message: "This course is currently closed for enrollment" } };
@@ -280,6 +280,11 @@ async function loadPurchasablePlan(courseSlug, tierName, userId) {
           : "You already have access to this course.",
       },
     };
+  }
+  // Every place taken. Someone renewing their own lapsed access already holds one.
+  const seats = seatsOf(course);
+  if (seats && seats.left === 0 && !existingEnrollment) {
+    return { error: { status: 400, message: `All ${course.type === "internship" ? "positions" : "seats"} for this ${course.type === "internship" ? "internship" : "course"} are filled.` } };
   }
   return { course, plan };
 }

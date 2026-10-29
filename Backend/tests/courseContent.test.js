@@ -107,3 +107,54 @@ describe("rich course content", () => {
     expect((await request(app).put(`/api/admin/courses/${made._id}`).send({ outcomes: ["hack"] })).status).toBe(401);
   });
 });
+
+// The details a free internship shows, now on paid internships and courses too.
+describe("internship-style details and positions", () => {
+  const buyer = async () => {
+    const u = await prisma.user.create({ data: { name: "Seat Buyer", email: `seat-${Date.now()}-${++n}@test.com`, phone: "9876500000", passwordHash: "x", role: "student" } });
+    return { id: u.id, token: signToken({ sub: u.id, role: "student", email: u.email }, { expiresIn: "1h" }) };
+  };
+  const quote = (s, slug) => authed(request(app).post("/api/payments/quote"), s.token).send({ courseSlug: slug, tier: "basic" });
+
+  it("saves skills, responsibilities, eligibility, stipend, experience, mode and positions", async () => {
+    const res = await create({
+      skills: ["React", " Node "], responsibilities: ["Ship features", ""], eligibility: ["Final-year students"],
+      stipend: " Up to ₹5,000/month ", experience: "Freshers welcome", mode: "Remote", positions: 10,
+    });
+    expect(res.status).toBe(201);
+    const pub = (await request(app).get(`/api/courses/${res.body.course.slug}`)).body.course;
+    expect(pub).toMatchObject({
+      skills: ["React", "Node"], responsibilities: ["Ship features"], eligibility: ["Final-year students"],
+      stipend: "Up to ₹5,000/month", experience: "Freshers welcome", mode: "Remote",
+      positions: { total: 10, filled: 0, left: 10 },
+    });
+    expect(pub._count).toBeUndefined();
+    expect((await create()).body.course).toMatchObject({ skills: [], stipend: "", positions: null });
+  });
+
+  it("rejects a bad number of positions or over-long text", async () => {
+    expect((await create({ positions: 0 })).status).toBe(400);
+    expect((await create({ positions: 1.5 })).status).toBe(400);
+    expect((await create({ stipend: "x".repeat(191) })).status).toBe(400);
+    expect((await create({ skills: "React" })).status).toBe(400);
+  });
+
+  it("fills a place per enrollment, and stops selling when all are taken", async () => {
+    const made = (await create({ type: "course", positions: 1, tiers: [{ tier: "basic", price: 500 }] })).body.course;
+    await update(made._id, { status: "open" });
+    const [first, second] = [await buyer(), await buyer()];
+    expect((await quote(second, made.slug)).status).toBe(200);
+
+    await prisma.enrollment.create({ data: { userId: first.id, courseId: made._id, tier: "basic" } });
+    const pub = (await request(app).get(`/api/courses/${made.slug}`)).body.course;
+    expect(pub.positions).toEqual({ total: 1, filled: 1, left: 0 });
+    const refused = await quote(second, made.slug);
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toMatch(/All seats for this course are filled/);
+
+    // One more place opens it again; clearing the number removes the limit.
+    expect((await update(made._id, { positions: 2 })).body.course.positions).toEqual({ total: 2, filled: 1, left: 1 });
+    expect((await quote(second, made.slug)).status).toBe(200);
+    expect((await update(made._id, { positions: null })).body.course.positions).toBeNull();
+  });
+});

@@ -39,6 +39,7 @@ import { useTouched, focusFirstError } from "../hooks/useTouched.js";
 import PhoneInput from "../components/PhoneInput.jsx";
 import { CourseFacts, CourseLists, CourseFaq, RelatedPrograms, EnrollBar, useCourseJsonLd } from "../components/CourseSections.jsx";
 import { offeredTiers, isOpenForBuy, isFreeProgram, TIER_ORDER } from "../utils/tiers.js";
+import { isFull, placeWord } from "../utils/positions.js";
 
 // The ?tier= a purchase link carries, if it names a real plan.
 const tierFromParams = (params) => {
@@ -480,6 +481,17 @@ export function CourseDetail() {
                   {course.type === "internship" ? "Open internship" : "Open course"} →
                 </Link>
                 <span style={{ display: "block", marginTop: 8, color: "var(--muted)", fontSize: ".82rem" }}>Admin access — no payment needed</span>
+              </div>
+            ) : openForBuy && isFull(course) && !ownedTier(course) ? (
+              // Every place is taken: nothing to buy, but they can ask about the next batch.
+              <div style={{ maxWidth: 420, marginTop: 24 }}>
+                <p className="form-note" style={{ marginTop: 0 }}>
+                  All {course.positions.total} {placeWord(course)}{course.positions.total === 1 ? " is" : "s are"} filled right now.
+                  Send a request and we'll tell you when the next batch opens.
+                </p>
+                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)}>
+                  {course.type === "internship" ? "Request to apply" : "Request to enroll"}
+                </button>
               </div>
             ) : openForBuy ? (
               <div className="plans-block" id="plans">

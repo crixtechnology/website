@@ -240,5 +240,43 @@ describe("admin course form", () => {
       expect(q("#jo-positions").value).toBe("4");
       expect(qa(".kind-option").find((b) => b.textContent.startsWith("Course")).disabled).toBe(true);
     });
+
+    it("gives paid internships and courses the same details, and loads them back", async () => {
+      await renderAdmin();
+      await pick("Paid Internship");
+      await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
+      await act(async () => { fill(q("#cd-positions"), "12"); });
+      await act(async () => { fill(q("#cd-stipend"), "Up to ₹5,000/month"); });
+      await act(async () => { fill(q("#cd-mode"), "Remote"); });
+      await act(async () => { fill(q("#cd-skills"), "React, Node"); });
+      await act(async () => { fill(q("#cd-elig"), "Final-year students\n\nA laptop"); });
+      await submit();
+      expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({
+        type: "internship", positions: 12, stipend: "Up to ₹5,000/month", mode: "Remote",
+        skills: ["React", "Node"], eligibility: ["Final-year students", "A laptop"], responsibilities: [],
+      });
+
+      act(() => root.unmount());
+      root = createRoot(container);
+      await renderAdmin([{ ...base, skills: ["SQL"], stipend: "", experience: "Freshers", mode: "", responsibilities: [], eligibility: [], positions: { total: 5, filled: 5, left: 0 } }]);
+      expect(container.textContent).toContain("5 of 5 seats filled — full, can't be bought");
+      await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
+      expect(q("#cd-positions").value).toBe("5");
+      expect(q("#cd-skills").value).toBe("SQL");
+      expect(q("#cd-exp").value).toBe("Freshers");
+    });
+
+    it("leaves positions blank for no limit, and refuses a bad number", async () => {
+      await renderAdmin();
+      await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Cloud Basics"); });
+      await act(async () => { fill(q("#plan-basic-price"), "999"); });
+      await act(async () => { fill(q("#cd-positions"), "0"); });
+      await submit();
+      expect(api.adminCreateCourse).not.toHaveBeenCalled();
+      expect(container.textContent).toContain("Positions must be a whole number from 1 to 1000");
+      await act(async () => { fill(q("#cd-positions"), ""); });
+      await submit();
+      expect(api.adminCreateCourse.mock.calls[0][0].positions).toBeNull();
+    });
   });
 });

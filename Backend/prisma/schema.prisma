@@ -138,6 +138,17 @@ model Course {
   audience        Json         @default("[]")
   prerequisites   Json         @default("[]")
   faqs            Json         @default("[]")
+  // The same details a free internship (JobOpening) shows: skill chips, two
+  // one-per-line lists, three short facts, and how many places it has
+  // (null = not stated). Each enrollment takes one place; when all are taken
+  // it can't be bought any more (routes/payments.js loadPurchasablePlan).
+  skills           Json        @default("[]")
+  responsibilities Json        @default("[]")
+  eligibility      Json        @default("[]")
+  stipend         String       @default("")
+  experience      String       @default("")
+  mode            String       @default("")
+  positions       Int?
   durationDays    Int?
   // When the course/internship begins. Students can buy (and get their
   // receipt) before it, but its content — videos, live classes — stays locked

@@ -23,7 +23,13 @@ const kindFromParam = (v) => (KINDS.some((k) => k.id === v) ? v : "course");
 
 const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", discountPercent: "0", features: "" }]));
 // outcomes / audience / prerequisites are typed one per line; faqs is a list of { q, a } rows.
-const EMPTY_FORM = { type: "course", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "", plans: emptyPlans() };
+// skills (comma-separated), responsibilities and eligibility (one per line), stipend, experience,
+// mode and positions: the same details a free internship shows.
+const EMPTY_FORM = {
+  type: "course", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
+  skills: "", responsibilities: "", eligibility: "", stipend: "", experience: "", mode: "", positions: "",
+  plans: emptyPlans(),
+};
 const MAX_FAQS = 15;
 const lines = (text) => text.split("\n").map((l) => l.trim()).filter(Boolean);
 
@@ -39,6 +45,11 @@ function courseToForm(c) {
     outcomes: (c.outcomes || []).join("\n"),
     audience: (c.audience || []).join("\n"),
     prerequisites: (c.prerequisites || []).join("\n"),
+    skills: (c.skills || []).join(", "),
+    responsibilities: (c.responsibilities || []).join("\n"),
+    eligibility: (c.eligibility || []).join("\n"),
+    stipend: c.stipend || "", experience: c.experience || "", mode: c.mode || "",
+    positions: c.positions ? String(c.positions.total) : "",
     faqs: (c.faqs || []).map((f) => ({ q: f.q || "", a: f.a || "" })),
     durationDays: c.durationDays ? String(c.durationDays) : "",
     startsAt: toStartDateInput(c.startsAt),
@@ -177,6 +188,11 @@ export default function AdminCourses() {
     // A question needs an answer and the other way round; a row left completely blank is just ignored.
     const halfFilled = form.faqs.findIndex((f) => (f.q.trim() && !f.a.trim()) || (!f.q.trim() && f.a.trim()));
     if (halfFilled !== -1) { setError(`Question ${halfFilled + 1} needs both a question and an answer (or remove it).`); return; }
+    const positions = form.positions.trim() ? Number(form.positions) : null;
+    if (positions !== null && (!Number.isInteger(positions) || positions < 1 || positions > 1000)) {
+      setError("Positions must be a whole number from 1 to 1000 (or blank for no limit).");
+      return;
+    }
     if (kind === "course" && !tiers.some((t) => t.price !== null)) {
       setError("Set a price on at least one plan (Basic, Plus or Pro) for a course.");
       return;
@@ -193,6 +209,11 @@ export default function AdminCourses() {
       outcomes: lines(form.outcomes),
       audience: lines(form.audience),
       prerequisites: lines(form.prerequisites),
+      skills: form.skills.split(/[,\n]/).map((v) => v.trim()).filter(Boolean),
+      responsibilities: lines(form.responsibilities),
+      eligibility: lines(form.eligibility),
+      stipend: form.stipend.trim(), experience: form.experience.trim(), mode: form.mode.trim(),
+      positions,
       faqs: form.faqs.filter((f) => f.q.trim() && f.a.trim()).map((f) => ({ q: f.q.trim(), a: f.a.trim() })),
       tiers,
       durationDays: form.durationDays ? Number(form.durationDays) : null,
@@ -243,6 +264,12 @@ export default function AdminCourses() {
             {c.durationDays ? ` · ${formatDuration(c.durationDays)}` : ""}
             {c.startsAt ? ` · ${startsInFuture(c) ? "starts" : "started"} ${formatStartDate(c.startsAt)}` : ""}
           </span>
+          {c.positions && (
+            <span className="admin-row-meta" style={c.positions.left === 0 ? { color: "var(--amber)" } : undefined}>
+              {c.positions.filled} of {c.positions.total} {c.type === "internship" ? "position" : "seat"}{c.positions.total === 1 ? "" : "s"} filled
+              {c.positions.left === 0 ? " — full, can't be bought" : ` · ${c.positions.left} left`}
+            </span>
+          )}
         </div>
         <div className="admin-row-actions">
           {hasPlans ? (
@@ -310,6 +337,32 @@ export default function AdminCourses() {
             <textarea rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
           <div className="field"><label>Points (one per line)</label>
             <textarea rows="4" value={form.points} onChange={set("points")} placeholder={"Frontend fundamentals\nReact in depth\nNode.js & MongoDB"} /></div>
+
+          <fieldset className="plan-editor-set">
+            <legend>{kind === "internship" ? "Internship" : "Course"} details</legend>
+            <p className="admin-row-meta" style={{ margin: "0 0 14px" }}>
+              The same details a free internship shows, on the card and its own page. Anything left empty isn't shown.
+            </p>
+            <div className="admin-form-grid">
+              <div className="field"><label htmlFor="cd-positions">{kind === "internship" ? "Positions" : "Seats"} available</label>
+                <input id="cd-positions" type="number" min="1" max="1000" step="1" value={form.positions} onChange={set("positions")} placeholder="No limit" />
+                <p className="form-note" style={{ margin: "6px 0 0" }}>Each purchase takes one. When all are taken it shows “All filled” and can't be bought.</p></div>
+              <div className="field"><label htmlFor="cd-stipend">Stipend</label>
+                <input id="cd-stipend" value={form.stipend} onChange={set("stipend")} placeholder={kind === "internship" ? "Up to ₹6,000/month (performance based)" : "Leave blank if none"} /></div>
+              <div className="field"><label htmlFor="cd-exp">Experience</label>
+                <input id="cd-exp" value={form.experience} onChange={set("experience")} placeholder="0–1 year (freshers welcome)" /></div>
+              <div className="field"><label htmlFor="cd-mode">Mode</label>
+                <input id="cd-mode" value={form.mode} onChange={set("mode")} placeholder="Remote / Ahmedabad" /></div>
+            </div>
+            <div className="field"><label htmlFor="cd-skills">Skills (separate with commas)</label>
+              <input id="cd-skills" value={form.skills} onChange={set("skills")} placeholder="HTML, CSS, JavaScript, React basics" /></div>
+            <div className="admin-form-grid admin-form-grid--2">
+              <div className="field"><label htmlFor="cd-resp">Responsibilities (one per line)</label>
+                <textarea id="cd-resp" rows="4" value={form.responsibilities} onChange={set("responsibilities")} placeholder={"Ship features with the team\nJoin weekly reviews"} /></div>
+              <div className="field"><label htmlFor="cd-elig">Eligibility (one per line)</label>
+                <textarea id="cd-elig" rows="4" value={form.eligibility} onChange={set("eligibility")} placeholder={"Students of any year\nA laptop with internet"} /></div>
+            </div>
+          </fieldset>
 
           <fieldset className="plan-editor-set">
             <legend>Course page content (optional)</legend>
