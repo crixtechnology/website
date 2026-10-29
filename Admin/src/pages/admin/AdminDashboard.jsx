@@ -1,14 +1,13 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetBotQuestions, adminGetJobApplications } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetBotQuestions, adminGetJobApplications, adminGetJobOpenings } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
 // One line icon per dashboard tile (keyed by the tile's label).
 const TILE_ICONS = {
-  Courses: <path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z M20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z" />,
-  Internships: <path d="M3 8h18v12H3z M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M3 13h18" />,
+  "Courses & Internships": <path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z M20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z" />,
   Users: <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6 M16 4.5a3.5 3.5 0 0 1 0 6.5 M18 14c2 .7 3.5 2.8 3.5 6" />,
   Subscriptions: <path d="M3 6h18v12H3z M3 10h18 M7 15h4" />,
   "Live class schedule": <path d="M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4 M9 14l2 2 4-4" />,
@@ -32,7 +31,7 @@ export default function AdminDashboard() {
   const { user, logout } = useContext(UserContext);
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    courses: 0, openCourses: 0, internships: 0, openInternships: 0,
+    courses: 0, openCourses: 0, internships: 0, openInternships: 0, freeInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
     referrals: 0, referralsRewarded: 0, botQuestions: 0,
     jobApplicants: 0, jobToReview: 0, jobSelected: 0,
@@ -41,8 +40,9 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, botRes, jobsRes] = await Promise.all([
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, botRes, jobsRes, openingsRes] = await Promise.all([
         adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(), adminGetBotQuestions(), adminGetJobApplications(),
+        adminGetJobOpenings(),
       ]);
       const jobs = jobsRes && jobsRes.ok ? jobsRes : null;
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
@@ -67,6 +67,8 @@ export default function AdminDashboard() {
         // internship has no meaningful open/closed toggle in the admin
         // list, so it shouldn't count as "open" here either.
         openInternships: internships.filter((c) => c.status === "open" && offeredTiers(c).length > 0).length,
+        // Free internships are job openings listed on /free-internships (Courses & Internships → Free Internship).
+        freeInternships: openingsRes && openingsRes.ok ? (openingsRes.openings || []).filter((o) => o.audience === "free").length : 0,
         students: students.size,
         enrollments: enrollments.length,
         users: users.length,
@@ -85,8 +87,13 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    { label: "Courses", value: stats.courses, sub: `${stats.openCourses} open`, to: "/admin/courses?type=course" },
-    { label: "Internships", value: stats.internships, sub: `${stats.openInternships} paid open · free internships here too`, to: "/admin/courses?type=internship" },
+    // One tile: free internships, paid internships and courses share one page and form.
+    {
+      label: "Courses & Internships",
+      value: stats.courses + stats.internships + stats.freeInternships,
+      sub: `${stats.freeInternships} free internship${stats.freeInternships === 1 ? "" : "s"} · ${stats.internships} paid · ${stats.courses} course${stats.courses === 1 ? "" : "s"} · ${stats.openCourses + stats.openInternships} on sale`,
+      to: "/admin/courses",
+    },
     { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },
     { label: "Subscriptions", value: stats.enrollments, sub: "paid & granted", to: "/admin/students" },
     { label: "Live class schedule", value: "Manage", sub: "Google Meet sessions", to: "/admin/lectures" },
