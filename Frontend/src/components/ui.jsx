@@ -14,9 +14,12 @@ import ErrorBoundary from "./ErrorBoundary.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { trackEvent, analyticsAvailable, openCookieSettings } from "../utils/analytics.js";
 import { prefetchRoute } from "../utils/prefetch.js";
-import { isValidName, emailFormatError } from "../utils/validators.js";
-import { phoneError, compactPhone } from "../utils/phone.js";
+import { isValidEmail, emailFormatError, emailError, nameError } from "../utils/validators.js";
+import { phoneFieldError, compactPhone } from "../utils/phone.js";
 import PhoneInput from "./PhoneInput.jsx";
+import { FieldError, EmailFieldNote, emailFieldProblem } from "./FormFields.jsx";
+import { useEmailCheck } from "../hooks/useEmailCheck.js";
+import { useTouched, focusFirstError } from "../hooks/useTouched.js";
 import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
@@ -1291,6 +1294,8 @@ export function InquiryModal({ item, kind, onClose }) {
   // What the thank-you line quotes back. The form itself is emptied on success,
   // so typed details don't linger in the page's state once they've been sent.
   const [sent, setSent] = useState(null);
+  const emailCheck = useEmailCheck(form.email, !!item);
+  const fields = useTouched();
   useBodyScrollLock(!!item);
   useModalFocus(!!item);
 
@@ -1301,6 +1306,7 @@ export function InquiryModal({ item, kind, onClose }) {
       setLoading(false);
       setDone(false);
       setSent(null);
+      fields.reset();
     }
   }, [item]);
 
@@ -1317,24 +1323,35 @@ export function InquiryModal({ item, kind, onClose }) {
     setStatus({ text: "", kind: "" });
   };
 
+  // Every field's error, live — shown under each field once it's been left
+  // or a submit was tried (hooks/useTouched.js). Keyed by input id.
+  const errors = {
+    "inquiry-name": nameError(form.name),
+    "inquiry-email": emailError(form.email),
+    "inquiry-phone": phoneFieldError(form.phone),
+  };
+  const emailProblem = emailFieldProblem(errors["inquiry-email"], emailCheck, fields.show("inquiry-email"));
+
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return; // already in flight — avoid a duplicate Application record
     const phone = form.phone.trim();
-    const missing = [
-      !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
-      !form.email.trim() ? "your email" : emailFormatError(form.email),
-      !phone ? "your phone number" : phoneError(phone),
-    ].filter(Boolean);
-    if (missing.length) {
-      const list = missing.length === 1
-        ? missing[0]
-        : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
-      setStatus({ text: `Please add ${list}.`, kind: "error" });
+    fields.markSubmitted();
+    if (Object.values(errors).some(Boolean)) {
+      setStatus({ text: "Please fix the highlighted fields.", kind: "error" });
+      focusFirstError(errors, Object.keys(errors));
       return;
     }
     setLoading(true);
     setStatus({ text: "", kind: "" });
+    // The live domain check may still be waiting out its typing pause.
+    const domain = await emailCheck.verify();
+    if (domain && !domain.valid) {
+      setLoading(false);
+      setStatus({ text: domain.error, kind: "error" });
+      focusFirstError({ "inquiry-email": true }, ["inquiry-email"]);
+      return;
+    }
     const res = await submitApplication({
       type: kind, refTitle: item.title, courseSlug: item.slug,
       name: form.name.trim(), email: form.email.trim(), phone, college: form.college.trim(),
@@ -1347,6 +1364,7 @@ export function InquiryModal({ item, kind, onClose }) {
     trackEvent("generate_lead", { lead_type: kind, item_id: item.slug, item_name: item.title });
     setSent({ name: form.name.trim(), email: form.email.trim(), phone });
     setForm({ name: "", email: "", phone: "", college: "" });
+    fields.reset();
     setDone(true);
     burstConfetti();
   };
@@ -1375,11 +1393,19 @@ export function InquiryModal({ item, kind, onClose }) {
             </p>
             <form onSubmit={onSubmit} noValidate>
               <div className="field"><label htmlFor="inquiry-name">Full name</label>
-                <input id="inquiry-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Your name" /></div>
+                <input id="inquiry-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Your name"
+                  onBlur={fields.touch("inquiry-name")} aria-invalid={(fields.show("inquiry-name") && !!errors["inquiry-name"]) || undefined}
+                  aria-describedby="inquiry-name-err" />
+                <FieldError id="inquiry-name-err">{fields.show("inquiry-name") && errors["inquiry-name"]}</FieldError></div>
               <div className="field"><label htmlFor="inquiry-email">Email</label>
-                <input id="inquiry-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
+                <input id="inquiry-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com"
+                  onBlur={fields.touch("inquiry-email")} aria-invalid={!!emailProblem || undefined} aria-describedby="inquiry-email-err" />
+                <EmailFieldNote id="inquiry-email-err" localError={errors["inquiry-email"]} check={emailCheck} show={fields.show("inquiry-email")}
+                  onUseSuggestion={(email) => setForm((f) => ({ ...f, email }))} /></div>
               <div className="field"><label htmlFor="inquiry-phone">Phone</label>
-                <PhoneInput id="inquiry-phone" value={form.phone} onChange={setPhone} /></div>
+                <PhoneInput id="inquiry-phone" value={form.phone} onChange={setPhone} onBlur={fields.touch("inquiry-phone")}
+                  invalid={fields.show("inquiry-phone") && !!errors["inquiry-phone"]} describedBy="inquiry-phone-err" />
+                <FieldError id="inquiry-phone-err">{fields.show("inquiry-phone") && errors["inquiry-phone"]}</FieldError></div>
               <div className="field"><label htmlFor="inquiry-college">College / University (optional)</label>
                 <input id="inquiry-college" autoComplete="organization" value={form.college} onChange={set("college")}
                   placeholder={kind === "internship" ? "For your placement records" : "e.g. ABC Institute of Technology"} /></div>
@@ -1490,6 +1516,8 @@ export function ServiceInquiryModal({ item, onClose }) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [sentName, setSentName] = useState(""); // for the thank-you line; the form itself is emptied on success
+  const emailCheck = useEmailCheck(form.email, !!item);
+  const fields = useTouched();
   useBodyScrollLock(!!item);
   useModalFocus(!!item);
 
@@ -1500,6 +1528,7 @@ export function ServiceInquiryModal({ item, onClose }) {
       setLoading(false);
       setDone(false);
       setSentName("");
+      fields.reset();
     }
   }, [item]);
 
@@ -1516,25 +1545,35 @@ export function ServiceInquiryModal({ item, onClose }) {
     setStatus({ text: "", kind: "" });
   };
 
+  const errors = {
+    "svc-company": !form.company.trim() ? "Enter your business or company name."
+      : form.company.trim().length < 2 ? "Enter a valid business or company name." : "",
+    "svc-name": nameError(form.name),
+    "svc-phone": phoneFieldError(form.phone),
+    "svc-email": emailError(form.email, { required: false }),
+  };
+  const emailProblem = emailFieldProblem(errors["svc-email"], emailCheck, fields.show("svc-email"));
+  const invalid = (id) => (fields.show(id) && !!errors[id]) || undefined;
+
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return; // already in flight — same guard Contact() uses for this exact race
     const phone = form.phone.trim();
-    const missing = [
-      !form.company.trim() ? "business/company name" : form.company.trim().length < 2 && "a valid business/company name",
-      !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
-      !phone ? "a contact number" : phoneError(phone),
-      form.email.trim() && emailFormatError(form.email),
-    ].filter(Boolean);
-    if (missing.length) {
-      const list = missing.length === 1
-        ? missing[0]
-        : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
-      setStatus({ text: `Please add ${list}.`, kind: "error" });
+    fields.markSubmitted();
+    if (Object.values(errors).some(Boolean)) {
+      setStatus({ text: "Please fix the highlighted fields.", kind: "error" });
+      focusFirstError(errors, Object.keys(errors));
       return;
     }
     setLoading(true);
     setStatus({ text: "", kind: "" });
+    const domain = await emailCheck.verify();
+    if (domain && !domain.valid) {
+      setLoading(false);
+      setStatus({ text: domain.error, kind: "error" });
+      focusFirstError({ "svc-email": true }, ["svc-email"]);
+      return;
+    }
     const res = await submitContact({
       name: form.name.trim(), company: form.company.trim(), phone,
       email: form.email.trim(), interest: item.title, message: form.message.trim(),
@@ -1547,6 +1586,7 @@ export function ServiceInquiryModal({ item, onClose }) {
     trackEvent("generate_lead", { lead_type: "service_inquiry", item_name: item.title });
     setSentName(form.name.trim());
     setForm({ company: "", name: "", phone: "", email: "", message: "" });
+    fields.reset();
     setDone(true);
     burstConfetti();
   };
@@ -1584,13 +1624,22 @@ export function ServiceInquiryModal({ item, onClose }) {
                 it, where it did before. */}
             <form onSubmit={onSubmit} className="compact-form" noValidate>
               <div className="field"><label htmlFor="svc-company">Business / Company name</label>
-                <input id="svc-company" autoComplete="organization" value={form.company} onChange={set("company")} placeholder="Your company" /></div>
+                <input id="svc-company" autoComplete="organization" value={form.company} onChange={set("company")} placeholder="Your company"
+                  onBlur={fields.touch("svc-company")} aria-invalid={invalid("svc-company")} aria-describedby="svc-company-err" />
+                <FieldError id="svc-company-err">{invalid("svc-company") && errors["svc-company"]}</FieldError></div>
               <div className="field"><label htmlFor="svc-name">Your name</label>
-                <input id="svc-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Full name" /></div>
+                <input id="svc-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Full name"
+                  onBlur={fields.touch("svc-name")} aria-invalid={invalid("svc-name")} aria-describedby="svc-name-err" />
+                <FieldError id="svc-name-err">{invalid("svc-name") && errors["svc-name"]}</FieldError></div>
               <div className="field"><label htmlFor="svc-phone">Contact number</label>
-                <PhoneInput id="svc-phone" value={form.phone} onChange={setPhone} /></div>
+                <PhoneInput id="svc-phone" value={form.phone} onChange={setPhone} onBlur={fields.touch("svc-phone")}
+                  invalid={!!invalid("svc-phone")} describedBy="svc-phone-err" />
+                <FieldError id="svc-phone-err">{invalid("svc-phone") && errors["svc-phone"]}</FieldError></div>
               <div className="field"><label htmlFor="svc-email">Email (optional)</label>
-                <input id="svc-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
+                <input id="svc-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com"
+                  onBlur={fields.touch("svc-email")} aria-invalid={!!emailProblem || undefined} aria-describedby="svc-email-err" />
+                <EmailFieldNote id="svc-email-err" localError={errors["svc-email"]} check={emailCheck} show={fields.show("svc-email")}
+                  onUseSuggestion={(email) => setForm((f) => ({ ...f, email }))} /></div>
               <div className="field"><label htmlFor="svc-message">Details about your business (optional)</label>
                 {/* rows=3 pushed this modal past .modal-box's 96vh cap on an
                     ordinary desktop window (verified: needed ~725px against
@@ -1661,6 +1710,10 @@ export function AuthModal() {
   // account, by form or with Google. A ref too, for Google's callback.
   const [ageOk, setAgeOk] = useState(false);
   const ageOkRef = useRef(false);
+  // Only a new account's email needs its domain checked — an existing
+  // account's address already got this far once.
+  const emailCheck = useEmailCheck(form.email, !!authModal && mode === "login" && creating);
+  const fields = useTouched();
   useBodyScrollLock(!!authModal);
   useModalFocus(!!authModal);
 
@@ -1683,13 +1736,14 @@ export function AuthModal() {
       setLoading(false);
       setAgeOk(false);
       ageOkRef.current = false;
+      fields.reset();
     }
   }, [authModal]);
 
   useModalEscape(!!authModal, closeAuthModal);
 
   const switchMode = (m) => {
-    setMode(m); setStatus(""); setStatusKind("error"); setCreating(false);
+    setMode(m); setStatus(""); setStatusKind("error"); setCreating(false); fields.reset();
     if (m === "forgot") { setResetStep(1); setReset({ otp: "", password: "", confirm: "" }); setResendIn(0); }
   };
 
@@ -1748,6 +1802,31 @@ export function AuthModal() {
 
   if (!authModal) return null;
 
+  // Live errors under each field (see hooks/useTouched.js for when they show).
+  // Logging in only needs a well-formed address; creating an account also
+  // refuses disposable ones and checks the domain can take mail.
+  const errors = {
+    "auth-email": !form.email.trim() ? "Enter your email."
+      : creating ? emailError(form.email)
+      : isValidEmail(form.email) ? "" : "Enter a valid email address, like you@example.com.",
+  };
+  if (mode === "login") {
+    errors["auth-password"] = !form.password ? "Enter your password."
+      : creating && form.password.length < 8 ? "Use at least 8 characters."
+      : creating && form.password.length > 72 ? "Use at most 72 characters." : "";
+  } else if (resetStep === 2) {
+    errors["auth-otp"] = /^\d{6}$/.test(reset.otp.trim()) ? "" : "Enter the 6-digit code from your email.";
+    errors["auth-newpw"] = reset.password.length < 8 ? "Use at least 8 characters."
+      : reset.password.length > 72 ? "Use at most 72 characters." : "";
+    errors["auth-newpw2"] = !reset.confirm ? "Repeat the new password."
+      : reset.confirm !== reset.password ? "The two passwords don't match." : "";
+  }
+  const showErr = (id) => (fields.show(id) && errors[id]) || "";
+  const emailProblem = emailFieldProblem(errors["auth-email"], emailCheck, fields.show("auth-email"));
+  // Props every plain input here shares: blur marks it touched, and its error
+  // line is what a screen reader hears with it.
+  const errProps = (id) => ({ onBlur: fields.touch(id), "aria-invalid": !!showErr(id) || undefined, "aria-describedby": `${id}-err` });
+
   // Editing the email after "no account yet" asks again, so a fixed typo logs in normally.
   const set = (k) => (e) => {
     setForm({ ...form, [k]: e.target.value });
@@ -1796,6 +1875,7 @@ export function AuthModal() {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return; // already in flight — avoid a duplicate request
+    fields.markSubmitted();
     setStatusKind("error"); // any status set from here down defaults to an error styling, unless overridden below
     if (mode === "forgot") { await (resetStep === 1 ? sendResetCode() : submitReset()); return; }
     if (!form.email.trim() || !form.password.trim()) { setStatus("Enter your email and password."); return; }
@@ -1808,6 +1888,11 @@ export function AuthModal() {
     }
     setLoading(true);
     setStatus("");
+    if (creating) {
+      // The live domain check may still be waiting out its typing pause.
+      const domain = await emailCheck.verify();
+      if (domain && !domain.valid) { setLoading(false); setStatus(domain.error); return; }
+    }
     const res = await login(form.email.trim(), form.password, creating ? { createAccount: true, ageConfirmed: ageOk } : undefined);
     setLoading(false);
     if (res.code === "NEW_ACCOUNT") {
@@ -1865,18 +1950,22 @@ export function AuthModal() {
               </p>}
               <div className="field"><label htmlFor="auth-email">Email</label>
                 <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com"
-                  autoComplete="username" disabled={loading || resetStep === 2} /></div>
+                  autoComplete="username" disabled={loading || resetStep === 2} {...errProps("auth-email")} />
+                <FieldError id="auth-email-err">{resetStep === 1 && showErr("auth-email")}</FieldError></div>
               {resetStep === 2 && (
                 <>
                   <div className="field"><label htmlFor="auth-otp">6-digit code</label>
                     <input id="auth-otp" value={reset.otp} onChange={setResetField("otp")} placeholder="123456"
-                      inputMode="numeric" pattern="[0-9]*" maxLength={6} autoComplete="one-time-code" disabled={loading} /></div>
+                      inputMode="numeric" pattern="[0-9]*" maxLength={6} autoComplete="one-time-code" disabled={loading} {...errProps("auth-otp")} />
+                    <FieldError id="auth-otp-err">{showErr("auth-otp")}</FieldError></div>
                   <div className="field"><label htmlFor="auth-newpw">New password</label>
                     <input id="auth-newpw" type="password" value={reset.password} onChange={setResetField("password")}
-                      placeholder="At least 8 characters" autoComplete="new-password" disabled={loading} /></div>
+                      placeholder="At least 8 characters" autoComplete="new-password" disabled={loading} {...errProps("auth-newpw")} />
+                    <FieldError id="auth-newpw-err">{showErr("auth-newpw")}</FieldError></div>
                   <div className="field"><label htmlFor="auth-newpw2">Confirm new password</label>
                     <input id="auth-newpw2" type="password" value={reset.confirm} onChange={setResetField("confirm")}
-                      placeholder="Repeat the new password" autoComplete="new-password" disabled={loading} /></div>
+                      placeholder="Repeat the new password" autoComplete="new-password" disabled={loading} {...errProps("auth-newpw2")} />
+                    <FieldError id="auth-newpw2-err">{showErr("auth-newpw2")}</FieldError></div>
                 </>
               )}
             </>
@@ -1884,11 +1973,15 @@ export function AuthModal() {
           {mode === "login" && (
             <>
               <div className="field"><label htmlFor="auth-email">Email</label>
-                <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="username" disabled={loading} /></div>
+                <input id="auth-email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" autoComplete="username" disabled={loading}
+                  {...errProps("auth-email")} aria-invalid={!!emailProblem || undefined} />
+                <EmailFieldNote id="auth-email-err" localError={errors["auth-email"]} check={emailCheck} show={fields.show("auth-email")}
+                  onUseSuggestion={(email) => { setForm((f) => ({ ...f, email })); setStatus(""); }} /></div>
               <div className="field"><label htmlFor="auth-password">Password</label>
                 <input id="auth-password" type="password" value={form.password} onChange={set("password")}
                   placeholder={creating ? "At least 8 characters" : "••••••••"}
-                  autoComplete={creating ? "new-password" : "current-password"} disabled={loading} />
+                  autoComplete={creating ? "new-password" : "current-password"} disabled={loading} {...errProps("auth-password")} />
+                <FieldError id="auth-password-err">{showErr("auth-password")}</FieldError>
                 {!creating && (
                   <button type="button" className="link-btn" style={{ marginTop: 6, fontSize: ".82rem" }}
                     onClick={() => switchMode("forgot")}>Forgot password?</button>

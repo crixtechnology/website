@@ -31,8 +31,11 @@ import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
 import { useNoIndex } from "../hooks/useNoIndex.js";
-import { isValidName, emailFormatError } from "../utils/validators.js";
-import { phoneError } from "../utils/phone.js";
+import { emailError, nameError } from "../utils/validators.js";
+import { phoneFieldError } from "../utils/phone.js";
+import { FieldError, EmailFieldNote, emailFieldProblem } from "../components/FormFields.jsx";
+import { useEmailCheck } from "../hooks/useEmailCheck.js";
+import { useTouched, focusFirstError } from "../hooks/useTouched.js";
 import PhoneInput from "../components/PhoneInput.jsx";
 import { CourseFacts, CourseLists, CourseFaq, RelatedPrograms, EnrollBar, useCourseJsonLd } from "../components/CourseSections.jsx";
 import { offeredTiers, isOpenForBuy, isFreeProgram, TIER_ORDER } from "../utils/tiers.js";
@@ -731,29 +734,44 @@ export function Contact() {
   const [kind, setKind] = useState(""); // "error" | "success" | "info"
 
   const [sending, setSending] = useState(false);
+  const emailCheck = useEmailCheck(form.email);
+  const fields = useTouched();
+
+  // Every field's error, live — shown under each field once it's been left
+  // or a submit was tried (hooks/useTouched.js). Keyed by input id.
+  const errors = {
+    "c-name": nameError(form.name),
+    "c-email": emailError(form.email),
+    "c-phone": phoneFieldError(form.phone, { required: false }),
+    "c-message": form.message.trim() ? "" : "Write a short message.",
+  };
+  const invalid = (id) => (fields.show(id) && !!errors[id]) || undefined;
+  const emailProblem = emailFieldProblem(errors["c-email"], emailCheck, fields.show("c-email"));
 
   const onSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (sending) return; // already in flight — ignore a repeat click/Enter
     const formEl = e && e.currentTarget; // captured now: React clears currentTarget after the await below
     const phone = form.phone.trim();
-    const problems = [
-      !form.name.trim() ? "your name" : !isValidName(form.name) && "a valid name (letters only)",
-      !form.email.trim() ? "your email" : emailFormatError(form.email),
-      !form.message.trim() && "a message",
-      phone && phoneError(phone),
-    ].filter(Boolean);
-    if (problems.length) {
-      const list = problems.length === 1
-        ? problems[0]
-        : `${problems.slice(0, -1).join(", ")} and ${problems[problems.length - 1]}`;
+    fields.markSubmitted();
+    if (Object.values(errors).some(Boolean)) {
       setKind("error");
-      setStatus(`Please add ${list}.`);
+      setStatus("Please fix the highlighted fields.");
+      focusFirstError(errors, Object.keys(errors));
       return;
     }
     setKind("info");
     setStatus("Sending...");
     setSending(true);
+    // The live domain check may still be waiting out its typing pause.
+    const domain = await emailCheck.verify();
+    if (domain && !domain.valid) {
+      setSending(false);
+      setKind("error");
+      setStatus(domain.error);
+      focusFirstError({ "c-email": true }, ["c-email"]);
+      return;
+    }
     const res = await submitContact({
       name: form.name, email: form.email, interest: form.interest, message: form.message,
       phone,
@@ -764,7 +782,7 @@ export function Contact() {
     if (res.ok) burstConfetti(formEl && formEl.querySelector ? formEl.querySelector("button[type=submit]") : null);
     // Clear everything that was sent (the "interested in" choice back to its default too),
     // so pressing the button again can't quietly post the same message twice.
-    if (res.ok) setForm({ name: "", email: "", phone: "", interest: "Internship", message: "" });
+    if (res.ok) { setForm({ name: "", email: "", phone: "", interest: "Internship", message: "" }); fields.reset(); }
   };
 
   const set = (k) => (e) => {
@@ -784,17 +802,26 @@ export function Contact() {
         <div className="wrap contact-grid">
           <Reveal as="form" variant="reveal-l" onSubmit={onSubmit} noValidate>
             <div className="field"><label htmlFor="c-name">Your name</label>
-              <input id="c-name" name="name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Full name" /></div>
+              <input id="c-name" name="name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Full name"
+                onBlur={fields.touch("c-name")} aria-invalid={invalid("c-name")} aria-describedby="c-name-err" />
+              <FieldError id="c-name-err">{invalid("c-name") && errors["c-name"]}</FieldError></div>
             <div className="field"><label htmlFor="c-email">Email</label>
-              <input id="c-email" name="email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" /></div>
+              <input id="c-email" name="email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com"
+                onBlur={fields.touch("c-email")} aria-invalid={!!emailProblem || undefined} aria-describedby="c-email-err" />
+              <EmailFieldNote id="c-email-err" localError={errors["c-email"]} check={emailCheck} show={fields.show("c-email")}
+                onUseSuggestion={(email) => setForm((f) => ({ ...f, email }))} /></div>
             <div className="field"><label htmlFor="c-phone">Phone (optional)</label>
-              <PhoneInput id="c-phone" name="phone" value={form.phone} onChange={setPhone} /></div>
+              <PhoneInput id="c-phone" name="phone" value={form.phone} onChange={setPhone} onBlur={fields.touch("c-phone")}
+                invalid={!!invalid("c-phone")} describedBy="c-phone-err" />
+              <FieldError id="c-phone-err">{invalid("c-phone") && errors["c-phone"]}</FieldError></div>
             <div className="field"><label htmlFor="c-interest">I'm interested in</label>
               <select id="c-interest" name="interest" value={form.interest} onChange={set("interest")}>
                 <option>Internship</option><option>IT Services</option><option>Online Course</option><option>Other</option>
               </select></div>
             <div className="field"><label htmlFor="c-message">Message</label>
-              <textarea id="c-message" name="message" rows="4" value={form.message} onChange={set("message")} placeholder="College & semester, or your project details..." /></div>
+              <textarea id="c-message" name="message" rows="4" value={form.message} onChange={set("message")} placeholder="College & semester, or your project details..."
+                onBlur={fields.touch("c-message")} aria-invalid={invalid("c-message")} aria-describedby="c-message-err" />
+              <FieldError id="c-message-err">{invalid("c-message") && errors["c-message"]}</FieldError></div>
             <button className="btn btn-solid" type="submit" disabled={sending}>{sending ? "Sending…" : "Send message"}</button>
             <Alert kind={kind || "info"}>{status}</Alert>
           </Reveal>

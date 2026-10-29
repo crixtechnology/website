@@ -7,6 +7,7 @@ const { prisma } = require("../db");
 const { requireAuth } = require("../middleware/requireAuth");
 const { isDisposableEmail } = require("../utils/disposableEmail");
 const { isValidEmail, isValidPhone } = require("../utils/validators");
+const { emailDomainError } = require("../utils/emailDomain");
 const { signToken: signJwt } = require("../utils/jwt");
 const { hasLiveSession } = require("../utils/sessionPolicy");
 const { sendWelcomeEmail } = require("../utils/mailer");
@@ -181,6 +182,12 @@ async function createFromLogin(req, res, { email, password, createAccount, ageCo
   }
   if (isDisposableEmail(email)) {
     return res.status(400).json({ ok: false, error: "Temporary/disposable email addresses aren't allowed — please use a permanent email." });
+  }
+  // An account at a domain that takes no mail could never get its
+  // verification or password-reset email.
+  const domainProblem = await emailDomainError(email);
+  if (domainProblem) {
+    return res.status(400).json({ ok: false, error: domainProblem });
   }
   const passwordHash = await bcrypt.hash(password, 10);
   let user;

@@ -32,6 +32,7 @@ export function Flag({ iso, className = "" }) {
 // Pasting or autofilling a full "+44 7400 123456" switches the country for you.
 export default function PhoneInput({
   id, value, onChange, disabled = false, placeholder, name, required = false, defaultCountry = DEFAULT_COUNTRY, describedBy,
+  onBlur, invalid = false,
 }) {
   const [iso, setIso] = useState(() => parsePhone(value, defaultCountry).iso);
   const [open, setOpen] = useState(false);
@@ -192,6 +193,8 @@ export default function PhoneInput({
         placeholder={placeholder || current.example || "Phone number"}
         disabled={disabled}
         required={required}
+        onBlur={onBlur}
+        aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
       />
       {open && (

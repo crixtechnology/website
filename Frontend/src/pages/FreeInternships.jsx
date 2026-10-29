@@ -10,7 +10,9 @@ import { usePageMeta } from "../hooks/usePageMeta.js";
 import { useNoIndex } from "../hooks/useNoIndex.js";
 import { getFreeOpenings, getMyJobApplications, applyForRole, uploadApplicationCv, unlockFreeTest, hasBackend } from "../services/api.js";
 import PhoneInput from "../components/PhoneInput.jsx";
-import { phoneError } from "../utils/phone.js";
+import { phoneError, phoneFieldError } from "../utils/phone.js";
+import { FieldError } from "../components/FormFields.jsx";
+import { useTouched } from "../hooks/useTouched.js";
 import { EducationFields, educationForm, educationPayload, educationMissing, emptyEducation } from "../utils/education.js";
 import { careersContact } from "../data/careers.js";
 import { legal } from "../data/content.js";
@@ -160,6 +162,7 @@ function FreeApplyModal({ opening, terms, onClose }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ kind: "", text: "" });
   const [doneId, setDoneId] = useState("");
+  const fields = useTouched();
   const submitBtn = useRef(null);
   const alive = useRef(true);
   useBodyScrollLock(!!opening);
@@ -193,6 +196,12 @@ function FreeApplyModal({ opening, terms, onClose }) {
   if (!opening) return null;
   const test = opening.test || {};
   const fee = terms.processingFee || 0;
+  // Live errors under the two detail fields (hooks/useTouched.js).
+  const detailErrors = {
+    "free-name": details.name.trim() ? "" : "Enter your full name.",
+    "free-phone": phoneFieldError(details.phone),
+  };
+  const showDetailErr = (id) => (fields.show(id) && detailErrors[id]) || "";
   const status = application ? application.status : "none";
   const existingCv = application && application.cv;
 
@@ -205,6 +214,7 @@ function FreeApplyModal({ opening, terms, onClose }) {
 
   const submit = async () => {
     if (busy || !agreed || !adult) return;
+    fields.markSubmitted();
     const missing = [
       ...(details.name.trim() ? [] : ["full name"]),
       ...(details.phone.trim() ? [] : ["phone number"]),
@@ -304,12 +314,16 @@ function FreeApplyModal({ opening, terms, onClose }) {
         <div className="field">
           <label htmlFor="free-name">Full name</label>
           <input id="free-name" autoComplete="name" maxLength={80} value={details.name} disabled={busy}
-            onChange={(e) => { setDetails({ ...details, name: e.target.value }); setMsg({ kind: "", text: "" }); }} />
+            onChange={(e) => { setDetails({ ...details, name: e.target.value }); setMsg({ kind: "", text: "" }); }}
+            onBlur={fields.touch("free-name")} aria-invalid={!!showDetailErr("free-name") || undefined} aria-describedby="free-name-err" />
+          <FieldError id="free-name-err">{showDetailErr("free-name")}</FieldError>
         </div>
         <div className="field">
           <label htmlFor="free-phone">Phone</label>
           <PhoneInput id="free-phone" value={details.phone} disabled={busy}
-            onChange={(phone) => { setDetails((d) => ({ ...d, phone })); setMsg({ kind: "", text: "" }); }} />
+            onChange={(phone) => { setDetails((d) => ({ ...d, phone })); setMsg({ kind: "", text: "" }); }}
+            onBlur={fields.touch("free-phone")} invalid={!!showDetailErr("free-phone")} describedBy="free-phone-err" />
+          <FieldError id="free-phone-err">{showDetailErr("free-phone")}</FieldError>
         </div>
         <h4 className="job-modal-heading">Education</h4>
         <EducationFields form={education} disabled={busy} idPrefix="free-edu"

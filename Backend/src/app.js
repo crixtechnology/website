@@ -31,6 +31,7 @@ const careerRoutes = require("./routes/careers");
 const aptitudeTestRoutes = require("./routes/aptitudeTest");
 const adminCareerRoutes = require("./routes/adminCareers");
 const accountRoutes = require("./routes/account");
+const emailCheckRoutes = require("./routes/emailCheck");
 
 const app = express();
 
@@ -97,6 +98,7 @@ app.use("/api", careerRoutes);
 app.use("/api", aptitudeTestRoutes);
 app.use("/api", adminCareerRoutes);
 app.use("/api", accountRoutes);
+app.use("/api", emailCheckRoutes);
 
 // Anything under /api that no route above claimed. Without this Express answers with
 // an HTML "Cannot GET /api/..." page, which the frontend then fails to parse as JSON.

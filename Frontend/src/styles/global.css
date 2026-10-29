@@ -954,3 +954,14 @@ body.no-copy img{-webkit-user-drag:none}
 .dept-block{border-left:3px solid var(--dept);padding:8px 0 8px 12px;margin-top:10px;border-radius:2px}
 .dept-block:first-of-type{margin-top:2px}
 .dept-block .contact-line,.dept-block .foot-phone-row{margin-top:6px}
+
+/* Live field validation (components/FormFields.jsx): the error line under a
+   field and the red edge on the field itself. upgrade.css hides its :user-valid
+   tick on an aria-invalid field, since the browser's own rules can pass a value
+   these checks don't. */
+.field-error{margin:6px 0 0;font-size:.8rem;line-height:1.45;color:var(--danger)}
+.field-error .link-btn{font-size:inherit;color:var(--cyan)}
+.field-hint{margin:6px 0 0;font-size:.8rem;color:var(--muted)}
+.field input[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:rgba(var(--danger-rgb),.75)}
+.field input[aria-invalid="true"]:focus,.field textarea[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(var(--danger-rgb),.2)}
+.compact-form .field-error,.compact-form .field-hint{margin-top:3px;font-size:.75rem}

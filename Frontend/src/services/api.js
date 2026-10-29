@@ -168,6 +168,20 @@ export async function submitContact(form) {
   }
 }
 
+// Can this email's domain receive mail? (routes/emailCheck.js — DNS only,
+// nothing is sent.) { valid, error, suggestion }, or null when there's no
+// backend or it couldn't answer, which callers treat as "fine".
+export async function checkEmailDomain(email) {
+  if (!API) return null;
+  try {
+    const res = await fetch(`${API}/email-check?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    return res.ok && data.ok ? { valid: data.valid, error: data.error || "", suggestion: data.suggestion || "" } : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // ---------- Courses & Internships (public) ----------
 // type: "course" | "internship" | omit for both.
 export async function getCourses(type) {
