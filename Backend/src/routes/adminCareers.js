@@ -13,7 +13,7 @@ const { addNotification, sendCareerEmail } = require("../utils/notifications");
 const { readSnapshot, checkStorage, PENDING_PREFIX } = require("../utils/proctorStorage");
 const { lapsedCredit } = require("../utils/wallet");
 const {
-  CATEGORIES, GENERAL_CATEGORIES, TECH_CATEGORIES, MAX_PER_CATEGORY, STATUS_LABELS, isCategory, normalizeCounts, shapeOpening, finalizeExpiredAttempts,
+  CATEGORIES, GENERAL_CATEGORIES, TECH_CATEGORIES, MAX_PER_CATEGORY, STATUS_LABELS, isCategory, normalizeCounts, shapeOpening, positionsOf, OPENING_COUNTS, finalizeExpiredAttempts,
 } = require("../utils/careers");
 
 const router = express.Router();
@@ -67,6 +67,13 @@ function openingData(body) {
     if (b[key] === undefined) continue;
     if (!isText(b[key], 190)) return { error: `${key} must be text (up to 190 characters).` };
     data[key] = b[key].trim();
+  }
+  // null clears it (the role then shows no number).
+  if (b.positions !== undefined) {
+    if (b.positions !== null && (!Number.isInteger(b.positions) || b.positions < 1 || b.positions > 1000)) {
+      return { error: "The number of positions must be a whole number from 1 to 1000." };
+    }
+    data.positions = b.positions;
   }
   if (b.status !== undefined) {
     if (b.status !== "open" && b.status !== "closed") return { error: "status must be open or closed" };
@@ -126,7 +133,7 @@ async function bankCounts() {
 router.get("/admin/job-openings", requireAdmin, async (req, res, next) => {
   try {
     const [openings, applicants, bank] = await Promise.all([
-      prisma.jobOpening.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
+      prisma.jobOpening.findMany({ include: OPENING_COUNTS, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
       prisma.jobApplication.groupBy({ by: ["openingId"], _count: { _all: true } }),
       bankCounts(),
     ]);
@@ -160,6 +167,7 @@ router.post("/admin/job-openings", requireAdmin, async (req, res, next) => {
         questionCounts: data.questionCounts || normalizeCounts(null),
         order,
       },
+      include: OPENING_COUNTS,
     });
     res.status(201).json({ ok: true, opening: shapeOpening(opening, { admin: true }) });
   } catch (e) {
@@ -175,7 +183,7 @@ router.put("/admin/job-openings/:id", requireAdmin, async (req, res, next) => {
     if (error) return res.status(400).json({ ok: false, error });
     const existing = await prisma.jobOpening.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!existing) return res.status(404).json({ ok: false, error: "Opening not found" });
-    const opening = await prisma.jobOpening.update({ where: { id: req.params.id }, data });
+    const opening = await prisma.jobOpening.update({ where: { id: req.params.id }, data, include: OPENING_COUNTS });
     res.json({ ok: true, opening: shapeOpening(opening, { admin: true }) });
   } catch (e) {
     next(e);
@@ -432,7 +440,7 @@ const ATTEMPT_SUMMARY = {
   id: true, status: true, startedAt: true, endsAt: true, submittedAt: true, submitReason: true,
   score: true, maxScore: true, passed: true, correctCount: true, wrongCount: true, categoryScores: true, violationCount: true,
 };
-const OPENING_SUMMARY = { id: true, title: true, slug: true, feeRequired: true, audience: true, techCategory: true };
+const OPENING_SUMMARY = { id: true, title: true, slug: true, feeRequired: true, audience: true, techCategory: true, positions: true, ...OPENING_COUNTS };
 const LIST_INCLUDE = { user: { select: USER_SUMMARY }, opening: { select: OPENING_SUMMARY }, attempt: { select: ATTEMPT_SUMMARY } };
 
 function shapeApplicant(a) {
@@ -444,7 +452,7 @@ function shapeApplicant(a) {
           education: { college: a.user.college, course: a.user.course, department: a.user.department, semester: a.user.semester, passingYear: a.user.passingYear },
         }
       : null,
-    opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug, feeRequired: a.opening.feeRequired !== false, audience: a.opening.audience || "general" } : null,
+    opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug, feeRequired: a.opening.feeRequired !== false, audience: a.opening.audience || "general", positions: positionsOf(a.opening) } : null,
     cv: a.cvKey ? { fileName: a.cvFileName, uploadedAt: a.cvUploadedAt } : null,
     // As it was when they applied (free internships); null for other roles.
     education: a.education || null,

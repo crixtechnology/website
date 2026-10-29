@@ -10,6 +10,23 @@ import { site } from "./content.js";
 // (Admin → Careers settings): the test fee, the signup bonus and the credit rules.
 export const defaultTerms = { testFee: 289, signupBonus: 300, creditExpiryMonths: 12, creditUsagePercent: 100 };
 
+// A role's positions, from the backend: { total, filled, left } or null when
+// the role doesn't state a number. Selected applicants fill them.
+export const isRoleFull = (o) => !!(o && o.positions && o.positions.left === 0);
+export function positionsLabel(p) {
+  if (!p) return "";
+  if (p.left === 0) return "All filled";
+  const n = (k) => `${k} position${k === 1 ? "" : "s"}`;
+  return p.filled > 0 ? `${p.left} of ${n(p.total)} open` : `${n(p.total)} open`;
+}
+// The small tag on a card: urgency when few are left, "filled" when none.
+export function positionsTag(p, fallback) {
+  if (!p) return fallback;
+  if (p.left === 0) return "Positions filled";
+  if (p.left <= 2 && p.total > 2) return `Only ${p.left} left`;
+  return fallback;
+}
+
 export const careersContact = {
   email: "support@crixtechnology.com",
   phone: site.phoneAlt,

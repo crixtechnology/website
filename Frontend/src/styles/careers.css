@@ -149,3 +149,8 @@
 .test-overlay-box p{color:var(--muted);font-size:.92rem;line-height:1.65;margin:0 0 10px}
 .test-overlay-box .btn{margin-top:14px}
 .test-toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:6;max-width:min(92%,560px);padding:12px 18px;border-radius:12px;background:rgba(var(--danger-rgb),.18);border:1px solid rgba(var(--danger-rgb),.5);color:var(--text);font-size:.86rem;line-height:1.5;text-align:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+
+/* ---------- Positions on a role (data/careers.js positionsLabel) ---------- */
+.card .tag.tag--full{color:var(--muted)}
+.plan-option-sub.positions-note{color:var(--teal);font-weight:600}
+.plan-option-sub.positions-note.is-full{color:var(--amber)}

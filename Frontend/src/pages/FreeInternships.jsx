@@ -14,7 +14,7 @@ import { phoneError, phoneFieldError } from "../utils/phone.js";
 import { FieldError } from "../components/FormFields.jsx";
 import { useTouched } from "../hooks/useTouched.js";
 import { EducationFields, educationForm, educationPayload, educationMissing, emptyEducation } from "../utils/education.js";
-import { careersContact } from "../data/careers.js";
+import { careersContact, isRoleFull, positionsLabel, positionsTag } from "../data/careers.js";
 import { legal } from "../data/content.js";
 import {
   freeHero, freeSteps, freeEligibility, freeRules, processingFeePoints, defaultFreeTerms, CV_MAX_MB, RESULT_DAYS,
@@ -41,6 +41,7 @@ const scrollToId = (id) => (e) => {
 };
 
 const openingFacts = (o) => [
+  ["Positions", positionsLabel(o.positions)],
   ["Stipend", o.stipend],
   ["Experience", o.experience],
   ["Duration", o.duration],
@@ -74,7 +75,7 @@ function FreeOpeningCard({ opening, i, fee, onOpen, onApply }) {
           <div className="card-top">
             <div className="card-top-left">
               <span className="type-pill type-pill--internship">Internship</span>
-              <span className="tag">Open</span>
+              <span className={`tag${isRoleFull(opening) ? " tag--full" : ""}`}>{positionsTag(opening.positions, "Open")}</span>
             </div>
             <FeeBadge fee={fee} />
           </div>
@@ -90,7 +91,9 @@ function FreeOpeningCard({ opening, i, fee, onOpen, onApply }) {
           </dl>
         </div>
         <div className="card-btn-row">
-          <button className="btn btn-solid buy-btn" onClick={() => onApply(opening)}>Apply with CV</button>
+          <button className="btn btn-solid buy-btn" disabled={isRoleFull(opening)} onClick={() => onApply(opening)}>
+            {isRoleFull(opening) ? "Positions filled" : "Apply with CV"}
+          </button>
           <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
         </div>
       </TiltCard>
@@ -137,7 +140,9 @@ function FreeOpeningModal({ opening, fee, onClose, onApply }) {
           {fee > 0 ? " and the test processing fee is paid (it all comes back as wallet credits)" : ""}.
           You'll get your result by email within {RESULT_DAYS} days of submitting it.
         </p>
-        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} onClick={() => onApply(opening)}>{fee > 0 ? "Apply with CV" : "Apply with CV — Free"}</button>
+        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} disabled={isRoleFull(opening)} onClick={() => onApply(opening)}>
+          {isRoleFull(opening) ? "All positions filled" : fee > 0 ? "Apply with CV" : "Apply with CV — Free"}
+        </button>
       </div>
     </div>
   );

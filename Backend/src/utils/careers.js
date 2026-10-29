@@ -65,6 +65,18 @@ const STATUS_LABELS = {
 
 const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
 
+// Add to a jobOpening query (include) so shapeOpening can tell how many of the
+// role's positions are filled: one per applicant marked "selected".
+const OPENING_COUNTS = { _count: { select: { applications: { where: { status: "selected" } } } } };
+
+// { positions, filled, left } for a role, or null when it doesn't state a number.
+// `filled` needs the query to have included OPENING_COUNTS.
+function positionsOf(o) {
+  if (!o || !Number.isInteger(o.positions) || o.positions < 1) return null;
+  const filled = (o._count && o._count.applications) || 0;
+  return { total: o.positions, filled, left: Math.max(o.positions - filled, 0) };
+}
+
 // A job opening as the public site sees it. The cut-off score is the admin's.
 function shapeOpening(o, { admin = false } = {}) {
   const counts = normalizeCounts(o.questionCounts);
@@ -81,6 +93,7 @@ function shapeOpening(o, { admin = false } = {}) {
     experience: o.experience,
     duration: o.duration,
     mode: o.mode,
+    positions: positionsOf(o),
     status: o.status,
     order: o.order,
     feeRequired: o.feeRequired !== false,
@@ -454,6 +467,8 @@ module.exports = {
   isCategory,
   normalizeCounts,
   shapeOpening,
+  positionsOf,
+  OPENING_COUNTS,
   grantTestForPayment,
   shuffle,
   buildPaper,

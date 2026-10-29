@@ -600,6 +600,9 @@ model JobOpening {
   experience       String        @default("")
   duration         String        @default("")
   mode             String        @default("")
+  // How many people the role takes (null = not stated). Applicants marked
+  // "selected" fill them; once all are filled no new applications are taken.
+  positions        Int?
   status           OpeningStatus @default(open)
   order            Int           @default(0)
   // false = a free role: the aptitude test unlocks without the registration fee.

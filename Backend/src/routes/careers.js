@@ -21,7 +21,7 @@ const { rejectIfProfileIncomplete, profileMissing, educationMissing } = require(
 const { lockUser } = require("../utils/wallet");
 const { getCareerSettings } = require("../utils/careerSettings");
 const { saveCv, deleteSnapshot, describeStorageError } = require("../utils/proctorStorage");
-const { STATUS_LABELS, shapeOpening, grantTestForPayment, finalizeExpiredAttempts, testFeeFor } = require("../utils/careers");
+const { STATUS_LABELS, shapeOpening, positionsOf, OPENING_COUNTS, grantTestForPayment, finalizeExpiredAttempts, testFeeFor } = require("../utils/careers");
 
 const router = express.Router();
 
@@ -105,7 +105,7 @@ function respondToRazorpayError(e, res) {
 router.get("/careers/openings", async (req, res, next) => {
   try {
     const [openings, settings] = await Promise.all([
-      prisma.jobOpening.findMany({ where: { status: "open", audience: "general" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
+      prisma.jobOpening.findMany({ where: { status: "open", audience: "general" }, include: OPENING_COUNTS, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
       getCareerSettings(),
     ]);
     // Roles open and close from Admin: never let a browser or a data-saver proxy keep an old list.
@@ -120,7 +120,7 @@ router.get("/careers/openings", async (req, res, next) => {
 router.get("/careers/free/openings", async (req, res, next) => {
   try {
     const [openings, settings] = await Promise.all([
-      prisma.jobOpening.findMany({ where: { status: "open", audience: "free" }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
+      prisma.jobOpening.findMany({ where: { status: "open", audience: "free" }, include: OPENING_COUNTS, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
       getCareerSettings(),
     ]);
     res.set("Cache-Control", "no-store");
@@ -136,7 +136,7 @@ router.get("/careers/free/openings", async (req, res, next) => {
 
 router.get("/careers/openings/:slug", async (req, res, next) => {
   try {
-    const opening = await prisma.jobOpening.findUnique({ where: { slug: String(req.params.slug) } });
+    const opening = await prisma.jobOpening.findUnique({ where: { slug: String(req.params.slug) }, include: OPENING_COUNTS });
     // A closed role isn't public any more — same answer as one that never existed.
     if (!opening || opening.status !== "open") return res.status(404).json({ ok: false, error: "Opening not found" });
     res.json({ ok: true, opening: shapeOpening(opening), terms: publicTerms(await getCareerSettings()) });
@@ -171,7 +171,7 @@ router.post("/me/job-applications", publicWriteLimiter, requireAuth, async (req,
     if (typeof ref !== "string" || !ref.trim()) return res.status(400).json({ ok: false, error: "Choose a role to apply for." });
     if (req.user.role === "admin") return res.status(400).json({ ok: false, error: "Admin accounts can't apply for a role." });
 
-    const opening = await prisma.jobOpening.findFirst({ where: { OR: [{ slug: ref.trim() }, { id: ref.trim() }] } });
+    const opening = await prisma.jobOpening.findFirst({ where: { OR: [{ slug: ref.trim() }, { id: ref.trim() }] }, include: OPENING_COUNTS });
     if (!opening) return res.status(404).json({ ok: false, error: "Opening not found" });
 
     const result = await prisma.$transaction(async (tx) => {
@@ -183,6 +183,9 @@ router.post("/me/job-applications", publicWriteLimiter, requireAuth, async (req,
       });
       if (existing) return { application: existing, created: false };
       if (opening.status !== "open") return { error: "This role is closed for applications right now." };
+      // Every position taken: no new applications (one already started, above, carries on).
+      const seats = positionsOf(opening);
+      if (seats && seats.left === 0) return { error: "All positions for this role have been filled.", code: "POSITIONS_FILLED" };
       // A free role can't be retaken back-to-back: after an application there ends
       // without an offer, the candidate waits the admin's cooldown before trying again.
       if (opening.feeRequired === false) {

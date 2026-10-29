@@ -362,6 +362,33 @@ describe("job openings", () => {
     expect((await asAdmin(request(app).delete(`/api/admin/job-openings/${twin._id}`))).status).toBe(200);
   });
 
+  it("counts a role's positions as candidates are selected, and stops new applications once they're filled", async () => {
+    expect((await asAdmin(request(app).post("/api/admin/job-openings")).send({ title: "Bad", positions: 0 })).status).toBe(400);
+    expect((await asAdmin(request(app).post("/api/admin/job-openings")).send({ title: "Bad", positions: 2.5 })).status).toBe(400);
+
+    const o = await opening({ positions: 2 });
+    expect(o.positions).toEqual({ total: 2, filled: 0, left: 2 });
+    const listed = () => request(app).get("/api/careers/openings").then((r) => r.body.openings.find((x) => x._id === o._id));
+    expect((await listed()).positions).toEqual({ total: 2, filled: 0, left: 2 });
+
+    const [a, b, late] = [await student(), await student(), await student()];
+    const appA = (await apply(a, o)).body.application;
+    const appB = (await apply(b, o)).body.application;
+    await prisma.jobApplication.update({ where: { id: appA._id }, data: { status: "selected" } });
+    expect((await listed()).positions).toEqual({ total: 2, filled: 1, left: 1 });
+
+    await prisma.jobApplication.update({ where: { id: appB._id }, data: { status: "selected" } });
+    expect((await listed()).positions).toEqual({ total: 2, filled: 2, left: 0 });
+    const refused = await apply(late, o);
+    expect(refused.status).toBe(400);
+    expect(refused.body.code).toBe("POSITIONS_FILLED");
+
+    // More positions reopen it; clearing the number shows none at all.
+    expect((await asAdmin(request(app).put(`/api/admin/job-openings/${o._id}`)).send({ positions: 3 })).body.opening.positions).toEqual({ total: 3, filled: 2, left: 1 });
+    expect((await apply(late, o)).status).toBe(201);
+    expect((await asAdmin(request(app).put(`/api/admin/job-openings/${o._id}`)).send({ positions: null })).body.opening.positions).toBeNull();
+  });
+
   it("won't delete a role people have applied for", async () => {
     const o = await opening();
     const s = await student();
