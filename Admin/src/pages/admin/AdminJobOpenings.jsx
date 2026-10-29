@@ -2,6 +2,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getAdminToken, adminGetJobOpenings, adminCreateJobOpening, adminUpdateJobOpening, adminDeleteJobOpening,
+  adminGetCareerSettings, adminUpdateCareerSettings,
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
@@ -17,7 +18,7 @@ const COUNT_FIELDS = [["quantitative", "Quantitative"], ["logical", "Logical rea
 const EMPTY_FORM = {
   title: "", summary: "", techCategory: "web", skills: "", responsibilities: "", eligibility: "",
   stipend: "Up to ₹6,000/month (performance based)", experience: "0–1 year (freshers welcome)", duration: "3 months", mode: "Remote / Ahmedabad",
-  positions: "", order: "", feeRequired: "yes", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
+  positions: "", order: "", feeRequired: "yes", waiveFee: "no", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
   marksPerQuestion: "1", negativeMarks: "0.25", cutoffScore: "0",
 };
 
@@ -30,7 +31,7 @@ function openingToForm(o) {
     eligibility: (o.eligibility || []).join("\n"),
     stipend: o.stipend || "", experience: o.experience || "", duration: o.duration || "", mode: o.mode || "",
     positions: o.positions ? String(o.positions.total) : "",
-    order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", durationMinutes: String(o.test.durationMinutes),
+    order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", waiveFee: o.waiveFee ? "yes" : "no", durationMinutes: String(o.test.durationMinutes),
     quantitative: String(c.quantitative ?? 0), logical: String(c.logical ?? 0), verbal: String(c.verbal ?? 0), technical: String(c.technical ?? 0),
     marksPerQuestion: String(o.test.marksPerQuestion), negativeMarks: String(o.test.negativeMarks), cutoffScore: String(o.test.cutoffScore ?? 0),
   };
@@ -70,6 +71,54 @@ export function useJobOpenings() {
   return { openings, bank, loading, error, load };
 }
 
+// The free internships' test processing fee, set right where they're managed.
+// It's the same setting as Careers settings → "Free internships test processing
+// fee", so changing it here changes it there (and for every free internship
+// that doesn't waive it). Sits inside the opening form, so Enter saves the fee
+// rather than submitting the form.
+export function ProcessingFeeEditor() {
+  const [amount, setAmount] = useState("");
+  const [saved, setSaved] = useState(null); // the stored amount, once loaded
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState({ kind: "", text: "" });
+  useEffect(() => {
+    let alive = true;
+    Promise.resolve(adminGetCareerSettings()).then((res) => {
+      if (!alive || !res || !res.ok) return;
+      setSaved(res.settings.processingFeeRupees);
+      setAmount(String(res.settings.processingFeeRupees));
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const save = async () => {
+    if (busy) return;
+    const n = Number(amount);
+    if (!Number.isInteger(n) || n < 0 || n > 100000) { setMsg({ kind: "error", text: "Enter a whole number of rupees from 0 (no fee) to 100000." }); return; }
+    setBusy(true);
+    const res = await adminUpdateCareerSettings({ processingFeeRupees: n });
+    setBusy(false);
+    if (res && res.ok) { setSaved(n); setMsg({ kind: "ok", text: n > 0 ? `Saved — free internships now charge ₹${n}.` : "Saved — free internships now have no fee." }); }
+    else setMsg({ kind: "error", text: (res && res.error) || "Could not save the fee." });
+  };
+
+  return (
+    <div className="field fee-editor"><label htmlFor="jo-fee-amount">Processing fee amount (₹, 0 = none)</label>
+      <div className="fee-editor-row">
+        <input id="jo-fee-amount" type="number" min="0" max="100000" step="1" value={amount} disabled={saved === null}
+          onChange={(e) => { setAmount(e.target.value); setMsg({ kind: "", text: "" }); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } }} />
+        <button type="button" className="btn btn-ghost" disabled={busy || saved === null || String(saved) === amount} onClick={save}>
+          {busy ? "Saving..." : "Save fee"}
+        </button>
+      </div>
+      <p className={msg.kind === "error" ? "form-error" : "form-note"} style={{ margin: "6px 0 0" }}>
+        {msg.text || "For every free internship that doesn't waive it. Same setting as Careers settings."}
+      </p>
+    </div>
+  );
+}
+
 // The add/edit form for one opening. `audience` is fixed by where it's used:
 // "general" on Job openings (the Careers page), "free" on Courses & Internships
 // (the Free Internships page). `editing` is the opening being edited, or null.
@@ -101,6 +150,8 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
       positions,
       ...(form.order.trim() ? { order: Number(form.order) } : {}),
       feeRequired: form.feeRequired === "yes",
+      // Free internships: whether this role skips the processing fee.
+      ...(free ? { waiveFee: form.waiveFee === "yes" } : {}),
       audience,
       durationMinutes: Number(form.durationMinutes),
       questionCounts: Object.fromEntries(COUNT_FIELDS.map(([k]) => [k, Number(form[k])])),
@@ -156,10 +207,16 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
       <h3 style={{ margin: "12px 0 16px" }}>Aptitude test for this {what}</h3>
       <div className="admin-form-grid">
         {free ? (
-          <div className="field"><label>Fee</label>
-            <p className="form-note" style={{ margin: "6px 0 0" }}>Listed on the Free Internships page (/free-internships), CV required. Test processing
-              fee from Careers settings (comes back as wallet credit). The quantitative, logical and verbal questions come from the gentler foundation banks.</p></div>
-        ) : (
+          <div className="field"><label htmlFor="jo-fee">Test processing fee</label>
+            <select id="jo-fee" value={form.waiveFee} onChange={set("waiveFee")}>
+              <option value="no">Required (the amount set below)</option>
+              <option value="yes">No fee for this internship</option>
+            </select>
+            <p className="form-note" style={{ margin: "6px 0 0" }}>Listed on the Free Internships page (/free-internships), CV required. The fee comes back
+              as wallet credit. The quantitative, logical and verbal questions come from the gentler foundation banks.</p></div>
+        ) : null}
+        {free && <ProcessingFeeEditor />}
+        {free ? null : (
           <div className="field"><label htmlFor="jo-fee">Registration fee</label>
             <select id="jo-fee" value={form.feeRequired} onChange={set("feeRequired")}>
               <option value="yes">Required (amount from Careers settings)</option>
@@ -228,7 +285,7 @@ export function OpeningList({ openings, bank, onEdit, onChanged, empty }) {
               <div className="admin-row-main">
                 <b>{o.title}</b>
                 <span className="admin-row-meta">
-                  {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.audience === "free" ? "processing fee" : o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
+                  {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.audience === "free" ? (o.waiveFee ? "no processing fee" : "processing fee") : o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
                   {" "}+{o.test.marksPerQuestion} / −{o.test.negativeMarks} · cut-off {o.test.cutoffScore}
                 </span>
                 <span className="admin-row-meta" style={o.positions && o.positions.left === 0 ? { color: "var(--amber)" } : !o.positions ? { color: "var(--muted)" } : undefined}>

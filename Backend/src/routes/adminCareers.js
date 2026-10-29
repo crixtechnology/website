@@ -83,6 +83,10 @@ function openingData(body) {
     if (typeof b.feeRequired !== "boolean") return { error: "feeRequired must be true or false" };
     data.feeRequired = b.feeRequired;
   }
+  if (b.waiveFee !== undefined) {
+    if (typeof b.waiveFee !== "boolean") return { error: "waiveFee must be true or false" };
+    data.waiveFee = b.waiveFee;
+  }
   if (b.audience !== undefined) {
     if (b.audience !== "general" && b.audience !== "free") return { error: "audience must be general or free" };
     data.audience = b.audience;

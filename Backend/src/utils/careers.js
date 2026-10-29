@@ -97,6 +97,7 @@ function shapeOpening(o, { admin = false } = {}) {
     status: o.status,
     order: o.order,
     feeRequired: o.feeRequired !== false,
+    waiveFee: !!o.waiveFee,
     audience: o.audience || "general",
     createdAt: o.createdAt,
     test: {
@@ -115,7 +116,8 @@ function shapeOpening(o, { admin = false } = {}) {
 // when it has one. Both come back in full as wallet credit.
 function testFeeFor(opening, settings) {
   if (!opening) return 0;
-  if (opening.audience === "free") return settings.processingFeeRupees || 0;
+  // A free internship charges the processing fee unless the admin waived it for this role.
+  if (opening.audience === "free") return opening.waiveFee ? 0 : settings.processingFeeRupees || 0;
   return opening.feeRequired === false ? 0 : settings.testFeeRupees;
 }
 const feeName = (opening) => (opening && opening.audience === "free" ? "Test processing fee" : "Aptitude test fee");
