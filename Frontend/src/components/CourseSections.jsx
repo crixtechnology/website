@@ -5,6 +5,7 @@ import { getCourses } from "../services/api.js";
 import { site } from "../data/content.js";
 import { offeredTiers, planPrice, formatINR, isOpenForBuy, isFreeProgram } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
+import { isFull, placeWord, programFacts } from "../utils/positions.js";
 import { useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/usePageMeta.js";
 
 // The extra sections of a course / internship page (CourseDetail in pages/pages.jsx).
@@ -26,6 +27,8 @@ export function CourseFacts({ course }) {
   else if (course.type !== "internship" && plans.length) facts.push(["Access", "Lifetime"]);
   if (startsInFuture(course)) facts.push(["Starts", formatStartDate(course.startsAt)]);
   if (plans.length && isOpenForBuy(course)) facts.push(["From", formatINR(Math.min(...plans.map(planPrice)))]);
+  // Positions / seats, stipend, experience, mode — the details a free internship shows.
+  facts.push(...programFacts(course));
   return (
     <dl className="course-facts">
       {facts.map(([label, value]) => (
@@ -40,9 +43,34 @@ export function CourseLists({ course }) {
   const learn = list(course.outcomes);
   const audience = list(course.audience);
   const before = list(course.prerequisites);
-  if (!learn.length && !audience.length && !before.length) return null;
+  const skills = list(course.skills);
+  const doing = list(course.responsibilities);
+  const eligible = list(course.eligibility);
+  if (!learn.length && !audience.length && !before.length && !skills.length && !doing.length && !eligible.length) return null;
   return (
     <>
+      {skills.length > 0 && (
+        <section className="course-block">
+          <h2>Skills</h2>
+          <div className="deliverable-row">{skills.map((x) => <span key={x} className="deliverable-chip">{x}</span>)}</div>
+        </section>
+      )}
+      {(doing.length > 0 || eligible.length > 0) && (
+        <div className="course-cols">
+          {doing.length > 0 && (
+            <section className="course-block">
+              <h2>{course.type === "internship" ? "What you'll do" : "Responsibilities"}</h2>
+              <ul className="dash-list">{doing.map((x, i) => <li key={`${i}-${x}`}>{x}</li>)}</ul>
+            </section>
+          )}
+          {eligible.length > 0 && (
+            <section className="course-block">
+              <h2>Eligibility</h2>
+              <ul className="dash-list">{eligible.map((x, i) => <li key={`${i}-${x}`}>{x}</li>)}</ul>
+            </section>
+          )}
+        </div>
+      )}
       {learn.length > 0 && (
         <section className="course-block">
           <h2>What you'll learn</h2>
@@ -135,7 +163,8 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
   const [ctaSeen, setCtaSeen] = useState(true); // until the observer says otherwise the bar stays hidden
   const [footerSeen, setFooterSeen] = useState(false);
   const plans = offeredTiers(course);
-  const openForBuy = isOpenForBuy(course);
+  const full = isFull(course);
+  const openForBuy = isOpenForBuy(course) && !full;
   const show = !ctaSeen && !footerSeen;
 
   useEffect(() => {
@@ -169,6 +198,7 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
   const cheapest = plans.length ? Math.min(...plans.map(planPrice)) : null;
   const sub = openForBuy && cheapest !== null ? `From ${formatINR(cheapest)}`
     : course.status === "closed" ? "Currently closed"
+    : full ? `All ${placeWord(course)}s filled`
     : course.type === "internship" ? "Apply to join" : "Ask about the next batch";
 
   return (

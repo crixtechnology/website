@@ -2,7 +2,7 @@ const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { serialize } = require("../utils/serialize");
-const { WITH_TIERS, parseTiers } = require("../utils/tiers");
+const { WITH_TIERS, WITH_SEATS, withSeats, parseTiers } = require("../utils/tiers");
 const { parseCourseContent } = require("../utils/courseContent");
 const { accessStartFor, computeEndDate } = require("../utils/enrollmentAccess");
 
@@ -48,8 +48,8 @@ function typeFilter(req) {
 // ?type=course or ?type=internship filters; omit for everything.
 router.get("/courses", async (req, res, next) => {
   try {
-    const courses = await prisma.course.findMany({ where: typeFilter(req), orderBy: { createdAt: "asc" }, include: WITH_TIERS });
-    res.json({ ok: true, courses: serialize(courses) });
+    const courses = await prisma.course.findMany({ where: typeFilter(req), orderBy: { createdAt: "asc" }, include: WITH_SEATS });
+    res.json({ ok: true, courses: serialize(courses.map(withSeats)) });
   } catch (e) {
     next(e);
   }
@@ -57,9 +57,9 @@ router.get("/courses", async (req, res, next) => {
 
 router.get("/courses/:slug", async (req, res, next) => {
   try {
-    const course = await prisma.course.findUnique({ where: { slug: req.params.slug }, include: WITH_TIERS });
+    const course = await prisma.course.findUnique({ where: { slug: req.params.slug }, include: WITH_SEATS });
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
-    res.json({ ok: true, course: serialize(course) });
+    res.json({ ok: true, course: serialize(withSeats(course)) });
   } catch (e) {
     next(e);
   }
@@ -68,8 +68,8 @@ router.get("/courses/:slug", async (req, res, next) => {
 // ---------- admin ----------
 router.get("/admin/courses", requireAdmin, async (req, res, next) => {
   try {
-    const courses = await prisma.course.findMany({ where: typeFilter(req), orderBy: { createdAt: "asc" }, include: WITH_TIERS });
-    res.json({ ok: true, courses: serialize(courses) });
+    const courses = await prisma.course.findMany({ where: typeFilter(req), orderBy: { createdAt: "asc" }, include: WITH_SEATS });
+    res.json({ ok: true, courses: serialize(courses.map(withSeats)) });
   } catch (e) {
     next(e);
   }
@@ -129,6 +129,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
           points: Array.isArray(points) ? points : [],
           // The richer page's lists; whichever weren't sent start empty (and stay hidden).
           outcomes: [], audience: [], prerequisites: [], faqs: [],
+          skills: [], responsibilities: [], eligibility: [],
           ...content.data,
           // A course/internship offers up to three plans (Basic/Plus/Pro).
           // Internships are apply-only when they have none (shows Request to
@@ -143,7 +144,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
           // it requires that explicit second step (enforced below too).
           status: status === "open" && parsed.tiers.length > 0 ? "open" : "closed",
         },
-        include: WITH_TIERS,
+        include: WITH_SEATS,
       });
     } catch (createErr) {
       // The while-loop's uniqueness check above isn't atomic with this
@@ -158,7 +159,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
       }
       throw createErr;
     }
-    res.status(201).json({ ok: true, course: serialize(course) });
+    res.status(201).json({ ok: true, course: serialize(withSeats(course)) });
   } catch (e) {
     next(e);
   }
@@ -261,7 +262,7 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
         }));
       }
     }
-    ops.push(prisma.course.update({ where: { id: existing.id }, data: update, include: WITH_TIERS }));
+    ops.push(prisma.course.update({ where: { id: existing.id }, data: update, include: WITH_SEATS }));
 
     // Start date moved (postponed, brought forward or cleared): students who
     // bought it and are still waiting for it to begin move with it, so their
@@ -280,7 +281,7 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
     const results = await prisma.$transaction(ops);
     const course = results[startChanged ? results.length - 2 : results.length - 1];
 
-    res.json({ ok: true, course: serialize(course) });
+    res.json({ ok: true, course: serialize(withSeats(course)) });
   } catch (e) {
     next(e);
   }

@@ -24,6 +24,7 @@ import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
+import { isFull, placeWord, positionsTag, programFacts } from "../utils/positions.js";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -467,13 +468,18 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
   // programDeliverables), so this works whether `item` came from the static
   // fallback or the live API (whose Course schema has no such field).
   const deliverables = kind ? programDeliverables[kind] : null;
+  // Every place taken (utils/positions.js): no "Choose a plan" — someone who
+  // already bought it still reaches it from My Dashboard.
+  const full = isProgram && isFull(item);
+  const facts = isProgram ? programFacts({ ...item, type: kind || item.type }) : [];
+  const skills = isProgram && Array.isArray(item.skills) ? item.skills : [];
   return (
     <Reveal as="div" variant={variant} style={{ "--i": i }}>
       <TiltCard className={kind ? `card-type-${kind}` : undefined}>
         <div className="card-top">
           <div className="card-top-left">
             {kindLabel && <span className={`type-pill type-pill--${kind}`}>{kindLabel}</span>}
-            <span className="tag">{item.tag}</span>
+            <span className={`tag${full ? " tag--full" : ""}`}>{isProgram ? positionsTag(item.positions, item.tag, placeWord({ type: kind || item.type })) : item.tag}</span>
           </div>
           {closed && <span className="closed-badge">Currently closed</span>}
         </div>
@@ -490,10 +496,20 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
           ) : null}
         </div>
         {item.durationDays ? <span className="duration-chip">{formatDuration(item.durationDays)}</span> : null}
+        {skills.length ? (
+          <div className="deliverable-row">
+            {skills.map((s) => <span key={s} className="deliverable-chip">{s}</span>)}
+          </div>
+        ) : null}
         {deliverables?.length ? (
           <div className="deliverable-row">
             {deliverables.map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
           </div>
+        ) : null}
+        {facts.length ? (
+          <dl className="job-facts">
+            {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
         ) : null}
         <div className="card-btn-row">
           {isProgram && (
@@ -502,6 +518,8 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
               <Link className="btn btn-solid buy-btn" to={`/learn/${item.slug}`}>
                 {kind === "internship" ? "Open internship" : "Open course"} →
               </Link>
+            ) : openForBuy && full ? (
+              <button className="btn btn-solid buy-btn" disabled>All {placeWord({ type: kind || item.type })}s filled</button>
             ) : openForBuy ? (
               // Prices live in the "See more" popup, not on the card — choosing
               // a plan opens that same popup rather than a separate flow.
@@ -1467,6 +1485,17 @@ export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
         {item.durationDays ? (
           <div className="detail-fact" style={{ maxWidth: 220 }}>
             <span>Duration</span><b>{formatDuration(item.durationDays)}</b>
+          </div>
+        ) : null}
+
+        {isProgram && programFacts({ ...item, type: kind || item.type }).length ? (
+          <dl className="job-facts">
+            {programFacts({ ...item, type: kind || item.type }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
+        ) : null}
+        {isProgram && item.skills?.length ? (
+          <div className="deliverable-row" style={{ marginTop: 16 }}>
+            {item.skills.map((s) => <span key={s} className="deliverable-chip">{s}</span>)}
           </div>
         ) : null}
 

@@ -54,3 +54,27 @@ it("shows internships and courses together in one section, leaving out free ones
   expect(container.querySelector("#internships")).not.toBeNull();
   expect(container.querySelector("#courses")).not.toBeNull();
 });
+
+it("shows each program's details on its card, and no Choose a plan once it's full", async () => {
+  api.getCourses.mockImplementation(async (type) => ({
+    ok: true,
+    courses: type === "internship"
+      ? [{ ...program("Web Internship", 2999), stipend: "Up to ₹3,000/month", mode: "Remote", skills: ["React"], positions: { total: 5, filled: 1, left: 4 } }]
+      : [{ ...program("React Course", 1499), positions: { total: 20, filled: 20, left: 0 } }],
+  }));
+  await act(async () => {
+    root.render(
+      <UserContext.Provider value={{ user: null, isLoggedIn: false }}>
+        <MemoryRouter initialEntries={["/programs"]}><Programs /></MemoryRouter>
+      </UserContext.Provider>
+    );
+  });
+  const [internship, course] = [...container.querySelectorAll("#programs .card")];
+  expect(internship.textContent).toContain("4 of 5 positions open");
+  expect(internship.textContent).toContain("Up to ₹3,000/month");
+  expect(internship.textContent).toContain("React");
+  expect([...internship.querySelectorAll("button")].some((b) => b.textContent === "Choose a plan")).toBe(true);
+  expect(course.textContent).toContain("Seats filled");
+  const full = [...course.querySelectorAll("button")].find((b) => b.textContent === "All seats filled");
+  expect(full.disabled).toBe(true);
+});
