@@ -9,26 +9,32 @@ import { getMyEnrollments } from "../services/api.js";
 //
 //   const { ownedTier, reload } = useMyPlans();
 //   ownedTier(course) -> "basic" | "plus" | "pro" | null
+//   hasAccess(course) -> true while they have live access, plan or not
 //
 // Call `reload()` after an upgrade is paid so the new plan shows straight away.
 export function useMyPlans() {
   const { isLoggedIn } = useContext(UserContext);
   const [plans, setPlans] = useState({}); // course _id -> tier
+  const [access, setAccess] = useState({}); // course _id -> true (live access, with or without a plan)
 
   const reload = useCallback(() => {
-    if (!isLoggedIn) { setPlans({}); return; }
+    if (!isLoggedIn) { setPlans({}); setAccess({}); return; }
     getMyEnrollments().then((res) => {
-      if (!res.ok) return;
+      if (!res || !res.ok) return;
       const next = {};
+      const live = {};
       for (const e of res.enrollments || []) {
+        if (!e.expired && e.course) live[e.course._id] = true;
         if (e.tier && !e.expired && e.course) next[e.course._id] = e.tier;
       }
       setPlans(next);
+      setAccess(live);
     });
   }, [isLoggedIn]);
 
   useEffect(() => { reload(); }, [reload]);
 
   const ownedTier = (item) => (item && plans[item._id]) || null;
-  return { ownedTier, reload };
+  const hasAccess = (item) => !!(item && access[item._id]);
+  return { ownedTier, hasAccess, reload };
 }

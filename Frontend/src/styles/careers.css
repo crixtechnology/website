@@ -154,3 +154,7 @@
 .card .tag.tag--full{color:var(--muted)}
 .plan-option-sub.positions-note{color:var(--teal);font-weight:600}
 .plan-option-sub.positions-note.is-full{color:var(--amber)}
+
+/* "You're enrolled — View it in My Dashboard" on a program page (CourseDetail). */
+.form-note.owned-note{margin:24px 0 0;padding:12px 14px;border-radius:12px;border:1px solid rgba(20,201,201,.35);background:rgba(20,201,201,.07);color:var(--text)}
+.form-note.owned-note a{color:var(--teal);font-weight:600}

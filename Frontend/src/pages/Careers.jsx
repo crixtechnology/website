@@ -4,7 +4,10 @@ import {
   Reveal, TiltCard, BenefitIcon, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, TermsCheckbox, DownloadPdfButton, ProfileGate,
   useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
-import { checkoutTestFee, unlockFreeRole, isFreeRole, openApplicationFor, StatusPill, AdultCheckbox } from "../components/CareersDashboard.jsx";
+import {
+  checkoutTestFee, unlockFreeRole, isFreeRole, openApplicationFor, StatusPill, AdultCheckbox,
+  useMyJobApplications, RoleApplyButton, isInReview, MY_APPLICATIONS,
+} from "../components/CareersDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL } from "../hooks/usePageMeta.js";
 import { getOpenings, getMyJobApplications, hasBackend } from "../services/api.js";
@@ -46,7 +49,7 @@ function FeeBadge({ opening, terms }) {
 }
 
 /* ---------- one opening's card ---------- */
-function OpeningCard({ opening, terms, i, onOpen, onApply }) {
+function OpeningCard({ opening, terms, i, mine, onOpen, onApply }) {
   return (
     <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
       <TiltCard className="card-type-internship job-card">
@@ -57,7 +60,7 @@ function OpeningCard({ opening, terms, i, onOpen, onApply }) {
               <span className="type-pill type-pill--internship">Internship</span>
               <span className={`tag${isRoleFull(opening) ? " tag--full" : ""}`}>{positionsTag(opening.positions, "Now hiring")}</span>
             </div>
-            <FeeBadge opening={opening} terms={terms} />
+            {mine ? <StatusPill application={mine} /> : <FeeBadge opening={opening} terms={terms} />}
           </div>
           <h3>{opening.title}</h3>
           <p>{opening.summary}</p>
@@ -71,9 +74,7 @@ function OpeningCard({ opening, terms, i, onOpen, onApply }) {
           </dl>
         </div>
         <div className="card-btn-row">
-          <button className="btn btn-solid buy-btn" disabled={isRoleFull(opening)} onClick={() => onApply(opening)}>
-            {isRoleFull(opening) ? "Positions filled" : "Apply Now"}
-          </button>
+          <RoleApplyButton opening={opening} mine={mine} onApply={onApply} className="btn btn-solid buy-btn" label="Apply Now" fullLabel="Positions filled" />
           <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
         </div>
       </TiltCard>
@@ -82,7 +83,7 @@ function OpeningCard({ opening, terms, i, onOpen, onApply }) {
 }
 
 /* ---------- full details of one opening ---------- */
-function OpeningModal({ opening, terms, onClose, onApply }) {
+function OpeningModal({ opening, terms, mine, onClose, onApply }) {
   useBodyScrollLock(!!opening);
   useModalFocus(!!opening);
   useModalEscape(!!opening, onClose);
@@ -145,9 +146,9 @@ function OpeningModal({ opening, terms, onClose, onApply }) {
           </>
         )}
 
-        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} disabled={isRoleFull(opening)} onClick={() => onApply(opening)}>
-          {isRoleFull(opening) ? "All positions filled" : free ? "Apply Now — Free" : "Apply Now"}
-        </button>
+        {mine && <p className="form-note" style={{ margin: "16px 0 0" }}>You've applied for this role. Status: <StatusPill application={mine} /></p>}
+        <RoleApplyButton opening={opening} mine={mine} onApply={onApply} style={{ width: "100%", marginTop: 16 }}
+          label={free ? "Apply Now — Free" : "Apply Now"} fullLabel="All positions filled" />
         <div className="careers-rules-download">
           <DownloadPdfButton label="Download hiring & test rules (PDF)" getDocument={() => careersRulesDocument(free ? null : terms, { role: opening.title })} />
         </div>
@@ -341,6 +342,8 @@ export default function Careers() {
   const [notice, setNotice] = useState("");
   // The role whose registration fee is being paid in <TestFeeModal>.
   const [paying, setPaying] = useState(null);
+  // Roles already applied for show "View my application" / "Continue application".
+  const { applications, reload: reloadApplications } = useMyJobApplications(isLoggedIn && !isAdmin);
 
   useEffect(() => {
     let alive = true;
@@ -372,7 +375,14 @@ export default function Careers() {
       setNotice(`Online applications aren't open right now. Email ${careersContact.email} or message us on WhatsApp and we'll help you apply.`);
       return;
     }
-    const go = opening ? () => setPaying(opening) : () => navigate("/dashboard?tab=apply");
+    // Already applied and the test is done: straight to My Applications to follow it.
+    const go = opening
+      ? async () => {
+        const res = await getMyJobApplications();
+        const mine = res && res.ok ? openApplicationFor(res.applications || [], opening) : null;
+        if (isInReview(mine)) navigate(MY_APPLICATIONS); else setPaying(opening);
+      }
+      : () => navigate("/dashboard?tab=apply");
     if (!isLoggedIn) {
       if (opening) rememberRole(opening.slug);
       openAuthModal("login", go);
@@ -443,7 +453,7 @@ export default function Careers() {
             <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
           ) : openings.length ? (
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
-              {openings.map((o, i) => <OpeningCard key={o.slug} opening={o} terms={terms} i={i} onOpen={setDetail} onApply={apply} />)}
+              {openings.map((o, i) => <OpeningCard key={o.slug} opening={o} terms={terms} i={i} mine={openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />)}
             </div>
           ) : (
             <div className="card no-openings" role="status" style={{ marginTop: 24 }}>
@@ -457,8 +467,8 @@ export default function Careers() {
           )}
         </div>
       </section>
-      <OpeningModal opening={detail} terms={terms} onClose={() => setDetail(null)} onApply={apply} />
-      <TestFeeModal opening={paying} terms={terms} user={user} onClose={() => setPaying(null)} />
+      <OpeningModal opening={detail} terms={terms} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} onApply={apply} />
+      <TestFeeModal opening={paying} terms={terms} user={user} onClose={() => { setPaying(null); reloadApplications(); }} />
 
       {/* 4. Final CTA */}
       <section className="section" style={{ paddingTop: 40 }}>

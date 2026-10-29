@@ -1,10 +1,13 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, DownloadPdfButton,
   useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
-import { openApplicationFor, StatusPill, AdultCheckbox, checkoutTestFee } from "../components/CareersDashboard.jsx";
+import {
+  openApplicationFor, StatusPill, AdultCheckbox, checkoutTestFee,
+  useMyJobApplications, RoleApplyButton, isInReview, MY_APPLICATIONS,
+} from "../components/CareersDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta, routeMeta } from "../hooks/usePageMeta.js";
 import { getFreeOpenings, getMyJobApplications, applyForRole, uploadApplicationCv, unlockFreeTest, hasBackend } from "../services/api.js";
@@ -65,7 +68,7 @@ function FeeBadge({ fee }) {
 }
 
 /* ---------- one opening's card ---------- */
-function FreeOpeningCard({ opening, i, fee, onOpen, onApply }) {
+function FreeOpeningCard({ opening, i, fee, mine, onOpen, onApply }) {
   return (
     <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
       <TiltCard className="card-type-internship job-card">
@@ -75,7 +78,7 @@ function FreeOpeningCard({ opening, i, fee, onOpen, onApply }) {
               <span className="type-pill type-pill--internship">Internship</span>
               <span className={`tag${isRoleFull(opening) ? " tag--full" : ""}`}>{positionsTag(opening.positions, "Open")}</span>
             </div>
-            <FeeBadge fee={fee} />
+            {mine ? <StatusPill application={mine} /> : <FeeBadge fee={fee} />}
           </div>
           <h3>{opening.title}</h3>
           <p>{opening.summary}</p>
@@ -89,9 +92,7 @@ function FreeOpeningCard({ opening, i, fee, onOpen, onApply }) {
           </dl>
         </div>
         <div className="card-btn-row">
-          <button className="btn btn-solid buy-btn" disabled={isRoleFull(opening)} onClick={() => onApply(opening)}>
-            {isRoleFull(opening) ? "Positions filled" : "Apply with CV"}
-          </button>
+          <RoleApplyButton opening={opening} mine={mine} onApply={onApply} className="btn btn-solid buy-btn" label="Apply with CV" fullLabel="Positions filled" />
           <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
         </div>
       </TiltCard>
@@ -100,7 +101,7 @@ function FreeOpeningCard({ opening, i, fee, onOpen, onApply }) {
 }
 
 /* ---------- full details of one opening ---------- */
-function FreeOpeningModal({ opening, fee, onClose, onApply }) {
+function FreeOpeningModal({ opening, fee, mine, onClose, onApply }) {
   useBodyScrollLock(!!opening);
   useModalFocus(!!opening);
   useModalEscape(!!opening, onClose);
@@ -138,9 +139,9 @@ function FreeOpeningModal({ opening, fee, onClose, onApply }) {
           {fee > 0 ? " and the test processing fee is paid (it all comes back as wallet credits)" : ""}.
           You'll get your result by email within {RESULT_DAYS} days of submitting it.
         </p>
-        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} disabled={isRoleFull(opening)} onClick={() => onApply(opening)}>
-          {isRoleFull(opening) ? "All positions filled" : fee > 0 ? "Apply with CV" : "Apply with CV — Free"}
-        </button>
+        {mine && <p className="form-note" style={{ margin: "16px 0 0" }}>You've applied for this internship. Status: <StatusPill application={mine} /></p>}
+        <RoleApplyButton opening={opening} mine={mine} onApply={onApply} style={{ width: "100%", marginTop: 16 }}
+          label={fee > 0 ? "Apply with CV" : "Apply with CV — Free"} fullLabel="All positions filled" />
       </div>
     </div>
   );
@@ -383,6 +384,8 @@ function FreeApplyModal({ opening, terms, onClose }) {
 export default function FreeInternships() {
   usePageMeta(routeMeta(FREE_PATH));
   const { isLoggedIn, isAdmin, openAuthModal } = useContext(UserContext);
+  const navigate = useNavigate();
+  const { applications, reload: reloadApplications } = useMyJobApplications(isLoggedIn && !isAdmin);
   const [openings, setOpenings] = useState([]);
   const [live, setLive] = useState(false);
   const [terms, setTerms] = useState(defaultFreeTerms);
@@ -416,13 +419,19 @@ export default function FreeInternships() {
     };
   }, []);
 
-  // Sign up (or log in) first; the CV form opens right after.
+  // Sign up (or log in) first; the CV form opens right after — unless they've
+  // already applied and taken the test, when My Applications is where to follow it.
   const apply = (opening) => {
     setDetail(null);
     setNotice("");
     if (isAdmin) { setNotice("You're signed in as an admin. Log in with a student account to apply."); return; }
-    if (!isLoggedIn) { openAuthModal("login", () => setApplying(opening)); return; }
-    setApplying(opening);
+    const go = async () => {
+      const res = await getMyJobApplications();
+      const mine = res && res.ok ? openApplicationFor(res.applications || [], opening) : null;
+      if (isInReview(mine)) navigate(MY_APPLICATIONS); else setApplying(opening);
+    };
+    if (!isLoggedIn) { openAuthModal("login", go); return; }
+    go();
   };
 
   const hero = freeHero(terms.processingFee);
@@ -460,7 +469,7 @@ export default function FreeInternships() {
             <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
           ) : openings.length ? (
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
-              {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} fee={terms.processingFee} onOpen={setDetail} onApply={apply} />)}
+              {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} fee={terms.processingFee} mine={openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />)}
             </div>
           ) : (
             <div className="card no-openings" role="status" style={{ marginTop: 24 }}>
@@ -489,8 +498,8 @@ export default function FreeInternships() {
           </div>
         </div>
       </section>
-      <FreeOpeningModal opening={detail} fee={terms.processingFee} onClose={() => setDetail(null)} onApply={apply} />
-      <FreeApplyModal opening={applying} terms={terms} onClose={() => setApplying(null)} />
+      <FreeOpeningModal opening={detail} fee={terms.processingFee} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} onApply={apply} />
+      <FreeApplyModal opening={applying} terms={terms} onClose={() => { setApplying(null); reloadApplications(); }} />
 
       {/* How it works */}
       <section id="how" className="section anchor-section" style={{ paddingTop: 20 }}>

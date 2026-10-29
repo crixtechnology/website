@@ -447,7 +447,8 @@ export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
 // kind: "internship" | "course" — drives the type pill, the card's accent
 // color, and the CTA verb, so the category reads even out of context (not
 // just from the section heading above the grid). Omit for Services cards.
-export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isProgram, kind }) {
+// owned: the logged-in student already has access — the card sends them to My Dashboard.
+export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isProgram, kind, owned }) {
   const navigate = useNavigate();
   const variant = i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top";
   // "See more" and "Choose a plan" both land here. A course or internship opens
@@ -518,6 +519,8 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
               <Link className="btn btn-solid buy-btn" to={`/learn/${item.slug}`}>
                 {kind === "internship" ? "Open internship" : "Open course"} →
               </Link>
+            ) : owned ? (
+              <Link className="btn btn-solid buy-btn" to="/dashboard">View in My Dashboard →</Link>
             ) : openForBuy && full ? (
               <button className="btn btn-solid buy-btn" disabled>All {placeWord({ type: kind || item.type })}s filled</button>
             ) : openForBuy ? (
