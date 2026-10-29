@@ -190,7 +190,19 @@ export function Home() {
 }
 
 /* ================= PROGRAMS (Internships + Courses, one page) ================= */
-export function Programs() {
+// only="internship" is the Paid Internship page: the same page, internships only.
+const PAID_INTERNSHIPS_INDEX = [
+  { id: "programs", label: "Paid internships" },
+  { id: "how-it-works", label: "How it works" },
+  { id: "benefits", label: "Benefits" },
+];
+
+export function PaidInternships() {
+  return <Programs only="internship" />;
+}
+
+export function Programs({ only = null }) {
+  const internshipsOnly = only === "internship";
   // Both come live from the backend, admin-managed, once it's connected
   // (REACT_APP_API_URL) — falls back to the static lists in content.js
   // until then, so the page never shows empty before the admin panel has
@@ -198,14 +210,14 @@ export function Programs() {
   const [liveInternships, setLiveInternships] = useState(internships);
   const [liveCourses, setLiveCourses] = useState(courses);
   const [loadingInternships, setLoadingInternships] = useState(hasBackend);
-  const [loadingCourses, setLoadingCourses] = useState(hasBackend);
+  const [loadingCourses, setLoadingCourses] = useState(hasBackend && !internshipsOnly);
   const [buyItem, setBuyItem] = useState(null);
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on, if one was already clicked
   const [inquire, setInquire] = useState(null); // { item, kind } | null
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
   const { user } = useContext(UserContext);
-  usePageMeta(routeMeta("/programs"));
+  usePageMeta(routeMeta(internshipsOnly ? "/paid-internships" : "/programs"));
 
   useEffect(() => {
     let alive = true;
@@ -215,13 +227,13 @@ export function Programs() {
       if (res.ok && res.courses && res.courses.length) setLiveInternships(res.courses);
       setLoadingInternships(false);
     });
-    getCourses("course").then((res) => {
+    if (!internshipsOnly) getCourses("course").then((res) => {
       if (!alive) return;
       if (res.ok && res.courses && res.courses.length) setLiveCourses(res.courses);
       setLoadingCourses(false);
     });
     return () => { alive = false; clearTimeout(cap); };
-  }, []);
+  }, [internshipsOnly]);
 
   // Landed here as ?buy=<slug> — the user just finished their profile and is
   // being brought back to the purchase they started. Re-open the buy modal
@@ -249,7 +261,7 @@ export function Programs() {
   // priced at ₹0 on every plan is a free opportunity, which belongs on Careers.
   const programs = [
     ...liveInternships.map((item) => ({ item, kind: "internship" })),
-    ...liveCourses.map((item) => ({ item, kind: "course" })),
+    ...(internshipsOnly ? [] : liveCourses.map((item) => ({ item, kind: "course" }))),
   ].filter(({ item }) => !isFreeProgram(item));
 
   // Search engines: the programs on this page as an ItemList pointing at each
@@ -258,15 +270,20 @@ export function Programs() {
   useJsonLd("programs-jsonld", listed.length ? {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "Crix Technology internships and courses",
+    name: internshipsOnly ? "Crix Technology paid internships" : "Crix Technology internships and courses",
     itemListElement: listed.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: canonicalUrl(`/programs/${p.slug}`), name: p.title })),
   } : null);
 
   return (
     <>
-      <PageHead eyebrow="Programs" title="Industry-ready courses, delivered across India."
-        text="Fully virtual — join from anywhere in India. Pick a track, enroll, and start building; you learn from working industry professionals, and every course ships with mentor support and a certificate." />
-      <SectionIndex items={PROGRAMS_INDEX} />
+      {internshipsOnly ? (
+        <PageHead eyebrow="Paid Internship" title="Mentored internships on real projects."
+          text="Fully virtual — join from anywhere in India. Work on real projects with industry professionals as your mentors, and finish with an offer letter, a completion certificate and a Letter of Recommendation." />
+      ) : (
+        <PageHead eyebrow="Programs" title="Industry-ready courses, delivered across India."
+          text="Fully virtual — join from anywhere in India. Pick a track, enroll, and start building; you learn from working industry professionals, and every course ships with mentor support and a certificate." />
+      )}
+      <SectionIndex items={internshipsOnly ? PAID_INTERNSHIPS_INDEX : PROGRAMS_INDEX} />
       {/* Internships and courses in one grid — only what's sold here. Free
           opportunities (roles with no fee) live on the Careers page instead.
           The old #internships / #courses anchors still land on this section. */}
@@ -274,12 +291,25 @@ export function Programs() {
       <span id="courses" className="anchor-section" aria-hidden="true" />
       <section id="programs" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
-          <Reveal as="span" variant="reveal-l" className="eyebrow">Internships &amp; Courses</Reveal>
-          <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
-          <Reveal as="p" variant="reveal-l" className="section-lede">
-            Internship programs and self-paced courses, taught and mentored by industry professionals. Internships come with an offer
-            letter, a joining kit, a completion certificate and a Letter of Recommendation; every course ends with a certificate of completion.
-          </Reveal>
+          {internshipsOnly ? (
+            <>
+              <Reveal as="span" variant="reveal-l" className="eyebrow">Paid Internships</Reveal>
+              <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
+              <Reveal as="p" variant="reveal-l" className="section-lede">
+                Internship programs mentored by industry professionals. Every internship comes with an offer letter, a joining kit,
+                a completion certificate and a Letter of Recommendation. Looking for a free one? See <Link to="/free-internships">Free Internships</Link>.
+              </Reveal>
+            </>
+          ) : (
+            <>
+              <Reveal as="span" variant="reveal-l" className="eyebrow">Internships &amp; Courses</Reveal>
+              <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
+              <Reveal as="p" variant="reveal-l" className="section-lede">
+                Internship programs and self-paced courses, taught and mentored by industry professionals. Internships come with an offer
+                letter, a joining kit, a completion certificate and a Letter of Recommendation; every course ends with a certificate of completion.
+              </Reveal>
+            </>
+          )}
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {loadingInternships || loadingCourses ? <SkeletonCards count={3} /> : programs.map(({ item, kind }, i) => (
               <InfoCard key={`${kind}-${item.title || item._id}`} item={item} i={i} isProgram kind={kind}

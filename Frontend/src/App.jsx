@@ -4,7 +4,7 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import SetNewPassword from "./components/SetNewPassword.jsx";
 import CookieConsent from "./components/CookieConsent.jsx";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
-import { Home, Programs, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
+import { Home, Programs, PaidInternships, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
 import { useCopyProtection } from "./hooks/useCopyProtection.js";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
 import { captureReferralFromUrl } from "./utils/referral.js";
@@ -39,7 +39,6 @@ const ROUTE_LOADERS = {
   "/test/": () => import("./pages/student/AptitudeTest.jsx"),
   // Public, but its code (application, payment, the test's rules) is only needed there.
   "/careers": () => import("./pages/Careers.jsx"),
-  // Not linked anywhere on the site: reached by its address only.
   "/free-internships": () => import("./pages/FreeInternships.jsx"),
 };
 registerPrefetch(ROUTE_LOADERS);
@@ -195,6 +194,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/programs" element={<Programs />} />
             <Route path="/programs/:slug" element={<CourseDetail />} />
+            <Route path="/paid-internships" element={<PaidInternships />} />
             {/* Internships and Courses used to be separate pages — keep the
                 old URLs working by sending them to the merged page, straight
                 to the section a bookmark of that old URL actually meant. */}
@@ -203,7 +203,6 @@ export default function App() {
             <Route path="/services" element={<Services />} />
             <Route path="/about" element={<About />} />
             <Route path="/careers" element={<Careers />} />
-            {/* Unlisted: no menu, footer or sitemap link, and noindex — shared by URL only. */}
             <Route path="/free-internships" element={<FreeInternships />} />
             <Route path="/bca-internships" element={<Navigate to="/free-internships" replace />} />
             <Route path="/contact" element={<Contact />} />

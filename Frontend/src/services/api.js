@@ -684,7 +684,7 @@ export async function getOpenings() {
   }
 }
 
-// Open roles for the unlinked free internships page (pages/FreeInternships.jsx).
+// Open roles for the free internships page (pages/FreeInternships.jsx).
 export async function getFreeOpenings() {
   if (!API) return { ok: false, openings: [] };
   try {

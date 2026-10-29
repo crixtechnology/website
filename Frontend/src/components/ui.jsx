@@ -2090,10 +2090,72 @@ function ThemeToggle() {
   );
 }
 
+// The three pages under "Internships & Courses": a dropdown on desktop, a
+// second slide-in panel in the mobile menu.
+const PROGRAM_MENU = [
+  { to: "/free-internships", label: "Free Internship", desc: "Free internship · small aptitude test fee" },
+  { to: "/paid-internships", label: "Paid Internship", desc: "Mentored internship programs" },
+  { to: "/programs", label: "Courses + Internship", desc: "Every course and internship" },
+];
+const isProgramPath = (pathname) => PROGRAM_MENU.some((m) => m.to === pathname);
+const NAV_MOBILE = "(max-width:1100px)";
+
+const Chevron = ({ dir = "down" }) => (
+  <svg className={`nav-chev nav-chev--${dir}`} viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={dir === "down" ? "M6 9l6 6 6-6" : dir === "left" ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6"} />
+  </svg>
+);
+
+// Desktop: "Internships & Courses" opens a small menu (hover or click).
+function ProgramsDropdown() {
+  const [open, setOpen] = useState(false);
+  // While the mouse is over it, a click keeps it open instead of toggling it
+  // shut again (the hover already opened it).
+  const hovered = useRef(false);
+  const ref = useRef(null);
+  const location = useLocation();
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") { setOpen(false); ref.current?.querySelector("button")?.focus(); } };
+    document.addEventListener("pointerdown", onOutside);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onOutside);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  return (
+    <li className={`nav-drop${open ? " open" : ""}`} ref={ref}
+      onMouseEnter={() => { hovered.current = true; setOpen(true); }}
+      onMouseLeave={() => { hovered.current = false; setOpen(false); }}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
+      <button type="button" className={`nav-drop-btn${isProgramPath(location.pathname) ? " active" : ""}`}
+        aria-expanded={open} aria-haspopup="true" aria-controls="nav-drop-programs"
+        onClick={() => setOpen((v) => hovered.current || !v)}>
+        Internships &amp; Courses <Chevron />
+      </button>
+      <ul id="nav-drop-programs" className="nav-drop-menu">
+        {PROGRAM_MENU.map((m) => (
+          <li key={m.to}>
+            <NavLink to={m.to} end onClick={() => setOpen(false)}>
+              <b>{m.label}</b><span>{m.desc}</span>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </li>
+  );
+}
+
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  // Mobile menu: the "Internships & Courses" panel slid in over the main one.
+  const [sub, setSub] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef(null);
+  const drawerRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isLoggedIn, isAdmin, logout, openAuthModal } = useContext(UserContext);
@@ -2113,22 +2175,39 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close the mobile drawer on navigation, and on any tap outside it —
-  // right now it only closed when a nav link itself was clicked.
+  // Close the mobile drawer on navigation, on Escape (the submenu first), and
+  // when the window grows past the mobile breakpoint.
   useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => { if (!open) setSub(false); }, [open]);
   useEffect(() => {
     if (!open) return;
-    const onOutside = (e) => {
-      if (navRef.current && !navRef.current.contains(e.target)) setOpen(false);
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (sub) setSub(false); else setOpen(false);
     };
-    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("pointerdown", onOutside);
+    const mq = window.matchMedia(NAV_MOBILE);
+    const onWide = () => { if (!mq.matches) setOpen(false); };
     document.addEventListener("keydown", onKey);
+    mq.addEventListener?.("change", onWide);
     return () => {
-      document.removeEventListener("pointerdown", onOutside);
       document.removeEventListener("keydown", onKey);
+      mq.removeEventListener?.("change", onWide);
     };
-  }, [open]);
+  }, [open, sub]);
+  useBodyScrollLock(open);
+  // Focus follows the panel that's showing; back to the menu button on close.
+  const burgerRef = useRef(null);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open) {
+      const t = setTimeout(() => {
+        drawerRef.current?.querySelector(sub ? ".nav-drawer-sub .nav-drawer-back" : ".nav-drawer-main .nav-drawer-close")?.focus({ preventScroll: true });
+      }, 0);
+      wasOpen.current = true;
+      return () => clearTimeout(t);
+    }
+    if (wasOpen.current) { wasOpen.current = false; burgerRef.current?.focus({ preventScroll: true }); }
+  }, [open, sub]);
 
   const links = [
     ["/services", "IT Services"],
@@ -2137,28 +2216,82 @@ export function Navbar() {
     ["/careers", "Careers"],
     ["/contact", "Contact"],
   ];
+  const close = () => setOpen(false);
   return (
     <nav ref={navRef} className={`topbar ${scrolled ? "scrolled" : ""}`}>
-      {/* The dropdown itself only ever grows to fit its own content, not
-          the full screen, so without this the page just continues right
-          below it with nothing separating the two. Same dimmed/blurred
-          treatment as every modal's own backdrop, so an open mobile menu
-          reads as "owning" the screen the same way a modal does.
-          Portaled to <body> rather than rendered in place: nav.topbar has
-          its own backdrop-filter (for its glassy scroll effect), and per
-          the CSS spec a backdrop-filter on an ancestor makes THAT element
-          the containing block for a position:fixed descendant instead of
-          the viewport — nav.topbar is only 68px tall, so top:68px/bottom:0
-          resolved to a height of 0 there. Same fix as Alert's own portal,
-          for the same underlying reason. */}
-      {open && createPortal(
-        <div className="nav-backdrop open" onClick={() => setOpen(false)} aria-hidden="true" />,
+      {/* Phones and tablets: the menu slides in from the right, over a dimmed
+          page. Portaled to <body>: .nav-in has a backdrop-filter, which would
+          make it (56px tall) the containing block for these fixed panels
+          instead of the viewport. Always rendered so it can slide out too;
+          inert while closed so nothing in it can be tabbed to. */}
+      {createPortal(
+        <>
+          {open && <div className="nav-backdrop open" onClick={close} aria-hidden="true" />}
+          <div id="nav-drawer" ref={drawerRef} className={`nav-drawer${open ? " open" : ""}${sub ? " sub" : ""}`}
+            role="dialog" aria-modal="true" aria-label="Menu" aria-hidden={!open} inert={open ? undefined : ""}>
+            <div className="nav-drawer-panel nav-drawer-main" inert={sub ? "" : undefined}>
+              <div className="nav-drawer-head">
+                <span className="nav-drawer-title">Menu</span>
+                <button type="button" className="nav-drawer-close" aria-label="Close menu" onClick={close}>✕</button>
+              </div>
+              <ul className="nav-drawer-links">
+                {links.map(([to, label]) => (
+                  <li key={to}>
+                    {to === "/programs" ? (
+                      <button type="button" className={`nav-drawer-item${isProgramPath(location.pathname) ? " active" : ""}`}
+                        aria-expanded={sub} aria-controls="nav-drawer-programs" onClick={() => setSub(true)}>
+                        {label} <Chevron dir="right" />
+                      </button>
+                    ) : (
+                      <NavLink className="nav-drawer-item" to={to} onClick={close}>{label}</NavLink>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {/* .nav-cta/.nav-account in the header are desktop-only — the
+                  same account links, for phones. */}
+              <div className="nav-links-mobile-account">
+                {isLoggedIn ? (
+                  <>
+                    <NavLink to="/profile" onClick={close}>Profile</NavLink>
+                    {isAdmin && <NavLink to="/dashboard" onClick={close}>All Courses</NavLink>}
+                    <NavLink to="/dashboard" onClick={close}>
+                      My Dashboard{!isAdmin && dueBadge}
+                    </NavLink>
+                    <button className="btn btn-ghost nav-logout" onClick={() => { logout(); close(); navigate("/"); }}>Log out</button>
+                  </>
+                ) : (
+                  <button className="nav-cta" onClick={() => { close(); openAuthModal("login"); }}>Log in</button>
+                )}
+              </div>
+            </div>
+            <div id="nav-drawer-programs" className="nav-drawer-panel nav-drawer-sub" inert={sub ? undefined : ""}>
+              <div className="nav-drawer-head">
+                <button type="button" className="nav-drawer-back" onClick={() => setSub(false)}>
+                  <Chevron dir="left" /> Back
+                </button>
+                <button type="button" className="nav-drawer-close" aria-label="Close menu" onClick={close}>✕</button>
+              </div>
+              <span className="nav-drawer-title nav-drawer-subtitle">Internships &amp; Courses</span>
+              <ul className="nav-drawer-links">
+                {PROGRAM_MENU.map((m) => (
+                  <li key={m.to}>
+                    <NavLink className="nav-drawer-item nav-drawer-option" to={m.to} end onClick={close}>
+                      <b>{m.label}</b><span>{m.desc}</span>
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </>,
         document.body
       )}
       <div className="wrap nav-in">
-        <Link to="/" onClick={() => setOpen(false)}><Logo /></Link>
-        <ul id="primary-nav" className={`nav-links ${open ? "open" : ""}`}>
+        <Link to="/" onClick={close}><Logo /></Link>
+        <ul id="primary-nav" className="nav-links">
           {links.map(([to, label]) => {
+            if (to === "/programs") return <ProgramsDropdown key={to} />;
             // NavLink's own isActive matches on pathname only, so it can't
             // tell two links to the same page with different #sections
             // apart — both would light up together. Compare the
@@ -2177,29 +2310,6 @@ export function Navbar() {
               </li>
             );
           })}
-          {/* .nav-cta/.nav-account (below) are desktop-only (hidden under the
-              mobile breakpoint) — duplicate the same account links here so
-              logging in/out and reaching My Dashboard is still reachable from
-              the mobile menu, not just on desktop. */}
-          <li className="nav-links-mobile-account">
-            {isLoggedIn ? (
-              <>
-                <NavLink to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
-                {isAdmin && <NavLink to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>}
-                <NavLink to="/dashboard" onClick={() => setOpen(false)}>
-                  My Dashboard{!isAdmin && dueBadge}
-                </NavLink>
-                <button className="btn btn-ghost nav-logout" onClick={() => { logout(); setOpen(false); navigate("/"); }}>Log out</button>
-              </>
-            ) : (
-              // Same .nav-cta pill the desktop nav already uses for Log in —
-              // was a plain underlined text link here, which read as a third,
-              // unrelated button style sitting next to the hero's pill CTAs
-              // (still visible beneath this dropdown, since it pushes content
-              // down rather than covering it).
-              <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
-            )}
-          </li>
         </ul>
         {/* Always in the header, before Log in / the account links on desktop,
             and right beside the menu button on phones and tablets (same
@@ -2221,9 +2331,9 @@ export function Navbar() {
         ) : (
           <button className="nav-cta" onClick={() => { setOpen(false); openAuthModal("login"); }}>Log in</button>
         )}
-        <button className={`burger${dueBadge ? " has-due" : ""}`} aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open} aria-controls="primary-nav"
-          onClick={() => setOpen(!open)}>{open ? "✕" : "☰"}</button>
+        <button ref={burgerRef} className={`burger${dueBadge ? " has-due" : ""}`} aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open} aria-controls="nav-drawer"
+          onClick={() => setOpen(!open)}>☰</button>
       </div>
       {location.pathname !== "/dashboard" && <PaymentRequestBanner requests={pendingRequests} />}
       {/* One floating reminder at a time: a payment request outranks this one. */}

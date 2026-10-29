@@ -96,6 +96,63 @@ nav.topbar .nav-in{justify-content:flex-start;gap:8px}
   .nav-backdrop{background:rgba(var(--ink-rgb),.6)}
 }
 
+/* ---------- "Internships & Courses" dropdown (desktop) ---------- */
+.nav-drop{position:relative}
+.nav-drop-btn{display:inline-flex;align-items:center;gap:4px;background:none;border:0;cursor:pointer;font:inherit;padding:8px 10px 8px 14px;border-radius:12px;font-size:.875rem;font-weight:500;color:rgba(var(--text-rgb),.7);white-space:nowrap;transition:background .2s,color .2s}
+.nav-drop-btn:hover,.nav-drop.open .nav-drop-btn{background:rgba(var(--text-rgb),.05);color:var(--text)}
+.nav-drop-btn.active{background:rgba(var(--text-rgb),.07);color:var(--text)}
+.nav-chev{flex:none;transition:transform .25s}
+.nav-drop.open .nav-chev--down{transform:rotate(180deg)}
+/* padding-top bridges the gap under the button, so moving the mouse down onto the menu keeps it open. */
+.nav-drop-menu{position:absolute;top:100%;left:50%;min-width:260px;padding-top:10px;list-style:none;opacity:0;visibility:hidden;transform:translate(-50%,6px);transition:opacity .2s,transform .2s,visibility 0s .2s;z-index:5}
+.nav-drop.open .nav-drop-menu{opacity:1;visibility:visible;transform:translate(-50%,0);transition:opacity .2s,transform .2s}
+.nav-drop-menu::before{content:"";position:absolute;inset:10px 0 0;border-radius:16px;background:rgba(var(--panel-rgb),.97);border:1px solid rgba(var(--text-rgb),.1);box-shadow:0 20px 25px -5px rgba(0,0,0,.25),0 8px 10px -6px rgba(0,0,0,.2);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);z-index:-1}
+.nav-drop-menu li{padding:0 6px}
+.nav-drop-menu li:first-child{padding-top:6px}
+.nav-drop-menu li:last-child{padding-bottom:6px}
+.nav-links .nav-drop-menu a{display:flex;flex-direction:column;gap:2px;padding:10px 12px;white-space:normal}
+.nav-drop-menu a b{font-weight:600;color:var(--text)}
+.nav-drop-menu a span{font-size:.78rem;color:var(--muted)}
+.nav-links .nav-drop-menu a.active{background:rgba(20,201,201,.1)}
+.nav-links .nav-drop-menu a.active b{color:var(--teal)}
+
+/* ---------- Mobile menu: slides in from the right ---------- */
+.nav-drawer{display:none}
+@media(max-width:1100px){
+  .nav-backdrop{top:0;z-index:90}
+  .nav-drawer{display:block;position:fixed;top:0;right:0;bottom:0;width:min(360px,88vw);z-index:91;overflow:hidden;
+    background:var(--panel);border-left:1px solid rgba(var(--text-rgb),.1);box-shadow:-24px 0 48px rgba(0,0,0,.35);
+    transform:translateX(100%);visibility:hidden;transition:transform .32s cubic-bezier(.2,.7,.2,1),visibility 0s .32s}
+  .nav-drawer.open{transform:none;visibility:visible;transition:transform .32s cubic-bezier(.2,.7,.2,1)}
+  .nav-drawer-panel{position:absolute;inset:0;display:flex;flex-direction:column;padding:12px 16px 24px;overflow-y:auto;background:var(--panel);transition:transform .3s cubic-bezier(.2,.7,.2,1)}
+  /* The submenu waits off the right edge and slides over the main panel. */
+  .nav-drawer-sub{transform:translateX(100%)}
+  .nav-drawer.sub .nav-drawer-sub{transform:none}
+  .nav-drawer.sub .nav-drawer-main{transform:translateX(-30%)}
+  .nav-drawer-head{display:flex;align-items:center;justify-content:space-between;min-height:56px;margin-bottom:8px;border-bottom:1px solid rgba(var(--text-rgb),.08)}
+  .nav-drawer-title{font-size:.78rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 4px}
+  .nav-drawer-subtitle{display:block;padding:10px 12px 6px}
+  .nav-drawer-close,.nav-drawer-back{display:inline-flex;align-items:center;gap:4px;min-height:44px;background:none;border:0;border-radius:12px;color:var(--text);font:inherit;cursor:pointer}
+  .nav-drawer-close{width:44px;justify-content:center;font-size:1.1rem}
+  .nav-drawer-back{padding:0 12px 0 6px;font-size:.95rem;font-weight:500}
+  .nav-drawer-close:hover,.nav-drawer-back:hover{background:rgba(var(--text-rgb),.06)}
+  .nav-drawer-links{list-style:none;margin:0;padding:0}
+  .nav-drawer-item{display:flex;align-items:center;justify-content:space-between;width:100%;padding:13px 12px;border:0;border-radius:12px;background:none;font:inherit;font-size:1rem;text-align:left;text-decoration:none;color:rgba(var(--text-rgb),.85);cursor:pointer;transition:background .2s,color .2s}
+  .nav-drawer-item:hover{background:rgba(var(--text-rgb),.05);color:var(--text)}
+  .nav-drawer-item.active{background:rgba(var(--text-rgb),.07);color:var(--text)}
+  .nav-drawer-option{flex-direction:column;align-items:flex-start;gap:3px;margin-bottom:4px;border:1px solid rgba(var(--text-rgb),.08)}
+  .nav-drawer-option b{font-weight:600}
+  .nav-drawer-option span{font-size:.82rem;color:var(--muted)}
+  .nav-drawer-option.active{border-color:rgba(20,201,201,.45);background:rgba(20,201,201,.08)}
+  .nav-drawer-option.active b{color:var(--teal)}
+  .nav-drawer .nav-links-mobile-account{margin-top:auto;padding:16px 4px 0}
+  .nav-drawer .nav-links-mobile-account a{display:inline-block;padding:10px 12px;color:rgba(var(--text-rgb),.8);text-decoration:none}
+  .nav-drawer .nav-links-mobile-account .nav-cta{flex:1;text-align:center;border-radius:12px;padding:12px 16px;font-weight:600}
+}
+@media(prefers-reduced-motion:reduce){
+  .nav-drawer,.nav-drawer.open,.nav-drawer-panel,.nav-drop-menu{transition:none}
+}
+
 /* ---------- Buttons ---------- */
 .btn{font-weight:600;letter-spacing:.01em;transition:transform .25s,box-shadow .25s,background .25s,border-color .25s,color .25s}
 .btn-solid{background:linear-gradient(120deg,var(--teal),var(--cyan));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 0 rgba(0,0,0,.08),0 10px 28px -10px rgba(var(--teal-rgb),.7)}
