@@ -78,3 +78,21 @@ it("shows each program's details on its card, and no Choose a plan once it's ful
   const full = [...course.querySelectorAll("button")].find((b) => b.textContent === "All seats filled");
   expect(full.disabled).toBe(true);
 });
+
+it("sends someone who already has a program to My Dashboard instead of offering its plans", async () => {
+  api.getCourses.mockImplementation(async (type) => ({
+    ok: true, courses: type === "internship" ? [program("Web Internship", 2999)] : [program("React Course", 1499)],
+  }));
+  api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [{ course: { _id: "Web Internship" }, tier: "basic", expired: false }] });
+  await act(async () => {
+    root.render(
+      <UserContext.Provider value={{ user: { name: "S" }, isLoggedIn: true }}>
+        <MemoryRouter initialEntries={["/programs"]}><Programs /></MemoryRouter>
+      </UserContext.Provider>
+    );
+  });
+  const [owned, other] = [...container.querySelectorAll("#programs .card")];
+  const link = [...owned.querySelectorAll("a")].find((a) => a.textContent.startsWith("View in My Dashboard"));
+  expect(link.getAttribute("href")).toBe("/dashboard");
+  expect([...other.querySelectorAll("button")].some((b) => b.textContent === "Choose a plan")).toBe(true);
+});

@@ -20,6 +20,37 @@ const CLOSED = ["not_shortlisted", "rejected"];
 export const openApplicationFor = (applications, opening) =>
   applications.find((a) => a.opening && a.opening._id === opening._id && !CLOSED.includes(a.status));
 
+// The test is done and the decision is ours: nothing left for the candidate to do
+// but follow it in My Dashboard → My Applications. Once it ends without an offer
+// (CLOSED above) they can apply for the role again.
+const IN_REVIEW = ["submitted", "shortlisted", "interview_scheduled", "selected"];
+export const isInReview = (application) => !!application && IN_REVIEW.includes(application.status);
+export const MY_APPLICATIONS = "/dashboard?tab=applications";
+
+// The logged-in student's job applications, for showing "View my application"
+// on the roles they've already applied for. Empty when logged out.
+export function useMyJobApplications(isLoggedIn) {
+  const [applications, setApplications] = useState([]);
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    if (!isLoggedIn) { setApplications([]); return undefined; }
+    let alive = true;
+    Promise.resolve(getMyJobApplications()).then((res) => { if (alive && res && res.ok) setApplications(res.applications || []); });
+    return () => { alive = false; };
+  }, [isLoggedIn, version]);
+  return { applications, reload: () => setVersion((v) => v + 1) };
+}
+
+// A role's main button: "View my application" while one is being reviewed,
+// "Continue application" while it still needs the fee or the test, otherwise
+// Apply (off once every position is filled).
+export function RoleApplyButton({ opening, mine, label, fullLabel, onApply, className = "btn btn-solid", style }) {
+  if (isInReview(mine)) return <Link className={className} style={style} to={MY_APPLICATIONS}>View my application →</Link>;
+  if (mine) return <button className={className} style={style} onClick={() => onApply(opening)}>Continue application</button>;
+  const full = isRoleFull(opening);
+  return <button className={className} style={style} disabled={full} onClick={() => onApply(opening)}>{full ? fullLabel : label}</button>;
+}
+
 // The pill beside a role or an application.
 const PILL_CLASS = {
   payment_pending: "read", test_pending: "new", submitted: "new", shortlisted: "lifetime",

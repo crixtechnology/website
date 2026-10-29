@@ -63,6 +63,7 @@ export function Home() {
   const [inquireItem, setInquireItem] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [serviceInquiryItem, setServiceInquiryItem] = useState(null);
+  const { hasAccess } = useMyPlans();
   usePageMeta(routeMeta("/"));
   useEffect(() => {
     const onScroll = () => {
@@ -156,7 +157,7 @@ export function Home() {
           <Reveal as="h2" variant="reveal-l">Real projects. Real experience. Real pay.</Reveal>
           <div className="grid3 stagger">
             {loadingInternships ? <SkeletonCards count={internships.length} /> : liveInternships.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" onInquire={setInquireItem} onDetail={setDetailData} />
+              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" owned={hasAccess(it)} onInquire={setInquireItem} onDetail={setDetailData} />
             ))}
           </div>
           <div className="hero-ctas">
@@ -218,6 +219,8 @@ export function Programs({ only = null }) {
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
   const { user } = useContext(UserContext);
+  // What they already have: those cards say "View in My Dashboard" instead of offering plans again.
+  const { hasAccess } = useMyPlans();
   usePageMeta(routeMeta(internshipsOnly ? "/paid-internships" : "/programs"));
 
   useEffect(() => {
@@ -313,7 +316,7 @@ export function Programs({ only = null }) {
           )}
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {loadingInternships || loadingCourses ? <SkeletonCards count={3} /> : programs.map(({ item, kind }, i) => (
-              <InfoCard key={`${kind}-${item.title || item._id}`} item={item} i={i} isProgram kind={kind}
+              <InfoCard key={`${kind}-${item.title || item._id}`} item={item} i={i} isProgram kind={kind} owned={hasAccess(item)}
                 onInquire={(it) => setInquire({ item: it, kind })} onDetail={setDetailData} />
             ))}
           </div>
@@ -367,7 +370,7 @@ export function CourseDetail() {
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on
   const [inquireOpen, setInquireOpen] = useState(false);
   const [upgrade, setUpgrade] = useState(null); // { item, tier } | null — the plan-upgrade dialog
-  const { ownedTier, reload: reloadPlans } = useMyPlans();
+  const { ownedTier, hasAccess, reload: reloadPlans } = useMyPlans();
   const { isLoggedIn, isAdmin, user, openAuthModal } = useContext(UserContext);
   useNoIndex(course === null); // a course that doesn't exist is a "not found" screen: keep it out of search results
   useCourseJsonLd(course); // schema.org "Course" markup while a real course is showing
@@ -473,6 +476,12 @@ export function CourseDetail() {
 
             {/* The block the phone's sticky Enroll bar watches: while this is on screen, the bar steps aside. */}
             <div id="course-cta" style={{ marginTop: 8 }}>
+            {!isAdmin && hasAccess(course) && (
+              <p className="form-note owned-note">
+                You're enrolled in this {course.type === "internship" ? "internship" : "course"}.{" "}
+                <Link to="/dashboard">View it in My Dashboard →</Link>
+              </p>
+            )}
             {isAdmin ? (
               // Admins see every course and internship without buying or
               // applying — straight to the content (backend: isAdminUser).
@@ -482,7 +491,7 @@ export function CourseDetail() {
                 </Link>
                 <span style={{ display: "block", marginTop: 8, color: "var(--muted)", fontSize: ".82rem" }}>Admin access — no payment needed</span>
               </div>
-            ) : openForBuy && isFull(course) && !ownedTier(course) ? (
+            ) : openForBuy && isFull(course) && !ownedTier(course) && !hasAccess(course) ? (
               // Every place is taken: nothing to buy, but they can ask about the next batch.
               <div style={{ maxWidth: 420, marginTop: 24 }}>
                 <p className="form-note" style={{ marginTop: 0 }}>

@@ -190,9 +190,33 @@ describe("Careers page", () => {
       applications: [{ _id: "a1", status: "test_pending", statusLabel: "Test pending", opening: { _id: "o1" }, attempt: null }],
     });
     await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
-    await click(button("Apply Now", all(".job-card")[0]));
+    // Paid but not taken yet: the card says so, and continuing opens the test.
+    await click(button("Continue application", all(".job-card")[0]));
     expect(button("Start test", feeModal()).getAttribute("href")).toBe("/test/a1");
     expect(feeModal().textContent).not.toContain("Pay ₹289");
+  });
+
+  it("sends someone whose test is being reviewed to My Applications instead of applying again", async () => {
+    api.getMyJobApplications.mockResolvedValue({
+      ok: true, terms,
+      applications: [{ _id: "a1", status: "submitted", statusLabel: "Submitted", opening: { _id: "o1" }, attempt: null }],
+    });
+    await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
+    const [applied, other] = all(".job-card");
+    expect(applied.textContent).toContain("Submitted");
+    expect(button("View my application", applied).getAttribute("href")).toBe("/dashboard?tab=applications");
+    expect(button("Apply Now", other)).toBeTruthy();
+  });
+
+  it("lets them apply again once an application ends without an offer", async () => {
+    api.getMyJobApplications.mockResolvedValue({
+      ok: true, terms,
+      applications: [{ _id: "a1", status: "not_shortlisted", statusLabel: "Not shortlisted", opening: { _id: "o1" }, attempt: null }],
+    });
+    await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
+    const card = all(".job-card")[0];
+    expect(button("View my application", card)).toBeUndefined();
+    expect(button("Apply Now", card).disabled).toBe(false);
   });
 
   const renderWithOpenings = async (result) => {
