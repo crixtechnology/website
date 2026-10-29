@@ -7,6 +7,7 @@ const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("
 const { serialize } = require("../utils/serialize");
 const { isTier } = require("../utils/tiers");
 const { publicWriteLimiter } = require("../utils/rateLimit");
+const { emailDomainError } = require("../utils/emailDomain");
 
 const { queryText } = require("../utils/validators");
 const router = express.Router();
@@ -45,6 +46,11 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
     // on the application — same list InquiryModal already checks client-side.
     if (isDisposableEmail(email)) {
       return res.status(400).json({ ok: false, error: "Please use a permanent email address (not a temporary/disposable one)." });
+    }
+    // Nobody can follow up at a domain that takes no mail ("gmial.com").
+    const domainProblem = await emailDomainError(email);
+    if (domainProblem) {
+      return res.status(400).json({ ok: false, error: domainProblem });
     }
     if (!isValidPhone(phone)) {
       return res.status(400).json({ ok: false, error: "Enter a valid phone number." });

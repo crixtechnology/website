@@ -7,7 +7,9 @@ import PhoneInput from "../../components/PhoneInput.jsx";
 import PasswordSettings from "../../components/PasswordSettings.jsx";
 import WalletCard from "../../components/WalletCard.jsx";
 import DeleteAccount from "../../components/DeleteAccount.jsx";
-import { phoneError } from "../../utils/phone.js";
+import { phoneError, phoneFieldError } from "../../utils/phone.js";
+import { FieldError } from "../../components/FormFields.jsx";
+import { useTouched } from "../../hooks/useTouched.js";
 import { EducationFields, educationForm, educationPayload, emptyEducation } from "../../utils/education.js";
 import { safeNextPath } from "../../utils/safePath.js";
 
@@ -27,6 +29,7 @@ export default function Profile() {
   const [education, setEducation] = useState(emptyEducation);
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [saving, setSaving] = useState(false);
+  const fields = useTouched();
 
   useEffect(() => {
     // An account made from the login form has a placeholder name: start the box empty.
@@ -65,6 +68,12 @@ export default function Profile() {
   const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); setStatus({ text: "", kind: "" }); };
 
   const missing = profileMissing(user);
+  // Live errors under the name and phone fields (hooks/useTouched.js).
+  const errors = {
+    "pf-name": form.name.trim() ? "" : "Enter your full name.",
+    "pf-phone": phoneFieldError(form.phone),
+  };
+  const showErr = (id) => (fields.show(id) && errors[id]) || "";
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -72,6 +81,7 @@ export default function Profile() {
     // submit on Enter inside a text field — without this guard, pressing
     // Enter twice quickly (or a slow network) fires two concurrent saves.
     if (saving) return;
+    fields.markSubmitted();
     if (!form.name.trim()) { setStatus({ text: "Please add your full name.", kind: "error" }); return; }
     if (!form.phone.trim()) { setStatus({ text: "Please add a phone number.", kind: "error" }); return; }
     const phoneProblem = phoneError(form.phone);
@@ -116,7 +126,9 @@ export default function Profile() {
         <form onSubmit={onSubmit}>
           <div className="field">
             <label htmlFor="pf-name">Full name</label>
-            <input id="pf-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Your name" disabled={saving} />
+            <input id="pf-name" autoComplete="name" value={form.name} onChange={set("name")} placeholder="Your name" disabled={saving}
+              onBlur={fields.touch("pf-name")} aria-invalid={!!showErr("pf-name") || undefined} aria-describedby="pf-name-err" />
+            <FieldError id="pf-name-err">{showErr("pf-name")}</FieldError>
           </div>
 
           <div className="field">
@@ -131,7 +143,9 @@ export default function Profile() {
           <div className="field">
             <label htmlFor="pf-phone">Phone</label>
             <PhoneInput id="pf-phone" value={form.phone} disabled={saving}
-              onChange={(phone) => { setForm((f) => ({ ...f, phone })); setStatus({ text: "", kind: "" }); }} />
+              onChange={(phone) => { setForm((f) => ({ ...f, phone })); setStatus({ text: "", kind: "" }); }}
+              onBlur={fields.touch("pf-phone")} invalid={!!showErr("pf-phone")} describedBy="pf-phone-err" />
+            <FieldError id="pf-phone-err">{showErr("pf-phone")}</FieldError>
           </div>
 
           <h2 style={{ fontSize: "1.05rem", margin: "28px 0 4px" }}>Education</h2>

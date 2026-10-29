@@ -46,6 +46,23 @@ export function emailFormatError(email) {
   return "";
 }
 
+// The same rules as full sentences, for the error shown right under a field
+// as the visitor types (components/FormFields.jsx). "" when the value is fine.
+// Whether the domain can actually receive mail is a server question — see
+// hooks/useEmailCheck.js, which runs once this local check passes.
+export function emailError(email, { required = true } = {}) {
+  if (!String(email || "").trim()) return required ? "Enter your email." : "";
+  if (!isValidEmail(email)) return "Enter a valid email address, like you@example.com.";
+  if (isDisposableEmail(email)) return "Temporary/disposable emails aren't allowed. Please use a permanent one.";
+  return "";
+}
+
+export function nameError(name) {
+  if (!String(name || "").trim()) return "Enter your name.";
+  if (!isValidName(name)) return "Use letters only, at least 2 characters.";
+  return "";
+}
+
 // Letters (incl. accented/non-Latin scripts) plus spaces, apostrophes, dots
 // and hyphens — covers "Mary-Jane O'Connor", "Zoë", etc. without accepting
 // digits or symbols a real name never has. 2-60 chars.

@@ -491,7 +491,7 @@ footer::before{content:"";position:absolute;top:-1px;left:0;right:0;height:1px;p
    edge when it isn't (only after the visitor has interacted: :user-valid). */
 .field label{transition:color .2s,transform .2s}
 .field:focus-within>label{color:var(--text);transform:translateX(3px)}
-.field input:user-valid:not(:placeholder-shown):not(.phone-search):not(.phone-num){padding-right:42px;
+.field input:user-valid:not(:placeholder-shown):not(.phone-search):not(.phone-num):not([aria-invalid="true"]){padding-right:42px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314C9C9' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 14px center;background-size:16px}
 .field input:user-invalid,.field textarea:user-invalid{border-color:rgba(var(--danger-rgb),.7)}

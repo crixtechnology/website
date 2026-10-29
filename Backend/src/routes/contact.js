@@ -5,6 +5,7 @@ const { requireAdmin } = require("../middleware/requireAdmin");
 const { isValidEmail, isValidPhone, isDisposableEmail, isValidName } = require("../utils/validators");
 const { serialize } = require("../utils/serialize");
 const { publicWriteLimiter } = require("../utils/rateLimit");
+const { emailDomainError } = require("../utils/emailDomain");
 
 const { queryText } = require("../utils/validators");
 const router = express.Router();
@@ -38,6 +39,12 @@ router.post("/contact", publicWriteLimiter, async (req, res, next) => {
     // and ServiceInquiryModal already check client-side.
     if (email && isDisposableEmail(email)) {
       return res.status(400).json({ ok: false, error: "Please use a permanent email address (not a temporary/disposable one)." });
+    }
+    // A domain that can't receive mail (a typo like "gmial.com") means the
+    // reply bounces — same check the form runs live as the visitor types.
+    const domainProblem = email ? await emailDomainError(email) : "";
+    if (domainProblem) {
+      return res.status(400).json({ ok: false, error: domainProblem });
     }
     if (phone && !isValidPhone(phone)) {
       return res.status(400).json({ ok: false, error: "Enter a valid phone number." });

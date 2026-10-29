@@ -123,6 +123,13 @@ export function phoneError(value) {
     : `a valid number for ${c.dial} (${c.min}–${c.max} digits)`;
 }
 
+// phoneError as a full sentence for the error under the field ("" when fine).
+export function phoneFieldError(value, { required = true } = {}) {
+  if (!String(value || "").trim()) return required ? "Enter your phone number." : "";
+  const problem = phoneError(value);
+  return problem ? `Enter ${problem}.` : "";
+}
+
 // A phone number as Razorpay/tel: links want it: "+919876543210". Numbers
 // saved without a country code are Indian.
 export function compactPhone(value) {
