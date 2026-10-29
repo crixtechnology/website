@@ -161,7 +161,7 @@ export default function HelpAgentPanel({ open, onClose }) {
   };
 
   const askRelated = (f) => {
-    const a = answerFor(f.id);
+    const a = answerFor(f.id, data);
     if (a) showReplies(f.q, [a]);
   };
 
@@ -208,7 +208,10 @@ export default function HelpAgentPanel({ open, onClose }) {
                     ? <><DeptCard dept="programs" /><DeptCard dept="it" /></>
                     : m.dept && <DeptCard dept={m.dept} />}
                   {m.links && m.links.length > 0 && (
-                    <div className="ha-links">{m.links.map((l, j) => <AnswerLink key={j} link={l} onNavigate={() => setOpen(false)} />)}</div>
+                    <div className="ha-links">
+                      <small>Next step</small>
+                      {m.links.map((l, j) => <AnswerLink key={j} link={l} onNavigate={close} />)}
+                    </div>
                   )}
                   {m.more && m.more.length > 0 && (
                     <div className="ha-more">

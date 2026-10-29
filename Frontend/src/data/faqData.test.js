@@ -28,6 +28,34 @@ describe("help bot answers", () => {
   });
 });
 
+describe("help bot answers say it in the chat", () => {
+  it("keeps the unlisted free internships page out of the answer bank (its questions show up as suggestions)", () => {
+    for (const f of ALL_FAQS) {
+      expect(`${f.q} ${f.a} ${f.k || ""}`).not.toMatch(/free internship|free-internships|₹94|processing fee/i);
+      for (const l of f.links || []) expect(l.to || "").not.toBe("/free-internships");
+    }
+  });
+
+  it("never states an amount of money", () => {
+    // (The wallet's rate, 1 credit = ₹1, isn't a price.)
+    for (const f of ALL_FAQS) expect(f.a.replace(/1 credit = ₹1/g, "")).not.toMatch(/₹|\brs\.? ?\d|\binr\b|\d+ ?(rupees|credits)|\d+% off/i);
+  });
+
+  it("never sends people to another page just to read the answer", () => {
+    for (const f of ALL_FAQS) expect(f.a).not.toMatch(/\b(see|check|visit) (the|our) [a-z ]{0,25}page\b|\b(is|are) on (its|the|each) (?!same )[a-z ]{0,20}page\b/i);
+  });
+
+  it("lists every IT service with what it covers, and the process and engagement models in full", () => {
+    const byId = Object.fromEntries(ALL_FAQS.map((x) => [x.id, x]));
+    expect(byId["s-offer"].a.split("\n").filter((l) => l.startsWith("• ")).length).toBe(12);
+    expect(byId["s-offer"].a).toMatch(/• Website Development & Web Solutions — Static websites/);
+    expect(byId["s-offer"].links).toBeUndefined();
+    expect(byId["s-process"].a).toMatch(/Discover[\s\S]*Estimate[\s\S]*Build[\s\S]*Deliver & Support/);
+    expect(byId["s-cost"].a).toMatch(/Fixed Price[\s\S]*Dedicated Team[\s\S]*Hourly \/ Retainer/);
+    expect(byId["o-phone"].a).toMatch(/Mon–Sat/);
+  });
+});
+
 describe("help bot search", () => {
   const top = (text) => (searchFaqs(text)[0] || {}).id;
 
@@ -59,6 +87,15 @@ describe("help bot search", () => {
     ["where is my receipt", "p-receipt"],
     ["how do i pay", "p-pay"],
     ["certificates", "c-cert"],
+    ["client terms", "s-terms"],
+    ["is the project fee refundable", "s-refund"],
+    ["who owns the source code", "s-own"],
+    ["will you sign an nda", "s-nda"],
+    ["what if the project is late", "s-change"],
+    // The client-terms answers mustn't take over the student ones.
+    ["refund policy", "p-refund"],
+    ["how is my data used", "o-privacy"],
+    ["can i use my own referral code", "r-self"],
   ])("answers “%s” with %s first", (text, id) => {
     expect(top(text)).toBe(id);
   });

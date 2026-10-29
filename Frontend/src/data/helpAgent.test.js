@@ -1,4 +1,4 @@
-import { respond, initialState, greeting, DEPARTMENTS } from "./helpAgent.js";
+import { respond, initialState, greeting, DEPARTMENTS, answerFor } from "./helpAgent.js";
 import { site } from "./content.js";
 
 // The help agent's conversation logic: context, clarifying questions,
@@ -10,6 +10,7 @@ const ctx = {
     { slug: "android", title: "Android Development", type: "internship", points: ["Kotlin"] },
     { slug: "react-js", title: "React.js Programming", type: "course", points: ["Hooks"] },
     { slug: "ai-agents", title: "Building AI Agents & RAG Systems", type: "course", points: ["LLM", "RAG"] },
+    { slug: "sql", title: "SQL & Databases", type: "course", desc: "Design schemas and write queries.", durationDays: 30, tiers: [{ tier: "basic", price: 1000, discountPercent: 10 }, { tier: "pro", price: 2000 }] },
   ],
   openings: [
     { title: "Web Development Intern", feeRequired: true, stipend: "Up to ₹6,000/month" },
@@ -18,7 +19,7 @@ const ctx = {
   services: [
     { title: "Static Website", desc: "A fast business website" },
     { title: "Dynamic Website & Web Apps", desc: "Web apps with logins and dashboards" },
-    { title: "Mobile App Development", desc: "Android and iOS apps" },
+    { title: "Mobile App Development", desc: "Android and iOS apps", points: ["Android apps", "iOS apps", "Cross-platform apps"] },
   ],
 };
 
@@ -59,7 +60,7 @@ describe("help agent", () => {
   });
 
   it("answers “how much?” for whatever was being discussed", () => {
-    expect(chat("I want an internship in react", "how much?").last.text).toMatch(/price is on its own page/i);
+    expect(chat("I want an internship in react", "how much?").last.text).toMatch(/price on the program's page when you enrol/);
     expect(chat("open jobs", "how much?").last.text).toMatch(/Free to apply/);
     expect(chat("I need a website for my shop", "how much?").last.text).toMatch(/quoted individually/i);
     // No context yet: it asks which one.
@@ -125,10 +126,103 @@ describe("help agent", () => {
     expect(chat("do you charge gst").last.text).toMatch(/GST/);
   });
 
+  it("answers client-terms questions in the chat, apart from the student ones", () => {
+    expect(chat("is my website project fee refundable?").last.text).toMatch(/final and non-refundable/);
+    expect(chat("what is your refund policy").last.text).toMatch(/course and internship purchases are final/);
+    const own = chat("who owns the code you build").last;
+    expect(own.text).toMatch(/once you've paid in full/);
+    expect(own.links).toBeUndefined();
+  });
+
+  it("answers about the free internships when asked, without a link to the page", () => {
+    const fee = chat("what is the ₹94 processing fee?");
+    expect(fee.state.topic).toBe("free");
+    expect(fee.last.text).toMatch(/internship itself is free/);
+    expect(fee.last.text).toMatch(/comes back to your Crix wallet as credit/);
+    expect(fee.last.links).toBeUndefined();
+    const overview = chat("how do I apply for the free internship?").last.text;
+    expect(overview).toMatch(/Apply with your CV/);
+    expect(overview).toMatch(/within 7 days/i);
+    // Follow-ups stay on it, and the right team is the students' one.
+    expect(chat("free internship", "is the cv a pdf?").last.text).toMatch(/PDF of up to 2 MB/);
+    expect(chat("free internship", "how much?").last.text).toMatch(/processing fee shown on the page/);
+    expect(chat("free internship", "can I call you?").last.dept).toBe("programs");
+  });
+
+  it("never brings up the free internships page unasked", () => {
+    const quiet = (r) => expect(`${r.text} ${(r.chips || []).map((c) => c.say).join(" ")} ${(r.more || []).map((m) => m.q).join(" ")}`).not.toMatch(/free internship|₹94|processing fee/i);
+    const all = chat("hi", "internships", "is the internship free or paid?", "show all programs", "are you hiring?", "how much?", "aptitude test fee", "what is the wallet", "is there anything free?", "I need a website");
+    all.replies.forEach(quiet);
+    quiet(greeting({}));
+    quiet(respond(initialState(), "xyzzy qwertyuiop", ctx).replies[0]);
+    quiet(respond(initialState(), "internshp fre", ctx).replies[0]);
+  });
+
   it("flags what it couldn't understand and offers the main topics", () => {
     const r = respond(initialState(), "xyzzy qwertyuiop", ctx);
     expect(r.state.unanswered).toBe(true);
     expect(r.replies[0].chips.length).toBeGreaterThan(3);
+  });
+
+  it("lists every IT service in the chat, each with what it covers", () => {
+    const { last } = chat("IT services for my business");
+    expect(last.text).toContain("Static Website — A fast business website");
+    expect(last.text).toContain("Mobile App Development — Android apps, iOS apps, Cross-platform apps");
+    expect(last.links || []).toEqual([]);
+  });
+
+  it("answers a business need in full — process, pricing and the IT number — with the inquiry form as the next step", () => {
+    const { last } = chat("I need a mobile app");
+    expect(last.text).toMatch(/Discover/);
+    expect(last.text).toMatch(/Deliver & Support/);
+    expect(last.text).toMatch(/written estimate/);
+    expect(last.text).toContain(site.phone);
+    expect(last.links).toEqual([{ to: "/services", label: "Send an inquiry" }]);
+  });
+
+  it("explains programs in the chat instead of sending people to a page", () => {
+    const { last } = chat("internships");
+    expect(last.text).toMatch(/offer letter on day one/i);
+    expect(last.text).toMatch(/letter of recommendation/i);
+    expect(last.links).toBeUndefined();
+    // Program lists say how long each one runs right in the chat.
+    expect(chat("show all programs").last.text).toContain("SQL & Databases (Course · 1 month) — Design schemas and write queries.");
+  });
+
+  it("never states an amount of money — no price, fee, discount or stipend", () => {
+    const money = /₹|\brs\.? ?\d|\binr\b|\d+ ?(rupees|credits)|\d+% off|\bwas \d/i;
+    // The wallet's rate isn't a price, so it's allowed.
+    const said = (r) => `${r.text} ${(r.chips || []).map((c) => `${c.label} ${c.say}`).join(" ")}`.replace(/1 credit = ₹1/g, "");
+    const asks = [
+      ["price of SQL & Databases"], ["how much is SQL & Databases"], ["courses in sql"], ["show all programs"], ["internships", "how much?"],
+      ["what courses do you offer"], ["are you hiring?", "how much?"], ["stipend for the web development intern"], ["Web Development Intern"],
+      ["aptitude test fee"], ["what is the wallet"], ["what is the ₹94 processing fee?"], ["free internship", "how much?"], ["free internship"],
+      ["how much does a website cost"], ["signup bonus"], ["referral"],
+    ];
+    for (const lines of asks) for (const r of chat(...lines).replies) expect(said(r)).not.toMatch(money);
+    for (const id of ["i-offer", "c-offer", "k-open", "k-fee", "r-wallet"]) expect(answerFor(id, ctx).text.replace(/1 credit = ₹1/g, "")).not.toMatch(money);
+    // …and the wallet answers still give it.
+    expect(answerFor("r-wallet").text).toContain("1 credit = ₹1");
+    expect(chat("are you hiring?", "how much?").last.text).toContain("1 credit = ₹1");
+  });
+
+  it("gives engagement models with the price of IT work, and roles with the careers fee", () => {
+    expect(chat("I need a website for my shop", "how much?").last.text).toMatch(/Fixed Price[\s\S]*Dedicated Team[\s\S]*Hourly \/ Retainer/);
+    expect(chat("open jobs", "how much?").last.text).toContain("Data Science Intern — free to apply");
+  });
+
+  it("says the hours and email along with a team's number", () => {
+    const { last } = chat("I need a mobile app", "give me your number");
+    expect(last.text).toContain(site.hours);
+    expect(last.text).toContain(site.email);
+  });
+
+  it("answers “what do you offer” from the live data", () => {
+    expect(chat("what it services do you offer").last.text).toContain("Dynamic Website & Web Apps — Web apps with logins and dashboards");
+    expect(answerFor("i-offer", ctx).text).toContain("MERN Stack with AI Integration (Internship)");
+    expect(answerFor("k-open", ctx).text).toContain("Web Development Intern");
+    // Without live data it falls back to the answer bank.
+    expect(answerFor("s-offer").text).toMatch(/Website Development & Web Solutions/);
   });
 
   it("handles small talk", () => {

@@ -74,7 +74,8 @@
 .ha-msg.you{background:linear-gradient(135deg,#19D3CE,#0FA7A3);color:#03211F;font-weight:500;border-bottom-right-radius:6px;box-shadow:0 8px 18px -10px rgba(20,201,201,.8)}
 
 /* links as small action pills */
-.ha-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.ha-links{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px}
+.ha-links small{flex-basis:100%;color:var(--muted);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}
 .ha-link{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;background:rgba(var(--teal-rgb),.12);border:1px solid rgba(var(--teal-rgb),.35);
   color:var(--cyan);font-size:.78rem;font-weight:600;text-decoration:none;transition:background .15s,transform .15s}
 .ha-link svg{width:13px;height:13px;transition:transform .15s}
