@@ -220,6 +220,19 @@ describe("Careers page", () => {
     expect(document.body.textContent).not.toContain("Data Science Intern");
   });
 
+  it("shows each role's open positions, and turns Apply off once they're all filled", async () => {
+    await renderWithOpenings({ ok: true, terms, openings: [
+      opening({ positions: { total: 5, filled: 2, left: 3 } }),
+      opening({ _id: "o2", slug: "data-science-intern", title: "Data Science Intern", positions: { total: 2, filled: 2, left: 0 } }),
+    ] });
+    const [open, full] = all(".job-card");
+    expect(open.textContent).toContain("3 of 5 positions open");
+    expect(button("Apply Now", open).disabled).toBe(false);
+    expect(full.textContent).toContain("Positions filled");
+    expect(full.textContent).toContain("All filled");
+    expect(button("Positions filled", full).disabled).toBe(true);
+  });
+
   it("shows no roles when the server can't be reached", async () => {
     await renderWithOpenings({ ok: false, error: "Could not load openings" });
     expect(all(".job-card")).toHaveLength(0);

@@ -17,7 +17,7 @@ const COUNT_FIELDS = [["quantitative", "Quantitative"], ["logical", "Logical rea
 const EMPTY_FORM = {
   title: "", summary: "", techCategory: "web", skills: "", responsibilities: "", eligibility: "",
   stipend: "Up to ₹6,000/month (performance based)", experience: "0–1 year (freshers welcome)", duration: "3 months", mode: "Remote / Ahmedabad",
-  order: "", feeRequired: "yes", audience: "general", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
+  positions: "", order: "", feeRequired: "yes", audience: "general", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
   marksPerQuestion: "1", negativeMarks: "0.25", cutoffScore: "0",
 };
 
@@ -29,6 +29,7 @@ function openingToForm(o) {
     responsibilities: (o.responsibilities || []).join("\n"),
     eligibility: (o.eligibility || []).join("\n"),
     stipend: o.stipend || "", experience: o.experience || "", duration: o.duration || "", mode: o.mode || "",
+    positions: o.positions ? String(o.positions.total) : "",
     order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", audience: o.audience || "general", durationMinutes: String(o.test.durationMinutes),
     quantitative: String(c.quantitative ?? 0), logical: String(c.logical ?? 0), verbal: String(c.verbal ?? 0), technical: String(c.technical ?? 0),
     marksPerQuestion: String(o.test.marksPerQuestion), negativeMarks: String(o.test.negativeMarks), cutoffScore: String(o.test.cutoffScore ?? 0),
@@ -36,6 +37,12 @@ function openingToForm(o) {
 }
 
 const lines = (text) => text.split("\n").map((p) => p.trim()).filter(Boolean);
+
+// "2 of 5 positions filled" — selected applicants fill a role's positions.
+function positionsLine(p) {
+  if (!p) return "Positions not set";
+  return `${p.filled} of ${p.total} position${p.total === 1 ? "" : "s"} filled`;
+}
 
 // The roles on the public Careers page — add, edit, or close — and each role's
 // aptitude-test settings (length, questions per category, marking, cut-off).
@@ -71,6 +78,8 @@ export default function AdminJobOpenings() {
     e.preventDefault();
     if (saving) return; // Enter pressed twice, or a slow network
     if (!form.title.trim()) { setError("The title is required."); return; }
+    const positions = Number(form.positions);
+    if (!Number.isInteger(positions) || positions < 1 || positions > 1000) { setError("Enter how many positions this role has (1 to 1000)."); return; }
     setSaving(true);
     setError("");
     const payload = {
@@ -78,6 +87,7 @@ export default function AdminJobOpenings() {
       skills: form.skills.split(/[,\n]/).map((s) => s.trim()).filter(Boolean),
       responsibilities: lines(form.responsibilities), eligibility: lines(form.eligibility),
       stipend: form.stipend.trim(), experience: form.experience.trim(), duration: form.duration.trim(), mode: form.mode.trim(),
+      positions,
       ...(form.order.trim() ? { order: Number(form.order) } : {}),
       feeRequired: form.feeRequired === "yes",
       audience: form.audience,
@@ -147,6 +157,10 @@ export default function AdminJobOpenings() {
               <textarea id="jo-elig" rows="4" value={form.eligibility} onChange={set("eligibility")} /></div>
           </div>
           <div className="admin-form-grid">
+            <div className="field"><label htmlFor="jo-positions">Positions available</label>
+              <input id="jo-positions" type="number" min="1" max="1000" step="1" value={form.positions} onChange={set("positions")} placeholder="e.g. 5" />
+              <p className="form-note" style={{ margin: "6px 0 0" }}>Each applicant you mark Selected fills one. When all are filled, the role shows
+                “All positions filled” and takes no new applications.</p></div>
             <div className="field"><label htmlFor="jo-stipend">Stipend</label>
               <input id="jo-stipend" value={form.stipend} onChange={set("stipend")} /></div>
             <div className="field"><label htmlFor="jo-exp">Experience</label>
@@ -214,6 +228,11 @@ export default function AdminJobOpenings() {
                     <span className="admin-row-meta">
                       {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.audience === "free" ? "Free internships page · processing fee" : o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
                       {" "}+{o.test.marksPerQuestion} / −{o.test.negativeMarks} · cut-off {o.test.cutoffScore}
+                    </span>
+                    <span className="admin-row-meta" style={o.positions && o.positions.left === 0 ? { color: "var(--amber)" } : !o.positions ? { color: "var(--muted)" } : undefined}>
+                      {positionsLine(o.positions)}
+                      {o.positions && (o.positions.left === 0 ? " — full, no new applications" : ` · ${o.positions.left} left`)}
+                      {!o.positions && " — edit the role to add a number"}
                     </span>
                     {short.length > 0 && (
                       <span className="admin-row-meta" style={{ color: "var(--danger)" }}>

@@ -7,7 +7,7 @@ import {
 import { loadRazorpayScript, Alert, burstConfetti, TermsCheckbox, ProfileGate } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { formatINR } from "../utils/tiers.js";
-import { defaultTerms, feeBoxPoints, formatIST } from "../data/careers.js";
+import { defaultTerms, feeBoxPoints, formatIST, isRoleFull, positionsLabel } from "../data/careers.js";
 
 // The careers sections of My Dashboard (pages/student/MyCourses.jsx):
 //   <ApplyTab>         pick a role, pay the test fee, start the aptitude test
@@ -222,6 +222,11 @@ export function ApplyTab({ user, initialRole, onGoToApplications, onChange }) {
               <span className="plan-option-sub">
                 {o.test.questions} questions · {o.test.durationMinutes} minutes · {isFreeRole(o) ? "Free" : formatINR(terms.testFee)} · {o.stipend}
               </span>
+              {o.positions && (
+                <span className={`plan-option-sub positions-note${isRoleFull(o) ? " is-full" : ""}`}>
+                  {isRoleFull(o) ? "All positions filled" : positionsLabel(o.positions)}
+                </span>
+              )}
             </label>
           );
         })}
@@ -231,7 +236,12 @@ export function ApplyTab({ user, initialRole, onGoToApplications, onChange }) {
         <span className="eyebrow">Aptitude test</span>
         <h3>{selected.title}</h3>
 
-        {(status === "none" || status === "payment_pending") && free ? (
+        {status === "none" && isRoleFull(selected) ? (
+          <p className="form-note" style={{ marginTop: 0 }}>
+            All {selected.positions.total} position{selected.positions.total === 1 ? " for this role has" : "s for this role have"} been filled, so it isn't
+            taking new applications. Pick another role, or check the <Link to="/careers">Careers page</Link> for new openings.
+          </p>
+        ) : (status === "none" || status === "payment_pending") && free ? (
           <>
             <p className="form-note" style={{ marginTop: 0 }}>
               There's no registration fee for this role. Accept the terms to unlock your aptitude test — you can take it straight away.

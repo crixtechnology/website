@@ -101,6 +101,8 @@ function ApplicantReview({ id, onBack, onChanged }) {
   // A free internship has no interview round: it can be selected straight from the test.
   // The copy taken when they applied (free internships), else the profile as it is now.
   const education = hasEducation(a.education) ? a.education : hasEducation(a.user?.education) ? a.user.education : null;
+  // Every position already taken by a selected applicant (selecting more is still allowed).
+  const roleFull = !!a.opening?.positions && a.opening.positions.left === 0 && a.status !== "selected";
   const can = (action) => CAN[action].includes(a.status) || (action === "select" && a.status === "submitted" && a.opening?.audience === "free");
 
   const openCv = async () => {
@@ -177,7 +179,9 @@ function ApplicantReview({ id, onBack, onChanged }) {
         <div className="admin-actions">
           <button className="btn btn-solid" disabled={busy || !can("shortlist")} onClick={() => act("shortlist", "Shortlist")}>Shortlist</button>
           <button className="btn btn-ghost admin-danger" disabled={busy || !can("not_shortlist")} onClick={() => act("not_shortlist", "Mark as not shortlisted")}>Not shortlisted</button>
-          <button className="btn btn-solid" disabled={busy || !can("select")} onClick={() => act("select", "Select (send the final offer)")}>Select</button>
+          <button className="btn btn-solid" disabled={busy || !can("select")} onClick={() => act("select", roleFull
+            ? `All ${a.opening.positions.total} positions for this role are already filled. Select anyway (send the final offer)`
+            : "Select (send the final offer)")}>Select</button>
           <button className="btn btn-ghost admin-danger" disabled={busy || !can("reject")} onClick={() => act("reject", "Reject")}>Reject</button>
           <button className="btn btn-ghost" disabled={busy || !canRetest} onClick={retest}>Allow retest</button>
         </div>
@@ -364,7 +368,9 @@ export default function AdminApplicants() {
                 value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search applicants" />
               <select className="admin-select" value={openingId} onChange={(e) => setOpeningId(e.target.value)} aria-label="Filter by role">
                 <option value="">All roles</option>
-                {openings.map((o) => <option key={o._id} value={o._id}>{o.title}</option>)}
+                {openings.map((o) => (
+                  <option key={o._id} value={o._id}>{o.title}{o.positions ? ` (${o.positions.filled}/${o.positions.total} filled)` : ""}</option>
+                ))}
               </select>
               <select className="admin-select" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
                 <option value="">All statuses</option>

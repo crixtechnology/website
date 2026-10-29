@@ -12,6 +12,7 @@ import { formatINR } from "../utils/tiers.js";
 import { site } from "../data/content.js";
 import {
   careersHero, careersContact, vision, mission, values, feeBoxPoints, defaultTerms, rememberRole, careersRulesDocument,
+  isRoleFull, positionsLabel, positionsTag,
 } from "../data/careers.js";
 
 // Skeleton cards show while the live openings load — but never for longer than this.
@@ -27,8 +28,9 @@ const scrollToId = (id) => (e) => {
   document.getElementById(id)?.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "start" });
 };
 
-// The four facts every opening carries.
+// The facts every opening carries.
 const openingFacts = (o) => [
+  ["Positions", positionsLabel(o.positions)],
   ["Stipend", o.stipend],
   ["Experience", o.experience],
   ["Duration", o.duration],
@@ -53,7 +55,7 @@ function OpeningCard({ opening, terms, i, onOpen, onApply }) {
           <div className="card-top">
             <div className="card-top-left">
               <span className="type-pill type-pill--internship">Internship</span>
-              <span className="tag">Now hiring</span>
+              <span className={`tag${isRoleFull(opening) ? " tag--full" : ""}`}>{positionsTag(opening.positions, "Now hiring")}</span>
             </div>
             <FeeBadge opening={opening} terms={terms} />
           </div>
@@ -69,7 +71,9 @@ function OpeningCard({ opening, terms, i, onOpen, onApply }) {
           </dl>
         </div>
         <div className="card-btn-row">
-          <button className="btn btn-solid buy-btn" onClick={() => onApply(opening)}>Apply Now</button>
+          <button className="btn btn-solid buy-btn" disabled={isRoleFull(opening)} onClick={() => onApply(opening)}>
+            {isRoleFull(opening) ? "Positions filled" : "Apply Now"}
+          </button>
           <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
         </div>
       </TiltCard>
@@ -141,8 +145,8 @@ function OpeningModal({ opening, terms, onClose, onApply }) {
           </>
         )}
 
-        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} onClick={() => onApply(opening)}>
-          {free ? "Apply Now — Free" : "Apply Now"}
+        <button className="btn btn-solid" style={{ width: "100%", marginTop: 16 }} disabled={isRoleFull(opening)} onClick={() => onApply(opening)}>
+          {isRoleFull(opening) ? "All positions filled" : free ? "Apply Now — Free" : "Apply Now"}
         </button>
         <div className="careers-rules-download">
           <DownloadPdfButton label="Download hiring & test rules (PDF)" getDocument={() => careersRulesDocument(free ? null : terms, { role: opening.title })} />
