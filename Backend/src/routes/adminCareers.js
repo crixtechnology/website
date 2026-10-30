@@ -114,10 +114,6 @@ function openingData(body) {
     if (!number(b.marksPerQuestion, 0.25, 100)) return { error: "Marks per question must be between 0.25 and 100." };
     data.marksPerQuestion = b.marksPerQuestion;
   }
-  if (b.negativeMarks !== undefined) {
-    if (!number(b.negativeMarks, 0, 100)) return { error: "Negative marking must be between 0 and 100 (enter it as a positive number, e.g. 0.25)." };
-    data.negativeMarks = b.negativeMarks;
-  }
   if (b.cutoffScore !== undefined) {
     if (!number(b.cutoffScore, 0, 100000)) return { error: "The cut-off score must be 0 or more." };
     data.cutoffScore = b.cutoffScore;

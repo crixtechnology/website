@@ -106,7 +106,7 @@ export function roleAnswer(o, n) {
   if (asked(n, "duration") && o.duration) facts.push(`Duration: ${o.duration}.`);
   if (asked(n, "mode") && o.mode) facts.push(`Mode: ${o.mode}.`);
   if (asked(n, "eligibility")) facts.push(`Eligibility: ${[o.experience, ...(o.eligibility || [])].filter(Boolean).join("; ") || "freshers are welcome"}.`);
-  if (asked(n, "test")) facts.push(`Aptitude test: ${test.questions ? `${test.questions} questions` : "multiple-choice questions"}${test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}${test.negativeMarks ? `, ${test.negativeMarks} taken off for a wrong answer` : ""}.`);
+  if (asked(n, "test")) facts.push(`Aptitude test: ${test.questions ? `${test.questions} questions` : "multiple-choice questions"}${test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}, with no negative marking.`);
   if (asked(n, "price")) facts.push(free ? "This role is free to apply for — no registration fee." : "This role has an aptitude-test registration fee, shown on its card; the whole fee comes back to your wallet as credit.");
   if (!facts.length) {
     facts.push([

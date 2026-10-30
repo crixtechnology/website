@@ -36,7 +36,7 @@ describe("careers rules document", () => {
   });
 
   it("on the test page, leaves out the fee and states that role's own test", () => {
-    const rules = { questions: 40, durationMinutes: 30, marksPerQuestion: 1, negativeMarks: 0.25, violationLimit: 3, snapshotIntervalSeconds: 60 };
+    const rules = { questions: 40, durationMinutes: 30, marksPerQuestion: 1, violationLimit: 3, snapshotIntervalSeconds: 60 };
     const d = careersRulesDocument(null, { role: "Web Development Intern", rules });
     expect(d.title).toBe("Aptitude Test Rules — Web Development Intern");
     expect(d.sections[0].title).toBe("1. The aptitude test");

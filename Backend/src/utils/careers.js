@@ -104,7 +104,6 @@ function shapeOpening(o, { admin = false } = {}) {
       durationMinutes: o.durationMinutes,
       questions: Object.values(counts).reduce((a, b) => a + b, 0),
       marksPerQuestion: o.marksPerQuestion,
-      negativeMarks: o.negativeMarks,
       ...(admin ? { questionCounts: counts, cutoffScore: o.cutoffScore } : {}),
     },
   };
@@ -310,10 +309,9 @@ function publicPaper(paper) {
 }
 
 // Scores a paper against the saved answers, by the rules the attempt started
-// with. A wrong answer costs `negativeMarks`; an unanswered one costs nothing.
+// with. There's no negative marking: a wrong or unanswered question scores 0.
 function scorePaper(paper, answers, settings) {
   const marks = Number(settings.marksPerQuestion) || 1;
-  const negative = Math.abs(Number(settings.negativeMarks) || 0);
   const chosen = new Map(answers.map((a) => [a.questionId, a.selected]));
   const byCategory = {};
   let correctCount = 0;
@@ -325,7 +323,7 @@ function scorePaper(paper, answers, settings) {
     const pick = chosen.get(q.qid);
     if (pick === null || pick === undefined) cat.skipped += 1;
     else if (pick === q.correct) { cat.correct += 1; cat.score += marks; correctCount += 1; }
-    else { cat.wrong += 1; cat.score -= negative; wrongCount += 1; }
+    else { cat.wrong += 1; wrongCount += 1; }
   }
   for (const cat of Object.values(byCategory)) { cat.score = round2(cat.score); cat.max = round2(cat.max); }
   const score = round2(Object.values(byCategory).reduce((s, c) => s + c.score, 0));

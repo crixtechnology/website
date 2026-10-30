@@ -201,7 +201,7 @@ describe("admin course form", () => {
       _id: "o9", slug: "free-web", title: "Free Web Intern", audience: "free", status: "open", feeRequired: true, applicants: 0,
       summary: "", techCategory: "web", skills: [], responsibilities: [], eligibility: [], stipend: "", experience: "", duration: "", mode: "",
       positions: { total: 4, filled: 1, left: 3 }, order: 1,
-      test: { durationMinutes: 30, questions: 40, marksPerQuestion: 1, negativeMarks: 0.25, cutoffScore: 0, questionCounts: { quantitative: 10, logical: 10, verbal: 10, technical: 10 } },
+      test: { durationMinutes: 30, questions: 40, marksPerQuestion: 1, cutoffScore: 0, questionCounts: { quantitative: 10, logical: 10, verbal: 10, technical: 10 } },
     };
     const careersRole = { ...freeRole, _id: "o8", slug: "careers-web", title: "Careers Web Intern", audience: "general" };
 

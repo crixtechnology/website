@@ -127,7 +127,7 @@ function OpeningModal({ opening, terms, mine, onClose, onApply }) {
         <p className="form-note" style={{ marginTop: 0 }}>
           {test.questions ? `${test.questions} multiple-choice questions` : "A multiple-choice test"}
           {test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""} — quantitative, logical reasoning, verbal ability and
-          technical questions for this role{test.negativeMarks ? `, with ${test.negativeMarks} taken off for each wrong answer` : ""}.
+          technical questions for this role.
         </p>
 
         <h4 className="job-modal-heading">Registration</h4>

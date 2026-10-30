@@ -12,7 +12,7 @@ const ctx = {
     { slug: "agents", title: "Building AI Agents & RAG Systems", type: "course", status: "open", points: ["LLM"], tiers: [{ tier: "basic", price: 1999 }] },
   ],
   openings: [{ title: "Data Science Intern", feeRequired: false, stipend: "Up to ₹6,000/month", duration: "3 months", mode: "Remote",
-    experience: "0–1 year", test: { questions: 40, durationMinutes: 45, negativeMarks: 0.25 } }],
+    experience: "0–1 year", test: { questions: 40, durationMinutes: 45 } }],
   services: [],
   taught: [{ q: "is there a weekend batch", a: "Yes — weekend batches run on Saturdays and Sundays.", keywords: "saturday sunday weekend", linkTo: "/programs", linkLabel: "Programs", dept: "" }],
 };

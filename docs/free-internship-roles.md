@@ -28,7 +28,6 @@ Each section below lists the fields **in the same order as the admin form**. Cop
 | Duration (minutes) | 5 to 300 |
 | Questions per section | whole numbers 0 to 60; at least 1 in total |
 | Marks per question | 0.25 to 100 |
-| Negative marking | 0 to 100 (positive number, e.g. 0.25) |
 | Cut-off score | 0 or more |
 
 ### Suggested test settings (the same for all five roles) ✏️
@@ -41,7 +40,6 @@ Each section below lists the fields **in the same order as the admin form**. Cop
 | Verbal ability questions | `8` | |
 | Technical questions | `16` | The technical part carries the most weight. Every new bank has 42 or more questions, plus generated ones, so papers vary. |
 | Marks per question | `1` | Test is out of 40. |
-| Negative marking | `0.25` | Matches the rules on the page (negative marking). |
 | Cut-off score | `16` | 40% of 40. Shown only to admins. Raise it if you get too many applicants. |
 
 ---
@@ -105,7 +103,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Verbal ability questions | `8` |
 | Technical questions | `16` |
 | Marks per question | `1` |
-| Negative marking (per wrong answer) | `0.25` |
 | Cut-off score | `16` ✏️ |
 
 ---
@@ -158,7 +155,7 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` ✏️ |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, `0.25` negative, cut-off `16`.
+**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
 
 ---
 
@@ -210,7 +207,7 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` ✏️ |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, `0.25` negative, cut-off `16`.
+**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
 
 ---
 
@@ -262,7 +259,7 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` ✏️ |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, `0.25` negative, cut-off `16`.
+**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
 
 ---
 
@@ -314,7 +311,7 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` ✏️ |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, `0.25` negative, cut-off `16`.
+**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
 
 ---
 
