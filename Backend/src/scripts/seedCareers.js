@@ -20,7 +20,6 @@ const COMMON = {
   durationMinutes: 30,
   questionCounts: { quantitative: 10, logical: 10, verbal: 10, technical: 10 },
   marksPerQuestion: 1,
-  negativeMarks: 0.25,
   cutoffScore: 20,
 };
 

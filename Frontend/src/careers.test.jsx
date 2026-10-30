@@ -34,7 +34,7 @@ const opening = (overrides = {}) => ({
   skills: ["HTML", "CSS"], responsibilities: ["Ship pages"], eligibility: ["Freshers welcome"],
   stipend: "Up to ₹6,000/month", experience: "0–1 year", duration: "3 months", mode: "Remote / Ahmedabad",
   createdAt: "2026-10-10T00:00:00.000Z",
-  test: { durationMinutes: 45, questions: 34, marksPerQuestion: 1, negativeMarks: 0.25 },
+  test: { durationMinutes: 45, questions: 34, marksPerQuestion: 1 },
   ...overrides,
 });
 const terms = { testFee: 289, signupBonus: 300, creditExpiryMonths: 12, creditUsagePercent: 100 };

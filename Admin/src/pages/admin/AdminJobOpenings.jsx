@@ -19,7 +19,7 @@ const EMPTY_FORM = {
   title: "", summary: "", techCategory: "web", skills: "", responsibilities: "", eligibility: "",
   stipend: "Up to ₹6,000/month (performance based)", experience: "0–1 year (freshers welcome)", duration: "3 months", mode: "Remote / Ahmedabad",
   positions: "", order: "", feeRequired: "yes", waiveFee: "no", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
-  marksPerQuestion: "1", negativeMarks: "0.25", cutoffScore: "0",
+  marksPerQuestion: "1", cutoffScore: "0",
 };
 
 function openingToForm(o) {
@@ -33,7 +33,7 @@ function openingToForm(o) {
     positions: o.positions ? String(o.positions.total) : "",
     order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", waiveFee: o.waiveFee ? "yes" : "no", durationMinutes: String(o.test.durationMinutes),
     quantitative: String(c.quantitative ?? 0), logical: String(c.logical ?? 0), verbal: String(c.verbal ?? 0), technical: String(c.technical ?? 0),
-    marksPerQuestion: String(o.test.marksPerQuestion), negativeMarks: String(o.test.negativeMarks), cutoffScore: String(o.test.cutoffScore ?? 0),
+    marksPerQuestion: String(o.test.marksPerQuestion), cutoffScore: String(o.test.cutoffScore ?? 0),
   };
 }
 
@@ -155,7 +155,7 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
       audience,
       durationMinutes: Number(form.durationMinutes),
       questionCounts: Object.fromEntries(COUNT_FIELDS.map(([k]) => [k, Number(form[k])])),
-      marksPerQuestion: Number(form.marksPerQuestion), negativeMarks: Number(form.negativeMarks), cutoffScore: Number(form.cutoffScore),
+      marksPerQuestion: Number(form.marksPerQuestion), cutoffScore: Number(form.cutoffScore),
     };
     const res = editingId ? await adminUpdateJobOpening(editingId, payload) : await adminCreateJobOpening(payload);
     setSaving(false);
@@ -231,8 +231,6 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
         ))}
         <div className="field"><label htmlFor="jo-marks">Marks per question</label>
           <input id="jo-marks" type="number" min="0.25" step="0.25" value={form.marksPerQuestion} onChange={set("marksPerQuestion")} /></div>
-        <div className="field"><label htmlFor="jo-neg">Negative marking (per wrong answer)</label>
-          <input id="jo-neg" type="number" min="0" step="0.05" value={form.negativeMarks} onChange={set("negativeMarks")} /></div>
         <div className="field"><label htmlFor="jo-cutoff">Cut-off score</label>
           <input id="jo-cutoff" type="number" min="0" step="0.25" value={form.cutoffScore} onChange={set("cutoffScore")} /></div>
       </div>
@@ -286,7 +284,7 @@ export function OpeningList({ openings, bank, onEdit, onChanged, empty }) {
                 <b>{o.title}</b>
                 <span className="admin-row-meta">
                   {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.audience === "free" ? (o.waiveFee ? "no processing fee" : "processing fee") : o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
-                  {" "}+{o.test.marksPerQuestion} / −{o.test.negativeMarks} · cut-off {o.test.cutoffScore}
+                  {" "}+{o.test.marksPerQuestion} each · cut-off {o.test.cutoffScore}
                 </span>
                 <span className="admin-row-meta" style={o.positions && o.positions.left === 0 ? { color: "var(--amber)" } : !o.positions ? { color: "var(--muted)" } : undefined}>
                   {positionsLine(o.positions)}

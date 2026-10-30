@@ -630,8 +630,6 @@ model JobOpening {
   // { quantitative, logical, verbal, technical }: how many questions of each.
   questionCounts   Json          @default("{}")
   marksPerQuestion Float         @default(1)
-  // Taken off for each wrong answer (a positive number, e.g. 0.25).
-  negativeMarks    Float         @default(0.25)
   cutoffScore      Float         @default(0)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt

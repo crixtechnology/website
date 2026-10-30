@@ -110,7 +110,7 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
   const facts = rules
     ? [
         `${rules.questions} multiple-choice questions in ${rules.durationMinutes} minutes.`,
-        `${rules.marksPerQuestion} mark${rules.marksPerQuestion === 1 ? "" : "s"} for each correct answer${rules.negativeMarks ? `, ${rules.negativeMarks} taken off for each wrong answer` : ", nothing taken off for a wrong answer"}; an unanswered question scores 0.`,
+        `${rules.marksPerQuestion} mark${rules.marksPerQuestion === 1 ? "" : "s"} for each correct answer, nothing taken off for a wrong answer; an unanswered question scores 0.`,
       ]
     : [];
   return {

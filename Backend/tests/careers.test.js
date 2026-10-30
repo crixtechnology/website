@@ -75,7 +75,7 @@ async function opening(overrides = {}) {
     skills: ["HTML", "CSS"], responsibilities: ["Ship pages"], eligibility: ["Freshers welcome"],
     stipend: "Up to ₹6,000/month", experience: "0–1 year", duration: "3 months", mode: "Remote",
     durationMinutes: 30, questionCounts: { quantitative: 2, logical: 2, verbal: 2, technical: 4 },
-    marksPerQuestion: 1, negativeMarks: 0.25, cutoffScore: 5,
+    marksPerQuestion: 1, cutoffScore: 5,
     ...overrides,
   });
   expect(res.status).toBe(201);
@@ -330,7 +330,7 @@ describe("job openings", () => {
     expect(slugs).toContain(o.slug);
     expect(slugs).not.toContain(closed.slug);
     const shown = res.body.openings.find((x) => x.slug === o.slug);
-    expect(shown.test).toEqual({ durationMinutes: 30, questions: 10, marksPerQuestion: 1, negativeMarks: 0.25 });
+    expect(shown.test).toEqual({ durationMinutes: 30, questions: 10, marksPerQuestion: 1 });
     expect(res.body.terms).toMatchObject({ testFee: 289, creditExpiryMonths: 12 });
 
     const one = await request(app).get(`/api/careers/openings/${o.slug}`);
@@ -774,10 +774,10 @@ describe("the test engine", () => {
     expect(row.attempt).toMatchObject({ status: "submitted", submitReason: "time_up" });
   });
 
-  it("scores on the server, with negative marking, and never tells the candidate the score", async () => {
+  it("scores on the server, with no negative marking, and never tells the candidate the score", async () => {
     const { s, applicationId, t } = await sitting(o);
     mailer.sendTestSubmittedEmail.mockClear();
-    // 6 right, 2 wrong, 2 left blank => 6 - 2 x 0.25 = 5.5 out of 10.
+    // 6 right, 2 wrong, 2 left blank => 6 out of 10 (a wrong answer costs nothing).
     for (let i = 0; i < 6; i++) await answer(s, t, t.questions[i].id, t.questions[i].options.indexOf("right"));
     for (let i = 6; i < 8; i++) await answer(s, t, t.questions[i].id, t.questions[i].options.indexOf("wrong one"));
 
@@ -786,7 +786,7 @@ describe("the test engine", () => {
     expect(done.body).toEqual({ ok: true, submitted: true, reason: "manual" });
 
     const row = await prisma.testAttempt.findUnique({ where: { id: t.attempt._id } });
-    expect(row).toMatchObject({ status: "submitted", score: 5.5, maxScore: 10, correctCount: 6, wrongCount: 2, passed: true });
+    expect(row).toMatchObject({ status: "submitted", score: 6, maxScore: 10, correctCount: 6, wrongCount: 2, passed: true });
     expect(Object.values(row.categoryScores).reduce((n, c) => n + c.total, 0)).toBe(10);
     expect(mailer.sendTestSubmittedEmail).toHaveBeenCalledTimes(1);
 
@@ -809,7 +809,7 @@ describe("the test engine", () => {
     expect((await start(s, applicationId)).status).toBe(409);
     expect((await answer(s, t, t.questions[0].id, 1)).status).toBe(409);
     expect((await submit(s, t)).body.submitted).toBe(true);
-    expect((await prisma.testAttempt.findUnique({ where: { id: t.attempt._id } })).score).toBe(5.5);
+    expect((await prisma.testAttempt.findUnique({ where: { id: t.attempt._id } })).score).toBe(6);
     expect(mailer.sendTestSubmittedEmail).toHaveBeenCalledTimes(1);
   });
 
@@ -939,13 +939,13 @@ describe("generated questions", () => {
     const again = await start(s, applicationId, { consent: true, sessionId: t.sessionId });
     expect(again.body.questions).toEqual(t.questions);
 
-    // Two generated questions answered correctly, one wrongly: 2 - 0.25.
+    // Two generated questions answered correctly, one wrongly: 2 (a wrong answer costs nothing).
     await answer(s, t, generated[0].qid, generated[0].correct);
     await answer(s, t, generated[1].qid, generated[1].correct);
     await answer(s, t, generated[2].qid, (generated[2].correct + 1) % 4);
     await submit(s, t);
     const done = await prisma.testAttempt.findUnique({ where: { id: t.attempt._id } });
-    expect(done).toMatchObject({ score: 1.75, correctCount: 2, wrongCount: 1 });
+    expect(done).toMatchObject({ score: 2, correctCount: 2, wrongCount: 1 });
 
     const review = await asAdmin(request(app).get(`/api/admin/job-applications/${applicationId}`));
     expect(review.body.review.questions.filter((q) => q.generated)).toHaveLength(5);
@@ -1075,7 +1075,7 @@ describe("applicants (admin)", () => {
       status: "submitted", paymentStatus: "paid",
       user: { name: "Test Candidate", email: s.email },
       opening: { title: "Review Role" },
-      attempt: { score: 0.75, maxScore: 10, violationCount: 1, passed: false },
+      attempt: { score: 1, maxScore: 10, violationCount: 1, passed: false },
     });
     expect(res.body.summary.totalApplicants).toBeGreaterThanOrEqual(1);
     expect(res.body.summary.paymentsReceived).toBeGreaterThanOrEqual(1);
@@ -1185,7 +1185,7 @@ describe("applicants (admin)", () => {
     expect(emails).toContain(s.email);
     const mineRow = sheet.getRow(emails.indexOf(s.email) + 2);
     expect(mineRow.getCell(header.indexOf("Status") + 1).text).toBe("Selected");
-    expect(mineRow.getCell(header.indexOf("Score") + 1).value).toBe(0.75);
+    expect(mineRow.getCell(header.indexOf("Score") + 1).value).toBe(1);
     expect(mineRow.getCell(header.indexOf("Technical questions from") + 1).text).toBe("Web Development");
   });
 

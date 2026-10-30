@@ -35,6 +35,8 @@ const SNAPSHOT = { width: 320, height: 240, quality: 0.6 };
 // ---- full screen (with the older Safari names) ----
 const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
 const canFullscreen = () => { const el = document.documentElement; return !!(el.requestFullscreen || el.webkitRequestFullscreen); };
+// A phone-sized screen (the mobile layout), where we suggest a laptop or PC.
+const onPhone = () => !!(window.matchMedia && window.matchMedia("(max-width: 767px)").matches);
 async function enterFullscreen() {
   if (isFullscreen()) return true;
   const el = document.documentElement;
@@ -420,7 +422,9 @@ function TestRunner({ data, stream, onFinished }) {
               </div>
               <div>
                 <button className="btn btn-ghost" disabled={current === 0} onClick={() => go(current - 1)}>← Previous</button>
-                <button className="btn btn-solid" disabled={current === questions.length - 1} onClick={() => go(current + 1)}>Next →</button>
+                {current === questions.length - 1
+                  ? <button className="btn btn-solid" disabled={submitting} onClick={() => setConfirming(true)}>Submit test</button>
+                  : <button className="btn btn-solid" onClick={() => go(current + 1)}>Next →</button>}
               </div>
             </div>
           </div>
@@ -454,7 +458,7 @@ function TestRunner({ data, stream, onFinished }) {
         <div className="test-overlay" role="dialog" aria-modal="true" aria-labelledby="test-confirm-title">
           <div className="test-overlay-box">
             <span className="eyebrow">Submit test</span>
-            <h2 id="test-confirm-title">Submit your test now?</h2>
+            <h2 id="test-confirm-title">Are you sure you want to submit your test?</h2>
             <p>You've answered {answeredCount} of {questions.length} questions. Once submitted, the test can't be reopened.</p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <button className="btn btn-ghost" onClick={() => setConfirming(false)}>Keep working</button>
@@ -533,6 +537,7 @@ function TestFinished({ reason }) {
 /* ================= before the test ================= */
 function TestLobby({ info, camera, onEnableCamera, onStart, starting, error }) {
   const [agreed, setAgreed] = useState(false);
+  const [phoneWarning, setPhoneWarning] = useState(false);
   const videoRef = useRef(null);
   const rules = info.rules;
   const resuming = info.state === "in_progress";
@@ -569,7 +574,7 @@ function TestLobby({ info, camera, onEnableCamera, onStart, starting, error }) {
           <div><dt>Questions</dt><dd>{rules.questions}</dd></div>
           <div><dt>Time</dt><dd>{rules.durationMinutes} min</dd></div>
           <div><dt>Each correct</dt><dd>+{rules.marksPerQuestion}</dd></div>
-          <div><dt>Each wrong</dt><dd>{rules.negativeMarks ? `−${rules.negativeMarks}` : "0"}</dd></div>
+          <div><dt>Each wrong</dt><dd>0</dd></div>
         </dl>
 
         <section className="course-block">
@@ -610,13 +615,28 @@ function TestLobby({ info, camera, onEnableCamera, onStart, starting, error }) {
         {noFullscreen && <Alert inline kind="error">This browser can't show the test in full screen. Please use Chrome, Edge or Firefox on a laptop or desktop computer.</Alert>}
         {error && <Alert inline kind="error">{error}</Alert>}
 
-        <button className="btn btn-solid" disabled={!canStart} onClick={onStart} style={{ minWidth: 220 }}>
+        {/* On a phone-sized screen, a fresh start first asks them to confirm. */}
+        <button className="btn btn-solid" disabled={!canStart} onClick={() => (!resuming && onPhone() ? setPhoneWarning(true) : onStart())} style={{ minWidth: 220 }}>
           {starting ? "Starting…" : resuming ? "Resume Test" : "Start Test"}
         </button>
         {!resuming && !canStart && !starting && !needsApp && !noFullscreen && (
           <p className="form-note">{!cameraReady ? "Turn on your webcam to continue." : "Tick the box above to continue."}</p>
         )}
       </div>
+
+      {phoneWarning && (
+        <div className="test-overlay" style={{ position: "fixed", zIndex: 1000 }} role="alertdialog" aria-modal="true" aria-labelledby="test-phone-title">
+          <div className="test-overlay-box">
+            <span className="eyebrow">You're on a phone</span>
+            <h2 id="test-phone-title">Use a laptop or PC for a better test experience</h2>
+            <p>The test is easier to read and answer on a bigger screen. If you'd still like to take it on this phone, confirm below — the timer starts as soon as you do.</p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              <button className="btn btn-ghost" onClick={() => setPhoneWarning(false)}>Go back</button>
+              <button className="btn btn-solid" disabled={starting} onClick={() => { setPhoneWarning(false); onStart(); }}>Continue on mobile</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
