@@ -392,9 +392,10 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .modal-box--video{max-width:880px}
 .modal-box--video .lecture-embed{margin-top:0}
 .detail-box{max-width:480px}
-.detail-fact{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);border-radius:10px;padding:10px 14px;margin:14px 0}
-.detail-fact span{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
-.detail-fact b{color:var(--text);font-family:'Unbounded',sans-serif;font-size:.92rem}
+.detail-fact{display:flex;justify-content:space-between;align-items:center;gap:20px;background:rgba(255,255,255,.03);border-radius:10px;padding:10px 14px;margin:14px 0}
+.detail-fact span{flex-shrink:0;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
+.detail-fact b{min-width:0;text-align:right;line-height:1.5;color:var(--text);font-family:'Unbounded',sans-serif;font-size:.92rem}
+@media(max-width:480px){.detail-fact{flex-direction:column;align-items:flex-start;gap:4px}.detail-fact b{text-align:left}}
 .detail-points{list-style:none;margin:16px 0 4px}
 .detail-points li{font-size:.88rem;color:var(--text);padding:8px 0;border-top:1px dashed rgba(147,163,188,.18)}
 .detail-points li::before{content:"→";color:var(--teal);margin-right:10px}
