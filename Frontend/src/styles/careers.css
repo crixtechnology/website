@@ -46,6 +46,16 @@
 .dash-notices li b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--text);font-weight:600}
 .dash-notices li span{color:var(--muted)}
 .dash-notices li small{display:block;color:var(--muted);font-size:.75rem;margin-top:2px}
+.dash-notices li{position:relative;padding-right:44px}
+.dash-clear-one{position:absolute;top:8px;right:8px;width:32px;height:32px;border:0;border-radius:8px;background:none;color:var(--muted);font-size:1.25rem;line-height:1;cursor:pointer}
+.dash-clear-one:hover,.dash-clear-one:focus-visible{color:var(--text);background:rgba(var(--text-rgb),.06)}
+.dash-list-head{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;margin:0 0 14px;font-size:.8rem;color:var(--muted)}
+.dash-list-head .link-btn{font-size:.85rem;white-space:nowrap}
+/* My Applications: the list, or applying for a role. */
+.dash-subtabs{display:inline-flex;gap:4px;padding:4px;margin:0 0 20px;border:1px solid var(--line);border-radius:100px;background:rgba(var(--text-rgb),.03);max-width:100%}
+.dash-subtabs button{min-height:40px;padding:8px 16px;border:0;border-radius:100px;background:none;color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;white-space:nowrap}
+.dash-subtabs button.active{background:rgba(var(--teal-rgb),.16);color:var(--text)}
+@media(max-width:400px){.dash-subtabs{display:flex}.dash-subtabs button{flex:1;padding:8px 10px;font-size:.8rem}}
 /* One section of My Dashboard / Profile at a time (components/SectionTabs.jsx). */
 .section.dash-page{padding-top:140px}
 .profile-section{margin-top:48px;padding-top:28px;border-top:1px solid var(--line)}

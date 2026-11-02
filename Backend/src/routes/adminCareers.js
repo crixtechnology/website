@@ -754,6 +754,8 @@ router.post("/admin/job-applications/:id/status", requireAdmin, async (req, res,
       status: rule.to,
       // Closed (or reopened): starts / stops the webcam-photo retention clock.
       closedAt: FINAL_STATUSES.includes(rule.to) ? new Date() : null,
+      // Back on the candidate's My Applications if they had cleared it.
+      clearedAt: null,
       ...(note !== undefined ? { adminNote: note.trim() } : {}),
     };
     if (action === "schedule_interview") {
@@ -832,7 +834,7 @@ router.post("/admin/job-applications/:id/retest", requireAdmin, async (req, res,
     const reset = await prisma.$transaction(async (tx) => {
       const changed = await tx.jobApplication.updateMany({
         where: { id: req.params.id, status: { in: RETEST_FROM } },
-        data: { status: "test_pending", closedAt: null, interviewAt: null, interviewLink: "" },
+        data: { status: "test_pending", closedAt: null, clearedAt: null, interviewAt: null, interviewLink: "" },
       });
       if (changed.count === 0) return false;
       await tx.testAttempt.delete({ where: { id: target.attempt.id } });

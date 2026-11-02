@@ -1252,3 +1252,72 @@ describe("allowing a retest (admin)", () => {
     expect((await asAdmin(request(app).post("/api/admin/job-applications/nope/retest"))).status).toBe(404);
   });
 });
+
+describe("keeping My Dashboard short", () => {
+  const DAY = 86400000;
+  const mine = async (s) => (await authed(request(app).get("/api/me/job-applications"), s.token)).body.applications.map((a) => a._id);
+  const clear = (s, body = {}) => authed(request(app).post("/api/me/job-applications/clear"), s.token).send(body);
+  async function applicationWith(s, o, data) {
+    const res = await apply(s, o);
+    return prisma.jobApplication.update({ where: { id: res.body.application._id }, data });
+  }
+
+  it("lets a candidate clear ended applications only, and an admin reopening brings one back", async () => {
+    const s = await student();
+    const open = await applicationWith(s, await opening(), {});
+    const ended = await applicationWith(s, await opening(), { status: "rejected", closedAt: new Date() });
+    const ended2 = await applicationWith(s, await opening(), { status: "not_shortlisted", closedAt: new Date() });
+    expect(await mine(s)).toHaveLength(3);
+
+    expect((await clear(s, { id: open.id })).status).toBe(400);
+    const other = await student();
+    expect((await clear(other, { id: ended.id })).status).toBe(400);
+
+    expect((await clear(s, { id: ended.id })).status).toBe(200);
+    expect(await mine(s)).toEqual(expect.not.arrayContaining([ended.id]));
+    expect((await clear(s)).body.cleared).toBe(1);
+    expect(await mine(s)).toEqual([open.id]);
+    // Hidden from the candidate only: the record is still there.
+    expect(await prisma.jobApplication.count({ where: { userId: s.id } })).toBe(3);
+
+    await prisma.jobApplication.update({ where: { id: ended2.id }, data: { status: "submitted" } });
+    expect((await asAdmin(request(app).post(`/api/admin/job-applications/${ended2.id}/status`)).send({ action: "shortlist" })).status).toBe(200);
+    expect(await mine(s)).toContain(ended2.id);
+  });
+
+  it("drops applications that ended over 30 days ago from the candidate's list", async () => {
+    const s = await student();
+    const old = await applicationWith(s, await opening(), { status: "rejected", closedAt: new Date(Date.now() - 31 * DAY) });
+    const recent = await applicationWith(s, await opening(), { status: "rejected", closedAt: new Date(Date.now() - 5 * DAY) });
+    const selected = await applicationWith(s, await opening(), { status: "selected", closedAt: new Date(Date.now() - 90 * DAY) });
+    const ids = await mine(s);
+    expect(ids).not.toContain(old.id);
+    expect(ids).toEqual(expect.arrayContaining([recent.id, selected.id]));
+  });
+
+  it("deletes notifications older than 30 days, and clears one or all on request", async () => {
+    const s = await student();
+    const other = await student();
+    await prisma.notification.createMany({ data: [
+      { userId: s.id, title: "Old", body: "x", createdAt: new Date(Date.now() - 31 * DAY) },
+      { userId: s.id, title: "A", body: "x" },
+      { userId: s.id, title: "B", body: "x" },
+      { userId: other.id, title: "Theirs", body: "x" },
+    ] });
+    const list = async (who) => (await authed(request(app).get("/api/me/notifications"), who.token)).body.notifications;
+    const notes = await list(s);
+    expect(notes.map((n) => n.title).sort()).toEqual(["A", "B"]);
+    expect(await prisma.notification.count({ where: { userId: s.id } })).toBe(2);
+
+    // Someone else's id does nothing.
+    const theirs = (await list(other))[0];
+    expect((await authed(request(app).delete(`/api/me/notifications/${theirs._id}`), s.token)).status).toBe(200);
+    expect(await list(other)).toHaveLength(1);
+
+    await authed(request(app).delete(`/api/me/notifications/${notes[0]._id}`), s.token);
+    expect(await list(s)).toHaveLength(1);
+    await authed(request(app).delete("/api/me/notifications"), s.token);
+    expect(await list(s)).toHaveLength(0);
+    expect(await list(other)).toHaveLength(1);
+  });
+});

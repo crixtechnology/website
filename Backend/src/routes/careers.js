@@ -27,6 +27,21 @@ const router = express.Router();
 
 // An application that ended without an offer no longer blocks applying again.
 const CLOSED_STATUSES = ["not_shortlisted", "rejected"];
+// My Dashboard keeps itself short: an application that ended without an offer
+// leaves My Applications this long after it closed (the record stays for the
+// admin side), and notifications older than this are deleted.
+const DASHBOARD_KEEP_DAYS = 30;
+const keepCutoff = () => new Date(Date.now() - DASHBOARD_KEEP_DAYS * 86400000);
+// The applications a candidate still sees: not cleared by them, and not ended
+// more than DASHBOARD_KEEP_DAYS ago (an older one may have no closedAt).
+const visibleApplications = (userId) => ({
+  userId,
+  clearedAt: null,
+  NOT: {
+    status: { in: CLOSED_STATUSES },
+    OR: [{ closedAt: { lt: keepCutoff() } }, { closedAt: null, updatedAt: { lt: keepCutoff() } }],
+  },
+});
 // A CV may be up to this size, and only before the test is taken.
 const MAX_CV_BYTES = 2 * 1024 * 1024;
 const CV_EDITABLE = ["payment_pending", "test_pending"];
@@ -151,11 +166,29 @@ router.get("/me/job-applications", requireAuth, async (req, res, next) => {
     // A test whose time ran out while the tab was closed is submitted before it is shown.
     await finalizeExpiredAttempts({ userId: req.user.sub });
     const [applications, settings] = await Promise.all([
-      prisma.jobApplication.findMany({ where: { userId: req.user.sub }, include: WITH_DETAIL, orderBy: { createdAt: "desc" } }),
+      prisma.jobApplication.findMany({ where: visibleApplications(req.user.sub), include: WITH_DETAIL, orderBy: { createdAt: "desc" } }),
       getCareerSettings(),
     ]);
     res.set("Cache-Control", "no-store");
-    res.json({ ok: true, applications: applications.map((a) => shapeApplication(a)), terms: publicTerms(settings) });
+    res.json({ ok: true, applications: applications.map((a) => shapeApplication(a)), terms: publicTerms(settings), keepDays: DASHBOARD_KEEP_DAYS });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------- candidate: clear ended applications from My Applications ----------
+// Body: { id } for one, or nothing for every ended one. Only applications that
+// ended without an offer can be cleared; it hides them from the candidate only.
+router.post("/me/job-applications/clear", requireAuth, async (req, res, next) => {
+  try {
+    const id = req.body && req.body.id;
+    if (id !== undefined && typeof id !== "string") return res.status(400).json({ ok: false, error: "Invalid application." });
+    const { count } = await prisma.jobApplication.updateMany({
+      where: { userId: req.user.sub, status: { in: CLOSED_STATUSES }, clearedAt: null, ...(id ? { id } : {}) },
+      data: { clearedAt: new Date() },
+    });
+    if (id && !count) return res.status(400).json({ ok: false, error: "Only an application that has ended can be cleared." });
+    res.json({ ok: true, cleared: count });
   } catch (e) {
     next(e);
   }
@@ -408,6 +441,8 @@ router.post("/careers/verify", publicWriteLimiter, async (req, res, next) => {
 // ---------- candidate: dashboard notifications ----------
 router.get("/me/notifications", requireAuth, async (req, res, next) => {
   try {
+    // Old ones go for good, so the list stays short.
+    await prisma.notification.deleteMany({ where: { userId: req.user.sub, createdAt: { lt: keepCutoff() } } });
     const [notifications, unread] = await Promise.all([
       prisma.notification.findMany({ where: { userId: req.user.sub }, orderBy: { createdAt: "desc" }, take: 30 }),
       prisma.notification.count({ where: { userId: req.user.sub, readAt: null } }),
@@ -416,6 +451,7 @@ router.get("/me/notifications", requireAuth, async (req, res, next) => {
     res.json({
       ok: true,
       unread,
+      keepDays: DASHBOARD_KEEP_DAYS,
       notifications: notifications.map((n) => ({ _id: n.id, title: n.title, body: n.body, link: n.link, read: !!n.readAt, createdAt: n.createdAt })),
     });
   } catch (e) {
@@ -426,6 +462,25 @@ router.get("/me/notifications", requireAuth, async (req, res, next) => {
 router.post("/me/notifications/read", requireAuth, async (req, res, next) => {
   try {
     await prisma.notification.updateMany({ where: { userId: req.user.sub, readAt: null }, data: { readAt: new Date() } });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Clear notifications: one (/:id) or all of them.
+router.delete("/me/notifications", requireAuth, async (req, res, next) => {
+  try {
+    await prisma.notification.deleteMany({ where: { userId: req.user.sub } });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/me/notifications/:id", requireAuth, async (req, res, next) => {
+  try {
+    await prisma.notification.deleteMany({ where: { userId: req.user.sub, id: req.params.id } });
     res.json({ ok: true });
   } catch (e) {
     next(e);

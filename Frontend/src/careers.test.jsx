@@ -351,6 +351,6 @@ describe("My Dashboard: My Applications", () => {
 
   it("invites a first application when there are none", async () => {
     await render([]);
-    expect(container.textContent).toContain("You haven't applied for a role yet.");
+    expect(container.textContent).toContain("No applications to show.");
   });
 });

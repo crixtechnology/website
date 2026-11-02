@@ -712,6 +712,17 @@ export async function uploadApplicationCv(applicationId, file) {
 }
 
 // The logged-in student's applications: { applications, terms }.
+// Clear an ended application from My Applications (by id), or every ended one.
+export async function clearJobApplications(id) {
+  try {
+    return await jsonOr(await authFetch("/me/job-applications/clear", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(id ? { id } : {}),
+    }), "Could not clear applications");
+  } catch (e) {
+    return { ok: false, error: "Could not clear applications" };
+  }
+}
+
 export async function getMyJobApplications() {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
@@ -783,6 +794,15 @@ export async function getNotifications() {
 
 export function markNotificationsRead() {
   return authFetch("/me/notifications/read", { method: "POST" }).then(() => {}).catch(() => {});
+}
+
+// Clear one notification (by id), or all of them.
+export async function clearNotifications(id) {
+  try {
+    return await jsonOr(await authFetch(id ? `/me/notifications/${encodeURIComponent(id)}` : "/me/notifications", { method: "DELETE" }), "Could not clear notifications");
+  } catch (e) {
+    return { ok: false, error: "Could not clear notifications" };
+  }
 }
 
 // ---------- The aptitude test (pages/student/AptitudeTest.jsx) ----------

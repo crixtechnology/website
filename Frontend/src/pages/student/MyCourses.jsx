@@ -19,17 +19,22 @@ import { startsInFuture, formatStartDate } from "../../utils/startDate.js";
 // link straight to one.
 const TABS = [
   ["courses", "My Courses"],
-  ["apply", "Apply / Aptitude Test"],
   ["applications", "My Applications"],
   ["wallet", "My Wallet"],
   ["refer", "Refer & Earn"],
   ["notifications", "Notifications"],
 ];
+// Inside My Applications: the list, or applying for a role (?tab=apply).
+const APPLICATION_VIEWS = [
+  ["applications", "My applications"],
+  ["apply", "Apply / Aptitude test"],
+];
 
 export default function MyCourses() {
   usePageMeta({ title: "My Dashboard | Crix Technology" });
   const [params, setParams] = useSearchParams();
-  const tab = TABS.some(([id]) => id === params.get("tab")) ? params.get("tab") : "courses";
+  const view = [...TABS, ...APPLICATION_VIEWS].some(([id]) => id === params.get("tab")) ? params.get("tab") : "courses";
+  const tab = view === "apply" ? "applications" : view;
   const goToTab = (id) => setParams(id === "courses" ? {} : { tab: id });
   // The role picked on the Careers page: in the address, or remembered through
   // the log-in popup. Read once, when the dashboard opens.
@@ -129,13 +134,20 @@ export default function MyCourses() {
         )}
 
         <SectionPanel active={isAdmin ? null : tab} idPrefix="dash">
-        {!isAdmin && tab === "apply" && (
+        {!isAdmin && tab === "applications" && (
+          <div className="dash-subtabs" role="group" aria-label="My Applications">
+            {APPLICATION_VIEWS.map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={view === id} className={view === id ? "active" : ""} onClick={() => goToTab(id)}>{label}</button>
+            ))}
+          </div>
+        )}
+        {!isAdmin && view === "apply" && (
           <ApplyTab user={user} initialRole={applyRole} onGoToApplications={() => goToTab("applications")} />
         )}
-        {!isAdmin && tab === "applications" && <ApplicationsTab onGoToApply={() => goToTab("apply")} />}
+        {!isAdmin && view === "applications" && <ApplicationsTab onGoToApply={() => goToTab("apply")} />}
         {!isAdmin && tab === "wallet" && <WalletCard />}
         {!isAdmin && tab === "refer" && <ReferralCard />}
-        {!isAdmin && tab === "notifications" && <NotificationsTab items={notices.items} onSeen={notices.markRead} />}
+        {!isAdmin && tab === "notifications" && <NotificationsTab items={notices.items} onSeen={notices.markRead} onClear={notices.clear} />}
 
         {(isAdmin || tab === "courses") && (<>
         {!isAdmin && <PaymentRequests onPaid={load} />}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   getOpenings, getMyJobApplications, applyForRole, createTestFeeOrder, verifyTestFee, unlockFreeTest, getReceipt,
-  getNotifications, markNotificationsRead,
+  getNotifications, markNotificationsRead, clearNotifications, clearJobApplications,
 } from "../services/api.js";
 import { loadRazorpayScript, Alert, burstConfetti, TermsCheckbox, ProfileGate } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
@@ -12,6 +12,7 @@ import { defaultTerms, feeBoxPoints, formatIST, isRoleFull, positionsLabel } fro
 // The careers sections of My Dashboard (pages/student/MyCourses.jsx):
 //   <ApplyTab>         pick a role, pay the test fee, start the aptitude test
 //   <ApplicationsTab>  where each application stands, interview details, receipt
+//                      (both under the dashboard's "My Applications" tab)
 //   <NotificationsTab> updates for the student (status changes, credit added)
 // "My Wallet" is the existing <WalletCard>.
 
@@ -80,25 +81,45 @@ export function useNotifications(enabled) {
     markNotificationsRead();
     setState((s) => ({ ...s, unread: 0 }));
   };
-  return { ...state, markRead };
+  // Clear one (by id) or all; the list updates straight away.
+  const clear = async (id) => {
+    const res = await clearNotifications(id);
+    if (res.ok) setState((s) => ({ ...s, items: id ? s.items.filter((n) => n._id !== id) : [] }));
+    return res;
+  };
+  return { ...state, markRead, clear };
 }
 
-export function NotificationsTab({ items, onSeen }) {
+export function NotificationsTab({ items, onSeen, onClear }) {
+  const [error, setError] = useState("");
   // Opening the tab counts as reading them.
   const seen = useRef(onSeen);
   useEffect(() => { seen.current(); }, []);
+  const clear = async (id) => {
+    setError("");
+    const res = await onClear(id);
+    if (!res.ok) setError(res.error || "Could not clear notifications.");
+  };
   if (items === null) return <p style={{ color: "var(--muted)" }}>Loading...</p>;
-  if (items.length === 0) return <p style={{ color: "var(--muted)" }}>No notifications yet. Updates about your applications and wallet will show up here.</p>;
+  if (items.length === 0) return <p style={{ color: "var(--muted)" }}>No notifications. Updates about your applications and wallet will show up here.</p>;
   return (
-    <ul className="dash-notices">
-      {items.map((n) => (
-        <li key={n._id} className={n.read ? "" : "is-new"}>
-          <b>{n.title}{!n.read && <span className="admin-pill new">new</span>}</b>
-          <span>{n.body}</span>
-          <small>{formatIST(n.createdAt)}</small>
-        </li>
-      ))}
-    </ul>
+    <>
+      <div className="dash-list-head">
+        <span>Notifications older than 30 days are deleted automatically.</span>
+        <button type="button" className="link-btn" onClick={() => clear()}>Clear all</button>
+      </div>
+      {error && <Alert inline kind="error">{error}</Alert>}
+      <ul className="dash-notices">
+        {items.map((n) => (
+          <li key={n._id} className={n.read ? "" : "is-new"}>
+            <b>{n.title}{!n.read && <span className="admin-pill new">new</span>}</b>
+            <span>{n.body}</span>
+            <small>{formatIST(n.createdAt)}</small>
+            <button type="button" className="dash-clear-one" aria-label={`Clear notification: ${n.title}`} title="Clear" onClick={() => clear(n._id)}>×</button>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -392,17 +413,35 @@ export function ApplicationsTab({ onGoToApply }) {
     setBusy("");
   };
 
+  // Clear one ended application (by id) or every ended one from this list.
+  const clear = async (id) => {
+    if (busy) return;
+    setBusy(id ? `clear-${id}` : "clear");
+    setError("");
+    const res = await clearJobApplications(id);
+    if (res.ok) setApplications((list) => list.filter((a) => (id ? a._id !== id : !CLOSED.includes(a.status))));
+    else setError(res.error || "Could not clear applications.");
+    setBusy("");
+  };
+  const anyEnded = (applications || []).some((a) => CLOSED.includes(a.status));
+
   if (applications === null) return <p style={{ color: "var(--muted)" }}>Loading...</p>;
   if (applications.length === 0) {
     return (
       <p style={{ color: "var(--muted)" }}>
-        You haven't applied for a role yet. <button type="button" className="link-btn" onClick={onGoToApply}>Apply and take the aptitude test →</button>
+        No applications to show. <button type="button" className="link-btn" onClick={onGoToApply}>Apply and take the aptitude test →</button>
       </p>
     );
   }
 
   return (
     <>
+      {anyEnded && (
+        <div className="dash-list-head">
+          <span>Applications that ended without an offer leave this list 30 days after they close.</span>
+          <button type="button" className="link-btn" disabled={!!busy} onClick={() => clear()}>Clear ended applications</button>
+        </div>
+      )}
       {error && <Alert inline kind="error">{error}</Alert>}
       <div className="admin-list">
         {applications.map((a) => {
@@ -427,6 +466,11 @@ export function ApplicationsTab({ onGoToApply }) {
                   {a.paidPaymentId && (
                     <button className="btn btn-ghost" disabled={!!busy} onClick={() => receipt(a)}>
                       {busy === a._id ? "Preparing…" : "Download Receipt"}
+                    </button>
+                  )}
+                  {CLOSED.includes(a.status) && (
+                    <button className="btn btn-ghost" disabled={!!busy} onClick={() => clear(a._id)}>
+                      {busy === `clear-${a._id}` ? "Clearing…" : "Clear"}
                     </button>
                   )}
                 </div>

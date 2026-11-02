@@ -5,7 +5,6 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { Alert } from "../../components/ui.jsx";
 import PhoneInput from "../../components/PhoneInput.jsx";
 import PasswordSettings from "../../components/PasswordSettings.jsx";
-import WalletCard from "../../components/WalletCard.jsx";
 import DeleteAccount from "../../components/DeleteAccount.jsx";
 import SectionTabs, { SectionPanel } from "../../components/SectionTabs.jsx";
 import { phoneError, phoneFieldError } from "../../utils/phone.js";
@@ -14,10 +13,10 @@ import { useTouched } from "../../hooks/useTouched.js";
 import { EducationFields, educationForm, educationPayload, emptyEducation } from "../../utils/education.js";
 import { safeNextPath } from "../../utils/safePath.js";
 
-// The profile's sections, shown one at a time (/profile?tab=password).
+// The profile's sections, shown one at a time (/profile?tab=password). The
+// wallet is in My Dashboard, so it isn't repeated here.
 const TABS = [
   { id: "details", label: "My Details" },
-  { id: "wallet", label: "My Wallet" },
   { id: "password", label: "Password" },
   { id: "delete", label: "Delete Account" },
 ];
@@ -183,7 +182,6 @@ export default function Profile() {
         </form>
         </>)}
 
-        {tab === "wallet" && <WalletCard />}
         {tab === "password" && <PasswordSettings />}
         {tab === "delete" && <DeleteAccount />}
         </SectionPanel>

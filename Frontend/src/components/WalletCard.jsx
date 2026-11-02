@@ -9,7 +9,7 @@ const PREVIEW = 6; // history rows shown before "Show all"
 // "Signup Bonus" and "Signup bonus" say the same thing: show the type alone.
 const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 
-// The student's wallet (Profile page, and "My Wallet" in My Dashboard): credit they've
+// The student's wallet ("My Wallet" in My Dashboard): credit they've
 // been given (signup bonus, the aptitude-test fee coming back, referrals, or by Crix),
 // what it's been spent on, and how it's used. Credit is
 // applied at checkout, and when it covers the whole price the buy popup offers
