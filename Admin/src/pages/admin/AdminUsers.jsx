@@ -173,7 +173,7 @@ Only do this after confirming it's really them (WhatsApp or phone). Their curren
         </div>
 
         <input
-          className="admin-search"
+          className="admin-search" aria-label="Search by name, email or phone"
           type="search"
           placeholder="Search by name, email or phone..."
           value={q}
@@ -224,12 +224,12 @@ Only do this after confirming it's really them (WhatsApp or phone). Their curren
                   </div>
 
                   <form onSubmit={saveUser}>
-                    <div className="field"><label>Name</label>
-                      <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
+                    <div className="field"><label htmlFor="users-name">Name</label>
+                      <input id="users-name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
                     <div className="field"><label htmlFor="au-phone">Phone</label>
                       <PhoneInput id="au-phone" value={editForm.phone} onChange={(phone) => setEditForm((f) => ({ ...f, phone }))} /></div>
-                    <div className="field"><label>Role</label>
-                      <select value={editForm.role} disabled={isSelf} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
+                    <div className="field"><label htmlFor="users-role">Role</label>
+                      <select id="users-role" value={editForm.role} disabled={isSelf} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
                         <option value="student">Student</option>
                         <option value="admin">Admin</option>
                       </select>
@@ -322,15 +322,15 @@ Only do this after confirming it's really them (WhatsApp or phone). Their curren
 
                   <form onSubmit={grantAccess} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
                     <div className="field" style={{ margin: 0, flex: "1 1 200px" }}>
-                      <label>Grant access to</label>
-                      <select value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
+                      <label htmlFor="users-grant-access-to">Grant access to</label>
+                      <select id="users-grant-access-to" value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
                         <option value="">Choose a course or internship...</option>
                         {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
                       </select>
                     </div>
                     <div className="field" style={{ margin: 0 }}>
-                      <label>Expires (optional)</label>
-                      <input type="date" value={grantForm.endDate} onChange={(e) => setGrantForm({ ...grantForm, endDate: e.target.value })} />
+                      <label htmlFor="users-expires">Expires (optional)</label>
+                      <input id="users-expires" type="date" value={grantForm.endDate} onChange={(e) => setGrantForm({ ...grantForm, endDate: e.target.value })} />
                     </div>
                     <button className="btn btn-solid" type="submit" disabled={granting}>{granting ? "Granting..." : "Grant"}</button>
                   </form>

@@ -311,10 +311,10 @@ export default function AdminCourses() {
           <h3 style={{ margin: "0 0 16px" }}>{`${editingId ? "Edit" : "Add"} ${editingId ? "this" : "a"} ${kind === "internship" ? "paid internship" : "course"}`}</h3>
           {kindPicker}
           <div className="admin-form-grid">
-            <div className="field"><label>Title</label>
-              <input value={form.title} onChange={set("title")} placeholder="Full Stack (MERN) Development" /></div>
-            <div className="field"><label>Tag</label>
-              <input value={form.tag} onChange={set("tag")} placeholder="Beginner friendly" /></div>
+            <div className="field"><label htmlFor="courses-title">Title</label>
+              <input id="courses-title" value={form.title} onChange={set("title")} placeholder="Full Stack (MERN) Development" /></div>
+            <div className="field"><label htmlFor="courses-tag">Tag</label>
+              <input id="courses-tag" value={form.tag} onChange={set("tag")} placeholder="Beginner friendly" /></div>
             {kind === "internship" ? (
               <div className="field"><label htmlFor="ac-duration">Duration</label>
                 <select id="ac-duration" value={form.durationDays} onChange={set("durationDays")}>
@@ -330,13 +330,13 @@ export default function AdminCourses() {
               <div className="field"><label htmlFor="ac-duration">Duration (days)</label>
                 <input id="ac-duration" type="number" min="1" value={form.durationDays} onChange={set("durationDays")} placeholder="30" /></div>
             )}
-            <div className="field"><label>Starts on (optional)</label>
-              <input type="date" value={form.startsAt} onChange={set("startsAt")} /></div>
+            <div className="field"><label htmlFor="courses-starts-on">Starts on (optional)</label>
+              <input id="courses-starts-on" type="date" value={form.startsAt} onChange={set("startsAt")} /></div>
           </div>
-          <div className="field"><label>Description</label>
-            <textarea rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
-          <div className="field"><label>Points (one per line)</label>
-            <textarea rows="4" value={form.points} onChange={set("points")} placeholder={"Frontend fundamentals\nReact in depth\nNode.js & MongoDB"} /></div>
+          <div className="field"><label htmlFor="courses-description">Description</label>
+            <textarea id="courses-description" rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
+          <div className="field"><label htmlFor="courses-points">Points (one per line)</label>
+            <textarea id="courses-points" rows="4" value={form.points} onChange={set("points")} placeholder={"Frontend fundamentals\nReact in depth\nNode.js & MongoDB"} /></div>
 
           <fieldset className="plan-editor-set">
             <legend>{kind === "internship" ? "Internship" : "Course"} details</legend>
@@ -427,7 +427,7 @@ export default function AdminCourses() {
         )}
 
         <input
-          className="admin-search"
+          className="admin-search" aria-label="Search internships & courses by title, tag or skill"
           type="search"
           style={{ marginTop: 40 }}
           placeholder="Search internships & courses by title, tag or skill..."

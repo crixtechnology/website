@@ -53,7 +53,7 @@ export default function AdminMessages() {
         </div>
 
         <input
-          className="admin-search"
+          className="admin-search" aria-label="Search by name, email, phone, company or message"
           type="search"
           placeholder="Search by name, email, phone, company or message..."
           value={q}

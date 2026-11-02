@@ -94,17 +94,17 @@ export default function AdminServices() {
         <form onSubmit={onSubmit} className="admin-form">
           <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit service" : "Add a new service"}</h3>
           <div className="admin-form-grid">
-            <div className="field"><label>Title</label>
-              <input value={form.title} onChange={set("title")} placeholder="Dynamic Website & Web Apps" /></div>
-            <div className="field"><label>Tag</label>
-              <input value={form.tag} onChange={set("tag")} placeholder="For businesses" /></div>
-            <div className="field"><label>Display order</label>
-              <input type="number" value={form.order} onChange={set("order")} placeholder="Auto (last)" /></div>
+            <div className="field"><label htmlFor="services-title">Title</label>
+              <input id="services-title" value={form.title} onChange={set("title")} placeholder="Dynamic Website & Web Apps" /></div>
+            <div className="field"><label htmlFor="services-tag">Tag</label>
+              <input id="services-tag" value={form.tag} onChange={set("tag")} placeholder="For businesses" /></div>
+            <div className="field"><label htmlFor="services-display-order">Display order</label>
+              <input id="services-display-order" type="number" value={form.order} onChange={set("order")} placeholder="Auto (last)" /></div>
           </div>
-          <div className="field"><label>Description</label>
-            <textarea rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
-          <div className="field"><label>Points (one per line)</label>
-            <textarea rows="4" value={form.points} onChange={set("points")} placeholder={"Responsive design\nSEO-friendly structure"} /></div>
+          <div className="field"><label htmlFor="services-description">Description</label>
+            <textarea id="services-description" rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
+          <div className="field"><label htmlFor="services-points">Points (one per line)</label>
+            <textarea id="services-points" rows="4" value={form.points} onChange={set("points")} placeholder={"Responsive design\nSEO-friendly structure"} /></div>
           {error && <p className="form-error">{error}</p>}
           <div className="admin-actions">
             <button className="btn btn-solid" type="submit" disabled={saving}>
@@ -115,7 +115,7 @@ export default function AdminServices() {
         </form>
 
         <input
-          className="admin-search"
+          className="admin-search" aria-label="Search services by title, tag or description"
           type="search"
           style={{ marginTop: 40 }}
           placeholder="Search services by title, tag or description..."

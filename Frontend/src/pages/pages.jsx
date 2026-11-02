@@ -780,7 +780,16 @@ export function About() {
 /* ================= CONTACT ================= */
 export function Contact() {
   usePageMeta(routeMeta("/contact"));
-  const [form, setForm] = useState({ name: "", email: "", phone: "", interest: "Internship", message: "" });
+  const { user } = useContext(UserContext);
+  // A logged-in visitor starts with their saved name, email and phone.
+  const startForm = () => ({
+    name: user && !user.profilePending ? user.name || "" : "",
+    email: (user && user.email) || "",
+    phone: (user && user.phone) || "",
+    interest: "Internship",
+    message: "",
+  });
+  const [form, setForm] = useState(startForm);
   const [status, setStatus] = useState("");
   const [kind, setKind] = useState(""); // "error" | "success" | "info"
 
@@ -831,9 +840,10 @@ export function Contact() {
     setKind(res.ok ? "success" : "error");
     setStatus(res.ok ? "Message sent. We'll reply within two working days." : res.error);
     if (res.ok) burstConfetti(formEl && formEl.querySelector ? formEl.querySelector("button[type=submit]") : null);
-    // Clear everything that was sent (the "interested in" choice back to its default too),
-    // so pressing the button again can't quietly post the same message twice.
-    if (res.ok) { setForm({ name: "", email: "", phone: "", interest: "Internship", message: "" }); fields.reset(); }
+    // Clear what was sent (the "interested in" choice back to its default too; a
+    // logged-in visitor keeps their own details), so pressing the button again
+    // can't quietly post the same message twice.
+    if (res.ok) { setForm(startForm()); fields.reset(); }
   };
 
   const set = (k) => (e) => {

@@ -1308,7 +1308,16 @@ export function UpgradeModal({ data, onClose, onDone }) {
 // and the admin catching the message there. No account needed either way.
 // `item` doubles as the "is this open" flag, same pattern as BuyModal.
 export function InquiryModal({ item, kind, onClose }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", college: "" });
+  const { user } = useContext(UserContext);
+  // A logged-in student starts with their saved details (not the placeholder
+  // name an email signup gets) instead of typing them again.
+  const startForm = () => ({
+    name: user && !user.profilePending ? user.name || "" : "",
+    email: (user && user.email) || "",
+    phone: (user && user.phone) || "",
+    college: (user && user.education && user.education.college) || "",
+  });
+  const [form, setForm] = useState(startForm);
   const [status, setStatus] = useState({ text: "", kind: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -1322,7 +1331,7 @@ export function InquiryModal({ item, kind, onClose }) {
 
   useEffect(() => {
     if (item) {
-      setForm({ name: "", email: "", phone: "", college: "" });
+      setForm(startForm());
       setStatus({ text: "", kind: "" });
       setLoading(false);
       setDone(false);
@@ -1410,7 +1419,9 @@ export function InquiryModal({ item, kind, onClose }) {
         ) : (
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
-              Share your details and we'll help you {verb} "{item.title}" — no account needed.
+              {user
+                ? `Check your details and we'll help you ${verb} "${item.title}".`
+                : `Share your details and we'll help you ${verb} "${item.title}" — no account needed.`}
             </p>
             <form onSubmit={onSubmit} noValidate>
               <div className="field"><label htmlFor="inquiry-name">Full name</label>

@@ -118,11 +118,11 @@ export default function AdminPaymentRequests() {
             and get access as soon as they pay — whether the course/internship is open or closed. This is separate from normal checkout: no offer codes or referral discounts apply.
           </p>
           <div className="admin-form-grid">
-            <div className="field"><label>Student</label>
-              <UserPicker users={students} loading={studentsLoading} value={form.user}
+            <div className="field"><label htmlFor="paymentrequests-student">Student</label>
+              <UserPicker id="paymentrequests-student" users={students} loading={studentsLoading} value={form.user}
                 onChange={(user) => setForm((f) => ({ ...f, user }))} /></div>
-            <div className="field"><label>Course / internship</label>
-              <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value, tier: "" })}>
+            <div className="field"><label htmlFor="paymentrequests-course-internship">Course / internship</label>
+              <select id="paymentrequests-course-internship" value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value, tier: "" })}>
                 <option value="">Choose a course or internship...</option>
                 {courses.map((c) => (
                   <option key={c._id} value={c._id}>
@@ -131,8 +131,8 @@ export default function AdminPaymentRequests() {
                 ))}
               </select>
             </div>
-            <div className="field"><label>Plan (optional)</label>
-              <select value={form.tier} onChange={(e) => pickTier(e.target.value)}>
+            <div className="field"><label htmlFor="paymentrequests-plan">Plan (optional)</label>
+              <select id="paymentrequests-plan" value={form.tier} onChange={(e) => pickTier(e.target.value)}>
                 <option value="">No plan</option>
                 {TIER_ORDER.map((t) => {
                   const plan = plans.find((p) => p.tier === t);
@@ -140,10 +140,10 @@ export default function AdminPaymentRequests() {
                 })}
               </select>
             </div>
-            <div className="field"><label>Amount (₹)</label>
-              <input type="number" min="1" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="e.g. 4999" /></div>
-            <div className="field" style={{ gridColumn: "1 / -1" }}><label>Note to the student (optional)</label>
-              <input type="text" maxLength={190} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. Fee for the September batch" /></div>
+            <div className="field"><label htmlFor="paymentrequests-amount">Amount (₹)</label>
+              <input id="paymentrequests-amount" type="number" min="1" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="e.g. 4999" /></div>
+            <div className="field" style={{ gridColumn: "1 / -1" }}><label htmlFor="paymentrequests-note-to-the-student">Note to the student (optional)</label>
+              <input id="paymentrequests-note-to-the-student" type="text" maxLength={190} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. Fee for the September batch" /></div>
           </div>
           {formError && <p className="form-error">{formError}</p>}
           {formOk && <p className="form-note" style={{ color: "var(--teal)" }}>{formOk}</p>}
@@ -152,7 +152,7 @@ export default function AdminPaymentRequests() {
 
         <div className="admin-filters" style={{ marginTop: 40 }}>
           <input
-            className="admin-search"
+            className="admin-search" aria-label="Search by student name/email or course title"
             type="search"
             style={{ margin: 0 }}
             placeholder="Search by student name/email or course title..."

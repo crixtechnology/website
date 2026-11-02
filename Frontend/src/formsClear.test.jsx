@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { UserContext } from "./context/UserContext.jsx";
 import { Contact } from "./pages/pages.jsx";
-import { AuthModal } from "./components/ui.jsx";
+import { AuthModal, InquiryModal } from "./components/ui.jsx";
 import ReferralCard from "./components/ReferralCard.jsx";
 import * as api from "./services/api.js";
 import { IDLE_TIMEOUT_MINUTES } from "./hooks/useIdleLogout.js";
@@ -76,6 +76,45 @@ describe("Contact form", () => {
     expect(api.submitContact).toHaveBeenCalledTimes(1);
     expect(q("#c-name").value).toBe("Test Person");
     expect(q("#c-message").value).toBe("Hello there friend");
+  });
+
+  it("starts a logged-in student with their saved details, and keeps them after sending", async () => {
+    api.submitContact.mockResolvedValue({ ok: true });
+    const user = { name: "Asha Patel", email: "asha@example.com", phone: "9876543210" };
+    await render(<MemoryRouter><UserContext.Provider value={{ user }}><Contact /></UserContext.Provider></MemoryRouter>);
+    expect(q("#c-name").value).toBe("Asha Patel");
+    expect(q("#c-email").value).toBe("asha@example.com");
+
+    await type("#c-message", "Hello, I would like to know more.");
+    await submit(q("#c-name").closest("form"));
+    expect(api.submitContact).toHaveBeenCalledWith(expect.objectContaining({ name: "Asha Patel", email: "asha@example.com" }));
+    expect(q("#c-name").value).toBe("Asha Patel");
+    expect(q("#c-message").value).toBe("");
+  });
+
+  it("leaves the name empty for a new account that still has its placeholder name", async () => {
+    const user = { name: "asha", email: "asha@example.com", phone: "", profilePending: true };
+    await render(<MemoryRouter><UserContext.Provider value={{ user }}><Contact /></UserContext.Provider></MemoryRouter>);
+    expect(q("#c-name").value).toBe("");
+    expect(q("#c-email").value).toBe("asha@example.com");
+  });
+});
+
+describe("Request to apply form", () => {
+  it("starts a logged-in student with their saved details", async () => {
+    const user = { name: "Asha Patel", email: "asha@example.com", phone: "9876543210", education: { college: "GU" } };
+    const item = { title: "Web Intern", slug: "web-intern" };
+    await render(<MemoryRouter><UserContext.Provider value={{ user }}><InquiryModal item={item} kind="internship" onClose={() => {}} /></UserContext.Provider></MemoryRouter>);
+    expect(q("#inquiry-name").value).toBe("Asha Patel");
+    expect(q("#inquiry-email").value).toBe("asha@example.com");
+    expect(q("#inquiry-college").value).toBe("GU");
+  });
+
+  it("starts empty for a visitor who isn't logged in", async () => {
+    const item = { title: "Web Intern", slug: "web-intern" };
+    await render(<MemoryRouter><InquiryModal item={item} kind="internship" onClose={() => {}} /></MemoryRouter>);
+    expect(q("#inquiry-name").value).toBe("");
+    expect(q("#inquiry-email").value).toBe("");
   });
 });
 
