@@ -4,8 +4,6 @@ import { UserContext } from "../context/UserContext.jsx";
 import { Alert } from "./ui.jsx";
 import { getDeletionSummary, sendDeletionCode, deleteMyAccount } from "../services/api.js";
 
-const sectionStyle = { marginTop: 48, paddingTop: 28, borderTop: "1px solid var(--line, rgba(128,128,128,.25))" };
-
 // The bottom of the profile page: a student permanently deleting their account
 // (their right to erasure under the Digital Personal Data Protection Act 2023).
 //   1. "Delete my account" shows exactly what goes and what the law makes us keep;
@@ -73,7 +71,7 @@ export default function DeleteAccount() {
     : [];
 
   return (
-    <div style={sectionStyle}>
+    <div className="profile-section">
       <h2 style={{ margin: "0 0 8px", fontSize: "1.2rem" }}>Delete my account</h2>
       <p style={{ color: "var(--muted)", marginBottom: 18 }}>
         Permanently delete your account and the personal data we hold about you. This can't be undone.

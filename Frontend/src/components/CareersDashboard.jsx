@@ -12,7 +12,7 @@ import { defaultTerms, feeBoxPoints, formatIST, isRoleFull, positionsLabel } fro
 // The careers sections of My Dashboard (pages/student/MyCourses.jsx):
 //   <ApplyTab>         pick a role, pay the test fee, start the aptitude test
 //   <ApplicationsTab>  where each application stands, interview details, receipt
-//   <DashboardNotices> unread notifications (status changes, credit added)
+//   <NotificationsTab> updates for the student (status changes, credit added)
 // "My Wallet" is the existing <WalletCard>.
 
 // An application that ended without an offer no longer blocks applying again.
@@ -60,32 +60,45 @@ export function StatusPill({ application }) {
   return <span className={`admin-pill ${PILL_CLASS[application.status] || "read"}`}>{application.statusLabel}</span>;
 }
 
-/* ---------- unread notifications ---------- */
-export function DashboardNotices() {
-  const [items, setItems] = useState([]);
+/* ---------- notifications ---------- */
+// Loaded once by My Dashboard, for the unread count on the Notifications tab.
+// `markRead` clears that count; the list still shows which ones were new.
+export function useNotifications(enabled) {
+  const [state, setState] = useState({ items: null, unread: 0 });
   useEffect(() => {
+    if (!enabled) return undefined;
     let alive = true;
-    getNotifications().then((res) => { if (alive && res.ok) setItems((res.notifications || []).filter((n) => !n.read)); });
+    getNotifications().then((res) => {
+      if (!alive) return;
+      const items = res.ok ? res.notifications || [] : [];
+      setState({ items, unread: items.filter((n) => !n.read).length });
+    });
     return () => { alive = false; };
-  }, []);
-  if (items.length === 0) return null;
-  const dismiss = () => { markNotificationsRead(); setItems([]); };
+  }, [enabled]);
+  const markRead = () => {
+    if (!state.unread) return;
+    markNotificationsRead();
+    setState((s) => ({ ...s, unread: 0 }));
+  };
+  return { ...state, markRead };
+}
+
+export function NotificationsTab({ items, onSeen }) {
+  // Opening the tab counts as reading them.
+  const seen = useRef(onSeen);
+  useEffect(() => { seen.current(); }, []);
+  if (items === null) return <p style={{ color: "var(--muted)" }}>Loading...</p>;
+  if (items.length === 0) return <p style={{ color: "var(--muted)" }}>No notifications yet. Updates about your applications and wallet will show up here.</p>;
   return (
-    <div className="dash-notices" role="status">
-      <div className="dash-notices-head">
-        <b>Notifications</b>
-        <button type="button" className="link-btn" onClick={dismiss}>Mark all as read</button>
-      </div>
-      <ul>
-        {items.slice(0, 5).map((n) => (
-          <li key={n._id}>
-            <b>{n.title}</b>
-            <span>{n.body}</span>
-            <small>{formatIST(n.createdAt)}</small>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="dash-notices">
+      {items.map((n) => (
+        <li key={n._id} className={n.read ? "" : "is-new"}>
+          <b>{n.title}{!n.read && <span className="admin-pill new">new</span>}</b>
+          <span>{n.body}</span>
+          <small>{formatIST(n.createdAt)}</small>
+        </li>
+      ))}
+    </ul>
   );
 }
 
