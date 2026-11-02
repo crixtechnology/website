@@ -5,25 +5,40 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { Alert } from "../../components/ui.jsx";
 import PhoneInput from "../../components/PhoneInput.jsx";
 import PasswordSettings from "../../components/PasswordSettings.jsx";
-import WalletCard from "../../components/WalletCard.jsx";
 import DeleteAccount from "../../components/DeleteAccount.jsx";
+import SectionTabs, { SectionPanel } from "../../components/SectionTabs.jsx";
 import { phoneError, phoneFieldError } from "../../utils/phone.js";
 import { FieldError } from "../../components/FormFields.jsx";
 import { useTouched } from "../../hooks/useTouched.js";
 import { EducationFields, educationForm, educationPayload, emptyEducation } from "../../utils/education.js";
 import { safeNextPath } from "../../utils/safePath.js";
 
+// The profile's sections, shown one at a time (/profile?tab=password). The
+// wallet is in My Dashboard, so it isn't repeated here.
+const TABS = [
+  { id: "details", label: "My Details" },
+  { id: "password", label: "Password" },
+  { id: "delete", label: "Delete Account" },
+];
+
 export default function Profile() {
   usePageMeta({ title: "Your Profile | Crix Technology", description: "Manage your Crix Technology account details." });
   const { isLoggedIn, user, updateProfile, openAuthModal } = useContext(UserContext);
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   // Where to go after a successful save — set when the user was sent here to
   // finish their details before an enrollment. Kept relative-only so it
   // can't be used as an open redirect.
   const next = safeNextPath(params.get("next"));
   const isNew = params.get("reason") === "new";
   const sentToComplete = params.get("reason") === "complete" || isNew || !!next;
+  const tab = TABS.some((t) => t.id === params.get("tab")) ? params.get("tab") : "details";
+  // Switching tabs keeps ?next and ?reason, so a save still continues to payment.
+  const goToTab = (id) => {
+    const nextParams = new URLSearchParams(params);
+    if (id === "details") nextParams.delete("tab"); else nextParams.set("tab", id);
+    setParams(nextParams);
+  };
 
   const [form, setForm] = useState({ name: "", phone: "" });
   const [education, setEducation] = useState(emptyEducation);
@@ -39,7 +54,7 @@ export default function Profile() {
 
   if (!isLoggedIn && params.get("deleted") === "1") {
     return (
-      <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
+      <section className="section dash-page" style={{ minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 520 }}>
           <span className="eyebrow">Your account</span>
           <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Your account has been deleted</h1>
@@ -55,7 +70,7 @@ export default function Profile() {
 
   if (!isLoggedIn) {
     return (
-      <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
+      <section className="section dash-page" style={{ minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 480 }}>
           <span className="eyebrow">Your account</span>
           <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to manage your profile</h1>
@@ -105,11 +120,15 @@ export default function Profile() {
   };
 
   return (
-    <section className="section" style={{ paddingTop: 140 }}>
+    <section className="section dash-page">
       <div className="wrap" style={{ maxWidth: 560 }}>
         <span className="eyebrow">Your account</span>
-        <h1 className="title-lg" style={{ margin: "14px 0 8px" }}>Your profile</h1>
-        <p style={{ color: "var(--muted)", marginBottom: 28 }}>
+        <h1 className="title-lg" style={{ margin: "14px 0 20px" }}>Your profile</h1>
+
+        <SectionTabs label="Profile sections" idPrefix="profile" active={tab} onChange={goToTab} tabs={TABS} />
+        <SectionPanel active={tab} idPrefix="profile">
+        {tab === "details" && (<>
+        <p style={{ color: "var(--muted)", marginTop: 0, marginBottom: 24 }}>
           These details are used for your enrolments and payment receipts.
         </p>
 
@@ -161,12 +180,11 @@ export default function Profile() {
 
           <Alert kind={status.kind}>{status.text}</Alert>
         </form>
+        </>)}
 
-        <div style={{ marginTop: 40 }}><WalletCard /></div>
-
-        <PasswordSettings />
-
-        <DeleteAccount />
+        {tab === "password" && <PasswordSettings />}
+        {tab === "delete" && <DeleteAccount />}
+        </SectionPanel>
       </div>
     </section>
   );

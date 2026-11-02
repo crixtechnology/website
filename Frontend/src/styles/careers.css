@@ -40,16 +40,38 @@
 /* ---------- My Dashboard: section tabs + careers sections ---------- */
 .dash-tabs{margin:0 0 32px}
 .dash-tabs .nav-due-badge{margin-left:8px}
-
-.dash-notices{margin:0 0 28px;border:1px solid rgba(var(--teal-rgb),.3);border-radius:var(--radius);background:rgba(var(--teal-rgb),.06);padding:16px 18px}
-.dash-notices-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.dash-notices-head b{font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
-.dash-notices ul{list-style:none;margin:10px 0 0;padding:0}
-.dash-notices li{padding:10px 0;border-top:1px dashed rgba(147,163,188,.18);font-size:.9rem;line-height:1.55}
-.dash-notices li:first-child{border-top:none}
-.dash-notices li b{display:block;color:var(--text);font-weight:600}
+.dash-notices{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.dash-notices li{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:.9rem;line-height:1.55}
+.dash-notices li.is-new{border-color:rgba(var(--teal-rgb),.45);background:rgba(var(--teal-rgb),.06)}
+.dash-notices li b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--text);font-weight:600}
 .dash-notices li span{color:var(--muted)}
 .dash-notices li small{display:block;color:var(--muted);font-size:.75rem;margin-top:2px}
+.dash-notices li{position:relative;padding-right:44px}
+.dash-clear-one{position:absolute;top:8px;right:8px;width:32px;height:32px;border:0;border-radius:8px;background:none;color:var(--muted);font-size:1.25rem;line-height:1;cursor:pointer}
+.dash-clear-one:hover,.dash-clear-one:focus-visible{color:var(--text);background:rgba(var(--text-rgb),.06)}
+.dash-list-head{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;margin:0 0 14px;font-size:.8rem;color:var(--muted)}
+.dash-list-head .link-btn{font-size:.85rem;white-space:nowrap}
+/* My Applications: the list, or applying for a role. */
+.dash-subtabs{display:inline-flex;gap:4px;padding:4px;margin:0 0 20px;border:1px solid var(--line);border-radius:100px;background:rgba(var(--text-rgb),.03);max-width:100%}
+.dash-subtabs button{min-height:40px;padding:8px 16px;border:0;border-radius:100px;background:none;color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;white-space:nowrap}
+.dash-subtabs button.active{background:rgba(var(--teal-rgb),.16);color:var(--text)}
+@media(max-width:400px){.dash-subtabs{display:flex}.dash-subtabs button{flex:1;padding:8px 10px;font-size:.8rem}}
+/* One section of My Dashboard / Profile at a time (components/SectionTabs.jsx). */
+.section.dash-page{padding-top:140px}
+.profile-section{margin-top:48px;padding-top:28px;border-top:1px solid var(--line)}
+.dash-panel>.profile-section:first-child{margin-top:0;padding-top:0;border-top:0}
+.dash-panel>.ref-card:first-child{margin-top:0}
+@media(max-width:640px){
+  .section.dash-page{padding-top:96px}
+  .dash-page .admin-head{padding:16px;margin-bottom:16px;border-radius:16px;gap:12px}
+  .dash-page .admin-head .title-lg{font-size:1.35rem}
+  .dash-page .admin-head .btn{padding:9px 14px;font-size:.8rem}
+  /* One row that scrolls sideways, edge to edge, instead of rows of wrapped buttons. */
+  .dash-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
+    margin:0 calc(-1 * clamp(18px,5vw,28px)) 20px;padding:2px clamp(18px,5vw,28px) 6px;scroll-padding:0 clamp(18px,5vw,28px)}
+  .dash-tabs::-webkit-scrollbar{display:none}
+  .dash-tabs button{flex:none;white-space:nowrap;scroll-snap-align:start}
+}
 
 .apply-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:26px;align-items:start}
 @media(max-width:880px){.apply-grid{grid-template-columns:1fr}}

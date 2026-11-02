@@ -699,6 +699,9 @@ model JobApplication {
   // ({ college, course, department, semester, passingYear }), so a later
   // profile change doesn't rewrite what the application was made with.
   education     Json?
+  // When the candidate cleared this ended application from My Applications.
+  // Only hides it from them — the record stays for the admin side.
+  clearedAt     DateTime?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 

@@ -6,8 +6,6 @@ import { changePassword, requestPasswordReveal, verifyPasswordReveal } from "../
 // How long a revealed password stays on screen before it hides itself.
 const SHOW_SECONDS = 60;
 
-const sectionStyle = { marginTop: 48, paddingTop: 28, borderTop: "1px solid var(--line, rgba(128,128,128,.25))" };
-
 // The password half of the profile page:
 //   1. Change password — asks for the current one, then a new one (twice).
 //   2. Your password — for accounts created via Google, which were given a
@@ -111,7 +109,7 @@ export default function PasswordSettings() {
 
   return (
     <>
-      <div style={sectionStyle}>
+      <div className="profile-section">
         <h2 style={{ margin: "0 0 8px", fontSize: "1.2rem" }}>Change password</h2>
         {!user.hasPassword ? (
           <p style={{ color: "var(--muted)" }}>
@@ -144,7 +142,7 @@ export default function PasswordSettings() {
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div className="profile-section">
         <h2 style={{ margin: "0 0 8px", fontSize: "1.2rem" }}>Your password</h2>
         {hasStarter ? (
           <>

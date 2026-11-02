@@ -6,32 +6,42 @@ import { UpgradeModal } from "../../components/ui.jsx";
 import ReferralCard from "../../components/ReferralCard.jsx";
 import PaymentRequests from "../../components/PaymentRequests.jsx";
 import WalletCard from "../../components/WalletCard.jsx";
-import { ApplyTab, ApplicationsTab, DashboardNotices } from "../../components/CareersDashboard.jsx";
+import { ApplyTab, ApplicationsTab, NotificationsTab, useNotifications } from "../../components/CareersDashboard.jsx";
+import SectionTabs, { SectionPanel } from "../../components/SectionTabs.jsx";
 import { takeRememberedRole } from "../../data/careers.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { downloadReceiptPdf } from "../../utils/receiptPdfLazy.js";
 import { tierLabel } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../../utils/startDate.js";
 
-// The dashboard's sections. Each has its own address (/dashboard?tab=apply), so
-// the Careers page, emails and notifications can link straight to one.
+// The dashboard's sections, shown one at a time. Each has its own address
+// (/dashboard?tab=apply), so the Careers page, emails and notifications can
+// link straight to one.
 const TABS = [
   ["courses", "My Courses"],
-  ["apply", "Apply / Aptitude Test"],
   ["applications", "My Applications"],
   ["wallet", "My Wallet"],
+  ["refer", "Refer & Earn"],
+  ["notifications", "Notifications"],
+];
+// Inside My Applications: the list, or applying for a role (?tab=apply).
+const APPLICATION_VIEWS = [
+  ["applications", "My applications"],
+  ["apply", "Apply / Aptitude test"],
 ];
 
 export default function MyCourses() {
   usePageMeta({ title: "My Dashboard | Crix Technology" });
   const [params, setParams] = useSearchParams();
-  const tab = TABS.some(([id]) => id === params.get("tab")) ? params.get("tab") : "courses";
+  const view = [...TABS, ...APPLICATION_VIEWS].some(([id]) => id === params.get("tab")) ? params.get("tab") : "courses";
+  const tab = view === "apply" ? "applications" : view;
   const goToTab = (id) => setParams(id === "courses" ? {} : { tab: id });
   // The role picked on the Careers page: in the address, or remembered through
   // the log-in popup. Read once, when the dashboard opens.
   const [applyRole] = useState(() => params.get("role") || takeRememberedRole());
   const { isLoggedIn, isAdmin, user, logout, openAuthModal } = useContext(UserContext);
   const navigate = useNavigate();
+  const notices = useNotifications(isLoggedIn && !isAdmin);
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   // Per-enrollment id -> "loading" | "error", while its receipt PDF is
@@ -93,7 +103,7 @@ export default function MyCourses() {
   // still lands somewhere sensible instead of a blank screen.
   if (!isLoggedIn) {
     return (
-      <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
+      <section className="section dash-page" style={{ minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 480 }}>
           <span className="eyebrow">My dashboard</span>
           <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to see your dashboard</h1>
@@ -104,7 +114,7 @@ export default function MyCourses() {
   }
 
   return (
-    <section className="section" style={{ paddingTop: 140 }}>
+    <section className="section dash-page">
       <div className="wrap">
         <div className="admin-head">
           <div>
@@ -118,20 +128,26 @@ export default function MyCourses() {
         </div>
 
         {/* Admins have no applications or wallet: they keep the single course list. */}
-        {!isAdmin && <DashboardNotices />}
         {!isAdmin && (
-          <div className="program-filter dash-tabs" role="tablist" aria-label="Dashboard sections">
-            {TABS.map(([id, label]) => (
-              <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? "active" : ""} onClick={() => goToTab(id)}>{label}</button>
+          <SectionTabs label="Dashboard sections" idPrefix="dash" active={tab} onChange={goToTab}
+            tabs={TABS.map(([id, label]) => ({ id, label, badge: id === "notifications" ? notices.unread : 0 }))} />
+        )}
+
+        <SectionPanel active={isAdmin ? null : tab} idPrefix="dash">
+        {!isAdmin && tab === "applications" && (
+          <div className="dash-subtabs" role="group" aria-label="My Applications">
+            {APPLICATION_VIEWS.map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={view === id} className={view === id ? "active" : ""} onClick={() => goToTab(id)}>{label}</button>
             ))}
           </div>
         )}
-
-        {!isAdmin && tab === "apply" && (
+        {!isAdmin && view === "apply" && (
           <ApplyTab user={user} initialRole={applyRole} onGoToApplications={() => goToTab("applications")} />
         )}
-        {!isAdmin && tab === "applications" && <ApplicationsTab onGoToApply={() => goToTab("apply")} />}
+        {!isAdmin && view === "applications" && <ApplicationsTab onGoToApply={() => goToTab("apply")} />}
         {!isAdmin && tab === "wallet" && <WalletCard />}
+        {!isAdmin && tab === "refer" && <ReferralCard />}
+        {!isAdmin && tab === "notifications" && <NotificationsTab items={notices.items} onSeen={notices.markRead} onClear={notices.clear} />}
 
         {(isAdmin || tab === "courses") && (<>
         {!isAdmin && <PaymentRequests onPaid={load} />}
@@ -212,8 +228,9 @@ export default function MyCourses() {
             ))}
           </div>
         )}
-        <ReferralCard />
+        {isAdmin && <ReferralCard />}
         </>)}
+        </SectionPanel>
       </div>
       <UpgradeModal data={upgrade} onClose={() => setUpgrade(null)} onDone={load} />
     </section>
