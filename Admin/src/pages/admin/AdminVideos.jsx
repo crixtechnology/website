@@ -139,8 +139,8 @@ This removes it from the site AND deletes the video file from Backblaze storage.
         </div>
 
         <div className="field" style={{ maxWidth: 420 }}>
-          <label>Course</label>
-          <select value={courseId} onChange={(e) => { setCourseId(e.target.value); cancelEdit(); setNotice(""); }}>
+          <label htmlFor="videos-course">Course</label>
+          <select id="videos-course" value={courseId} onChange={(e) => { setCourseId(e.target.value); cancelEdit(); setNotice(""); }}>
             {courses.length === 0 && <option value="">No courses yet</option>}
             {courses.map((c) => <option key={c._id} value={c._id}>{courseLabel(c)}</option>)}
           </select>
@@ -151,7 +151,7 @@ This removes it from the site AND deletes the video file from Backblaze storage.
 
         {videos.length > 0 && (
           <input
-            className="admin-search"
+            className="admin-search" aria-label="Search videos by title"
             type="search"
             style={{ marginTop: 20 }}
             placeholder="Search videos by title..."

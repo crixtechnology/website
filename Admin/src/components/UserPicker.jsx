@@ -5,7 +5,7 @@ const MAX_SHOWN = 50;
 // Searchable account picker for admin forms: type any part of a name, email
 // or phone and pick from the matches (mouse, or ↑/↓ + Enter). `users` is the
 // full list to choose from; `value` is the chosen user (or null).
-export default function UserPicker({ users, value, onChange, loading, placeholder = "Search by name, email or phone..." }) {
+export default function UserPicker({ id, users, value, onChange, loading, placeholder = "Search by name, email or phone..." }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -77,6 +77,7 @@ export default function UserPicker({ users, value, onChange, loading, placeholde
   return (
     <div className="user-picker" ref={boxRef}>
       <input
+        id={id}
         ref={inputRef}
         type="search"
         role="combobox"

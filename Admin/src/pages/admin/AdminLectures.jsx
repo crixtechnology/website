@@ -115,8 +115,8 @@ export default function AdminLectures() {
         </div>
 
         <div className="field" style={{ maxWidth: 420 }}>
-          <label>Course</label>
-          <select value={courseId} onChange={(e) => { setCourseId(e.target.value); cancelEdit(); }}>
+          <label htmlFor="lectures-course">Course</label>
+          <select id="lectures-course" value={courseId} onChange={(e) => { setCourseId(e.target.value); cancelEdit(); }}>
             {courses.length === 0 && <option value="">No courses yet</option>}
             {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
           </select>
@@ -127,20 +127,20 @@ export default function AdminLectures() {
             <form onSubmit={onSubmit} className="admin-form">
               <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit live session" : "Add a live session"}</h3>
               <div className="admin-form-grid">
-                <div className="field"><label>Title</label>
-                  <input value={form.title} onChange={set("title")} placeholder="Week 3 — React Hooks" /></div>
-                <div className="field"><label>Starts</label>
-                  <input type="datetime-local" value={form.scheduledAt} onChange={set("scheduledAt")} /></div>
-                <div className="field"><label>Ends</label>
-                  <input type="datetime-local" value={form.scheduledEndAt} onChange={set("scheduledEndAt")} /></div>
-                <div className="field"><label>Google Meet link</label>
-                  <input value={form.link} onChange={set("link")} placeholder="https://meet.google.com/..." /></div>
+                <div className="field"><label htmlFor="lectures-title">Title</label>
+                  <input id="lectures-title" value={form.title} onChange={set("title")} placeholder="Week 3 — React Hooks" /></div>
+                <div className="field"><label htmlFor="lectures-starts">Starts</label>
+                  <input id="lectures-starts" type="datetime-local" value={form.scheduledAt} onChange={set("scheduledAt")} /></div>
+                <div className="field"><label htmlFor="lectures-ends">Ends</label>
+                  <input id="lectures-ends" type="datetime-local" value={form.scheduledEndAt} onChange={set("scheduledEndAt")} /></div>
+                <div className="field"><label htmlFor="lectures-google-meet-link">Google Meet link</label>
+                  <input id="lectures-google-meet-link" value={form.link} onChange={set("link")} placeholder="https://meet.google.com/..." /></div>
               </div>
               <p className="form-note" style={{ margin: "-8px 0 16px" }}>
                 Students see the "Join live" button appear 10 minutes before Starts and disappear at Ends.
               </p>
-              <div className="field"><label>Notes (optional)</label>
-                <textarea rows="2" value={form.notes} onChange={set("notes")} placeholder="Shown to enrolled students" /></div>
+              <div className="field"><label htmlFor="lectures-notes">Notes (optional)</label>
+                <textarea id="lectures-notes" rows="2" value={form.notes} onChange={set("notes")} placeholder="Shown to enrolled students" /></div>
               <div className="admin-actions">
                 <button className="btn btn-solid" type="submit" disabled={saving}>
                   {saving ? "Saving..." : editingId ? "Save changes" : "Add"}
@@ -156,7 +156,7 @@ export default function AdminLectures() {
               <>
                 <h3 style={{ margin: "40px 0 16px" }}>Scheduled sessions</h3>
                 <input
-                  className="admin-search"
+                  className="admin-search" aria-label="Search sessions by title"
                   type="search"
                   placeholder="Search sessions by title..."
                   value={q}

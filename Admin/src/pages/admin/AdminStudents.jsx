@@ -110,25 +110,25 @@ export default function AdminStudents() {
             The user must already have an account (ask them to log in once with their email — that creates it) — this grants course access without a payment, exactly like a real purchase would.
           </p>
           <div className="admin-form-grid">
-            <div className="field"><label>User email</label>
-              <input type="email" value={grantForm.email} onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })} placeholder="student@example.com" /></div>
-            <div className="field"><label>Course</label>
-              <select value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
+            <div className="field"><label htmlFor="students-user-email">User email</label>
+              <input id="students-user-email" type="email" value={grantForm.email} onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })} placeholder="student@example.com" /></div>
+            <div className="field"><label htmlFor="students-course">Course</label>
+              <select id="students-course" value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
                 <option value="">Choose a course or internship...</option>
                 {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
               </select>
             </div>
-            <div className="field"><label>Start date (optional)</label>
-              <input type="date" value={grantForm.startDate} onChange={(e) => setGrantForm({ ...grantForm, startDate: e.target.value })} /></div>
-            <div className="field"><label>Expires (optional)</label>
-              <input type="date" value={grantForm.endDate} onChange={(e) => setGrantForm({ ...grantForm, endDate: e.target.value })} /></div>
+            <div className="field"><label htmlFor="students-start-date">Start date (optional)</label>
+              <input id="students-start-date" type="date" value={grantForm.startDate} onChange={(e) => setGrantForm({ ...grantForm, startDate: e.target.value })} /></div>
+            <div className="field"><label htmlFor="students-expires">Expires (optional)</label>
+              <input id="students-expires" type="date" value={grantForm.endDate} onChange={(e) => setGrantForm({ ...grantForm, endDate: e.target.value })} /></div>
           </div>
           {grantError && <p className="form-error">{grantError}</p>}
           <button className="btn btn-solid" type="submit" disabled={granting}>{granting ? "Granting..." : "Grant subscription"}</button>
         </form>
 
         <input
-          className="admin-search"
+          className="admin-search" aria-label="Search by student name/email or course title"
           type="search"
           style={{ marginTop: 40 }}
           placeholder="Search by student name/email or course title..."

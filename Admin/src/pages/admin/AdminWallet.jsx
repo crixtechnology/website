@@ -62,8 +62,8 @@ export default function AdminWallet() {
         </p>
 
         <div className="admin-form">
-          <div className="field"><label>Student</label>
-            <UserPicker users={students} loading={studentsLoading} value={picked} onChange={pick} /></div>
+          <div className="field"><label htmlFor="wallet-student">Student</label>
+            <UserPicker id="wallet-student" users={students} loading={studentsLoading} value={picked} onChange={pick} /></div>
           {error && <p className="form-error">{error}</p>}
           {picked && loading && <p style={{ color: "var(--muted)" }}>Loading...</p>}
           {picked && wallet && (

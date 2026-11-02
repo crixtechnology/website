@@ -62,14 +62,14 @@ export default function AdminApplications() {
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
           <input
-            className="admin-search"
+            className="admin-search" aria-label="Search by name, email, college or program"
             type="search"
             placeholder="Search by name, email, college or program..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
             style={{ flex: "1 1 260px" }}
           />
-          <select className="admin-search" value={type} onChange={(e) => setType(e.target.value)} style={{ flex: "0 0 auto" }}>
+          <select className="admin-search" aria-label="Filter by type" value={type} onChange={(e) => setType(e.target.value)} style={{ flex: "0 0 auto" }}>
             <option value="">All types</option>
             <option value="internship">Internships</option>
             <option value="course">Courses</option>
