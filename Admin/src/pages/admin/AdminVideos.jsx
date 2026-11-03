@@ -189,8 +189,8 @@ This removes it from the site AND deletes the video file from Backblaze storage.
                       <select
                         value={form.courseId}
                         onChange={(e) => setForm({ ...form, courseId: e.target.value })}
-                        aria-label="Course or internship this video belongs to"
-                        title="Move this video to another course or internship"
+                        aria-label="Training program or course this video belongs to"
+                        title="Move this video to another training program or course"
                       >
                         {courses.map((c) => <option key={c._id} value={c._id}>{courseLabel(c)}</option>)}
                       </select>

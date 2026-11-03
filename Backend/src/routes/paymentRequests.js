@@ -158,7 +158,7 @@ router.post("/admin/payment-requests", requireAdmin, async (req, res, next) => {
   try {
     const { userId, email, courseId, amount, tier, note } = req.body || {};
     if (typeof courseId !== "string" || !courseId) {
-      return res.status(400).json({ ok: false, error: "Choose a course or internship." });
+      return res.status(400).json({ ok: false, error: "Choose a training program or course." });
     }
     if ((userId != null && typeof userId !== "string") || (email != null && typeof email !== "string")) {
       return res.status(400).json({ ok: false, error: "userId and email must be text" });

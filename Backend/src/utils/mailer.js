@@ -675,7 +675,7 @@ async function sendWalletCreditEmail({ to, name, amount, balance, reason, note }
         ["Wallet balance", fmtRupees(balance), true],
       ]) +
       button("View my wallet", link) +
-      paragraph("Your credit is taken off the price automatically at checkout. If it covers the full price of a course or internship, you can pay with your wallet alone.", `font-size:13px;color:${BRAND.muted}`),
+      paragraph("Your credit is taken off the price automatically at checkout. If it covers the full price of a training program or course, you can pay with your wallet alone.", `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
     `Hi ${name || "there"},\n\n${fmtRupees(amount)} was added to your Crix Technology wallet.\n\n` +

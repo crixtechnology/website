@@ -188,7 +188,7 @@ function jobPostingLd(o) {
   const programs = await livePrograms();
   for (const c of programs) {
     const p = `/programs/${c.slug}`;
-    const kind = c.type === "internship" ? "Internship" : "Course";
+    const kind = c.type === "internship" ? "Training + Internship" : "Course";
     const description = clip(c.desc ? `${c.desc} Online ${kind.toLowerCase()} by Crix Technology.` : `${c.title} — online ${kind.toLowerCase()} by Crix Technology, Ahmedabad.`);
     writePage({
       path: p,

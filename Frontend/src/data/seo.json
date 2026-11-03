@@ -109,19 +109,19 @@
       "keywords": [
         "contact Crix Technology",
         "IT services enquiry Ahmedabad",
-        "internship enquiry"
+        "training and internship enquiry"
       ]
     },
     "/privacy-policy": {
       "title": "Privacy Policy | Crix Technology",
-      "description": "How Crix Technology Private Limited collects, uses and protects your personal information across our website, internship programs and online courses.",
+      "description": "How Crix Technology Private Limited collects, uses and protects your personal information across our website, Training + Internship program and courses.",
       "priority": "0.3",
       "changefreq": "yearly",
       "crumb": "Privacy Policy"
     },
     "/terms-of-service": {
       "title": "Terms of Service | Crix Technology",
-      "description": "The terms for using the Crix Technology website and enrolling in our virtual internships and online courses, including accounts, payments and certificates.",
+      "description": "The terms for using the Crix Technology website and joining our Training + Internship program — paid training, stipend internship selection, payments and certificates.",
       "priority": "0.3",
       "changefreq": "yearly",
       "crumb": "Terms of Service"

@@ -123,7 +123,7 @@ export default function AdminPaymentRequests() {
                 onChange={(user) => setForm((f) => ({ ...f, user }))} /></div>
             <div className="field"><label htmlFor="paymentrequests-course-internship">Course / internship</label>
               <select id="paymentrequests-course-internship" value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value, tier: "" })}>
-                <option value="">Choose a course or internship...</option>
+                <option value="">Choose a training program or course...</option>
                 {courses.map((c) => (
                   <option key={c._id} value={c._id}>
                     {c.title} ({c.type === "internship" ? "internship" : "course"}{c.status === "closed" ? ", closed" : ""})

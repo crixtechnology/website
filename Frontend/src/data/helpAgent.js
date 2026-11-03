@@ -227,7 +227,7 @@ function applyReply(state, ctx) {
     return { text: "Send us your requirements from the Services page (or the contact form). Our IT team replies, sets up a quick call, and shares a plan and quote.", links: [{ to: "/services", label: "Services page" }] };
   }
   return {
-    text: `• Open the program on the Programs page\n• Choose a plan and press Buy\n• Log in with your email and a password (a new email gets an account)\n• Accept the terms and pay — access is instant${profileNote}`,
+    text: `• Open the track on the Training + Internship page\n• Choose a plan and press Buy (training is paid, not free)\n• Log in with your email and a password (a new email gets an account)\n• Accept the terms and pay — access is instant${profileNote}`,
     links: [{ to: "/training-internship", label: "Training + Internship" }, ...(missing ? [{ to: "/profile", label: "Complete your profile" }] : [])],
   };
 }
@@ -272,7 +272,7 @@ function handoffReply(state) {
     };
   }
   return {
-    text: dept === "it" ? "Here's our IT services team — for websites, apps and business projects:" : "Here's our Internships & Courses team — for programs, careers, payments and student accounts:",
+    text: dept === "it" ? "Here's our IT services team — for websites, apps and business projects:" : "Here's our Training + Internship team — for training, internships, careers, payments and student accounts:",
     dept,
   };
 }

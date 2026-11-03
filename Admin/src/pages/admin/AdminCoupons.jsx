@@ -96,7 +96,7 @@ export default function AdminCoupons() {
     if (saving) return;
     if (!form.code.trim()) { setError("Enter a code, or press Generate."); return; }
     if (!form.discountValue.trim()) { setError(`Enter the ${form.discountType === "percent" ? "percentage" : "amount"} to take off.`); return; }
-    if (form.appliesTo === "selected" && form.courseIds.length === 0) { setError("Pick at least one course or internship."); return; }
+    if (form.appliesTo === "selected" && form.courseIds.length === 0) { setError("Pick at least one training program or course."); return; }
 
     const payload = {
       code: form.code.trim(),
@@ -221,7 +221,7 @@ export default function AdminCoupons() {
             <fieldset className="field" style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", margin: "0 0 16px" }}>
               <legend style={{ padding: "0 6px", fontSize: ".82rem", color: "var(--muted)" }}>Pick courses &amp; internships ({form.courseIds.length} selected)</legend>
               <div style={{ maxHeight: 220, overflowY: "auto", display: "grid", gap: 8 }}>
-                {courses.length === 0 && <span style={{ color: "var(--muted)" }}>No courses or internships yet.</span>}
+                {courses.length === 0 && <span style={{ color: "var(--muted)" }}>No training programs or courses yet.</span>}
                 {courses.map((c) => (
                   <label key={c._id} style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
                     <input type="checkbox" checked={form.courseIds.includes(c._id)} onChange={() => toggleCourse(c._id)} style={{ width: "auto" }} />
