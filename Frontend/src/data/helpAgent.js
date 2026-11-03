@@ -227,7 +227,7 @@ function applyReply(state, ctx) {
     return { text: "Send us your requirements from the Services page (or the contact form). Our IT team replies, sets up a quick call, and shares a plan and quote.", links: [{ to: "/services", label: "Services page" }] };
   }
   return {
-    text: `• Open the track on the Training + Internship page\n• Fill in “Request to apply”, or call / WhatsApp our Training + Internship team\n• We confirm your seat and send a payment request for the training fee (training is paid, not free)\n• Log in and pay it in My Dashboard → Payment requests${profileNote}`,
+    text: `• Open the track on the Training + Internship page\n• Log in (a new email gets an account), then fill in “Request to apply” — or call / WhatsApp our Training + Internship team\n• We confirm your seat and send a payment request for the training fee (training is paid, not free)\n• Pay it in My Dashboard → Payment requests — your wallet credit, offer code and referral discount come off${profileNote}`,
     links: [{ to: "/training-internship", label: "Training + Internship" }, { to: "/dashboard", label: "My Dashboard" }, ...(missing ? [{ to: "/profile", label: "Complete your profile" }] : [])],
     dept: "programs",
   };

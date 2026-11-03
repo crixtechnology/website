@@ -231,7 +231,8 @@ export async function submitApplication(payload) {
   try {
     const res = await authFetch("/applications", { method: "POST", body: JSON.stringify(payload) });
     const data = await res.json();
-    if (!res.ok) return { ok: false, error: data.error || "Could not submit" };
+    // code: "LOGIN_REQUIRED" — a Training + Internship application needs an account.
+    if (!res.ok) return { ok: false, error: data.error || "Could not submit", code: data.code };
     return data;
   } catch (e) {
     return { ok: false, error: "Could not submit right now." };

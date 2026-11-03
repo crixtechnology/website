@@ -453,8 +453,8 @@ export function TrainingContact({ onApply, compact = false }) {
     <div className={`training-contact${compact ? " training-contact--compact" : ""}`}>
       {!compact && (
         <p className="training-contact-note">
-          To join, fill in the <b>Request to apply</b> form or call our {site.phoneAltLabel} team. We'll confirm your
-          seat and send a secure payment request for the training fee to your account — pay it in My Dashboard.
+          To join, log in (or create a free account) and fill in the <b>Request to apply</b> form, or call our {site.phoneAltLabel} team.
+          We'll confirm your seat and send a secure payment request for the training fee to your account — pay it in My Dashboard.
         </p>
       )}
       <div className="training-contact-row">
@@ -1402,7 +1402,11 @@ export function UpgradeModal({ data, onClose, onDone }) {
 // and the admin catching the message there. No account needed either way.
 // `item` doubles as the "is this open" flag, same pattern as BuyModal.
 export function InquiryModal({ item, kind, onClose }) {
-  const { user } = useContext(UserContext);
+  const { user, openAuthModal } = useContext(UserContext);
+  // Training + Internship is paid through a payment request sent to an account,
+  // so applying for it needs one (the backend refuses otherwise): a logged-out
+  // visitor is asked to log in or sign up first, then sees the form filled in.
+  const needsAccount = kind === "internship" && !user;
   // A logged-in student starts with their saved details (not the placeholder
   // name an email signup gets) instead of typing them again.
   const startForm = () => ({
@@ -1433,6 +1437,12 @@ export function InquiryModal({ item, kind, onClose }) {
       fields.reset();
     }
   }, [item]);
+
+  // Logged in (or signed up) with the form open: start from the account's details.
+  const accountEmail = user && user.email;
+  useEffect(() => {
+    if (item && accountEmail) setForm((f) => ({ ...startForm(), college: f.college || startForm().college }));
+  }, [accountEmail]);
 
   useModalEscape(!!item, onClose);
 
@@ -1482,6 +1492,7 @@ export function InquiryModal({ item, kind, onClose }) {
     });
     setLoading(false);
     if (!res.ok) {
+      if (res.code === "LOGIN_REQUIRED") { setStatus({ text: res.error, kind: "error" }); openAuthModal("login"); return; }
       setStatus({ text: res.error || "Could not submit right now. Please try again, or email us at " + site.email, kind: "error" });
       return;
     }
@@ -1510,12 +1521,24 @@ export function InquiryModal({ item, kind, onClose }) {
             </Alert>
             {kind === "internship" && (
               <p className="form-note" style={{ marginTop: 12 }}>
-                Next: once we confirm your seat, we send a payment request for the training fee to your Crix account
-                {user ? "" : ` — log in or sign up with ${sent && sent.email ? sent.email : "this email"} so it reaches you`}, and you pay it in
-                My Dashboard. Questions? Call or WhatsApp {site.phoneAlt}.
+                Next: once we confirm your seat, we send a payment request for the training fee to your Crix account,
+                and you pay it in My Dashboard → Payment requests. Questions? Call or WhatsApp {site.phoneAlt}.
               </p>
             )}
             <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
+          </>
+        ) : needsAccount ? (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".9rem", lineHeight: 1.6, marginBottom: 20 }}>
+              Log in or create your free account to apply. That's where we send the payment request for the training fee
+              once your seat is confirmed — training is paid, not free.
+            </p>
+            <button type="button" className="btn btn-solid" style={{ width: "100%" }} onClick={() => openAuthModal("login")}>
+              Log in or sign up to apply
+            </button>
+            <p className="form-note" style={{ marginTop: 14 }}>
+              Prefer to talk first? Call or WhatsApp our {site.phoneAltLabel} team on {site.phoneAlt}.
+            </p>
           </>
         ) : (
           <>
@@ -1534,6 +1557,7 @@ export function InquiryModal({ item, kind, onClose }) {
                 <FieldError id="inquiry-name-err">{fields.show("inquiry-name") && errors["inquiry-name"]}</FieldError></div>
               <div className="field"><label htmlFor="inquiry-email">Email</label>
                 <input id="inquiry-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com"
+                  readOnly={kind === "internship" && !!accountEmail} title={kind === "internship" && accountEmail ? "Your account's email — the payment request is sent to this account" : undefined}
                   onBlur={fields.touch("inquiry-email")} aria-invalid={!!emailProblem || undefined} aria-describedby="inquiry-email-err" />
                 <EmailFieldNote id="inquiry-email-err" localError={errors["inquiry-email"]} check={emailCheck} show={fields.show("inquiry-email")}
                   onUseSuggestion={(email) => setForm((f) => ({ ...f, email }))} /></div>

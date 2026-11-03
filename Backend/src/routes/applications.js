@@ -16,8 +16,8 @@ const router = express.Router();
 // by `type`. Used before payment for whichever entries are actually priced
 // (attaches a Payment doc afterwards via /api/payments/create-order).
 //
-// An apply-only entry (no price) of either type stays fully guest — no
-// login required (InquiryModal never requires one). A priced, open entry's
+// A course's apply-only request stays fully guest — no login required. A
+// Training + Internship application needs an account (see below). A priced, open entry's
 // "Buy now" is gated behind login on the frontend regardless of type; when
 // a valid token is present it's attached here so the payment webhook can
 // grant access afterwards.
@@ -32,6 +32,17 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
     }
     if (!["internship", "course"].includes(type)) {
       return res.status(400).json({ ok: false, error: "type must be 'internship' or 'course'" });
+    }
+    // Training + Internship is paid through a payment request, which can only be
+    // sent to an account — so applying needs one, and the application carries
+    // the account's own email (the admin's "Send payment request" looks it up).
+    let accountEmail = null;
+    if (type === "internship") {
+      const account = req.user ? await prisma.user.findUnique({ where: { id: req.user.sub }, select: { email: true } }) : null;
+      if (!account) {
+        return res.status(401).json({ ok: false, code: "LOGIN_REQUIRED", error: "Log in or create your free account to apply — that's where we send your payment request." });
+      }
+      accountEmail = account.email;
     }
     // Same format rules as routes/contact.js and routes/auth.js (utils/validators.js)
     // — InquiryModal's own client-side checks mirror these, this is the
@@ -70,7 +81,7 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
         type,
         refTitle,
         name,
-        email,
+        email: accountEmail || email,
         phone,
         college: college || "",
         track: track || "",
