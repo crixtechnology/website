@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyPaymentRequests, createPaymentRequestOrder, verifyPaymentRequest, getReceipt } from "../services/api.js";
-import { loadRazorpayScript, Alert, TermsCheckbox, ProfileGate } from "./ui.jsx";
+import { loadRazorpayScript, openRazorpayCheckout, paymentFailedText, Alert, TermsCheckbox, ProfileGate } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { tierLabel, formatINR } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
@@ -51,7 +51,7 @@ export default function PaymentRequests({ onPaid }) {
       setMsg({ kind: "error", text: "Could not load the payment gateway. Check your connection and try again." });
       return;
     }
-    const rzp = new window.Razorpay({
+    openRazorpayCheckout({
       key: order.keyId,
       order_id: order.orderId,
       amount: order.amount,
@@ -75,9 +75,11 @@ export default function PaymentRequests({ onPaid }) {
           });
         }
       },
-      modal: { ondismiss: () => { setBusy(""); setMsg({ kind: "", text: "" }); } },
+    }, (failure) => {
+      if (!mounted.current) return;
+      setBusy("");
+      setMsg(failure ? { kind: "error", text: paymentFailedText(failure) } : { kind: "", text: "" });
     });
-    rzp.open();
   };
 
   const receipt = async (r) => {

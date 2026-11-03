@@ -182,13 +182,32 @@ export async function checkEmailDomain(email) {
   }
 }
 
+// The backend's free host sleeps when nobody has used it for a while and takes
+// up to a minute to wake. The first visitor after that got a failed or error
+// response, so a page's live list (open roles, training tracks) stayed empty
+// until they refreshed. The public lists below keep trying for about a minute
+// instead: a network error, a 5xx from the host while it wakes, or a reply that
+// isn't JSON means "try again shortly". Throws once every try has failed.
+const WAKE_RETRY_DELAYS_MS = [2000, 3000, 5000, 8000, 10000, 15000, 15000];
+export async function getJsonWhileWaking(url, init, delays = WAKE_RETRY_DELAYS_MS) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.status < 500) return await res.json();
+    } catch (e) {
+      /* still asleep or waking — try again below */
+    }
+    if (attempt >= delays.length) throw new Error("Backend unreachable");
+    await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+  }
+}
+
 // ---------- Courses & Internships (public) ----------
 // type: "course" | "internship" | omit for both.
 export async function getCourses(type) {
   if (!API) return { ok: false, courses: [] };
   try {
-    const res = await fetch(`${API}/courses${type ? `?type=${type}` : ""}`);
-    return await res.json();
+    return await getJsonWhileWaking(`${API}/courses${type ? `?type=${type}` : ""}`);
   } catch (e) {
     return { ok: false, error: "Could not load courses", courses: [] };
   }
@@ -197,8 +216,7 @@ export async function getCourses(type) {
 export async function getCourse(slug) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
-    const res = await fetch(`${API}/courses/${encodeURIComponent(slug)}`);
-    return await res.json();
+    return await getJsonWhileWaking(`${API}/courses/${encodeURIComponent(slug)}`);
   } catch (e) {
     return { ok: false, error: "Could not load this course." };
   }
@@ -619,8 +637,7 @@ export async function payWithWallet(applicationId, courseSlug, tier, couponCode)
 export async function getServices() {
   if (!API) return { ok: false, services: [] };
   try {
-    const res = await fetch(`${API}/services`);
-    return await res.json();
+    return await getJsonWhileWaking(`${API}/services`);
   } catch (e) {
     return { ok: false, error: "Could not load services", services: [] };
   }
@@ -677,8 +694,7 @@ export async function verifyPaymentRequest({ razorpay_order_id, razorpay_payment
 export async function getOpenings() {
   if (!API) return { ok: false, openings: [] };
   try {
-    const res = await fetch(`${API}/careers/openings`);
-    return await res.json();
+    return await getJsonWhileWaking(`${API}/careers/openings`);
   } catch (e) {
     return { ok: false, error: "Could not load openings", openings: [] };
   }
@@ -689,8 +705,7 @@ export async function getFreeOpenings() {
   if (!API) return { ok: false, openings: [] };
   try {
     // no-store: a phone that kept an old copy showed "no open roles" after roles opened.
-    const res = await fetch(`${API}/careers/free/openings`, { cache: "no-store" });
-    return await res.json();
+    return await getJsonWhileWaking(`${API}/careers/free/openings`, { cache: "no-store" });
   } catch (e) {
     return { ok: false, error: "Could not load openings", openings: [] };
   }

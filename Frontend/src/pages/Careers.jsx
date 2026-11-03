@@ -18,8 +18,10 @@ import {
   isRoleFull, positionsLabel, positionsTag,
 } from "../data/careers.js";
 
-// Skeleton cards show while the live openings load — but never for longer than this.
-const LOADING_CAP_MS = 4000;
+// Skeleton cards show until the live openings arrive; after this long a note
+// says they're on their way (the backend may be waking up — getOpenings keeps
+// trying for about a minute rather than showing "no roles" too early).
+const SLOW_NOTE_MS = 4000;
 
 const CAREERS_INDEX = [
   { id: "vision", label: "Vision & mission" },
@@ -338,6 +340,7 @@ export default function Careers() {
   const [live, setLive] = useState(false);
   const [terms, setTerms] = useState(defaultTerms);
   const [loading, setLoading] = useState(hasBackend);
+  const [slow, setSlow] = useState(false);
   const [detail, setDetail] = useState(null);
   const [notice, setNotice] = useState("");
   // The role whose registration fee is being paid in <TestFeeModal>.
@@ -347,13 +350,14 @@ export default function Careers() {
 
   useEffect(() => {
     let alive = true;
-    const cap = setTimeout(() => setLoading(false), LOADING_CAP_MS);
+    const cap = setTimeout(() => setSlow(true), SLOW_NOTE_MS);
     getOpenings().then((res) => {
       if (!alive) return;
       // An empty list means every role is closed: say so, rather than showing old ones.
       if (res.ok) { setOpenings((res.openings || []).filter((o) => o && o.status !== "closed")); setLive(true); }
       if (res.ok && res.terms) setTerms({ ...defaultTerms, ...res.terms });
       setLoading(false);
+      clearTimeout(cap);
     });
     return () => { alive = false; clearTimeout(cap); };
   }, []);
@@ -450,7 +454,10 @@ export default function Careers() {
             </Reveal>
           )}
           {loading ? (
-            <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
+            <>
+              {slow && <p className="form-note" role="status" style={{ marginTop: 16 }}>Loading the open roles — this can take a few seconds the first time.</p>}
+              <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
+            </>
           ) : openings.length ? (
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
               {openings.map((o, i) => <OpeningCard key={o.slug} opening={o} terms={terms} i={i} mine={openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />)}

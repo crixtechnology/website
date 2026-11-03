@@ -707,6 +707,60 @@ export const loadRazorpayScript = () =>
     document.body.appendChild(script);
   });
 
+// How long Checkout may stay open before it closes itself (seconds).
+export const CHECKOUT_TIMEOUT_S = 300;
+
+// Opens Razorpay Checkout (every payment on the site goes through here) and
+// makes sure it always ends. Before, a failed payment left the buyer on
+// Razorpay's own retry screen — and after a cancel in a UPI or bank app, on a
+// spinner that never stopped — while the page behind waited for an answer
+// that never came. Now a failure closes Checkout straight away, and one that
+// never reports back closes after CHECKOUT_TIMEOUT_S; either way
+// `onClose(failure)` runs exactly once: failure is null when the buyer simply
+// closed it, else { reason } (Razorpay's text, if it gave one) or { timedOut: true }.
+// A payment that did go through in the meantime is still confirmed by the
+// server's Razorpay webhook. `options.handler` runs on success, as before.
+export function openRazorpayCheckout(options, onClose) {
+  let done = false;
+  let timer = null;
+  const finish = (failure) => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    onClose && onClose(failure);
+  };
+  const rzp = new window.Razorpay({
+    ...options,
+    timeout: CHECKOUT_TIMEOUT_S,
+    // Our own Pay button is the retry: each try gets a fresh order.
+    retry: { enabled: false },
+    handler: (resp) => {
+      done = true;
+      clearTimeout(timer);
+      return options.handler(resp);
+    },
+    modal: { ...(options.modal || {}), ondismiss: () => finish(null) },
+  });
+  rzp.on("payment.failed", (resp) => {
+    // Report first: closing fires ondismiss, which would otherwise win as a plain "closed".
+    finish({ reason: resp && resp.error && resp.error.description });
+    try { rzp.close(); } catch (e) { /* already closed */ }
+  });
+  // Razorpay's own timeout should close it first; this is the backstop.
+  timer = setTimeout(() => {
+    if (done) return;
+    finish({ timedOut: true });
+    try { rzp.close(); } catch (e) { /* already closed */ }
+  }, (CHECKOUT_TIMEOUT_S + 5) * 1000);
+  rzp.open();
+  return rzp;
+}
+
+// What to tell the buyer after openRazorpayCheckout reports a failure.
+export const paymentFailedText = (failure) => (failure && failure.timedOut
+  ? "The payment window timed out before the payment finished. If money left your account, it's confirmed automatically or returned within 5–7 working days — check My Dashboard, or try again."
+  : `The payment didn't go through${failure && failure.reason ? ` (${failure.reason.replace(/\.$/, "")})` : ""}. If any money left your account, it's returned automatically within 5–7 working days. You can try again.`);
+
 // The referral part of checkout: an optional code box (only for a student who
 // hasn't been referred and hasn't bought anything), and the itemised total —
 // plan price, referral discount, referral credit — as the server will charge it.
@@ -1016,7 +1070,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       return;
     }
 
-    const rzp = new window.Razorpay({
+    openRazorpayCheckout({
       key: orderRes.keyId,
       order_id: orderRes.orderId,
       amount: orderRes.amount,
@@ -1052,9 +1106,10 @@ export function BuyModal({ item, user, initialTier, onClose }) {
           );
         }
       },
-      modal: { ondismiss: () => clearStatus() },
+    }, (failure) => {
+      if (stale()) return;
+      if (failure) setError(paymentFailedText(failure)); else clearStatus();
     });
-    rzp.open();
   };
 
   return (
@@ -1209,7 +1264,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
       return;
     }
 
-    const rzp = new window.Razorpay({
+    openRazorpayCheckout({
       key: orderRes.keyId,
       order_id: orderRes.orderId,
       amount: orderRes.amount,
@@ -1236,9 +1291,10 @@ export function UpgradeModal({ data, onClose, onDone }) {
           });
         }
       },
-      modal: { ondismiss: () => setStatus({ text: "", kind: "" }) },
+    }, (failure) => {
+      if (stale()) return;
+      setStatus(failure ? { text: paymentFailedText(failure), kind: "error" } : { text: "", kind: "" });
     });
-    rzp.open();
   };
 
   return (

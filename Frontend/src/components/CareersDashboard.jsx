@@ -4,7 +4,7 @@ import {
   getOpenings, getMyJobApplications, applyForRole, createTestFeeOrder, verifyTestFee, unlockFreeTest, getReceipt,
   getNotifications, markNotificationsRead, clearNotifications, clearJobApplications,
 } from "../services/api.js";
-import { loadRazorpayScript, Alert, burstConfetti, TermsCheckbox, ProfileGate } from "./ui.jsx";
+import { loadRazorpayScript, openRazorpayCheckout, paymentFailedText, Alert, burstConfetti, TermsCheckbox, ProfileGate } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { formatINR } from "../utils/tiers.js";
 import { defaultTerms, feeBoxPoints, formatIST, isRoleFull, positionsLabel } from "../data/careers.js";
@@ -140,6 +140,7 @@ export function AdultCheckbox({ checked, onChange, disabled = false }) {
    Conditions box is ticked. Resolves once Checkout is done with:
      { ok: true, applicationId, amount }      paid and verified — the test is unlocked
      { ok: false, dismissed: true }           the candidate closed Checkout
+     { ok: false, failed: true, error }       the payment failed or Checkout timed out
      { ok: false, error, applicationId? }     anything else, with a message to show
    `onConfirming` fires when Razorpay reports success and the server check starts. */
 export async function checkoutTestFee({ opening, user, onConfirming, description }) {
@@ -153,7 +154,7 @@ export async function checkoutTestFee({ opening, user, onConfirming, description
     return { ok: false, applicationId, error: "Could not load the payment gateway. Check your connection and try again." };
   }
   return new Promise((resolve) => {
-    const rzp = new window.Razorpay({
+    openRazorpayCheckout({
       key: order.keyId,
       order_id: order.orderId,
       amount: order.amount,
@@ -170,9 +171,9 @@ export async function checkoutTestFee({ opening, user, onConfirming, description
           ? { ok: true, applicationId, amount: order.amount }
           : { ok: false, applicationId, error: (v.error || "We received your payment") + " — if your test doesn't unlock shortly, contact us and we'll sort it out." });
       },
-      modal: { ondismiss: () => resolve({ ok: false, dismissed: true, applicationId }) },
-    });
-    rzp.open();
+    }, (failure) => resolve(failure
+      ? { ok: false, failed: true, applicationId, error: paymentFailedText(failure) }
+      : { ok: false, dismissed: true, applicationId }));
   });
 }
 
