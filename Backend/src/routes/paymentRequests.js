@@ -62,6 +62,7 @@ function shape(r) {
     course: r.course ? { _id: r.course.id, title: r.course.title, slug: r.course.slug, type: r.course.type, startsAt: r.course.startsAt || null } : undefined,
     tier: r.tier,
     amount: r.amount / 100,
+    allowDiscounts: r.allowDiscounts !== false,
     note: r.note,
     status: r.status,
     paidPaymentId: r.paidPaymentId,
@@ -174,6 +175,20 @@ async function priceRequest(request, userId, couponCode, { strict = false, db } 
     return { error: { status: 400, message: "couponCode must be text" } };
   }
   const planRupees = request.amount / 100;
+  // The admin switched discounts off for this request (its amount is already
+  // reduced): it costs exactly what was asked, with no code, referral discount or credit.
+  if (request.allowDiscounts === false) {
+    const noCode = "Offer codes can't be used on this payment request.";
+    if (couponCode && couponCode.trim() && strict) return { error: { status: 400, message: noCode } };
+    return {
+      applied: null,
+      couponError: couponCode && couponCode.trim() ? noCode : null,
+      pricing: {
+        planPaise: request.amount, couponDiscount: 0, referralPercent: 0, referralDiscount: 0,
+        availableCredit: 0, creditApplied: 0, payablePaise: request.amount, totalDuePaise: request.amount, walletCoversAll: false,
+      },
+    };
+  }
   let applied = null;
   let couponError = null;
   if (couponCode && couponCode.trim()) {
@@ -215,11 +230,16 @@ router.get("/admin/payment-requests", requireAdmin, async (req, res, next) => {
 });
 
 // ---------- admin: create ----------
-// Body: { email | userId, courseId, amount (rupees), tier?, note? }. The course's
+// Body: { email | userId, courseId, amount (rupees), tier?, note?, allowDiscounts? }.
+// allowDiscounts (default true) lets the student's credit, an offer code and
+// their referral discount come off the amount; false when it's already reduced. The course's
 // open/closed status doesn't matter — the admin is deciding who gets in.
 router.post("/admin/payment-requests", requireAdmin, async (req, res, next) => {
   try {
-    const { userId, email, courseId, amount, tier, note } = req.body || {};
+    const { userId, email, courseId, amount, tier, note, allowDiscounts } = req.body || {};
+    if (allowDiscounts != null && typeof allowDiscounts !== "boolean") {
+      return res.status(400).json({ ok: false, error: "allowDiscounts must be true or false" });
+    }
     if (typeof courseId !== "string" || !courseId) {
       return res.status(400).json({ ok: false, error: "Choose a training program or course." });
     }
@@ -263,7 +283,7 @@ router.post("/admin/payment-requests", requireAdmin, async (req, res, next) => {
     }
 
     const request = await prisma.paymentRequest.create({
-      data: { userId: user.id, courseId: course.id, amount: paise, tier: isTier(tier) ? tier : null, note: cleanNote },
+      data: { userId: user.id, courseId: course.id, amount: paise, tier: isTier(tier) ? tier : null, note: cleanNote, allowDiscounts: allowDiscounts !== false },
       include: { user: { select: USER_SUMMARY }, course: { select: COURSE_SUMMARY } },
     });
 
@@ -326,6 +346,7 @@ router.post("/me/payment-requests/:id/quote", requireAuth, couponAttemptLimiter,
     res.json({
       ok: true,
       planPrice: found.request.amount / 100,
+      discountsAllowed: found.request.allowDiscounts !== false,
       couponApplied: !!applied,
       couponDiscount: pricing.couponDiscount / 100,
       couponError,
@@ -442,6 +463,9 @@ router.post("/me/payment-requests/:id/pay-with-wallet", publicWriteLimiter, requ
       const request = await tx.paymentRequest.findUnique({ where: { id: found.request.id } });
       if (!request || request.status !== "pending") {
         return { error: { status: 400, message: request && request.status === "paid" ? "This request has already been paid." : "This request was cancelled." } };
+      }
+      if (request.allowDiscounts === false) {
+        return { error: { status: 400, message: "Wallet credit can't be used on this payment request." } };
       }
       const pricing = await priceOrder(userId, request.amount / 100, applied ? applied.discountPaise : 0, tx);
       if (!pricing.walletCoversAll) {

@@ -9,7 +9,7 @@ import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
 import UserPicker from "../../components/UserPicker.jsx";
 import { tierLabel, offeredTiers, planPrice, formatINR, TIER_ORDER } from "../../utils/tiers.js";
 
-const EMPTY = { user: null, courseId: "", tier: "", amount: "", note: "" };
+const EMPTY = { user: null, courseId: "", tier: "", amount: "", note: "", allowDiscounts: true };
 const STATUS_PILL = { pending: "new", paid: "lifetime", cancelled: "read" };
 
 function fmtDate(d) {
@@ -109,6 +109,7 @@ export default function AdminPaymentRequests() {
       tier: form.tier || null,
       amount: Number(form.amount),
       note: form.note.trim(),
+      allowDiscounts: form.allowDiscounts,
     });
     setSending(false);
     if (res.ok) {
@@ -139,7 +140,7 @@ export default function AdminPaymentRequests() {
           <h3 style={{ margin: "0 0 16px" }}>Request a payment</h3>
           <p className="form-note" style={{ margin: "-8px 0 16px" }}>
             The student must already have an account. They'll see this on their dashboard (and get an email),
-            and get access as soon as they pay — whether the course/internship is open or closed. Enter the full fee: when they pay, their wallet credit, an offer code and their referral discount (first purchase only) come off it automatically, as at checkout.
+            and get access as soon as they pay — whether the course/internship is open or closed. Enter the full fee: when they pay, their wallet credit, an offer code and their referral discount (first purchase only) come off it automatically, as at checkout — unless you untick that below.
           </p>
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="paymentrequests-student">Student</label>
@@ -168,6 +169,11 @@ export default function AdminPaymentRequests() {
               <input id="paymentrequests-amount" type="number" min="1" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="e.g. 4999" /></div>
             <div className="field" style={{ gridColumn: "1 / -1" }}><label htmlFor="paymentrequests-note-to-the-student">Note to the student (optional)</label>
               <input id="paymentrequests-note-to-the-student" type="text" maxLength={190} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. Fee for the September batch" /></div>
+            <label className="check-row" style={{ gridColumn: "1 / -1" }}>
+              <input id="paymentrequests-allow-discounts" type="checkbox" checked={form.allowDiscounts}
+                onChange={(e) => setForm({ ...form, allowDiscounts: e.target.checked })} />
+              <span>Let the student use wallet credit, an offer code and their referral discount on this amount. Untick it if you've already lowered the amount, so they don't get a discount twice.</span>
+            </label>
           </div>
           {formError && <p className="form-error">{formError}</p>}
           {formOk && <p className="form-note" style={{ color: "var(--teal)" }}>{formOk}</p>}
@@ -208,7 +214,7 @@ export default function AdminPaymentRequests() {
                 <div className="admin-row-main">
                   <b>{r.course?.title || "Course"}{r.tier && <> <span className="plan-pill">{tierLabel(r.tier)}</span></>}</b>
                   <span className="admin-row-meta">
-                    {formatINR(r.amount)} · sent {fmtDate(r.createdAt)}
+                    {formatINR(r.amount)}{r.allowDiscounts === false ? " (no discounts)" : ""} · sent {fmtDate(r.createdAt)}
                     {r.paidAt ? ` · paid ${fmtDate(r.paidAt)}` : ""}
                     {r.note ? ` · ${r.note}` : ""}
                   </span>

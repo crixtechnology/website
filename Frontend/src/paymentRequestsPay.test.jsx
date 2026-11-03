@@ -72,3 +72,18 @@ it("pays from the wallet when the credit covers it all", async () => {
   expect(api.createPaymentRequestOrder).not.toHaveBeenCalled();
   expect(container.textContent).toContain("Payment confirmed");
 });
+
+it("charges the plain amount when the request has discounts switched off", async () => {
+  api.getMyPaymentRequests.mockResolvedValue({
+    ok: true,
+    requests: [{ _id: "req2", status: "pending", amount: 1200, allowDiscounts: false, tier: null, note: "", course: { _id: "c1", title: "MERN Training", slug: "mern", type: "internship" } }],
+  });
+  api.createPaymentRequestOrder.mockResolvedValue({ ok: false, error: "stop here" });
+  await render();
+  await act(async () => { button("Pay ₹1,200").click(); });
+  expect(api.getPaymentRequestQuote).not.toHaveBeenCalled();
+  expect(container.textContent).toContain("already includes your discount");
+  await agree();
+  await act(async () => { buttons().filter((b) => b.textContent === "Pay ₹1,200").pop().click(); });
+  expect(api.createPaymentRequestOrder).toHaveBeenCalledWith("req2", "");
+});

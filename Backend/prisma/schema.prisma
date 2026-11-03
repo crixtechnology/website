@@ -415,6 +415,10 @@ model PaymentRequest {
   tier          Tier?
   // Paise.
   amount        Int
+  // Whether the student's wallet credit, an offer code and their referral
+  // discount may come off `amount` when they pay. Off when the admin has already
+  // set a reduced amount, so a discount isn't given twice.
+  allowDiscounts Boolean             @default(true)
   note          String               @default("")
   status        PaymentRequestStatus @default(pending)
   paidPaymentId String?

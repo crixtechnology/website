@@ -160,7 +160,7 @@ export default function PaymentRequests({ onPaid }) {
                 <>
                   {startsInFuture(r.course)
                     ? <span style={{ color: "var(--muted)", fontSize: ".85rem" }}>Starts on {formatStartDate(r.course.startsAt)}</span>
-                    : r.course?.slug && <Link className="btn btn-ghost" to={`/learn/${r.course.slug}`}>Go to course →</Link>}
+                    : r.course?.slug && <Link className="btn btn-ghost" to={`/learn/${r.course.slug}`}>{r.course.type === "internship" ? "Go to training →" : "Go to course →"}</Link>}
                   {r.paidPaymentId && (
                     <button className="btn btn-ghost" disabled={!!busy} onClick={() => receipt(r)}>
                       {busy === `rc-${r._id}` ? "Preparing…" : "Download Receipt"}
@@ -171,14 +171,19 @@ export default function PaymentRequests({ onPaid }) {
             </div>
             {r.status === "pending" && active === r._id && (
               <div className="preq-pay" style={{ flexBasis: "100%", marginTop: 12 }}>
-                <CheckoutExtras item={{ slug: r.course?.slug || r._id }} tier={r.tier} getQuote={getQuote}
-                  onPayable={setPayable} onWalletCovers={setWalletPays} couponCode={couponCode} onCoupon={setCouponCode} />
+                {r.allowDiscounts === false ? (
+                  // The amount is already the agreed price: nothing comes off it.
+                  <p className="form-note" style={{ marginTop: 0 }}>This amount already includes your discount, so wallet credit and offer codes don't apply to it.</p>
+                ) : (
+                  <CheckoutExtras item={{ slug: r.course?.slug || r._id }} tier={r.tier} getQuote={getQuote}
+                    onPayable={setPayable} onWalletCovers={setWalletPays} couponCode={couponCode} onCoupon={setCouponCode} />
+                )}
                 {walletPays != null ? (
                   <button className="btn btn-solid" disabled={!!busy || !agreed} onClick={() => payFromWallet(r)}>
                     {busy === r._id ? "Paying…" : `Pay ${formatINR(walletPays)} from wallet`}
                   </button>
                 ) : (
-                  <button className="btn btn-solid" disabled={!!busy || !agreed || payable == null} onClick={() => pay(r)}>
+                  <button className="btn btn-solid" disabled={!!busy || !agreed || (payable == null && r.allowDiscounts !== false)} onClick={() => pay(r)}>
                     {busy === r._id ? "Opening…" : `Pay ${formatINR(payable != null ? payable : r.amount)}`}
                   </button>
                 )}

@@ -166,6 +166,33 @@ describe("paying a payment request with discounts and credit", () => {
     expect(paid.status).toBe(400);
   });
 
+  it("charges exactly the amount when the admin switched discounts off", async () => {
+    const course = await createTrack();
+    const student = await createStudent("nodisc");
+    await giveCredit(student.user, 5000);
+    await prisma.coupon.create({ data: { code: `NODISC${n}`, discountType: "percent", discountValue: 50 } });
+    const created = await authed(request(app).post("/api/admin/payment-requests"), adminToken)
+      .send({ email: student.email, courseId: course.id, amount: 1200, allowDiscounts: false });
+    expect(created.body.request.allowDiscounts).toBe(false);
+    const id = created.body.request._id;
+
+    const quote = await authed(request(app).post(`/api/me/payment-requests/${id}/quote`), student.token).send({ couponCode: `NODISC${n}` });
+    expect(quote.body).toMatchObject({ discountsAllowed: false, couponApplied: false, creditApplied: 0, payable: 1200, walletCoversAll: false });
+    expect(quote.body.couponError).toMatch(/can't be used/);
+
+    const withCode = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), student.token)
+      .send({ acceptTerms: true, couponCode: `NODISC${n}` });
+    expect(withCode.status).toBe(400);
+    const wallet = await authed(request(app).post(`/api/me/payment-requests/${id}/pay-with-wallet`), student.token).send({ acceptTerms: true });
+    expect(wallet.status).toBe(400);
+    const order = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), student.token).send({ acceptTerms: true });
+    expect(order.body.amount).toBe(120000);
+
+    const bad = await authed(request(app).post("/api/admin/payment-requests"), adminToken)
+      .send({ email: student.email, courseId: (await createTrack()).id, amount: 100, allowDiscounts: "no" });
+    expect(bad.status).toBe(400);
+  });
+
   it("only prices the caller's own request", async () => {
     const course = await createTrack();
     const owner = await createStudent("owner");
@@ -173,5 +200,33 @@ describe("paying a payment request with discounts and credit", () => {
     const id = await requestPayment(owner, course, 500);
     const quote = await authed(request(app).post(`/api/me/payment-requests/${id}/quote`), other.token).send({});
     expect(quote.status).toBe(404);
+  });
+});
+
+describe("applying for Training + Internship", () => {
+  it("needs an account, and saves the account's own email", async () => {
+    const course = await createTrack();
+    const guest = await request(app).post("/api/applications").send({
+      type: "internship", refTitle: course.title, courseSlug: course.slug, name: "Guest Person", email: "guest.person@gmail.com", phone: "9876500000",
+    });
+    expect(guest.status).toBe(401);
+    expect(guest.body.code).toBe("LOGIN_REQUIRED");
+
+    const student = await createStudent("applicant");
+    const applied = await authed(request(app).post("/api/applications"), student.token).send({
+      type: "internship", refTitle: course.title, courseSlug: course.slug, name: "Real Student", email: "someone.else@gmail.com", phone: "9876500000",
+    });
+    expect(applied.status).toBe(201);
+    const row = await prisma.application.findUnique({ where: { id: applied.body.application._id } });
+    expect(row.email).toBe(student.email);
+    expect(row.userId).toBe(idOf(student.user));
+  });
+
+  it("still takes a course request from a guest", async () => {
+    const course = await prisma.course.create({ data: { type: "course", title: "Guest course", slug: `guest-course-${Date.now()}`, desc: "", status: "closed" } });
+    const guest = await request(app).post("/api/applications").send({
+      type: "course", refTitle: course.title, courseSlug: course.slug, name: "Guest Person", email: "guest.person@gmail.com", phone: "9876500000",
+    });
+    expect(guest.status).toBe(201);
   });
 });
