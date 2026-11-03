@@ -13,7 +13,7 @@ import { useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/use
 // optional: a section with nothing in it is simply not rendered, so a course nobody has
 // filled in yet looks exactly as it did before.
 
-const kindLabel = (c) => (c.type === "internship" ? "Internship" : "Course");
+const kindLabel = (c) => (c.type === "internship" ? "Training + Internship" : "Course");
 const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
 
 /* ---------- key facts ---------- */
@@ -128,7 +128,7 @@ export function RelatedPrograms({ course }) {
       if (!alive || !res || !res.ok) return;
       const rank = (c) => (c.type === course.type ? 0 : 2) + (c.status === "closed" ? 1 : 0);
       const others = (res.courses || [])
-        .filter((c) => c.slug && c.slug !== course.slug && !isFreeProgram(c))
+        .filter((c) => c.slug && c.slug !== course.slug && c.type === "internship" && !isFreeProgram(c))
         .map((c, i) => ({ c, i }))
         .sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i)
         .map((x) => x.c);

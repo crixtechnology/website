@@ -6,13 +6,12 @@
   "routes": {
     "/": {
       "title": "IT Services, Software & AI Solutions | Crix Technology",
-      "description": "Websites, custom software, mobile apps, AI agents and automation by Crix Technology, Ahmedabad — for businesses across India and worldwide. Plus virtual internships and courses.",
+      "description": "Websites, custom software, mobile apps, AI agents and automation by Crix Technology, Ahmedabad — for businesses across India and worldwide. Plus training + stipend internships.",
       "priority": "1.0",
       "changefreq": "weekly",
       "keywords": [
         "virtual internship India",
         "virtual internship program",
-        "online courses with certificate",
         "IT services Ahmedabad",
         "software company Ahmedabad",
         "MERN stack internship",
@@ -20,27 +19,6 @@
         "web development internship",
         "internship with offer letter",
         "Crix Technology"
-      ]
-    },
-    "/programs": {
-      "title": "Virtual Internships & Online Courses | Crix Technology",
-      "description": "Virtual internships and online courses in MERN stack, AI agents, Android and more. Offer letter, certificate & LOR — join from anywhere in India.",
-      "priority": "0.9",
-      "changefreq": "weekly",
-      "crumb": "Internships & Courses",
-      "keywords": [
-        "virtual internship",
-        "internship program India",
-        "internship with certificate and LOR",
-        "final year internship",
-        "MERN stack internship",
-        "AI agent internship",
-        "Android development internship",
-        "web development course",
-        "AI ML course",
-        "React.js course",
-        "Node.js course",
-        "SQL course"
       ]
     },
     "/services": {
@@ -64,7 +42,7 @@
     },
     "/about": {
       "title": "About Us | Crix Technology, Ahmedabad",
-      "description": "Crix Technology Private Limited is an Ahmedabad-based IT services and training company offering virtual internships, online courses and custom software.",
+      "description": "Crix Technology Private Limited is an Ahmedabad-based IT services and training company offering custom software and a Training + Internship program.",
       "priority": "0.7",
       "changefreq": "monthly",
       "crumb": "About",
@@ -76,18 +54,19 @@
         "virtual internship company"
       ]
     },
-    "/paid-internships": {
-      "title": "Paid Internships with Certificate & LOR | Crix Technology",
-      "description": "Mentored virtual internships in MERN stack, AI agents, Android and more. Offer letter, completion certificate & LOR — join from anywhere in India.",
-      "priority": "0.8",
+    "/training-internship": {
+      "title": "Training + Stipend Internship | Crix Technology",
+      "description": "Mentored virtual training in MERN stack, AI agents and more — top performers are selected for a stipend-based internship with offer letter & LOR.",
+      "priority": "0.9",
       "changefreq": "weekly",
-      "crumb": "Paid Internship",
+      "crumb": "Training + Internship",
       "keywords": [
-        "paid internship India",
+        "training and internship India",
+        "internship with stipend",
         "virtual internship with certificate",
-        "internship with LOR",
-        "MERN stack internship",
+        "MERN stack training",
         "AI agent internship",
+        "internship with LOR",
         "Crix Technology"
       ]
     },
@@ -123,15 +102,14 @@
     },
     "/contact": {
       "title": "Contact Us | Crix Technology",
-      "description": "Contact Crix Technology: +91 97123 65388 for internships, courses & careers; +91 97232 23588 for IT services. We reply within two working days.",
+      "description": "Contact Crix Technology: +91 97123 65388 for training, internships & careers; +91 97232 23588 for IT services. We reply within two working days.",
       "priority": "0.7",
       "changefreq": "monthly",
       "crumb": "Contact",
       "keywords": [
         "contact Crix Technology",
         "IT services enquiry Ahmedabad",
-        "internship enquiry",
-        "online course enquiry"
+        "internship enquiry"
       ]
     },
     "/privacy-policy": {

@@ -1,7 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { DEPARTMENTS, greeting, initialState, respond, answerFor, vocabFor } from "../data/helpAgent.js";
-import { internships, courses, services as staticServices } from "../data/content.js";
+import { internships, services as staticServices } from "../data/content.js";
 import { UserContext } from "../context/UserContext.jsx";
 import { getCourses, getOpenings, getServices, getTaughtAnswers, reportUnansweredQuestion } from "../services/api.js";
 import { isFreeProgram } from "../utils/tiers.js";
@@ -74,7 +74,8 @@ export default function HelpAgentPanel({ open, onClose }) {
   const [draft, setDraft] = useState("");
   // What the agent knows about: the static lists until the live ones arrive.
   const [data, setData] = useState({
-    programs: [...internships.map((p) => ({ ...p, type: "internship" })), ...courses.map((p) => ({ ...p, type: "course" }))],
+    // Only Training + Internship programs — courses are no longer offered on the site.
+    programs: internships.map((p) => ({ ...p, type: "internship" })),
     openings: [],
     services: staticServices,
     taught: [],
@@ -95,7 +96,7 @@ export default function HelpAgentPanel({ open, onClose }) {
     loaded.current = true;
     Promise.all([getCourses(), getOpenings(), getServices(), getTaughtAnswers()]).then(([c, o, s, t]) => {
       setData((d) => ({
-        programs: c && c.ok && c.courses && c.courses.length ? c.courses.filter((p) => !isFreeProgram(p)) : d.programs,
+        programs: c && c.ok && c.courses && c.courses.length ? c.courses.filter((p) => p.type === "internship" && !isFreeProgram(p)) : d.programs,
         openings: o && o.ok ? o.openings || [] : d.openings,
         services: s && s.ok && s.services && s.services.length ? s.services : d.services,
         taught: t && t.ok ? t.answers || [] : d.taught,

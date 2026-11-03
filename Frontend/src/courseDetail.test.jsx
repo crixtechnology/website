@@ -80,7 +80,7 @@ describe("key facts", () => {
   it("call an internship an internship, with no lifetime-access claim", async () => {
     await renderPage({ ...base, type: "internship", tiers: [], durationDays: 45 });
     const text = q(".course-facts").textContent;
-    expect(text).toContain("TypeInternship");
+    expect(text).toContain("TypeTraining + Internship");
     expect(text).toContain("45 days");
     expect(text).not.toContain("Lifetime");
   });
@@ -135,12 +135,16 @@ describe("related programs", () => {
     { _id: "f", slug: "third-course", type: "course", title: "Third Course", desc: "d", status: "open" },
   ];
 
-  it("suggest three others: never this one, the same kind first, open before closed", async () => {
-    api.getCourses.mockResolvedValue({ ok: true, courses: others });
-    await renderPage(base);
+  it("suggest only Training + Internship tracks: never this one, never a course, open before closed", async () => {
+    const tracks = [
+      ...others,
+      { _id: "g", slug: "closed-internship", type: "internship", title: "Closed Internship", desc: "d", status: "closed" },
+      { _id: "h", slug: "second-internship", type: "internship", title: "Second Internship", desc: "d", status: "open" },
+    ];
+    api.getCourses.mockResolvedValue({ ok: true, courses: tracks });
+    await renderPage({ ...base, type: "internship" });
     const links = qa("a.related-card").map((a) => a.getAttribute("href"));
-    expect(links).toEqual(["/programs/open-course", "/programs/another-course", "/programs/third-course"]);
-    expect(qa(".related-card h3")).toHaveLength(3);
+    expect(links).toEqual(["/programs/an-internship", "/programs/second-internship", "/programs/closed-internship"]);
   });
 
   it("stay out of the way when the request fails", async () => {

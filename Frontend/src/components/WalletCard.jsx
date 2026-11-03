@@ -134,7 +134,7 @@ export default function WalletCard() {
         </>
       )}
 
-      <Link className="btn btn-ghost wallet-browse" to="/programs">Browse courses</Link>
+      <Link className="btn btn-ghost wallet-browse" to="/training-internship">Browse training tracks</Link>
     </section>
   );
 }

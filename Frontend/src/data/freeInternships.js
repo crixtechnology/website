@@ -1,7 +1,7 @@
 // ============================================================
 // Text for the free internships page (pages/FreeInternships.jsx), linked from
-// the menu's Internships & Courses → Free Internship.
-// The roles come from the backend (/careers/free/openings): Admin → Courses & Internships,
+// the menu's Internships → Free Internship.
+// The roles come from the backend (/careers/free/openings): Admin → Training + Internship,
 // "Free Internship".
 //
 // The internship itself is free. The aptitude test has a processing fee (Admin

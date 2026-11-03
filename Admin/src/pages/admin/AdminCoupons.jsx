@@ -225,7 +225,7 @@ export default function AdminCoupons() {
                 {courses.map((c) => (
                   <label key={c._id} style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}>
                     <input type="checkbox" checked={form.courseIds.includes(c._id)} onChange={() => toggleCourse(c._id)} style={{ width: "auto" }} />
-                    <span>{c.title} <span className="admin-row-meta">· {c.type === "internship" ? "Internship" : "Course"}</span></span>
+                    <span>{c.title} <span className="admin-row-meta">· {c.type === "internship" ? "Training + Internship" : "Course"}</span></span>
                   </label>
                 ))}
               </div>

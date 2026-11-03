@@ -163,6 +163,7 @@ describe("admin course form", () => {
 
     it("keeps a course's duration a free number of days", async () => {
       await renderAdmin();
+      await pick("Course");
       expect(q("#ac-duration").tagName).toBe("INPUT");
       await act(async () => { fill(q("#ac-duration"), "45"); });
       expect(q("#ac-duration").value).toBe("45");
@@ -170,14 +171,15 @@ describe("admin course form", () => {
 
     it("drops an odd length when a course is switched to an internship, so it has to be re-picked", async () => {
       await renderAdmin();
+      await pick("Course");
       await act(async () => { fill(q("#ac-duration"), "45"); });
-      await pick("Paid Internship");
+      await pick("Training + Internship");
       expect(q("#ac-duration").tagName).toBe("SELECT");
       expect(q("#ac-duration").value).toBe("");
       // ...but a valid one survives the switch.
       await pick("Course");
       await act(async () => { fill(q("#ac-duration"), "30"); });
-      await pick("Paid Internship");
+      await pick("Training + Internship");
       expect(q("#ac-duration").value).toBe("30");
     });
 
@@ -196,7 +198,7 @@ describe("admin course form", () => {
     });
   });
 
-  describe("one form for free internships, paid internships and courses", () => {
+  describe("one form for Training + Internship tracks, free internships and courses", () => {
     const freeRole = {
       _id: "o9", slug: "free-web", title: "Free Web Intern", audience: "free", status: "open", feeRequired: true, applicants: 0,
       summary: "", techCategory: "web", skills: [], responsibilities: [], eligibility: [], stipend: "", experience: "", duration: "", mode: "",
@@ -208,7 +210,7 @@ describe("admin course form", () => {
     it("lists the three kinds apart, and leaves Careers roles out", async () => {
       await renderAdmin([base, { ...base, _id: "i1", type: "internship", title: "Paid Android Internship" }], [freeRole, careersRole]);
       const headings = qa("h3").map((h) => h.textContent);
-      expect(headings).toEqual(expect.arrayContaining(["Free internships", "Paid internships", "Courses"]));
+      expect(headings).toEqual(expect.arrayContaining(["Free internships", "Training + Internship tracks", "Courses"]));
       expect(container.textContent).toContain("Free Web Intern");
       expect(container.textContent).toContain("1 of 4 positions filled");
       expect(container.textContent).not.toContain("Careers Web Intern");
@@ -258,12 +260,24 @@ describe("admin course form", () => {
       expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ audience: "free", waiveFee: true });
     });
 
-    it("saves a paid internship as an internship entry", async () => {
+    it("saves a Training + Internship track as an internship entry", async () => {
       await renderAdmin();
-      await pick("Paid Internship");
+      await pick("Training + Internship");
       await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
       await submit();
       expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ type: "internship", title: "Paid Cloud Internship" });
+    });
+
+    it("won't save a ₹0 training fee — training is paid, not free", async () => {
+      await renderAdmin();
+      await pick("Training + Internship");
+      await act(async () => {
+        fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Cloud Training");
+        fill(q("#plan-basic-price"), "0");
+      });
+      await submit();
+      expect(api.adminCreateCourse).not.toHaveBeenCalled();
+      expect(container.textContent).toContain("Training is paid, not free");
     });
 
     it("opens a free internship's Edit in the free-internship form", async () => {
@@ -274,9 +288,9 @@ describe("admin course form", () => {
       expect(qa(".kind-option").find((b) => b.textContent.startsWith("Course")).disabled).toBe(true);
     });
 
-    it("gives paid internships and courses the same details, and loads them back", async () => {
+    it("gives training tracks and courses the same details, and loads them back", async () => {
       await renderAdmin();
-      await pick("Paid Internship");
+      await pick("Training + Internship");
       await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
       await act(async () => { fill(q("#cd-positions"), "12"); });
       await act(async () => { fill(q("#cd-stipend"), "Up to ₹5,000/month"); });

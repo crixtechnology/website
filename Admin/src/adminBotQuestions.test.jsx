@@ -119,13 +119,13 @@ describe("admin help bot questions page", () => {
 
     await act(async () => {
       fill(container.querySelector("#ba-a-q1"), "Yes — on Saturdays and Sundays.");
-      fill(container.querySelector("#ba-l-q1"), "/programs");
+      fill(container.querySelector("#ba-l-q1"), "/training-internship");
     });
     await act(async () => { fill(container.querySelector("#ba-ll-q1"), "See programs"); fill(container.querySelector("#ba-d-q1"), "programs"); });
     await act(async () => { button("Save answer").click(); });
     await tick();
     expect(api.adminAnswerBotQuestion).toHaveBeenCalledWith("q1", {
-      answer: "Yes — on Saturdays and Sundays.", keywords: "", linkTo: "/programs", linkLabel: "See programs", dept: "programs",
+      answer: "Yes — on Saturdays and Sundays.", keywords: "", linkTo: "/training-internship", linkLabel: "See programs", dept: "programs",
     });
   });
 

@@ -4,7 +4,7 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import SetNewPassword from "./components/SetNewPassword.jsx";
 import CookieConsent from "./components/CookieConsent.jsx";
 import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
-import { Home, Programs, PaidInternships, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
+import { Home, TrainingInternship, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
 import { useCopyProtection } from "./hooks/useCopyProtection.js";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
 import { captureReferralFromUrl } from "./utils/referral.js";
@@ -140,8 +140,8 @@ function ScrollToTop() {
       }
     }
     if (!hash) { window.scrollTo(0, 0); return; }
-    // Links to a section (e.g. the old /programs#internships) land here — the target
-    // section exists as soon as Programs mounts, but give it a tick so the
+    // Links to a section (e.g. /training-internship#programs) land here — the target
+    // section exists as soon as the page mounts, but give it a tick so the
     // route has actually rendered before we look it up.
     const id = hash.slice(1);
     const raf = requestAnimationFrame(() => {
@@ -192,14 +192,16 @@ export default function App() {
         <Suspense fallback={<RouteLoading />}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/programs" element={<Programs />} />
+            <Route path="/training-internship" element={<TrainingInternship />} />
+            {/* Each program's own page keeps its /programs/:slug address. */}
             <Route path="/programs/:slug" element={<CourseDetail />} />
-            <Route path="/paid-internships" element={<PaidInternships />} />
-            {/* Internships and Courses used to be separate pages — keep the
-                old URLs working by sending them to the merged page, straight
-                to the section a bookmark of that old URL actually meant. */}
-            <Route path="/internships" element={<Navigate to="/programs" replace />} />
-            <Route path="/courses" element={<Navigate to="/programs" replace />} />
+            {/* The Courses + Internship page (/programs), Paid Internship and the
+                even older Internships / Courses pages are gone — keep their URLs
+                working by sending them to Training + Internship. */}
+            <Route path="/programs" element={<Navigate to="/training-internship" replace />} />
+            <Route path="/paid-internships" element={<Navigate to="/training-internship" replace />} />
+            <Route path="/internships" element={<Navigate to="/training-internship" replace />} />
+            <Route path="/courses" element={<Navigate to="/training-internship" replace />} />
             <Route path="/services" element={<Services />} />
             <Route path="/about" element={<About />} />
             <Route path="/careers" element={<Careers />} />

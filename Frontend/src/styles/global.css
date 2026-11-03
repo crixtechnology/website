@@ -966,3 +966,11 @@ body.no-copy img{-webkit-user-drag:none}
 .field input[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:rgba(var(--danger-rgb),.75)}
 .field input[aria-invalid="true"]:focus,.field textarea[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(var(--danger-rgb),.2)}
 .compact-form .field-error,.compact-form .field-hint{margin-top:3px;font-size:.75rem}
+
+/* Training + Internship: the two stages side by side, an arrow between them. */
+.stage-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:40px;position:relative}
+.stage-card h3{min-height:0}
+.stage-card--earn{border-color:rgba(var(--internship-rgb),.45)}
+.stage-card--earn .tag{color:var(--teal)}
+@media(min-width:721px){.stage-grid::after{content:"→";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);color:var(--teal);font-size:1.1rem;z-index:1}}
+@media(max-width:720px){.stage-grid{grid-template-columns:1fr;gap:18px}}

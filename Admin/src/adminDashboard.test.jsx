@@ -22,7 +22,7 @@ afterEach(() => {
   container.remove();
 });
 
-it("shows courses, paid and free internships as one Courses & Internships tile", async () => {
+it("shows courses, paid and free internships as one Training + Internship tile", async () => {
   const priced = [{ tier: "basic", price: 999, discountPercent: 0, features: [] }];
   api.adminGetCourses.mockResolvedValue({ ok: true, courses: [
     { _id: "c1", type: "course", status: "open", tiers: priced },
@@ -42,11 +42,11 @@ it("shows courses, paid and free internships as one Courses & Internships tile",
   });
   const tiles = [...container.querySelectorAll(".admin-tile")];
   const labels = tiles.map((t) => t.querySelector(".tag").textContent);
-  expect(labels).toContain("Courses & Internships");
+  expect(labels).toContain("Training + Internship");
   expect(labels).not.toContain("Courses");
   expect(labels).not.toContain("Internships");
-  const tile = tiles.find((t) => t.querySelector(".tag").textContent === "Courses & Internships");
+  const tile = tiles.find((t) => t.querySelector(".tag").textContent === "Training + Internship");
   expect(tile.getAttribute("href")).toBe("/admin/courses");
-  expect(tile.textContent).toContain("4"); // 2 courses + 1 paid + 1 free internship
-  expect(tile.textContent).toContain("1 free internship · 1 paid · 2 courses · 1 on sale");
+  expect(tile.textContent).toContain("4"); // 2 courses + 1 training track + 1 free internship
+  expect(tile.textContent).toContain("1 training track · 1 free internship · 2 courses · 1 on sale");
 });

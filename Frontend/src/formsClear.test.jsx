@@ -63,7 +63,7 @@ describe("Contact form", () => {
     expect(q("#c-name").value).toBe("");
     expect(q("#c-email").value).toBe("");
     expect(q("#c-message").value).toBe("");
-    expect(q("#c-interest").value).toBe("Internship");
+    expect(q("#c-interest").value).toBe("Training + Internship");
   });
 
   it("keeps what was typed when sending fails, so it can be corrected and retried", async () => {

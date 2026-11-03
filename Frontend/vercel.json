@@ -2,15 +2,17 @@
   "buildCommand": "npm run build",
   "outputDirectory": "build",
   "redirects": [
-    { "source": "/internships", "destination": "/programs#internships", "permanent": true },
-    { "source": "/courses", "destination": "/programs#courses", "permanent": true },
-    { "source": "/payment", "destination": "/programs", "permanent": true },
+    { "source": "/programs", "destination": "/training-internship", "permanent": true },
+    { "source": "/paid-internships", "destination": "/training-internship", "permanent": true },
+    { "source": "/internships", "destination": "/training-internship", "permanent": true },
+    { "source": "/courses", "destination": "/training-internship", "permanent": true },
+    { "source": "/payment", "destination": "/training-internship", "permanent": true },
     { "source": "/ambassador", "destination": "/", "permanent": true },
     { "source": "/bca-internships", "destination": "/free-internships", "permanent": true }
   ],
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
-    { "source": "/:page(programs|services|about|contact|careers|privacy-policy|terms-of-service|client-terms)", "destination": "/:page/index.html" },
+    { "source": "/:page(training-internship|services|about|contact|careers|privacy-policy|terms-of-service|client-terms)", "destination": "/:page/index.html" },
     { "source": "/(.*)", "destination": "/app.html" }
   ],
   "headers": [

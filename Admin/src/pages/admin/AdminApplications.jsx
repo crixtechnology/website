@@ -97,7 +97,7 @@ export default function AdminApplications() {
                 <div className="admin-row-main admin-row-message">
                   <p>
                     <span className={`type-pill type-pill--${a.type}`} style={{ marginRight: 8 }}>
-                      {a.type === "internship" ? "Internship" : "Course"}
+                      {a.type === "internship" ? "Training + Internship" : "Course"}
                     </span>
                     {a.course ? (
                       // `course` resolves for either type now that an internship

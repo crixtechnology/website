@@ -50,7 +50,7 @@ const ASPECTS = {
 const asked = (n, aspect) => ASPECTS[aspect].some((w) => n.includes(` ${w}`));
 
 const kind = (p) => (p.type === "internship" ? "internship" : "course");
-const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/programs", label: `Open ${p.title}` });
+const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/training-internship", label: `Open ${p.title}` });
 
 function priceLine(p) {
   if (!isOpenForBuy(p)) return `${p.title} isn't open for online enrolment right now — use “Request to ${p.type === "internship" ? "apply" : "enroll"}” on its page and the team will tell you about the next batch and price.`;

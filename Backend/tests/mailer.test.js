@@ -156,7 +156,7 @@ describe("mailer via Brevo's HTTP API", () => {
     expect(url).toContain("api.brevo.com");
     const body = JSON.parse(init.body);
     expect(body.to).toEqual([{ email: "owner@example.com" }]);
-    expect(body.subject).toBe("New Internship application — AI Agentic Systems");
+    expect(body.subject).toBe("New Training + Internship application — AI Agentic Systems");
     expect(body.htmlContent).toContain("/admin/applications");
   });
 

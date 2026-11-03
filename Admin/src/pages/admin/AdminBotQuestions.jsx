@@ -17,7 +17,8 @@ const FILTERS = [
 // Pages a taught answer may link to (the server accepts only in-site paths).
 const PAGES = [
   ["", "No link"],
-  ["/programs", "Internships & Courses"],
+  ["/training-internship", "Training + Internship"],
+  ["/free-internships", "Free Internship"],
   ["/careers", "Careers"],
   ["/services", "IT Services"],
   ["/contact", "Contact"],
@@ -29,7 +30,7 @@ const PAGES = [
 ];
 const DEPTS = [
   ["", "No phone card"],
-  ["programs", "Internships & Courses number"],
+  ["programs", "Training + Internship number"],
   ["it", "IT Services number"],
   ["both", "Both numbers"],
 ];

@@ -111,7 +111,7 @@ export default function PaymentRequests({ onPaid }) {
                 <span className={`admin-pill ${r.status === "paid" ? "lifetime" : "new"}`}>{r.status === "paid" ? "paid" : "payment due"}</span>
               </b>
               <span className="admin-row-meta">
-                {r.course?.type === "internship" ? "Internship" : "Course"} · {formatINR(r.amount)}
+                {r.course?.type === "internship" ? "Training + Internship" : "Course"} · {formatINR(r.amount)}
                 {r.note ? ` · ${r.note}` : ""}
               </span>
             </div>

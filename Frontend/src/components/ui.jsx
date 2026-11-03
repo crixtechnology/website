@@ -374,7 +374,7 @@ export function SkeletonCards({ count = 3 }) {
 
 // A course/internship not yet open for buying (no price set yet, or the
 // admin closed it) gets an "Inquire" button straight to WhatsApp instead of
-// a dead end — to the Internships & Courses number.
+// a dead end — to the Training + Internship number.
 // `verb` lets the message (and the button copy that builds it) say "apply
 // for" vs "enroll in" so the CTA itself signals internship vs course.
 export function whatsappInquiryLink(title, verb = "learning more about") {
@@ -463,7 +463,7 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
   const closed = item.status === "closed";
   const openForBuy = isOpenForBuy(item);
   const { isAdmin } = useContext(UserContext);
-  const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
+  const kindLabel = kind === "internship" ? "Training + Internship" : kind === "course" ? "Course" : null;
   // Derived from `kind`, not `item.deliverables` — every internship/course
   // issues the same fixed set of documents for its type (see content.js's
   // programDeliverables), so this works whether `item` came from the static
@@ -1478,7 +1478,7 @@ export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
 
   const closed = item.status === "closed";
   const deliverables = kind ? programDeliverables[kind] : null;
-  const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
+  const kindLabel = kind === "internship" ? "Training + Internship" : kind === "course" ? "Course" : null;
 
   const act = (fn) => () => { onClose(); fn && fn(item); };
 
@@ -2133,12 +2133,11 @@ function ThemeToggle() {
   );
 }
 
-// The three pages under "Internships & Courses": a dropdown on desktop, a
-// second slide-in panel in the mobile menu.
+// The pages under "Internships": a dropdown on desktop, a second slide-in
+// panel in the mobile menu.
 const PROGRAM_MENU = [
+  { to: "/training-internship", label: "Training + Internship", desc: "Get trained · top performers earn a stipend" },
   { to: "/free-internships", label: "Free Internship", desc: "Free internship · small aptitude test fee" },
-  { to: "/paid-internships", label: "Paid Internship", desc: "Mentored internship programs" },
-  { to: "/programs", label: "Courses + Internship", desc: "Every course and internship" },
 ];
 const isProgramPath = (pathname) => PROGRAM_MENU.some((m) => m.to === pathname);
 const NAV_MOBILE = "(max-width:1100px)";
@@ -2149,7 +2148,7 @@ const Chevron = ({ dir = "down" }) => (
   </svg>
 );
 
-// Desktop: "Internships & Courses" opens a small menu (hover or click).
+// Desktop: "Internships" opens a small menu (hover or click).
 function ProgramsDropdown() {
   const [open, setOpen] = useState(false);
   // While the mouse is over it, a click keeps it open instead of toggling it
@@ -2177,7 +2176,7 @@ function ProgramsDropdown() {
       <button type="button" className={`nav-drop-btn${isProgramPath(location.pathname) ? " active" : ""}`}
         aria-expanded={open} aria-haspopup="true" aria-controls="nav-drop-programs"
         onClick={() => setOpen((v) => hovered.current || !v)}>
-        Internships &amp; Courses <Chevron />
+        Internships <Chevron />
       </button>
       <ul id="nav-drop-programs" className="nav-drop-menu">
         {PROGRAM_MENU.map((m) => (
@@ -2194,7 +2193,7 @@ function ProgramsDropdown() {
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  // Mobile menu: the "Internships & Courses" panel slid in over the main one.
+  // Mobile menu: the "Internships" panel slid in over the main one.
   const [sub, setSub] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef(null);
@@ -2254,7 +2253,7 @@ export function Navbar() {
 
   const links = [
     ["/services", "IT Services"],
-    ["/programs", "Internships & Courses"],
+    ["/training-internship", "Internships"],
     ["/about", "About"],
     ["/careers", "Careers"],
     ["/contact", "Contact"],
@@ -2280,7 +2279,7 @@ export function Navbar() {
               <ul className="nav-drawer-links">
                 {links.map(([to, label]) => (
                   <li key={to}>
-                    {to === "/programs" ? (
+                    {to === "/training-internship" ? (
                       <button type="button" className={`nav-drawer-item${isProgramPath(location.pathname) ? " active" : ""}`}
                         aria-expanded={sub} aria-controls="nav-drawer-programs" onClick={() => setSub(true)}>
                         {label} <Chevron dir="right" />
@@ -2297,7 +2296,7 @@ export function Navbar() {
                 {isLoggedIn ? (
                   <>
                     <NavLink to="/profile" onClick={close}>Profile</NavLink>
-                    {isAdmin && <NavLink to="/dashboard" onClick={close}>All Courses</NavLink>}
+                    {isAdmin && <NavLink to="/dashboard" onClick={close}>All Programs</NavLink>}
                     <NavLink to="/dashboard" onClick={close}>
                       My Dashboard{!isAdmin && dueBadge}
                     </NavLink>
@@ -2315,7 +2314,7 @@ export function Navbar() {
                 </button>
                 <button type="button" className="nav-drawer-close" aria-label="Close menu" onClick={close}>✕</button>
               </div>
-              <span className="nav-drawer-title nav-drawer-subtitle">Internships &amp; Courses</span>
+              <span className="nav-drawer-title nav-drawer-subtitle">Internships</span>
               <ul className="nav-drawer-links">
                 {PROGRAM_MENU.map((m) => (
                   <li key={m.to}>
@@ -2334,7 +2333,7 @@ export function Navbar() {
         <Link to="/" onClick={close}><Logo /></Link>
         <ul id="primary-nav" className="nav-links">
           {links.map(([to, label]) => {
-            if (to === "/programs") return <ProgramsDropdown key={to} />;
+            if (to === "/training-internship") return <ProgramsDropdown key={to} />;
             // NavLink's own isActive matches on pathname only, so it can't
             // tell two links to the same page with different #sections
             // apart — both would light up together. Compare the
@@ -2362,7 +2361,7 @@ export function Navbar() {
           <span className="nav-account">
             <NavLink className="nav-account-link" to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
             {isAdmin && (
-              <NavLink className="nav-account-link" to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>
+              <NavLink className="nav-account-link" to="/dashboard" onClick={() => setOpen(false)}>All Programs</NavLink>
             )}
             <Link className="nav-cta" to="/dashboard" onClick={() => setOpen(false)}>
               My Dashboard{!isAdmin && dueBadge}
@@ -2464,10 +2463,10 @@ const FOOT_COLS = [
   {
     heading: "For Students",
     links: [
-      ["Internship Program", "/programs"],
-      ["Web Development Track", "/programs"],
-      ["Android Development", "/programs"],
-      ["Online Courses", "/programs"],
+      ["Training + Internship", "/training-internship"],
+      ["How selection works", "/training-internship#selection"],
+      ["Free Internship", "/free-internships"],
+      ["Student support", "/contact"],
     ],
   },
   {
@@ -2491,8 +2490,8 @@ export function Footer() {
         <div className="foot-brand">
           <Logo className="foot-logo" />
           <p className="foot-desc">
-            Your one-stop solution for IT services, virtual internships, and future-ready
-            skills training. Based in Ahmedabad — serving clients pan-India and globally.
+            Your one-stop solution for IT services, and training that leads to
+            stipend-based internships. Based in Ahmedabad — serving clients pan-India and globally.
           </p>
           <div className="foot-contact">
             <ul className="foot-phones">

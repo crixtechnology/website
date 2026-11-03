@@ -7,7 +7,7 @@ import { offeredTiers } from "../../utils/tiers.js";
 
 // One line icon per dashboard tile (keyed by the tile's label).
 const TILE_ICONS = {
-  "Courses & Internships": <path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z M20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z" />,
+  "Training + Internship": <path d="M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z M20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z" />,
   Users: <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6 M16 4.5a3.5 3.5 0 0 1 0 6.5 M18 14c2 .7 3.5 2.8 3.5 6" />,
   Subscriptions: <path d="M3 6h18v12H3z M3 10h18 M7 15h4" />,
   "Live class schedule": <path d="M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4 M9 14l2 2 4-4" />,
@@ -67,7 +67,7 @@ export default function AdminDashboard() {
         // internship has no meaningful open/closed toggle in the admin
         // list, so it shouldn't count as "open" here either.
         openInternships: internships.filter((c) => c.status === "open" && offeredTiers(c).length > 0).length,
-        // Free internships are job openings listed on /free-internships (Courses & Internships → Free Internship).
+        // Free internships are job openings listed on /free-internships (Training + Internship → Free Internship).
         freeInternships: openingsRes && openingsRes.ok ? (openingsRes.openings || []).filter((o) => o.audience === "free").length : 0,
         students: students.size,
         enrollments: enrollments.length,
@@ -87,11 +87,11 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    // One tile: free internships, paid internships and courses share one page and form.
+    // One tile: Training + Internship tracks, free internships and courses share one page and form.
     {
-      label: "Courses & Internships",
+      label: "Training + Internship",
       value: stats.courses + stats.internships + stats.freeInternships,
-      sub: `${stats.freeInternships} free internship${stats.freeInternships === 1 ? "" : "s"} · ${stats.internships} paid · ${stats.courses} course${stats.courses === 1 ? "" : "s"} · ${stats.openCourses + stats.openInternships} on sale`,
+      sub: `${stats.internships} training track${stats.internships === 1 ? "" : "s"} · ${stats.freeInternships} free internship${stats.freeInternships === 1 ? "" : "s"} · ${stats.courses} course${stats.courses === 1 ? "" : "s"} · ${stats.openCourses + stats.openInternships} on sale`,
       to: "/admin/courses",
     },
     { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },
