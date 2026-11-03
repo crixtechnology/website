@@ -800,7 +800,10 @@ export const paymentFailedText = (failure) => (failure && failure.timedOut
 // hasn't been referred and hasn't bought anything), and the itemised total —
 // plan price, referral discount, referral credit — as the server will charge it.
 // `onPayable` tells the buy button what to show as the amount.
-function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onCoupon }) {
+// getQuote(couponCode): where the price comes from — the checkout's plan quote
+// by default; a payment request passes its own (PaymentRequests.jsx). Keep it
+// stable (useCallback): a new function re-prices.
+export function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onCoupon, getQuote }) {
   const [quote, setQuote] = useState(null);
   // The offer-code box (an admin-made code, separate from the referral code below).
   // Offer codes are handed to individual students personally by the admin, so the
@@ -831,7 +834,7 @@ function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onC
     let alive = true;
     onPayable(null);
     onWalletCovers(null);
-    getPriceQuote(item.slug, tier, couponCode).then((res) => {
+    (getQuote ? getQuote(couponCode) : getPriceQuote(item.slug, tier, couponCode)).then((res) => {
       if (!alive) return;
       // An applied code that no longer works for this plan (or has just run out)
       // is dropped, and the buyer told — never silently charged a different price.
@@ -844,14 +847,14 @@ function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onC
       onWalletCovers(res.ok && res.walletCoversAll ? res.walletPayable : null);
     });
     return () => { alive = false; };
-  }, [item.slug, tier, requote, couponCode, onPayable, onWalletCovers, onCoupon]);
+  }, [item.slug, tier, requote, couponCode, onPayable, onWalletCovers, onCoupon, getQuote]);
 
   const applyOffer = async () => {
     if (offerBusy || !offerInput.trim()) return;
     setOfferBusy(true);
     setOfferNote({ kind: "", text: "" });
     const typed = offerInput.trim();
-    const res = await getPriceQuote(item.slug, tier, typed);
+    const res = await (getQuote ? getQuote(typed) : getPriceQuote(item.slug, tier, typed));
     setOfferBusy(false);
     if (res.ok && res.couponApplied) {
       setOfferInput("");
@@ -1505,14 +1508,23 @@ export function InquiryModal({ item, kind, onClose }) {
               Thanks{sent && sent.name ? `, ${sent.name.split(" ")[0]}` : ""} — we've got your details for
               "{item.title}" and will reach out on {sent && sent.email} or {sent && sent.phone} within 2 working days.
             </Alert>
+            {kind === "internship" && (
+              <p className="form-note" style={{ marginTop: 12 }}>
+                Next: once we confirm your seat, we send a payment request for the training fee to your Crix account
+                {user ? "" : ` — log in or sign up with ${sent && sent.email ? sent.email : "this email"} so it reaches you`}, and you pay it in
+                My Dashboard. Questions? Call or WhatsApp {site.phoneAlt}.
+              </p>
+            )}
             <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
           </>
         ) : (
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
-              {user
-                ? `Check your details and we'll help you ${verb} "${item.title}".`
-                : `Share your details and we'll help you ${verb} "${item.title}" — no account needed.`}
+              {kind === "internship"
+                ? `Share your details and our team will call you to confirm your seat on "${item.title}", then send a payment request for the training fee (training is paid, not free). Prefer to talk now? Call or WhatsApp ${site.phoneAlt}.`
+                : user
+                  ? `Check your details and we'll help you ${verb} "${item.title}".`
+                  : `Share your details and we'll help you ${verb} "${item.title}" — no account needed.`}
             </p>
             <form onSubmit={onSubmit} noValidate>
               <div className="field"><label htmlFor="inquiry-name">Full name</label>

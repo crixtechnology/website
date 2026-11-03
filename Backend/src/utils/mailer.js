@@ -166,8 +166,9 @@ async function sendApplicationEmail({ type, refTitle }) {
     path: "/training-internship",
     subject: `New ${label} — ${title}`,
     title: `New ${label.toLowerCase()}`,
-    summaryHtml: `A new ${label.toLowerCase()} just came in for <strong>${escapeHtml(title)}</strong>.`,
-    summaryText: `A new ${label} was received for "${title}".`,
+    // Training is paid through a payment request the team sends after confirming the seat.
+    summaryHtml: `A new ${label.toLowerCase()} just came in for <strong>${escapeHtml(title)}</strong>.${type === "internship" ? " Call them to confirm their seat, then use <strong>Send payment request</strong> on the application." : ""}`,
+    summaryText: `A new ${label} was received for "${title}".${type === "internship" ? " Call them to confirm their seat, then use Send payment request on the application." : ""}`,
     link,
     linkLabel: "Open applications",
   });
@@ -645,12 +646,12 @@ async function sendPaymentRequestEmail({ to, name, itemTitle, itemType, tier, am
         ["Amount", fmtRupees(amount), true],
       ]) +
       button("Pay now", link) +
-      paragraph("Log in and open My Dashboard to pay. You get access as soon as the payment goes through, and your receipt is emailed to you.", `font-size:13px;color:${BRAND.muted}`),
+      paragraph("Log in and open My Dashboard to pay. Any wallet credit, offer code or referral discount you have comes off when you pay. You get access as soon as the payment goes through, and your receipt is emailed to you.", `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
     `Hi ${name || "there"},\n\nCrix Technology has sent you a payment request.\n\n` +
     `${kindLabel}: ${itemTitle || ""}\n${planLabel ? `Plan: ${planLabel}\n` : ""}${note ? `Note: ${note}\n` : ""}Amount: ${fmtRupees(amount)}\n\n` +
-    `Log in and open My Dashboard to pay — you'll get access as soon as the payment goes through: ${link}` + TEXT_SIGNOFF;
+    `Log in and open My Dashboard to pay — any wallet credit, offer code or referral discount comes off when you pay, and you'll get access as soon as the payment goes through: ${link}` + TEXT_SIGNOFF;
   return deliver({ to, subject: `Payment request — ${itemTitle || "Crix Technology"}`, text, html });
 }
 

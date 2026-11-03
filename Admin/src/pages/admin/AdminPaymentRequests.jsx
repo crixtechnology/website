@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   getAdminToken, adminGetCourses, adminGetUsers, adminGetPaymentRequests, adminCreatePaymentRequest, adminCancelPaymentRequest,
 } from "../../services/api.js";
@@ -33,6 +33,8 @@ export default function AdminPaymentRequests() {
   const [status, setStatus] = useState("");
 
   const [form, setForm] = useState(EMPTY);
+  // "Send payment request" on an application lands here with ?email=&courseId=.
+  const [params, setParams] = useSearchParams();
   const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState("");
   const [formOk, setFormOk] = useState("");
@@ -57,6 +59,28 @@ export default function AdminPaymentRequests() {
       if (res.ok) setStudents((res.users || []).filter((u) => u.role !== "admin"));
     });
   }, []);
+  // Fill in the applicant and track once both lists have loaded, then drop the
+  // params so a refresh doesn't fill it in again. An applicant with no account
+  // yet can't be sent a request — say so instead.
+  useEffect(() => {
+    const email = (params.get("email") || "").trim().toLowerCase();
+    const courseId = params.get("courseId") || "";
+    if ((!email && !courseId) || studentsLoading || courses.length === 0) return;
+    const user = email ? students.find((u) => (u.email || "").toLowerCase() === email) || null : null;
+    const picked = courses.find((c) => c._id === courseId);
+    const plan = picked ? offeredTiers(picked)[0] : null;
+    setForm((f) => ({
+      ...f,
+      user: user || f.user,
+      courseId: picked ? picked._id : f.courseId,
+      tier: plan ? plan.tier : f.tier,
+      amount: plan ? String(planPrice(plan)) : f.amount,
+    }));
+    setFormOk("");
+    setFormError(email && !user ? `${email} has no account yet — ask them to sign up with this email, then send the request.` : "");
+    setParams({}, { replace: true });
+  }, [params, students, studentsLoading, courses, setParams]);
+
   // Keyed on both, so a search keystroke or a status change reloads once.
   useDebouncedLoad(() => load(q), `${status}|${q}`);
 
@@ -115,7 +139,7 @@ export default function AdminPaymentRequests() {
           <h3 style={{ margin: "0 0 16px" }}>Request a payment</h3>
           <p className="form-note" style={{ margin: "-8px 0 16px" }}>
             The student must already have an account. They'll see this on their dashboard (and get an email),
-            and get access as soon as they pay — whether the course/internship is open or closed. This is separate from normal checkout: no offer codes or referral discounts apply.
+            and get access as soon as they pay — whether the course/internship is open or closed. Enter the full fee: when they pay, their wallet credit, an offer code and their referral discount (first purchase only) come off it automatically, as at checkout.
           </p>
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="paymentrequests-student">Student</label>

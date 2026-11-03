@@ -91,7 +91,7 @@ export const FAQ_TOPICS = [
     id: "payments", icon: "💳", label: "Payments & receipts",
     faqs: [
       { id: "p-pay", q: "How do I pay?", k: "pay payment razorpay upi card netbanking wallet secure checkout buy purchase",
-        a: "Payments go through Razorpay — card, UPI, net-banking or wallet. Your payment details are entered directly in Razorpay's secure screen and are never stored on our servers.\nIf you have credit in your Crix wallet, it is taken off the price first — and if it covers the whole price you can pay with the wallet alone." },
+        a: "Payments go through Razorpay — card, UPI, net-banking or wallet. Your payment details are entered directly in Razorpay's secure screen and are never stored on our servers.\nFor Training + Internship, you pay the payment request we send after confirming your seat (My Dashboard → Payment requests).\nIf you have credit in your Crix wallet, it is taken off the price first — and if it covers the whole price you can pay with the wallet alone." },
       { id: "p-refund", q: "What is the refund policy?", k: "refund cancel cancellation money back return",
         a: "All course and internship purchases are final — there are no refunds or cancellations once payment is complete. If you have doubts, ask before buying using “Request to apply” / “Request to enroll” on the program's page. This does not affect any statutory right you may have under consumer law.",
         links: [{ to: "/terms-of-service", label: "Read the Terms" }] },
@@ -107,7 +107,7 @@ export const FAQ_TOPICS = [
         a: "If money left your account but you didn't get access, please contact us with your name, email, the program name and the payment reference from your bank / UPI app, and we'll check it.",
         links: [{ to: "/dashboard", label: "My Dashboard" }, { to: "/contact", label: "Contact page" }], dept: "programs" },
       { id: "p-request", q: "What is a payment request?", k: "payment request pay admin closed price link",
-        a: "Sometimes we send a payment request to your registered account for a specific training program or course (even one that's closed or has no listed price). It appears under “Payment requests” in My Dashboard, is personal to your account, and you pay it through Razorpay. Offer codes and wallet credit don't apply to it.",
+        a: "Sometimes we send a payment request to your registered account for a specific training program or course (even one that's closed or has no listed price). It appears under “Payment requests” in My Dashboard, is personal to your account, and you pay it through Razorpay. Your wallet credit, an offer code and your referral discount (before your first purchase) come off it when you pay — and if your credit covers it all, you can pay from your wallet alone.",
         links: [{ to: "/dashboard", label: "My Dashboard" }] },
       { id: "p-nobuy", q: "A program has no price or says “Currently closed”", k: "closed no price unavailable request enroll apply not available",
         a: "That program can't be bought online right now. Use “Request to apply” or “Request to enroll” on its page and we'll reply with pricing and upcoming availability." },
