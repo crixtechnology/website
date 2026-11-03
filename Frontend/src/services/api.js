@@ -662,15 +662,42 @@ export async function getMyPaymentRequests() {
 }
 
 // Same response shape as createRazorpayOrder.
-export async function createPaymentRequestOrder(id) {
+// What paying a request costs, itemised (same shape as getPriceQuote): offer
+// code, referral discount and wallet credit come off the requested amount.
+export async function getPaymentRequestQuote(id, couponCode) {
   try {
-    const res = await authFetch(`/me/payment-requests/${id}/create-order`, { method: "POST", body: JSON.stringify({ acceptTerms: true }) });
+    const res = await authFetch(`/me/payment-requests/${id}/quote`, { method: "POST", body: JSON.stringify(couponCode ? { couponCode } : {}) });
+    if (res.status === 401) adminLogout();
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not price this" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not price this right now." };
+  }
+}
+
+export async function createPaymentRequestOrder(id, couponCode) {
+  try {
+    const res = await authFetch(`/me/payment-requests/${id}/create-order`, { method: "POST", body: JSON.stringify({ acceptTerms: true, ...(couponCode ? { couponCode } : {}) }) });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not start payment" };
     return data;
   } catch (e) {
     return { ok: false, error: "Could not start payment right now." };
+  }
+}
+
+// Pays a request entirely from wallet credit (only when the quote says walletCoversAll).
+export async function payPaymentRequestWithWallet(id, couponCode) {
+  try {
+    const res = await authFetch(`/me/payment-requests/${id}/pay-with-wallet`, { method: "POST", body: JSON.stringify({ acceptTerms: true, ...(couponCode ? { couponCode } : {}) }) });
+    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error || "Could not pay from your wallet" };
+    return data;
+  } catch (e) {
+    return { ok: false, error: "Could not pay from your wallet right now." };
   }
 }
 

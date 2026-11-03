@@ -1,23 +1,31 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMyPaymentRequests, createPaymentRequestOrder, verifyPaymentRequest, getReceipt } from "../services/api.js";
-import { loadRazorpayScript, openRazorpayCheckout, paymentFailedText, Alert, TermsCheckbox, ProfileGate } from "./ui.jsx";
+import { getMyPaymentRequests, getPaymentRequestQuote, createPaymentRequestOrder, payPaymentRequestWithWallet, verifyPaymentRequest, getReceipt } from "../services/api.js";
+import { loadRazorpayScript, openRazorpayCheckout, paymentFailedText, Alert, TermsCheckbox, ProfileGate, CheckoutExtras } from "./ui.jsx";
 import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { tierLabel, formatINR } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { PAYMENT_REQUESTS_EVENT } from "../hooks/usePendingPaymentRequests.js";
 
-// Payment requests the admin sent this student: pay a pending one here
-// (Razorpay Checkout, confirmed at /payment-requests/verify — not the normal
-// checkout), and get access to the course/internship once it's paid.
-// Renders nothing when there are none. `onPaid` refreshes the course list.
+// Payment requests the admin sent this student — how Training + Internship is
+// paid for. Pressing Pay on one opens its price breakdown (offer code, referral
+// discount, wallet credit — CheckoutExtras, priced by the request's own quote),
+// then Razorpay Checkout (confirmed at /payment-requests/verify) or, when the
+// wallet covers it all, a wallet payment. Renders nothing when there are none.
+// `onPaid` refreshes the course list.
 export default function PaymentRequests({ onPaid }) {
   const [requests, setRequests] = useState([]);
   const [busy, setBusy] = useState(""); // request id being paid / receipt being built
   const [msg, setMsg] = useState({ kind: "", text: "" });
   // One Terms & Conditions box for the list; every Pay button waits on it.
   const [agreed, setAgreed] = useState(false);
+  // The request whose price breakdown is open, and what it was priced at.
+  const [active, setActive] = useState(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [payable, setPayable] = useState(null);
+  const [walletPays, setWalletPays] = useState(null);
   const mounted = useRef(true);
+  const getQuote = useCallback((code) => getPaymentRequestQuote(active, code), [active]);
 
   const load = () => getMyPaymentRequests().then((res) => {
     if (!res.ok) return;
@@ -34,11 +42,37 @@ export default function PaymentRequests({ onPaid }) {
 
   if (requests.length === 0) return null;
 
+  const open = (r) => {
+    setActive(r._id);
+    setCouponCode("");
+    setPayable(null);
+    setWalletPays(null);
+    setMsg({ kind: "", text: "" });
+  };
+
+  const paid = (r) => {
+    setActive(null);
+    setMsg({ kind: "success", text: `Payment confirmed — you now have access to ${r.course?.title || "it"}.` });
+    load();
+    onPaid && onPaid();
+  };
+
+  const payFromWallet = async (r) => {
+    if (busy || !agreed) return;
+    setBusy(r._id);
+    setMsg({ kind: "info", text: "Paying from your wallet..." });
+    const res = await payPaymentRequestWithWallet(r._id, couponCode);
+    if (!mounted.current) return;
+    setBusy("");
+    if (res.ok) paid(r);
+    else { setMsg({ kind: "error", text: res.error || "Could not pay from your wallet right now." }); load(); }
+  };
+
   const pay = async (r) => {
     if (busy || !agreed) return;
     setBusy(r._id);
     setMsg({ kind: "", text: "" });
-    const order = await createPaymentRequestOrder(r._id);
+    const order = await createPaymentRequestOrder(r._id, couponCode);
     if (!order.ok) {
       setBusy("");
       setMsg({ kind: "error", text: order.error || "Could not start payment right now." });
@@ -65,9 +99,7 @@ export default function PaymentRequests({ onPaid }) {
         if (!mounted.current) return;
         setBusy("");
         if (v.ok) {
-          setMsg({ kind: "success", text: `Payment confirmed — you now have access to ${r.course?.title || "it"}.` });
-          load();
-          onPaid && onPaid();
+          paid(r);
         } else {
           setMsg({
             kind: "error",
@@ -119,9 +151,11 @@ export default function PaymentRequests({ onPaid }) {
             </div>
             <div className="admin-row-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               {r.status === "pending" ? (
-                <button className="btn btn-solid" disabled={!!busy || !agreed} onClick={() => pay(r)}>
-                  {busy === r._id ? "Opening…" : `Pay ${formatINR(r.amount)}`}
-                </button>
+                active === r._id ? (
+                  <button className="btn btn-ghost" disabled={!!busy} onClick={() => setActive(null)}>Close</button>
+                ) : (
+                  <button className="btn btn-solid" disabled={!!busy} onClick={() => open(r)}>Pay {formatINR(r.amount)}</button>
+                )
               ) : (
                 <>
                   {startsInFuture(r.course)
@@ -135,6 +169,22 @@ export default function PaymentRequests({ onPaid }) {
                 </>
               )}
             </div>
+            {r.status === "pending" && active === r._id && (
+              <div className="preq-pay" style={{ flexBasis: "100%", marginTop: 12 }}>
+                <CheckoutExtras item={{ slug: r.course?.slug || r._id }} tier={r.tier} getQuote={getQuote}
+                  onPayable={setPayable} onWalletCovers={setWalletPays} couponCode={couponCode} onCoupon={setCouponCode} />
+                {walletPays != null ? (
+                  <button className="btn btn-solid" disabled={!!busy || !agreed} onClick={() => payFromWallet(r)}>
+                    {busy === r._id ? "Paying…" : `Pay ${formatINR(walletPays)} from wallet`}
+                  </button>
+                ) : (
+                  <button className="btn btn-solid" disabled={!!busy || !agreed || payable == null} onClick={() => pay(r)}>
+                    {busy === r._id ? "Opening…" : `Pay ${formatINR(payable != null ? payable : r.amount)}`}
+                  </button>
+                )}
+                {!agreed && <p className="form-note" style={{ marginTop: 8 }}>Tick the Terms &amp; Conditions box above to pay.</p>}
+              </div>
+            )}
           </div>
         ))}
       </div>
