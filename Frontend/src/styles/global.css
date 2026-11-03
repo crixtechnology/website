@@ -966,3 +966,19 @@ body.no-copy img{-webkit-user-drag:none}
 .field input[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:rgba(var(--danger-rgb),.75)}
 .field input[aria-invalid="true"]:focus,.field textarea[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(var(--danger-rgb),.2)}
 .compact-form .field-error,.compact-form .field-hint{margin-top:3px;font-size:.75rem}
+
+/* Training + Internship: the two stages side by side, an arrow between them. */
+.stage-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:40px;position:relative}
+.stage-card h3{min-height:0}
+.stage-card--earn{border-color:rgba(var(--internship-rgb),.45)}
+.stage-card--earn .tag{color:var(--teal)}
+@media(min-width:721px){.stage-grid::after{content:"→";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);color:var(--teal);font-size:1.1rem;z-index:1}}
+@media(max-width:720px){.stage-grid{grid-template-columns:1fr;gap:18px}}
+
+/* Training + Internship: apply / call / WhatsApp instead of an online checkout. */
+.training-contact{margin-top:22px;padding:18px 20px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(160deg,var(--panel),var(--panel-2));max-width:760px}
+.training-contact-note{color:var(--muted);font-size:.92rem;line-height:1.6;margin:0 0 14px}
+.training-contact-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.training-contact-row .buy-btn{width:auto}
+.training-contact .wa-pill{margin-left:0}
+@media(max-width:560px){.training-contact-row>.btn{flex:1 1 100%;text-align:center;justify-content:center}}

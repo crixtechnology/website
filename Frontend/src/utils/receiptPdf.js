@@ -175,7 +175,7 @@ export async function buildReceiptPdf(receipt) {
   y += 12;
 
   // ── Item table (single line item: the course/internship purchased) ────
-  const kindLabel = itemType === "internship" ? "Internship" : itemType === "aptitude_test" ? "Careers" : "Course";
+  const kindLabel = itemType === "internship" ? "Training + Internship" : itemType === "aptitude_test" ? "Careers" : "Course";
   const planLabel = tierLabel(tier);
   autoTable(doc, {
     startY: y,

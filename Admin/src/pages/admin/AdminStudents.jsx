@@ -114,7 +114,7 @@ export default function AdminStudents() {
               <input id="students-user-email" type="email" value={grantForm.email} onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })} placeholder="student@example.com" /></div>
             <div className="field"><label htmlFor="students-course">Course</label>
               <select id="students-course" value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
-                <option value="">Choose a course or internship...</option>
+                <option value="">Choose a training program or course...</option>
                 {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
               </select>
             </div>

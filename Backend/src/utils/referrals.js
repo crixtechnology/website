@@ -167,7 +167,9 @@ async function creditBalance(userId, db = prisma) {
 async function reservedCredit(userId, db = prisma) {
   const since = new Date(Date.now() - RESERVATION_WINDOW_MS);
   const sum = await db.payment.aggregate({
-    where: { status: "created", createdAt: { gte: since }, application: { userId } },
+    // Normal checkouts tie the student through their Application; a payment
+    // request's payment (routes/paymentRequests.js) carries userId itself.
+    where: { status: "created", createdAt: { gte: since }, OR: [{ application: { userId } }, { userId }] },
     _sum: { creditApplied: true },
   });
   return sum._sum.creditApplied || 0;

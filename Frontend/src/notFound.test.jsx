@@ -35,7 +35,7 @@ describe("unknown addresses", () => {
     expect(logo.querySelector('img[src="/logo-icon.png"]')).not.toBeNull();
     expect(logo.closest("a").getAttribute("href")).toBe("/");
     expect(container.querySelector('a[href="/"]')).not.toBeNull();
-    expect(container.querySelector('a[href="/programs"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/training-internship"]')).not.toBeNull();
     expect(container.querySelector('a[href="/contact"]')).not.toBeNull();
     expect(document.title).toMatch(/Page not found/);
     expect(noindex()).not.toBeNull();

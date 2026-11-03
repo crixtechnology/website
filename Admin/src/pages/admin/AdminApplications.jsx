@@ -97,7 +97,7 @@ export default function AdminApplications() {
                 <div className="admin-row-main admin-row-message">
                   <p>
                     <span className={`type-pill type-pill--${a.type}`} style={{ marginRight: 8 }}>
-                      {a.type === "internship" ? "Internship" : "Course"}
+                      {a.type === "internship" ? "Training + Internship" : "Course"}
                     </span>
                     {a.course ? (
                       // `course` resolves for either type now that an internship
@@ -114,6 +114,13 @@ export default function AdminApplications() {
                   </p>
                 </div>
                 <div className="admin-row-actions">
+                  {a.type === "internship" && a.course && (
+                    // Training is paid through a payment request: open the form
+                    // with this applicant and track already picked.
+                    <Link className="btn btn-solid" to={`/admin/payment-requests?email=${encodeURIComponent(a.email)}&courseId=${encodeURIComponent(a.course)}`}>
+                      Send payment request
+                    </Link>
+                  )}
                   <button className="btn btn-ghost" onClick={() => toggleContacted(a)}>
                     Mark {a.contacted ? "not contacted" : "contacted"}
                   </button>

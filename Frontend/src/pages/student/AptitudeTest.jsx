@@ -527,7 +527,7 @@ function TestFinished({ reason }) {
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
           <Link className="btn btn-solid" to="/dashboard?tab=applications">Go to My Applications</Link>
-          <Link className="btn btn-ghost" to="/programs">Browse courses</Link>
+          <Link className="btn btn-ghost" to="/training-internship">Browse training tracks</Link>
         </div>
       </div>
     </section>

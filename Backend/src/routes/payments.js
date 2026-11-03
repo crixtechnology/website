@@ -521,7 +521,7 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
         if (over) throw Object.assign(new Error(over), { couponLimit: over });
       }
       await tx.creditEntry.create({
-        data: { userId, amount: -pricing.totalDuePaise, kind: "redeemed", paymentId: payment.id, note: "Paid for a course or internship from the wallet" },
+        data: { userId, amount: -pricing.totalDuePaise, kind: "redeemed", paymentId: payment.id, note: "Paid for a training program or course from the wallet" },
       });
       await tx.application.update({
         where: { id: application.id },

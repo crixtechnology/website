@@ -209,7 +209,7 @@ function buildReceiptPdfBuffer(receipt) {
 
   y += 12;
 
-  const kindLabel = itemType === "internship" ? "Internship" : itemType === "aptitude_test" ? "Careers" : "Course";
+  const kindLabel = itemType === "internship" ? "Training + Internship" : itemType === "aptitude_test" ? "Careers" : "Course";
   const planLabel = tierLabel(tier);
   autoTable(doc, {
     startY: y,

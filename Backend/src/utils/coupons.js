@@ -58,8 +58,11 @@ async function countUses(couponId, userId, db = prisma) {
   return db.payment.count({
     where: {
       couponId,
-      OR: [{ status: "paid" }, { status: "created", createdAt: { gte: since } }],
-      ...(userId ? { application: { userId } } : {}),
+      AND: [
+        { OR: [{ status: "paid" }, { status: "created", createdAt: { gte: since } }] },
+        // A payment request's payment carries userId itself; a checkout's goes through its Application.
+        ...(userId ? [{ OR: [{ application: { userId } }, { userId }] }] : []),
+      ],
     },
   });
 }

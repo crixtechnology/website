@@ -61,7 +61,7 @@ function siteOrigin() {
 
 // `path` is which page this notification is conceptually "from" (only used
 // for the Referer header formsubmit.co's anti-abuse check wants to see —
-// see sendViaFormSubmit) — /contact for a contact-form message, /programs
+// see sendViaFormSubmit) — /contact for a contact-form message, /training-internship
 // for an internship/course application, so the two don't misrepresent each
 // other if formsubmit.co ever keys anything off the referring path.
 async function sendViaFormSubmit({ subject, text, path }) {
@@ -159,15 +159,16 @@ async function sendContactEmail({ interest }) {
 // refTitle names the program, not the applicant (it's free text from POST
 // /applications, so it's escaped wherever it goes into HTML).
 async function sendApplicationEmail({ type, refTitle }) {
-  const label = type === "internship" ? "Internship application" : "Course inquiry";
+  const label = type === "internship" ? "Training + Internship application" : "Course inquiry";
   const link = adminLink("/admin/applications");
   const title = String(refTitle || "");
   return notifyOwner({
-    path: "/programs",
+    path: "/training-internship",
     subject: `New ${label} — ${title}`,
     title: `New ${label.toLowerCase()}`,
-    summaryHtml: `A new ${label.toLowerCase()} just came in for <strong>${escapeHtml(title)}</strong>.`,
-    summaryText: `A new ${label} was received for "${title}".`,
+    // Training is paid through a payment request the team sends after confirming the seat.
+    summaryHtml: `A new ${label.toLowerCase()} just came in for <strong>${escapeHtml(title)}</strong>.${type === "internship" ? " Call them to confirm their seat, then use <strong>Send payment request</strong> on the application." : ""}`,
+    summaryText: `A new ${label} was received for "${title}".${type === "internship" ? " Call them to confirm their seat, then use Send payment request on the application." : ""}`,
     link,
     linkLabel: "Open applications",
   });
@@ -463,7 +464,7 @@ async function sendReceiptEmail({ receipt, pdfBuffer }) {
 
   const name = receipt.buyerName || "there";
   const title = receipt.itemTitle || "your purchase";
-  const kindLabel = receipt.itemType === "internship" ? "Internship" : "Course";
+  const kindLabel = receipt.itemType === "internship" ? "Training + Internship" : "Course";
   const planLabel = tierLabel(receipt.tier);
   const isUpgrade = !!receipt.fromTier && !!planLabel;
   const planValue = planLabel ? (isUpgrade ? `${tierLabel(receipt.fromTier)} → ${planLabel}` : planLabel) : "";
@@ -508,7 +509,7 @@ async function sendWelcomeEmail({ to, name, profileIncomplete = true, bonusCredi
   const steps = [
     profileIncomplete && ["Complete your profile", "Add your full name and phone number — you'll need them before buying anything."],
     bonusCredits > 0 && ["Claim your signup bonus", `Verify your email from My Dashboard → Wallet to add ${bonusCredits} bonus credits.`],
-    ["Explore programs", "Paid internships and self-paced courses, taught by industry professionals."],
+    ["Explore Training + Internship", "Paid, mentored training — top performers are selected for a stipend-based internship."],
     ["See open roles", "Our Careers page lists every role we're hiring for — some are free to apply."],
   ].filter(Boolean);
   const html = layout({
@@ -517,13 +518,13 @@ async function sendWelcomeEmail({ to, name, profileIncomplete = true, bonusCredi
     content:
       paragraph(`Hi ${escapeHtml(name || "there")}, your account is ready. Here's what to do next:`) +
       detailsBox(steps.map(([k, v]) => [k, escapeHtml(v)])) +
-      button(profileIncomplete ? "Complete my profile" : "Explore programs", `${origin}${profileIncomplete ? "/profile?reason=new" : "/programs"}`) +
+      button(profileIncomplete ? "Complete my profile" : "Explore Training + Internship", `${origin}${profileIncomplete ? "/profile?reason=new" : "/training-internship"}`) +
       paragraph("You log in with this email and the password you chose. Forgot it? Use <strong>Forgot password</strong> on the login form.", `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
     `Hi ${name || "there"},\n\nYour Crix Technology account is ready. Next steps:\n\n` +
     steps.map(([k, v]) => `• ${k}: ${v}`).join("\n") +
-    `\n\nProfile: ${origin}/profile\nPrograms: ${origin}/programs\nCareers: ${origin}/careers` + TEXT_SIGNOFF;
+    `\n\nProfile: ${origin}/profile\nTraining + Internship: ${origin}/training-internship\nCareers: ${origin}/careers` + TEXT_SIGNOFF;
   return deliver({ to, subject: "Welcome to Crix Technology — your account is ready", text, html });
 }
 
@@ -630,7 +631,7 @@ async function sendAccountDeletedEmail({ to, name, paymentsKept }) {
 // whether or not this arrives.
 async function sendPaymentRequestEmail({ to, name, itemTitle, itemType, tier, amount, note }) {
   if (!to) return { sent: false, reason: "No email" };
-  const kindLabel = itemType === "internship" ? "Internship" : "Course";
+  const kindLabel = itemType === "internship" ? "Training + Internship" : "Course";
   const planLabel = tierLabel(tier);
   const link = `${siteOrigin()}/dashboard`;
   const html = layout({
@@ -645,12 +646,12 @@ async function sendPaymentRequestEmail({ to, name, itemTitle, itemType, tier, am
         ["Amount", fmtRupees(amount), true],
       ]) +
       button("Pay now", link) +
-      paragraph("Log in and open My Dashboard to pay. You get access as soon as the payment goes through, and your receipt is emailed to you.", `font-size:13px;color:${BRAND.muted}`),
+      paragraph("Log in and open My Dashboard to pay. Any wallet credit, offer code or referral discount you have comes off when you pay. You get access as soon as the payment goes through, and your receipt is emailed to you.", `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
     `Hi ${name || "there"},\n\nCrix Technology has sent you a payment request.\n\n` +
     `${kindLabel}: ${itemTitle || ""}\n${planLabel ? `Plan: ${planLabel}\n` : ""}${note ? `Note: ${note}\n` : ""}Amount: ${fmtRupees(amount)}\n\n` +
-    `Log in and open My Dashboard to pay — you'll get access as soon as the payment goes through: ${link}` + TEXT_SIGNOFF;
+    `Log in and open My Dashboard to pay — any wallet credit, offer code or referral discount comes off when you pay, and you'll get access as soon as the payment goes through: ${link}` + TEXT_SIGNOFF;
   return deliver({ to, subject: `Payment request — ${itemTitle || "Crix Technology"}`, text, html });
 }
 
@@ -675,7 +676,7 @@ async function sendWalletCreditEmail({ to, name, amount, balance, reason, note }
         ["Wallet balance", fmtRupees(balance), true],
       ]) +
       button("View my wallet", link) +
-      paragraph("Your credit is taken off the price automatically at checkout. If it covers the full price of a course or internship, you can pay with your wallet alone.", `font-size:13px;color:${BRAND.muted}`),
+      paragraph("Your credit is taken off the price automatically at checkout. If it covers the full price of a training program or course, you can pay with your wallet alone.", `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
     `Hi ${name || "there"},\n\n${fmtRupees(amount)} was added to your Crix Technology wallet.\n\n` +
@@ -801,7 +802,7 @@ async function sendApplicationStatusEmail({ to, name, roleTitle, status, intervi
       title: "Your aptitude test result",
       lines: [`Thank you for taking the aptitude test for ${roleTitle}. After reviewing the results, we're not able to shortlist you for this role this time.`, free
         ? "This isn't the end of the road — keep building your skills, and you're welcome to apply again."
-        : "This isn't the end of the road — keep building your skills, and you're welcome to apply again. Your wallet credits are still yours to use on any Crix course or internship."],
+        : "This isn't the end of the road — keep building your skills, and you're welcome to apply again. Your wallet credits are still yours to use on any Crix training program."],
     },
     selected: {
       subject: `Congratulations — you're selected for ${roleTitle}`,

@@ -2,10 +2,10 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
-  DownloadPdfButton,
+  DownloadPdfButton, TrainingContact,
 } from "../components/ui.jsx";
 import {
-  site, hero, internships, services, courses, process, benefits, stats, about, legal,
+  site, hero, internships, services, process, benefits, trainingStages, selectionCriteria, stats, about, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables, fallbackPrograms,
 } from "../data/content.js";
 import { submitContact, getCourses, getCourse, getServices, hasBackend } from "../services/api.js";
@@ -14,12 +14,7 @@ import { submitContact, getCourses, getCourse, getServices, hasBackend } from ".
 // longer than this; after it the static fallback list shows instead.
 const LOADING_CAP_MS = 4000;
 
-// "On this page" dot rail (SectionIndex) entries for the two long pages.
-const PROGRAMS_INDEX = [
-  { id: "programs", label: "Internships & courses" },
-  { id: "how-it-works", label: "How it works" },
-  { id: "benefits", label: "Benefits" },
-];
+// "On this page" dot rail (SectionIndex) entries for the long About page.
 const ABOUT_INDEX = [
   { id: "overview", label: "Overview" },
   { id: "company-info", label: "Company info" },
@@ -111,7 +106,7 @@ export function Home() {
           </p>
           <div className="hero-ctas">
             <Link className="btn btn-solid" to="/services">Our IT services</Link>
-            <Link className="btn btn-ghost" to="/programs">Explore programs</Link>
+            <Link className="btn btn-ghost" to="/training-internship">Training + Internship</Link>
           </div>
           <div className="hero-meta">
             {hero.meta.map((m) => <div key={m.big}><b>{m.big}</b>{m.small}</div>)}
@@ -153,15 +148,15 @@ export function Home() {
       <section className="section section--internships">
         <div className="orb orb-1"></div>
         <div className="wrap">
-          <Reveal as="span" variant="reveal-l" className="eyebrow">Internships</Reveal>
-          <Reveal as="h2" variant="reveal-l">Real projects. Real experience. Real pay.</Reveal>
+          <Reveal as="span" variant="reveal-l" className="eyebrow">Training + Internship</Reveal>
+          <Reveal as="h2" variant="reveal-l">Get trained. Perform. Earn a stipend.</Reveal>
           <div className="grid3 stagger">
             {loadingInternships ? <SkeletonCards count={internships.length} /> : liveInternships.map((it, i) => (
               <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" owned={hasAccess(it)} onInquire={setInquireItem} onDetail={setDetailData} />
             ))}
           </div>
           <div className="hero-ctas">
-            <Link className="btn btn-ghost" to="/programs">View all programs →</Link>
+            <Link className="btn btn-ghost" to="/training-internship">How Training + Internship works →</Link>
           </div>
         </div>
       </section>
@@ -191,145 +186,82 @@ export function Home() {
   );
 }
 
-/* ================= PROGRAMS (Internships + Courses, one page) ================= */
-// only="internship" is the Paid Internship page: the same page, internships only.
-const PAID_INTERNSHIPS_INDEX = [
-  { id: "programs", label: "Paid internships" },
+/* ================= TRAINING + INTERNSHIP ================= */
+// Every student is trained first; the best performers are then selected for a
+// stipend-based internship. Only internship-type programs are sold here — the
+// old Courses + Internship page is gone, and free roles live on Careers.
+const TRAINING_INDEX = [
   { id: "how-it-works", label: "How it works" },
+  { id: "programs", label: "Training tracks" },
+  { id: "selection", label: "Selection" },
   { id: "benefits", label: "Benefits" },
 ];
 
-export function PaidInternships() {
-  return <Programs only="internship" />;
-}
-
-export function Programs({ only = null }) {
-  const internshipsOnly = only === "internship";
-  // Both come live from the backend, admin-managed, once it's connected
-  // (REACT_APP_API_URL) — falls back to the static lists in content.js
-  // until then, so the page never shows empty before the admin panel has
-  // anything in it.
+export function TrainingInternship() {
+  // Comes live from the backend, admin-managed, once it's connected
+  // (REACT_APP_API_URL) — falls back to the static list in content.js
+  // until then, so the page never shows empty.
   const [liveInternships, setLiveInternships] = useState(internships);
-  const [liveCourses, setLiveCourses] = useState(courses);
-  const [loadingInternships, setLoadingInternships] = useState(hasBackend);
-  const [loadingCourses, setLoadingCourses] = useState(hasBackend && !internshipsOnly);
-  const [buyItem, setBuyItem] = useState(null);
-  const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on, if one was already clicked
-  const [inquire, setInquire] = useState(null); // { item, kind } | null
+  const [loading, setLoading] = useState(hasBackend);
+  // Training isn't bought online here: every card opens the Request to apply
+  // form (or the student calls), and the team sends a payment request.
+  const [inquireItem, setInquireItem] = useState(null);
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
-  const { user } = useContext(UserContext);
   // What they already have: those cards say "View in My Dashboard" instead of offering plans again.
   const { hasAccess } = useMyPlans();
-  usePageMeta(routeMeta(internshipsOnly ? "/paid-internships" : "/programs"));
+  usePageMeta(routeMeta("/training-internship"));
 
   useEffect(() => {
     let alive = true;
-    const cap = setTimeout(() => { setLoadingInternships(false); setLoadingCourses(false); }, LOADING_CAP_MS);
+    const cap = setTimeout(() => setLoading(false), LOADING_CAP_MS);
     getCourses("internship").then((res) => {
       if (!alive) return;
       if (res.ok && res.courses && res.courses.length) setLiveInternships(res.courses);
-      setLoadingInternships(false);
-    });
-    if (!internshipsOnly) getCourses("course").then((res) => {
-      if (!alive) return;
-      if (res.ok && res.courses && res.courses.length) setLiveCourses(res.courses);
-      setLoadingCourses(false);
+      setLoading(false);
     });
     return () => { alive = false; clearTimeout(cap); };
-  }, [internshipsOnly]);
+  }, []);
 
-  // Landed here as ?buy=<slug> — the user just finished their profile and is
-  // being brought back to the purchase they started. Re-open the buy modal
-  // for that item, then drop the param so a refresh doesn't reopen it.
-  // Internships can be bought here too (Round 8 — some slots are priced),
-  // so the match has to check both grids, not just courses: BuyModal's
-  // goCompleteProfile() builds this ?buy= param from whichever item was
-  // being purchased when the profile-completion redirect fired, and on
-  // this page that's just as often an internship.
+  // An older ?buy=<slug> link (from when training was bought online) opens
+  // that track's Request to apply form instead, then drops the param so a
+  // refresh doesn't reopen it.
   useEffect(() => {
     const slug = params.get("buy");
     if (!slug) return;
-    const match = liveCourses.find((c) => c.slug === slug) || liveInternships.find((c) => c.slug === slug);
+    const match = liveInternships.find((c) => c.slug === slug);
     if (match) {
-      setBuyItem(match);
-      setBuyTier(tierFromParams(params));
+      setInquireItem(match);
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
       nextParams.delete("tier");
       setParams(nextParams, { replace: true });
     }
-  }, [params, liveCourses, liveInternships, setParams]);
+  }, [params, liveInternships, setParams]);
 
-  // One list: internships first, then courses — paid programs only. Anything
-  // priced at ₹0 on every plan is a free opportunity, which belongs on Careers.
-  const programs = [
-    ...liveInternships.map((item) => ({ item, kind: "internship" })),
-    ...(internshipsOnly ? [] : liveCourses.map((item) => ({ item, kind: "course" }))),
-  ].filter(({ item }) => !isFreeProgram(item));
+  // Paid programs only. Anything priced at ₹0 on every plan is a free opportunity, which belongs on Careers.
+  const programs = liveInternships.filter((item) => !isFreeProgram(item));
 
   // Search engines: the programs on this page as an ItemList pointing at each
   // one's own page (only live entries have a slug/page to point at).
-  const listed = programs.map(({ item }) => item).filter((p) => p.slug && p.title);
+  const listed = programs.filter((p) => p.slug && p.title);
   useJsonLd("programs-jsonld", listed.length ? {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: internshipsOnly ? "Crix Technology paid internships" : "Crix Technology internships and courses",
+    name: "Crix Technology Training + Internship programs",
     itemListElement: listed.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: canonicalUrl(`/programs/${p.slug}`), name: p.title })),
   } : null);
 
   return (
     <>
-      {internshipsOnly ? (
-        <PageHead eyebrow="Paid Internship" title="Mentored internships on real projects."
-          text="Fully virtual — join from anywhere in India. Work on real projects with industry professionals as your mentors, and finish with an offer letter, a completion certificate and a Letter of Recommendation." />
-      ) : (
-        <PageHead eyebrow="Programs" title="Industry-ready courses, delivered across India."
-          text="Fully virtual — join from anywhere in India. Pick a track, enroll, and start building; you learn from working industry professionals, and every course ships with mentor support and a certificate." />
-      )}
-      <SectionIndex items={internshipsOnly ? PAID_INTERNSHIPS_INDEX : PROGRAMS_INDEX} />
-      {/* Internships and courses in one grid — only what's sold here. Free
-          opportunities (roles with no fee) live on the Careers page instead.
-          The old #internships / #courses anchors still land on this section. */}
-      <span id="internships" className="anchor-section" aria-hidden="true" />
-      <span id="courses" className="anchor-section" aria-hidden="true" />
-      <section id="programs" className="section anchor-section" style={{ paddingTop: 20 }}>
-        <div className="wrap">
-          {internshipsOnly ? (
-            <>
-              <Reveal as="span" variant="reveal-l" className="eyebrow">Paid Internships</Reveal>
-              <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
-              <Reveal as="p" variant="reveal-l" className="section-lede">
-                Internship programs mentored by industry professionals. Every internship comes with an offer letter, a joining kit,
-                a completion certificate and a Letter of Recommendation. Looking for a free one? See <Link to="/free-internships">Free Internships</Link>.
-              </Reveal>
-            </>
-          ) : (
-            <>
-              <Reveal as="span" variant="reveal-l" className="eyebrow">Internships &amp; Courses</Reveal>
-              <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
-              <Reveal as="p" variant="reveal-l" className="section-lede">
-                Internship programs and self-paced courses, taught and mentored by industry professionals. Internships come with an offer
-                letter, a joining kit, a completion certificate and a Letter of Recommendation; every course ends with a certificate of completion.
-              </Reveal>
-            </>
-          )}
-          <div className="grid3 stagger" style={{ marginTop: 24 }}>
-            {loadingInternships || loadingCourses ? <SkeletonCards count={3} /> : programs.map(({ item, kind }, i) => (
-              <InfoCard key={`${kind}-${item.title || item._id}`} item={item} i={i} isProgram kind={kind} owned={hasAccess(item)}
-                onInquire={(it) => setInquire({ item: it, kind })} onDetail={setDetailData} />
-            ))}
-          </div>
-        </div>
-      </section>
-      <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
-      <InquiryModal item={inquire?.item} kind={inquire?.kind} onClose={() => setInquire(null)} />
-      <DetailModal data={detailData} onClose={() => setDetailData(null)}
-        onInquire={(item) => setInquire({ item, kind: detailData?.kind })} />
+      <PageHead eyebrow="Training + Internship" title="Get trained. Perform. Earn a stipend."
+        text="Fully virtual — join from anywhere in India. Every student first goes through paid, mentored training on real projects (training is paid, not free); the top performers are then selected for a stipend-based internship with an offer letter and a Letter of Recommendation." />
+      <SectionIndex items={TRAINING_INDEX} />
+
       <section id="how-it-works" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
-          <Reveal as="h2" variant="reveal-l">4 simple steps to get started.</Reveal>
+          <Reveal as="h2" variant="reveal-l">Train first. Then intern — and get paid.</Reveal>
           <div className="process stagger">
             {process.map((p, i) => (
               <Reveal key={p.n} variant="reveal" className="step" style={{ "--i": i }}>
@@ -339,8 +271,66 @@ export function Programs({ only = null }) {
               </Reveal>
             ))}
           </div>
+          <div className="stage-grid stagger">
+            {trainingStages.map((s, i) => (
+              <Reveal key={s.title} variant="reveal" className={`card stage-card${i ? " stage-card--earn" : ""}`} style={{ "--i": i }}>
+                <span className="tag">{s.tag}</span>
+                <h3>{s.title}</h3>
+                <p>{s.desc}</p>
+                <ul>{s.points.map((p) => <li key={p}>{p}</li>)}</ul>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
+
+      {/* The old #internships / #courses anchors still land on the tracks. */}
+      <span id="internships" className="anchor-section" aria-hidden="true" />
+      <span id="courses" className="anchor-section" aria-hidden="true" />
+      <section id="programs" className="section anchor-section" style={{ paddingTop: 20 }}>
+        <div className="wrap">
+          <Reveal as="span" variant="reveal-l" className="eyebrow">Training Tracks</Reveal>
+          <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
+          <Reveal as="p" variant="reveal-l" className="section-lede">
+            Training is paid, not free — each track shows its training fee. Your fee covers the training only; the stipend-based internship that follows is
+            offered on performance. Looking for a free one? See <Link to="/free-internships">Free Internships</Link>.
+          </Reveal>
+          <Reveal variant="reveal-l"><TrainingContact /></Reveal>
+          <div className="grid3 stagger" style={{ marginTop: 24 }}>
+            {loading ? <SkeletonCards count={3} /> : programs.map((item, i) => (
+              <InfoCard key={item.title || item._id} item={item} i={i} isProgram kind="internship" owned={hasAccess(item)}
+                onInquire={setInquireItem} onDetail={setDetailData} />
+            ))}
+          </div>
+        </div>
+      </section>
+      <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
+      <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} />
+
+      <section id="selection" className="section anchor-section" style={{ paddingTop: 20 }}>
+        <div className="wrap">
+          <Reveal as="span" variant="reveal-r" className="eyebrow">Selection</Reveal>
+          <Reveal as="h2" variant="reveal-r">How we pick our stipend interns.</Reveal>
+          <Reveal as="p" variant="reveal-r" className="section-lede">
+            Throughout the training, your mentor tracks how you do. At the end of each batch, the strongest performers are
+            offered the stipend-based internship.
+          </Reveal>
+          <div className="grid4 bento stagger">
+            {selectionCriteria.map((c, i) => (
+              <Reveal key={c.title} variant="reveal" className="benefit" style={{ "--i": i }}>
+                <span className="benefit-icon"><BenefitIcon name={["tasks", "briefcase", "mentor", "star"][i % 4]} /></span>
+                <h3>{c.title}</h3>
+                <p>{c.desc}</p>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal as="p" variant="reveal-r" className="form-note">
+            Selection is merit-based and not guaranteed with enrollment. The stipend amount, internship duration and number of
+            places are set for each batch and shared in the offer letter. See our <Link to="/terms-of-service">Terms of Service</Link>.
+          </Reveal>
+        </div>
+      </section>
+
       <section id="benefits" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-top" className="eyebrow">What You Get</Reveal>
@@ -384,7 +374,7 @@ export function CourseDetail() {
   usePageMeta({
     title: course ? `${course.title} | Crix Technology` : "Programs | Crix Technology",
     description: course ? course.desc : undefined,
-    crumbs: course ? [{ name: "Home", path: "/" }, { name: "Internships & Courses", path: "/programs" }, { name: course.title, path: `/programs/${slug}` }] : null,
+    crumbs: course ? [{ name: "Home", path: "/" }, { name: "Training + Internship", path: "/training-internship" }, { name: course.title, path: `/programs/${slug}` }] : null,
     keywords: course ? programKeywords(course) : null,
   });
 
@@ -401,11 +391,12 @@ export function CourseDetail() {
     return () => { alive = false; };
   }, [slug]);
 
-  // Came back from /profile via ?buy=<slug> — resume the purchase.
+  // Came back from /profile via ?buy=<slug> — resume the purchase (for a
+  // Training + Internship track, which isn't bought online, open its form).
   useEffect(() => {
     if (course && params.get("buy")) {
-      setBuyItem(course);
-      setBuyTier(tierFromParams(params));
+      if (course.type === "internship") setInquireOpen(true);
+      else { setBuyItem(course); setBuyTier(tierFromParams(params)); }
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
       nextParams.delete("tier");
@@ -428,7 +419,7 @@ export function CourseDetail() {
           <span className="eyebrow">Not found</span>
           <h2 style={{ margin: "14px 0 16px" }}>We couldn't find that course.</h2>
           <p style={{ color: "var(--muted)", marginBottom: 24 }}>It may have been removed or renamed.</p>
-          <Link className="btn btn-solid" to="/programs">← Back to programs</Link>
+          <Link className="btn btn-solid" to="/training-internship">← Back to Training + Internship</Link>
         </div>
       </section>
     );
@@ -436,19 +427,21 @@ export function CourseDetail() {
 
   const plans = offeredTiers(course);
   const closed = course.status === "closed";
-  const openForBuy = isOpenForBuy(course);
+  // Training + Internship: no online checkout — apply or call, and the team sends a payment request.
+  const byInquiry = course.type === "internship";
+  const openForBuy = !byInquiry && isOpenForBuy(course);
 
   return (
     <>
       <section className="section" style={{ paddingTop: 140 }}>
         <div className="wrap" style={{ maxWidth: openForBuy && plans.length > 1 ? 940 : 720 }}>
-          <Reveal as={Link} variant="reveal" to={course.type ? `/programs#${course.type}s` : "/programs"} className="back-link">← All programs</Reveal>
+          <Reveal as={Link} variant="reveal" to="/training-internship#programs" className="back-link">← All training tracks</Reveal>
           <Reveal variant="reveal" className={course.type ? `card-type-${course.type}` : undefined}>
             <div className="card-top" style={{ marginTop: 24 }}>
               <div className="card-top-left">
                 {course.type && (
                   <span className={`type-pill type-pill--${course.type}`}>
-                    {course.type === "internship" ? "Internship" : "Course"}
+                    {course.type === "internship" ? "Training + Internship" : "Course"}
                   </span>
                 )}
                 <span className="tag">{course.tag}</span>
@@ -491,6 +484,22 @@ export function CourseDetail() {
                 </Link>
                 <span style={{ display: "block", marginTop: 8, color: "var(--muted)", fontSize: ".82rem" }}>Admin access — no payment needed</span>
               </div>
+            ) : byInquiry ? (
+              <>
+                {plans.length > 0 && !closed && (
+                  <div className="plans-block" id="plans">
+                    <h4 className="plans-heading" aria-level={2}>{ownedTier(course) ? "Your plan" : plans.length > 1 ? "Training fee by plan" : "Training fee"}</h4>
+                    <PlanCards plans={plans} ownedTier={ownedTier(course)} readOnly />
+                  </div>
+                )}
+                {isFull(course) && !hasAccess(course) && (
+                  <p className="form-note">
+                    All {course.positions.total} {placeWord(course)}{course.positions.total === 1 ? " is" : "s are"} filled right now —
+                    apply anyway and we'll tell you when the next batch opens.
+                  </p>
+                )}
+                {!hasAccess(course) && <TrainingContact onApply={() => setInquireOpen(true)} />}
+              </>
             ) : openForBuy && isFull(course) && !ownedTier(course) && !hasAccess(course) ? (
               // Every place is taken: nothing to buy, but they can ask about the next batch.
               <div style={{ maxWidth: 420, marginTop: 24 }}>
@@ -552,7 +561,7 @@ export function NotFound() {
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
           <Link className="btn btn-solid" to="/">Go to the home page</Link>
-          <Link className="btn btn-ghost" to="/programs">Browse programs</Link>
+          <Link className="btn btn-ghost" to="/training-internship">Training + Internship</Link>
           <Link className="btn btn-ghost" to="/contact">Contact us</Link>
         </div>
       </div>
@@ -729,7 +738,7 @@ export function About() {
             <div>
               <span className="eyebrow">Why Crix</span>
               <h2>Three pillars. One team.</h2>
-              <p>Virtual internships, IT services, and online courses — everything we teach comes from what we build for real clients, and everything we build sharpens what we teach.</p>
+              <p>IT services and our Training + Internship program — everything we teach comes from what we build for real clients, and everything we build sharpens what we teach.</p>
             </div>
             <div className="facts">
               {about.facts.map((f) => (
@@ -786,7 +795,7 @@ export function Contact() {
     name: user && !user.profilePending ? user.name || "" : "",
     email: (user && user.email) || "",
     phone: (user && user.phone) || "",
-    interest: "Internship",
+    interest: "Training + Internship",
     message: "",
   });
   const [form, setForm] = useState(startForm);
@@ -877,7 +886,7 @@ export function Contact() {
               <FieldError id="c-phone-err">{invalid("c-phone") && errors["c-phone"]}</FieldError></div>
             <div className="field"><label htmlFor="c-interest">I'm interested in</label>
               <select id="c-interest" name="interest" value={form.interest} onChange={set("interest")}>
-                <option>Internship</option><option>IT Services</option><option>Online Course</option><option>Other</option>
+                <option>Training + Internship</option><option>Free Internship</option><option>IT Services</option><option>Other</option>
               </select></div>
             <div className="field"><label htmlFor="c-message">Message</label>
               <textarea id="c-message" name="message" rows="4" value={form.message} onChange={set("message")} placeholder="College & semester, or your project details..."
@@ -895,7 +904,7 @@ export function Contact() {
                   <span className="dept-tag">{site.phoneAltLabel}</span>
                   <span className="dept-hint">{site.phoneAltHint}</span>
                   <div className="contact-line"><a href={`tel:${site.phoneAlt.replace(/\s/g, "")}`}>{site.phoneAlt}</a>
-                    <CopyButton value={site.phoneAlt} label="internships and courses phone number" />
+                    <CopyButton value={site.phoneAlt} label="Training + Internship phone number" />
                     <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a></div>
                 </div>
               )}

@@ -13,7 +13,7 @@ import { useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/use
 // optional: a section with nothing in it is simply not rendered, so a course nobody has
 // filled in yet looks exactly as it did before.
 
-const kindLabel = (c) => (c.type === "internship" ? "Internship" : "Course");
+const kindLabel = (c) => (c.type === "internship" ? "Training + Internship" : "Course");
 const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
 
 /* ---------- key facts ---------- */
@@ -128,7 +128,7 @@ export function RelatedPrograms({ course }) {
       if (!alive || !res || !res.ok) return;
       const rank = (c) => (c.type === course.type ? 0 : 2) + (c.status === "closed" ? 1 : 0);
       const others = (res.courses || [])
-        .filter((c) => c.slug && c.slug !== course.slug && !isFreeProgram(c))
+        .filter((c) => c.slug && c.slug !== course.slug && c.type === "internship" && !isFreeProgram(c))
         .map((c, i) => ({ c, i }))
         .sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i)
         .map((x) => x.c);
@@ -164,7 +164,8 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
   const [footerSeen, setFooterSeen] = useState(false);
   const plans = offeredTiers(course);
   const full = isFull(course);
-  const openForBuy = isOpenForBuy(course) && !full;
+  // Training + Internship tracks are joined by applying, never bought online.
+  const openForBuy = course.type !== "internship" && isOpenForBuy(course) && !full;
   const show = !ctaSeen && !footerSeen;
 
   useEffect(() => {
@@ -196,7 +197,7 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const cheapest = plans.length ? Math.min(...plans.map(planPrice)) : null;
-  const sub = openForBuy && cheapest !== null ? `From ${formatINR(cheapest)}`
+  const sub = (openForBuy || course.type === "internship") && course.status !== "closed" && cheapest !== null ? `From ${formatINR(cheapest)}`
     : course.status === "closed" ? "Currently closed"
     : full ? `All ${placeWord(course)}s filled`
     : course.type === "internship" ? "Apply to join" : "Ask about the next batch";

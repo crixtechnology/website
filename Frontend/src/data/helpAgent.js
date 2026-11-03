@@ -46,7 +46,7 @@ export const DEPARTMENTS = {
 const TOPIC_DEPT = { programs: "programs", careers: "programs", payments: "programs", account: "programs", wallet: "programs", services: "it" };
 
 const MAIN_CHIPS = [
-  { icon: "🎓", label: "Internships & courses", hint: "Find a program to join", say: "Internships and courses" },
+  { icon: "🎓", label: "Training + Internship", hint: "Find a track to join", say: "Training and internships" },
   { icon: "💼", label: "Careers & jobs", hint: "Open roles and the test", say: "Careers and open roles" },
   { icon: "💻", label: "IT services", hint: "A website, app or project", say: "IT services for my business" },
   { icon: "💳", label: "Payments & refunds", hint: "Fees, receipts, issues", say: "Payment help" },
@@ -111,8 +111,8 @@ const firstName = (user) => {
 
 // ---------- what the agent knows ----------
 const programText = (p) => `${p.title} ${(p.points || []).join(" ")} ${p.desc || ""}`.toLowerCase();
-const programLink = (p) => (p.slug ? { to: `/programs/${p.slug}`, label: p.title } : { to: "/programs", label: p.title });
-const kindOf = (p) => (p.type === "internship" ? "Internship" : p.type === "course" ? "Course" : p.kind === "internship" ? "Internship" : "Course");
+const programLink = (p) => (p.slug ? { to: `/programs/${p.slug}`, label: p.title } : { to: "/training-internship", label: p.title });
+const kindOf = (p) => (p.type === "internship" ? "Training + Internship" : p.type === "course" ? "Course" : p.kind === "internship" ? "Training + Internship" : "Course");
 
 // Whole-word match, so "web" doesn't find "website" or "ai" find "maintain".
 // (Track words are plain letters and spaces, so they need no regex escaping.)
@@ -135,7 +135,7 @@ function programsReply(ctx, n) {
   const wantsInternship = has(n, ["internship", "intern "]);
   const wantsCourse = has(n, ["course"]);
   if (track && list.length) {
-    const shown = list.filter((p) => (wantsInternship ? kindOf(p) === "Internship" : wantsCourse ? kindOf(p) === "Course" : true));
+    const shown = list.filter((p) => (wantsInternship ? kindOf(p) === "Training + Internship" : wantsCourse ? kindOf(p) === "Course" : true));
     const pick = (shown.length ? shown : list).slice(0, 4);
     return {
       text: `For ${track.label}, these would suit you:\n${pick.map((p) => `• ${p.title} (${kindOf(p)})`).join("\n")}\nEach page shows the plans, price and what's included.`,
@@ -144,23 +144,23 @@ function programsReply(ctx, n) {
     };
   }
   return {
-    text: `Happy to help you pick. ${wantsCourse ? "Courses are self-paced with mentor support" : wantsInternship ? "Internships are virtual, with an offer letter, a certificate and an LOR" : "We run virtual internships (offer letter, certificate, LOR) and self-paced courses (certificate)"} — all fully online, from anywhere in India.\nWhich area interests you?`,
-    chips: [...TRACKS.map((t) => ({ label: t.label, say: `${wantsCourse ? "Courses" : wantsInternship ? "Internships" : "Programs"} in ${t.words[0]}` })), { label: "Show everything", say: "Show all programs" }],
-    links: [{ to: "/programs", label: "All internships & courses" }],
+    text: `Happy to help you pick. Our Training + Internship program starts with mentored training (joining kit and certificate); top performers are then selected for a stipend-based internship with an offer letter and LOR — all fully online, from anywhere in India.\nWhich area interests you?`,
+    chips: [...TRACKS.map((t) => ({ label: t.label, say: `Training in ${t.words[0]}` })), { label: "Show everything", say: "Show all programs" }],
+    links: [{ to: "/training-internship", label: "Training + Internship" }],
   };
 }
 
 function allProgramsReply(ctx) {
   const programs = ctx.programs || [];
-  const intern = programs.filter((p) => kindOf(p) === "Internship");
+  const intern = programs.filter((p) => kindOf(p) === "Training + Internship");
   const course = programs.filter((p) => kindOf(p) === "Course");
   const lines = [
-    intern.length && `Internships:\n${intern.slice(0, 6).map((p) => `• ${p.title}`).join("\n")}`,
+    intern.length && `Training + Internship tracks:\n${intern.slice(0, 6).map((p) => `• ${p.title}`).join("\n")}`,
     course.length && `Courses:\n${course.slice(0, 8).map((p) => `• ${p.title}`).join("\n")}`,
   ].filter(Boolean);
   return {
-    text: lines.length ? lines.join("\n") : "All our internships and courses are on the Programs page.",
-    links: [{ to: "/programs", label: "Open the Programs page" }],
+    text: lines.length ? lines.join("\n") : "All our training tracks are on the Training + Internship page.",
+    links: [{ to: "/training-internship", label: "Open Training + Internship" }],
     chips: TRACKS.map((t) => ({ label: t.label, say: `Programs in ${t.words[0]}` })),
   };
 }
@@ -169,8 +169,8 @@ function careersReply(ctx) {
   const roles = (ctx.openings || []).filter((o) => o && o.status !== "closed");
   if (!roles.length) {
     return {
-      text: "There's no open role right now — new openings are posted on the Careers page first, so do check back.\nMeanwhile, our internships on the Programs page are open to join any time.",
-      links: [{ to: "/careers", label: "Careers page" }, { to: "/programs", label: "Internships & courses" }],
+      text: "There's no open role right now — new openings are posted on the Careers page first, so do check back.\nMeanwhile, our Training + Internship program is open to join any time.",
+      links: [{ to: "/careers", label: "Careers page" }, { to: "/training-internship", label: "Training + Internship" }],
     };
   }
   return {
@@ -209,11 +209,11 @@ function priceReply(state, ctx) {
     return { text: "IT projects are quoted individually — the price depends on what you need (pages, features, integrations). Send your requirements through the Services page and we'll send a quote.", links: [{ to: "/services", label: "Request a quote" }] };
   }
   if (state.topic === "programs") {
-    return { text: "Each program's price is on its own page — most have Basic, Plus and Pro plans, and any discount running is shown there too. Wallet credit and offer codes are taken off at checkout.", links: [{ to: "/programs", label: "See programs & prices" }] };
+    return { text: "Each program's price is on its own page — most have Basic, Plus and Pro plans, and any discount running is shown there too. Wallet credit and offer codes are taken off at checkout.", links: [{ to: "/training-internship", label: "See tracks & prices" }] };
   }
   return {
     text: "Happy to help with pricing — which one is it about?",
-    chips: [{ label: "Internships & courses", say: "Price of internships and courses" }, { label: "Careers test fee", say: "Is there a fee for careers?" }, { label: "IT services", say: "Price of IT services" }],
+    chips: [{ label: "Training + Internship", say: "Price of training and internships" }, { label: "Careers test fee", say: "Is there a fee for careers?" }, { label: "IT services", say: "Price of IT services" }],
   };
 }
 
@@ -227,8 +227,9 @@ function applyReply(state, ctx) {
     return { text: "Send us your requirements from the Services page (or the contact form). Our IT team replies, sets up a quick call, and shares a plan and quote.", links: [{ to: "/services", label: "Services page" }] };
   }
   return {
-    text: `• Open the program on the Programs page\n• Choose a plan and press Buy\n• Log in with your email and a password (a new email gets an account)\n• Accept the terms and pay — access is instant${profileNote}`,
-    links: [{ to: "/programs", label: "Programs" }, ...(missing ? [{ to: "/profile", label: "Complete your profile" }] : [])],
+    text: `• Open the track on the Training + Internship page\n• Log in (a new email gets an account), then fill in “Request to apply” — or call / WhatsApp our Training + Internship team\n• We confirm your seat and send a payment request for the training fee (training is paid, not free)\n• Pay it in My Dashboard → Payment requests — your wallet credit, offer code and referral discount come off${profileNote}`,
+    links: [{ to: "/training-internship", label: "Training + Internship" }, { to: "/dashboard", label: "My Dashboard" }, ...(missing ? [{ to: "/profile", label: "Complete your profile" }] : [])],
+    dept: "programs",
   };
 }
 
@@ -251,7 +252,7 @@ function accountReply(ctx) {
 function paymentsReply(n) {
   if (has(n, WORDS.failure)) {
     return {
-      text: "Sorry about that — here's what to do:\n• Wait 10 minutes and refresh My Dashboard: most payments confirm on their own\n• If money was taken but nothing unlocked, it's confirmed or returned by Razorpay automatically, usually within 5–7 working days\n• Still stuck? Call our Internships & Courses team with your payment ID and the email you used",
+      text: "Sorry about that — here's what to do:\n• Wait 10 minutes and refresh My Dashboard: most payments confirm on their own\n• If money was taken but nothing unlocked, it's confirmed or returned by Razorpay automatically, usually within 5–7 working days\n• Still stuck? Call our Training + Internship team with your payment ID and the email you used",
       links: [{ to: "/dashboard", label: "My Dashboard" }],
       dept: "programs",
     };
@@ -267,12 +268,12 @@ function handoffReply(state) {
   if (!dept) {
     return {
       text: "Sure — we have two separate teams, each with its own number. Which is your question about?",
-      chips: [{ label: "Internships, courses or careers", say: "Talk to the internships and courses team" }, { label: "IT services for a business", say: "Talk to the IT services team" }],
+      chips: [{ label: "Training, internships or careers", say: "Talk to the training and internships team" }, { label: "IT services for a business", say: "Talk to the IT services team" }],
       pending: "handoff",
     };
   }
   return {
-    text: dept === "it" ? "Here's our IT services team — for websites, apps and business projects:" : "Here's our Internships & Courses team — for programs, careers, payments and student accounts:",
+    text: dept === "it" ? "Here's our IT services team — for websites, apps and business projects:" : "Here's our Training + Internship team — for training, internships, careers, payments and student accounts:",
     dept,
   };
 }

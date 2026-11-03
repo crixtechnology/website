@@ -374,7 +374,7 @@ export function SkeletonCards({ count = 3 }) {
 
 // A course/internship not yet open for buying (no price set yet, or the
 // admin closed it) gets an "Inquire" button straight to WhatsApp instead of
-// a dead end — to the Internships & Courses number.
+// a dead end — to the Training + Internship number.
 // `verb` lets the message (and the button copy that builds it) say "apply
 // for" vs "enroll in" so the CTA itself signals internship vs course.
 export function whatsappInquiryLink(title, verb = "learning more about") {
@@ -403,7 +403,9 @@ function PlanPrice({ plan, className = "" }) {
 // When the viewer already owns the course, `ownedTier` turns the buttons into
 // upgrade actions: their own plan is marked, lower plans read "included", and
 // each higher plan offers "Upgrade to …" (via onUpgrade) instead of "Choose".
-export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
+// readOnly: prices and features only, no buttons — Training + Internship
+// tracks aren't bought online (students apply or call; see TrainingContact).
+export function PlanCards({ plans, onChoose, ownedTier, onUpgrade, readOnly = false }) {
   const ownedRank = ownedTier ? TIER_ORDER.indexOf(ownedTier) : -1;
   return (
     <div className="plan-cards" role="list" style={{ "--plans": plans.length }}>
@@ -418,7 +420,9 @@ export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
                 {p.features.map((f) => <li key={f}>{f}</li>)}
               </ul>
             ) : null}
-            {!ownedTier ? (
+            {readOnly ? (
+              rank === ownedRank ? <span className="plan-owned">Your current plan</span> : null
+            ) : !ownedTier ? (
               <button className="btn btn-solid buy-btn" onClick={() => onChoose(p.tier)}>
                 Choose {tierLabel(p.tier)}
               </button>
@@ -434,6 +438,31 @@ export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ---------- TrainingContact: how to join a Training + Internship track ----------
+   There's no online checkout for training: a student sends the Request to
+   apply form or calls / WhatsApps the Training + Internship team, who confirm
+   the seat and send a payment request (paid in My Dashboard). onApply opens
+   the form; leave it out to show only the phone options. */
+export function TrainingContact({ onApply, compact = false }) {
+  const tel = `tel:${site.phoneAlt.replace(/[^\d+]/g, "")}`;
+  return (
+    <div className={`training-contact${compact ? " training-contact--compact" : ""}`}>
+      {!compact && (
+        <p className="training-contact-note">
+          To join, log in (or create a free account) and fill in the <b>Request to apply</b> form, or call our {site.phoneAltLabel} team.
+          We'll confirm your seat and send a secure payment request for the training fee to your account — pay it in My Dashboard.
+        </p>
+      )}
+      <div className="training-contact-row">
+        {onApply && <button type="button" className="btn btn-solid buy-btn" onClick={onApply}>Request to apply</button>}
+        <a className="btn btn-ghost" href={tel}>Call {site.phoneAlt}</a>
+        <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer"
+          aria-label={`WhatsApp the ${site.phoneAltLabel} team`}>WhatsApp</a>
+      </div>
     </div>
   );
 }
@@ -463,7 +492,7 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
   const closed = item.status === "closed";
   const openForBuy = isOpenForBuy(item);
   const { isAdmin } = useContext(UserContext);
-  const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
+  const kindLabel = kind === "internship" ? "Training + Internship" : kind === "course" ? "Course" : null;
   // Derived from `kind`, not `item.deliverables` — every internship/course
   // issues the same fixed set of documents for its type (see content.js's
   // programDeliverables), so this works whether `item` came from the static
@@ -521,6 +550,12 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
               </Link>
             ) : owned ? (
               <Link className="btn btn-solid buy-btn" to="/dashboard">View in My Dashboard →</Link>
+            ) : kind === "internship" ? (
+              // Training + Internship isn't bought online: the student applies
+              // (or calls), and the team sends a payment request to their account.
+              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Apply for this training — no account needed">
+                Request to apply
+              </button>
             ) : openForBuy && full ? (
               <button className="btn btn-solid buy-btn" disabled>All {placeWord({ type: kind || item.type })}s filled</button>
             ) : openForBuy ? (
@@ -707,11 +742,68 @@ export const loadRazorpayScript = () =>
     document.body.appendChild(script);
   });
 
+// How long Checkout may stay open before it closes itself (seconds).
+export const CHECKOUT_TIMEOUT_S = 300;
+
+// Opens Razorpay Checkout (every payment on the site goes through here) and
+// makes sure it always ends. Before, a failed payment left the buyer on
+// Razorpay's own retry screen — and after a cancel in a UPI or bank app, on a
+// spinner that never stopped — while the page behind waited for an answer
+// that never came. Now a failure closes Checkout straight away, and one that
+// never reports back closes after CHECKOUT_TIMEOUT_S; either way
+// `onClose(failure)` runs exactly once: failure is null when the buyer simply
+// closed it, else { reason } (Razorpay's text, if it gave one) or { timedOut: true }.
+// A payment that did go through in the meantime is still confirmed by the
+// server's Razorpay webhook. `options.handler` runs on success, as before.
+export function openRazorpayCheckout(options, onClose) {
+  let done = false;
+  let timer = null;
+  const finish = (failure) => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    onClose && onClose(failure);
+  };
+  const rzp = new window.Razorpay({
+    ...options,
+    timeout: CHECKOUT_TIMEOUT_S,
+    // Our own Pay button is the retry: each try gets a fresh order.
+    retry: { enabled: false },
+    handler: (resp) => {
+      done = true;
+      clearTimeout(timer);
+      return options.handler(resp);
+    },
+    modal: { ...(options.modal || {}), ondismiss: () => finish(null) },
+  });
+  rzp.on("payment.failed", (resp) => {
+    // Report first: closing fires ondismiss, which would otherwise win as a plain "closed".
+    finish({ reason: resp && resp.error && resp.error.description });
+    try { rzp.close(); } catch (e) { /* already closed */ }
+  });
+  // Razorpay's own timeout should close it first; this is the backstop.
+  timer = setTimeout(() => {
+    if (done) return;
+    finish({ timedOut: true });
+    try { rzp.close(); } catch (e) { /* already closed */ }
+  }, (CHECKOUT_TIMEOUT_S + 5) * 1000);
+  rzp.open();
+  return rzp;
+}
+
+// What to tell the buyer after openRazorpayCheckout reports a failure.
+export const paymentFailedText = (failure) => (failure && failure.timedOut
+  ? "The payment window timed out before the payment finished. If money left your account, it's confirmed automatically or returned within 5–7 working days — check My Dashboard, or try again."
+  : `The payment didn't go through${failure && failure.reason ? ` (${failure.reason.replace(/\.$/, "")})` : ""}. If any money left your account, it's returned automatically within 5–7 working days. You can try again.`);
+
 // The referral part of checkout: an optional code box (only for a student who
 // hasn't been referred and hasn't bought anything), and the itemised total —
 // plan price, referral discount, referral credit — as the server will charge it.
 // `onPayable` tells the buy button what to show as the amount.
-function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onCoupon }) {
+// getQuote(couponCode): where the price comes from — the checkout's plan quote
+// by default; a payment request passes its own (PaymentRequests.jsx). Keep it
+// stable (useCallback): a new function re-prices.
+export function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onCoupon, getQuote }) {
   const [quote, setQuote] = useState(null);
   // The offer-code box (an admin-made code, separate from the referral code below).
   // Offer codes are handed to individual students personally by the admin, so the
@@ -742,7 +834,7 @@ function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onC
     let alive = true;
     onPayable(null);
     onWalletCovers(null);
-    getPriceQuote(item.slug, tier, couponCode).then((res) => {
+    (getQuote ? getQuote(couponCode) : getPriceQuote(item.slug, tier, couponCode)).then((res) => {
       if (!alive) return;
       // An applied code that no longer works for this plan (or has just run out)
       // is dropped, and the buyer told — never silently charged a different price.
@@ -755,14 +847,14 @@ function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onC
       onWalletCovers(res.ok && res.walletCoversAll ? res.walletPayable : null);
     });
     return () => { alive = false; };
-  }, [item.slug, tier, requote, couponCode, onPayable, onWalletCovers, onCoupon]);
+  }, [item.slug, tier, requote, couponCode, onPayable, onWalletCovers, onCoupon, getQuote]);
 
   const applyOffer = async () => {
     if (offerBusy || !offerInput.trim()) return;
     setOfferBusy(true);
     setOfferNote({ kind: "", text: "" });
     const typed = offerInput.trim();
-    const res = await getPriceQuote(item.slug, tier, typed);
+    const res = await (getQuote ? getQuote(typed) : getPriceQuote(item.slug, tier, typed));
     setOfferBusy(false);
     if (res.ok && res.couponApplied) {
       setOfferInput("");
@@ -1016,7 +1108,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       return;
     }
 
-    const rzp = new window.Razorpay({
+    openRazorpayCheckout({
       key: orderRes.keyId,
       order_id: orderRes.orderId,
       amount: orderRes.amount,
@@ -1052,9 +1144,10 @@ export function BuyModal({ item, user, initialTier, onClose }) {
           );
         }
       },
-      modal: { ondismiss: () => clearStatus() },
+    }, (failure) => {
+      if (stale()) return;
+      if (failure) setError(paymentFailedText(failure)); else clearStatus();
     });
-    rzp.open();
   };
 
   return (
@@ -1209,7 +1302,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
       return;
     }
 
-    const rzp = new window.Razorpay({
+    openRazorpayCheckout({
       key: orderRes.keyId,
       order_id: orderRes.orderId,
       amount: orderRes.amount,
@@ -1236,9 +1329,10 @@ export function UpgradeModal({ data, onClose, onDone }) {
           });
         }
       },
-      modal: { ondismiss: () => setStatus({ text: "", kind: "" }) },
+    }, (failure) => {
+      if (stale()) return;
+      setStatus(failure ? { text: paymentFailedText(failure), kind: "error" } : { text: "", kind: "" });
     });
-    rzp.open();
   };
 
   return (
@@ -1308,7 +1402,11 @@ export function UpgradeModal({ data, onClose, onDone }) {
 // and the admin catching the message there. No account needed either way.
 // `item` doubles as the "is this open" flag, same pattern as BuyModal.
 export function InquiryModal({ item, kind, onClose }) {
-  const { user } = useContext(UserContext);
+  const { user, openAuthModal } = useContext(UserContext);
+  // Training + Internship is paid through a payment request sent to an account,
+  // so applying for it needs one (the backend refuses otherwise): a logged-out
+  // visitor is asked to log in or sign up first, then sees the form filled in.
+  const needsAccount = kind === "internship" && !user;
   // A logged-in student starts with their saved details (not the placeholder
   // name an email signup gets) instead of typing them again.
   const startForm = () => ({
@@ -1339,6 +1437,12 @@ export function InquiryModal({ item, kind, onClose }) {
       fields.reset();
     }
   }, [item]);
+
+  // Logged in (or signed up) with the form open: start from the account's details.
+  const accountEmail = user && user.email;
+  useEffect(() => {
+    if (item && accountEmail) setForm((f) => ({ ...startForm(), college: f.college || startForm().college }));
+  }, [accountEmail]);
 
   useModalEscape(!!item, onClose);
 
@@ -1388,6 +1492,7 @@ export function InquiryModal({ item, kind, onClose }) {
     });
     setLoading(false);
     if (!res.ok) {
+      if (res.code === "LOGIN_REQUIRED") { setStatus({ text: res.error, kind: "error" }); openAuthModal("login"); return; }
       setStatus({ text: res.error || "Could not submit right now. Please try again, or email us at " + site.email, kind: "error" });
       return;
     }
@@ -1414,14 +1519,35 @@ export function InquiryModal({ item, kind, onClose }) {
               Thanks{sent && sent.name ? `, ${sent.name.split(" ")[0]}` : ""} — we've got your details for
               "{item.title}" and will reach out on {sent && sent.email} or {sent && sent.phone} within 2 working days.
             </Alert>
+            {kind === "internship" && (
+              <p className="form-note" style={{ marginTop: 12 }}>
+                Next: once we confirm your seat, we send a payment request for the training fee to your Crix account,
+                and you pay it in My Dashboard → Payment requests. Questions? Call or WhatsApp {site.phoneAlt}.
+              </p>
+            )}
             <button className="btn btn-solid" onClick={onClose} style={{ width: "100%", marginTop: 16 }}>Done</button>
+          </>
+        ) : needsAccount ? (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: ".9rem", lineHeight: 1.6, marginBottom: 20 }}>
+              Log in or create your free account to apply. That's where we send the payment request for the training fee
+              once your seat is confirmed — training is paid, not free.
+            </p>
+            <button type="button" className="btn btn-solid" style={{ width: "100%" }} onClick={() => openAuthModal("login")}>
+              Log in or sign up to apply
+            </button>
+            <p className="form-note" style={{ marginTop: 14 }}>
+              Prefer to talk first? Call or WhatsApp our {site.phoneAltLabel} team on {site.phoneAlt}.
+            </p>
           </>
         ) : (
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
-              {user
-                ? `Check your details and we'll help you ${verb} "${item.title}".`
-                : `Share your details and we'll help you ${verb} "${item.title}" — no account needed.`}
+              {kind === "internship"
+                ? `Share your details and our team will call you to confirm your seat on "${item.title}", then send a payment request for the training fee (training is paid, not free). Prefer to talk now? Call or WhatsApp ${site.phoneAlt}.`
+                : user
+                  ? `Check your details and we'll help you ${verb} "${item.title}".`
+                  : `Share your details and we'll help you ${verb} "${item.title}" — no account needed.`}
             </p>
             <form onSubmit={onSubmit} noValidate>
               <div className="field"><label htmlFor="inquiry-name">Full name</label>
@@ -1431,6 +1557,7 @@ export function InquiryModal({ item, kind, onClose }) {
                 <FieldError id="inquiry-name-err">{fields.show("inquiry-name") && errors["inquiry-name"]}</FieldError></div>
               <div className="field"><label htmlFor="inquiry-email">Email</label>
                 <input id="inquiry-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com"
+                  readOnly={kind === "internship" && !!accountEmail} title={kind === "internship" && accountEmail ? "Your account's email — the payment request is sent to this account" : undefined}
                   onBlur={fields.touch("inquiry-email")} aria-invalid={!!emailProblem || undefined} aria-describedby="inquiry-email-err" />
                 <EmailFieldNote id="inquiry-email-err" localError={errors["inquiry-email"]} check={emailCheck} show={fields.show("inquiry-email")}
                   onUseSuggestion={(email) => setForm((f) => ({ ...f, email }))} /></div>
@@ -1478,7 +1605,7 @@ export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
 
   const closed = item.status === "closed";
   const deliverables = kind ? programDeliverables[kind] : null;
-  const kindLabel = kind === "internship" ? "Internship" : kind === "course" ? "Course" : null;
+  const kindLabel = kind === "internship" ? "Training + Internship" : kind === "course" ? "Course" : null;
 
   const act = (fn) => () => { onClose(); fn && fn(item); };
 
@@ -2133,12 +2260,11 @@ function ThemeToggle() {
   );
 }
 
-// The three pages under "Internships & Courses": a dropdown on desktop, a
-// second slide-in panel in the mobile menu.
+// The pages under "Internships": a dropdown on desktop, a second slide-in
+// panel in the mobile menu.
 const PROGRAM_MENU = [
+  { to: "/training-internship", label: "Training + Internship", desc: "Get trained · top performers earn a stipend" },
   { to: "/free-internships", label: "Free Internship", desc: "Free internship · small aptitude test fee" },
-  { to: "/paid-internships", label: "Paid Internship", desc: "Mentored internship programs" },
-  { to: "/programs", label: "Courses + Internship", desc: "Every course and internship" },
 ];
 const isProgramPath = (pathname) => PROGRAM_MENU.some((m) => m.to === pathname);
 const NAV_MOBILE = "(max-width:1100px)";
@@ -2149,7 +2275,7 @@ const Chevron = ({ dir = "down" }) => (
   </svg>
 );
 
-// Desktop: "Internships & Courses" opens a small menu (hover or click).
+// Desktop: "Internships" opens a small menu (hover or click).
 function ProgramsDropdown() {
   const [open, setOpen] = useState(false);
   // While the mouse is over it, a click keeps it open instead of toggling it
@@ -2177,7 +2303,7 @@ function ProgramsDropdown() {
       <button type="button" className={`nav-drop-btn${isProgramPath(location.pathname) ? " active" : ""}`}
         aria-expanded={open} aria-haspopup="true" aria-controls="nav-drop-programs"
         onClick={() => setOpen((v) => hovered.current || !v)}>
-        Internships &amp; Courses <Chevron />
+        Internships <Chevron />
       </button>
       <ul id="nav-drop-programs" className="nav-drop-menu">
         {PROGRAM_MENU.map((m) => (
@@ -2194,7 +2320,7 @@ function ProgramsDropdown() {
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  // Mobile menu: the "Internships & Courses" panel slid in over the main one.
+  // Mobile menu: the "Internships" panel slid in over the main one.
   const [sub, setSub] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef(null);
@@ -2254,7 +2380,7 @@ export function Navbar() {
 
   const links = [
     ["/services", "IT Services"],
-    ["/programs", "Internships & Courses"],
+    ["/training-internship", "Internships"],
     ["/about", "About"],
     ["/careers", "Careers"],
     ["/contact", "Contact"],
@@ -2280,7 +2406,7 @@ export function Navbar() {
               <ul className="nav-drawer-links">
                 {links.map(([to, label]) => (
                   <li key={to}>
-                    {to === "/programs" ? (
+                    {to === "/training-internship" ? (
                       <button type="button" className={`nav-drawer-item${isProgramPath(location.pathname) ? " active" : ""}`}
                         aria-expanded={sub} aria-controls="nav-drawer-programs" onClick={() => setSub(true)}>
                         {label} <Chevron dir="right" />
@@ -2297,7 +2423,7 @@ export function Navbar() {
                 {isLoggedIn ? (
                   <>
                     <NavLink to="/profile" onClick={close}>Profile</NavLink>
-                    {isAdmin && <NavLink to="/dashboard" onClick={close}>All Courses</NavLink>}
+                    {isAdmin && <NavLink to="/dashboard" onClick={close}>All Programs</NavLink>}
                     <NavLink to="/dashboard" onClick={close}>
                       My Dashboard{!isAdmin && dueBadge}
                     </NavLink>
@@ -2315,7 +2441,7 @@ export function Navbar() {
                 </button>
                 <button type="button" className="nav-drawer-close" aria-label="Close menu" onClick={close}>✕</button>
               </div>
-              <span className="nav-drawer-title nav-drawer-subtitle">Internships &amp; Courses</span>
+              <span className="nav-drawer-title nav-drawer-subtitle">Internships</span>
               <ul className="nav-drawer-links">
                 {PROGRAM_MENU.map((m) => (
                   <li key={m.to}>
@@ -2334,7 +2460,7 @@ export function Navbar() {
         <Link to="/" onClick={close}><Logo /></Link>
         <ul id="primary-nav" className="nav-links">
           {links.map(([to, label]) => {
-            if (to === "/programs") return <ProgramsDropdown key={to} />;
+            if (to === "/training-internship") return <ProgramsDropdown key={to} />;
             // NavLink's own isActive matches on pathname only, so it can't
             // tell two links to the same page with different #sections
             // apart — both would light up together. Compare the
@@ -2362,7 +2488,7 @@ export function Navbar() {
           <span className="nav-account">
             <NavLink className="nav-account-link" to="/profile" onClick={() => setOpen(false)}>Profile</NavLink>
             {isAdmin && (
-              <NavLink className="nav-account-link" to="/dashboard" onClick={() => setOpen(false)}>All Courses</NavLink>
+              <NavLink className="nav-account-link" to="/dashboard" onClick={() => setOpen(false)}>All Programs</NavLink>
             )}
             <Link className="nav-cta" to="/dashboard" onClick={() => setOpen(false)}>
               My Dashboard{!isAdmin && dueBadge}
@@ -2464,10 +2590,10 @@ const FOOT_COLS = [
   {
     heading: "For Students",
     links: [
-      ["Internship Program", "/programs"],
-      ["Web Development Track", "/programs"],
-      ["Android Development", "/programs"],
-      ["Online Courses", "/programs"],
+      ["Training + Internship", "/training-internship"],
+      ["How selection works", "/training-internship#selection"],
+      ["Free Internship", "/free-internships"],
+      ["Student support", "/contact"],
     ],
   },
   {
@@ -2491,8 +2617,8 @@ export function Footer() {
         <div className="foot-brand">
           <Logo className="foot-logo" />
           <p className="foot-desc">
-            Your one-stop solution for IT services, virtual internships, and future-ready
-            skills training. Based in Ahmedabad — serving clients pan-India and globally.
+            Your one-stop solution for IT services, and training that leads to
+            stipend-based internships. Based in Ahmedabad — serving clients pan-India and globally.
           </p>
           <div className="foot-contact">
             <ul className="foot-phones">

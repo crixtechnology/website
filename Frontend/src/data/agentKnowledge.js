@@ -50,16 +50,19 @@ const ASPECTS = {
 const asked = (n, aspect) => ASPECTS[aspect].some((w) => n.includes(` ${w}`));
 
 const kind = (p) => (p.type === "internship" ? "internship" : "course");
-const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/programs", label: `Open ${p.title}` });
+const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/training-internship", label: `Open ${p.title}` });
 
 function priceLine(p) {
+  // Training + Internship isn't bought online: quote the fee, then how to apply.
+  const howToJoin = "To join, use “Request to apply” on its page or call our Training + Internship team — we'll send a payment request for the fee.";
+  if (p.type === "internship" && !isOpenForBuy(p)) return `Ask our Training + Internship team about the fee for ${p.title}. ${howToJoin}`;
   if (!isOpenForBuy(p)) return `${p.title} isn't open for online enrolment right now — use “Request to ${p.type === "internship" ? "apply" : "enroll"}” on its page and the team will tell you about the next batch and price.`;
   const plans = offeredTiers(p);
   const lines = plans.map((t) => {
     const now = planPrice(t);
     return `• ${tierLabel(t.tier)}: ${formatINR(now)}${t.discountPercent ? ` (was ${formatINR(t.price)}, ${t.discountPercent}% off)` : ""}`;
   });
-  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\nWallet credit and offer codes are taken off at checkout.`;
+  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\n${p.type === "internship" ? howToJoin : "Wallet credit and offer codes are taken off at checkout."}`;
 }
 
 // A program named in the message: answers the aspect asked about, or a short overview.
@@ -72,7 +75,7 @@ export function programAnswer(p, n) {
   if (asked(n, "start")) facts.push(starts ? `The next batch starts on ${starts}.` : "You get access as soon as you enrol — there's no waiting for a batch.");
   if (asked(n, "certificate")) {
     facts.push(kind(p) === "internship"
-      ? "Yes — internships come with an offer letter when you join, a completion certificate and a Letter of Recommendation at the end."
+      ? "Yes — you get a training certificate when you complete the training. If you're selected for the stipend-based internship, you also get an offer letter, and an internship certificate and Letter of Recommendation at the end."
       : "Yes — you get a certificate of completion once you finish the course requirements.");
   }
   if (asked(n, "syllabus") && (p.points || []).length) facts.push(`What it covers:\n${p.points.slice(0, 6).map((x) => `• ${x}`).join("\n")}`);
@@ -80,7 +83,7 @@ export function programAnswer(p, n) {
   if (!facts.length) {
     const from = isOpenForBuy(p) ? Math.min(...offeredTiers(p).map(planPrice)) : null;
     facts.push([
-      `${p.title} — ${kind(p) === "internship" ? "a virtual internship" : "a self-paced course"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${formatINR(from)}` : ""}.`,
+      `${p.title} — ${kind(p) === "internship" ? "paid, mentored training — top performers are selected for a stipend-based internship" : "a self-paced course"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${formatINR(from)}` : ""}.`,
       p.desc || "",
       (p.points || []).length ? (p.points || []).slice(0, 4).map((x) => `• ${x}`).join("\n") : "",
     ].filter(Boolean).join("\n"));

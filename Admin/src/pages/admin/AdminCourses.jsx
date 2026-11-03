@@ -10,23 +10,25 @@ import { startsInFuture, formatStartDate, toStartDateInput } from "../../utils/s
 import { formatDuration, INTERNSHIP_DURATIONS } from "../../utils/duration.js";
 import { useJobOpenings, OpeningForm, OpeningList } from "./AdminJobOpenings.jsx";
 
-// What the one form adds — the same three choices as the site's
-// "Internships & Courses" menu. A free internship is a job opening listed on
-// /free-internships (with a CV and an aptitude test); the other two are
-// courses-table entries sold on /paid-internships and /programs.
+// What the one form adds. A free internship is a job opening listed on
+// /free-internships (with a CV and an aptitude test); a Training + Internship
+// track is a courses-table entry (type "internship") sold on
+// /training-internship — paid training, after which top performers are
+// selected for a stipend-based internship. Courses are no longer listed on
+// the website; they stay here so enrolled students keep their access.
 const KINDS = [
+  { id: "internship", label: "Training + Internship", sub: "/training-internship · students apply or call; send them a payment request" },
   { id: "free", label: "Free Internship", sub: "/free-internships · CV + aptitude test" },
-  { id: "internship", label: "Paid Internship", sub: "/paid-internships · sold in plans" },
-  { id: "course", label: "Course", sub: "/programs (Courses + Internship)" },
+  { id: "course", label: "Course", sub: "not shown on the website · enrolled students keep access" },
 ];
-const kindFromParam = (v) => (KINDS.some((k) => k.id === v) ? v : "course");
+const kindFromParam = (v) => (KINDS.some((k) => k.id === v) ? v : "internship");
 
 const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", discountPercent: "0", features: "" }]));
 // outcomes / audience / prerequisites are typed one per line; faqs is a list of { q, a } rows.
 // skills (comma-separated), responsibilities and eligibility (one per line), stipend, experience,
 // mode and positions: the same details a free internship shows.
 const EMPTY_FORM = {
-  type: "course", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
+  type: "internship", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
   skills: "", responsibilities: "", eligibility: "", stipend: "", experience: "", mode: "", positions: "",
   plans: emptyPlans(),
 };
@@ -58,7 +60,7 @@ function courseToForm(c) {
 }
 
 export default function AdminCourses() {
-  usePageMeta({ title: "Manage Courses & Internships | Crix Technology" });
+  usePageMeta({ title: "Manage Training + Internship | Crix Technology" });
   const navigate = useNavigate();
   const { logout } = useContext(UserContext);
   const [entries, setEntries] = useState([]);
@@ -116,7 +118,7 @@ export default function AdminCourses() {
     setKind("free"); setEditingOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Switching between Paid Internship and Course just changes the entry's type
+  // Switching between Training + Internship and Course just changes the entry's type
   // (also while editing one); a free internship is a different kind of record,
   // so the picker is locked to its side while one of either is being edited.
   const pickKind = (next) => {
@@ -191,6 +193,12 @@ export default function AdminCourses() {
     const positions = form.positions.trim() ? Number(form.positions) : null;
     if (positions !== null && (!Number.isInteger(positions) || positions < 1 || positions > 1000)) {
       setError("Positions must be a whole number from 1 to 1000 (or blank for no limit).");
+      return;
+    }
+    // Training is paid, not free — a ₹0 plan would make it a free internship,
+    // which belongs under Free Internship instead.
+    if (kind === "internship" && tiers.some((t) => t.price === 0)) {
+      setError("Training is paid, not free — set a training fee above ₹0 (or leave the plan blank). Free internships go under Free Internship.");
       return;
     }
     if (kind === "course" && !tiers.some((t) => t.price !== null)) {
@@ -296,8 +304,8 @@ export default function AdminCourses() {
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Courses & Internships</h1>
-            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Free internships, paid internships and courses, from one form. Careers roles are on Job openings.</p>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Training + Internship</h1>
+            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Training + Internship tracks, free internships and (hidden) courses, from one form. Careers roles are on Job openings.</p>
           </div>
           <button className="btn btn-ghost" onClick={() => { logout(); navigate("/admin"); }}>Log out</button>
         </div>
@@ -308,7 +316,7 @@ export default function AdminCourses() {
             onSaved={() => { setEditingOpening(null); jobs.load(); }} onCancel={() => setEditingOpening(null)} />
         ) : (
         <form onSubmit={onSubmit} className="admin-form">
-          <h3 style={{ margin: "0 0 16px" }}>{`${editingId ? "Edit" : "Add"} ${editingId ? "this" : "a"} ${kind === "internship" ? "paid internship" : "course"}`}</h3>
+          <h3 style={{ margin: "0 0 16px" }}>{`${editingId ? "Edit" : "Add"} ${editingId ? "this" : "a"} ${kind === "internship" ? "Training + Internship track" : "course"}`}</h3>
           {kindPicker}
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="courses-title">Title</label>
@@ -339,7 +347,7 @@ export default function AdminCourses() {
             <textarea id="courses-points" rows="4" value={form.points} onChange={set("points")} placeholder={"Frontend fundamentals\nReact in depth\nNode.js & MongoDB"} /></div>
 
           <fieldset className="plan-editor-set">
-            <legend>{kind === "internship" ? "Internship" : "Course"} details</legend>
+            <legend>{kind === "internship" ? "Training + Internship" : "Course"} details</legend>
             <p className="admin-row-meta" style={{ margin: "0 0 14px" }}>
               The same details a free internship shows, on the card and its own page. Anything left empty isn't shown.
             </p>
@@ -347,7 +355,7 @@ export default function AdminCourses() {
               <div className="field"><label htmlFor="cd-positions">{kind === "internship" ? "Positions" : "Seats"} available</label>
                 <input id="cd-positions" type="number" min="1" max="1000" step="1" value={form.positions} onChange={set("positions")} placeholder="No limit" />
                 <p className="form-note" style={{ margin: "6px 0 0" }}>Each purchase takes one. When all are taken it shows “All filled” and can't be bought.</p></div>
-              <div className="field"><label htmlFor="cd-stipend">Stipend</label>
+              <div className="field"><label htmlFor="cd-stipend">{kind === "internship" ? "Stipend (selected interns only)" : "Stipend"}</label>
                 <input id="cd-stipend" value={form.stipend} onChange={set("stipend")} placeholder={kind === "internship" ? "Up to ₹6,000/month (performance based)" : "Leave blank if none"} /></div>
               <div className="field"><label htmlFor="cd-exp">Experience</label>
                 <input id="cd-exp" value={form.experience} onChange={set("experience")} placeholder="0–1 year (freshers welcome)" /></div>
@@ -427,10 +435,10 @@ export default function AdminCourses() {
         )}
 
         <input
-          className="admin-search" aria-label="Search internships & courses by title, tag or skill"
+          className="admin-search" aria-label="Search training tracks, internships & courses by title, tag or skill"
           type="search"
           style={{ marginTop: 40 }}
-          placeholder="Search internships & courses by title, tag or skill..."
+          placeholder="Search training tracks, internships & courses by title, tag or skill..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -446,14 +454,15 @@ export default function AdminCourses() {
                 empty={q ? "No free internships match that search." : "No free internships yet — pick Free Internship above to add one."} />
             )}
 
-            <h3 style={{ margin: "40px 0 16px" }}>Paid internships</h3>
+            <h3 style={{ margin: "40px 0 16px" }}>Training + Internship tracks</h3>
             {internships.length === 0 ? (
-              <p style={{ color: "var(--muted)" }}>{q ? "No paid internships match that search." : "No paid internships yet — pick Paid Internship above to add one."}</p>
+              <p style={{ color: "var(--muted)" }}>{q ? "No training tracks match that search." : "No training tracks yet — pick Training + Internship above to add one."}</p>
             ) : (
               <div className="admin-list">{internships.map(renderRow)}</div>
             )}
 
-            <h3 style={{ margin: "40px 0 16px" }}>Courses</h3>
+            <h3 style={{ margin: "40px 0 4px" }}>Courses</h3>
+            <p className="form-note" style={{ margin: "0 0 16px" }}>Not shown on the website any more — enrolled students still see theirs in My Dashboard.</p>
             {courses.length === 0 ? (
               <p style={{ color: "var(--muted)" }}>{q ? "No courses match that search." : "No courses yet — pick Course above to add one."}</p>
             ) : (

@@ -120,7 +120,7 @@ export function ProcessingFeeEditor() {
 }
 
 // The add/edit form for one opening. `audience` is fixed by where it's used:
-// "general" on Job openings (the Careers page), "free" on Courses & Internships
+// "general" on Job openings (the Careers page), "free" on Training + Internship
 // (the Free Internships page). `editing` is the opening being edited, or null.
 // `head` is shown above the fields (e.g. a type picker); `title` is the heading.
 export function OpeningForm({ audience, editing, onSaved, onCancel, head = null, title }) {
@@ -315,7 +315,7 @@ export function OpeningList({ openings, bank, onEdit, onChanged, empty }) {
 
 // The roles on the public Careers page — add, edit, or close — and each role's
 // aptitude-test settings (length, questions per category, marking, cut-off).
-// Free internships are managed on Courses & Internships instead.
+// Free internships are managed on Training + Internship instead.
 export default function AdminJobOpenings() {
   usePageMeta({ title: "Job openings | Crix Technology" });
   const navigate = useNavigate();

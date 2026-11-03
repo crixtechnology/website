@@ -84,7 +84,7 @@ function answerData(body) {
   if (answer.length > 1500) return { error: "Keep the answer under 1500 characters." };
   const keywords = typeof b.keywords === "string" ? b.keywords.trim().slice(0, 300) : "";
   const linkTo = typeof b.linkTo === "string" ? b.linkTo.trim() : "";
-  if (linkTo && (!/^\/[a-z0-9\-/]{0,118}$/.test(linkTo) || linkTo.startsWith("//"))) return { error: "The link must be a page on this site, like /programs or /careers." };
+  if (linkTo && (!/^\/[a-z0-9\-/]{0,118}$/.test(linkTo) || linkTo.startsWith("//"))) return { error: "The link must be a page on this site, like /training-internship or /careers." };
   const linkLabel = typeof b.linkLabel === "string" ? b.linkLabel.trim().slice(0, 60) : "";
   const dept = typeof b.dept === "string" ? b.dept : "";
   if (!DEPTS.includes(dept)) return { error: "Choose which team's number to show, or none." };

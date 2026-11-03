@@ -85,8 +85,8 @@ export default function WalletCard() {
         <span className="wallet-muted">credit available</span>
       </div>
       <p className="wallet-lede">
-        Use your credit to pay for any course or internship. It's taken off at checkout automatically — and if it covers the
-        full price, you can pay with your wallet alone.
+        Use your credit to pay for any training program or course. It's taken off automatically when you pay — including a
+        payment request for your training — and if it covers the full price, you can pay with your wallet alone.
       </p>
       <ul className="check-list wallet-rules">
         <li>1 credit = ₹1, usable only for purchases on crixtechnology.com.</li>
@@ -134,7 +134,7 @@ export default function WalletCard() {
         </>
       )}
 
-      <Link className="btn btn-ghost wallet-browse" to="/programs">Browse courses</Link>
+      <Link className="btn btn-ghost wallet-browse" to="/training-internship">Browse training tracks</Link>
     </section>
   );
 }

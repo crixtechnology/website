@@ -63,7 +63,7 @@ describe("Contact form", () => {
     expect(q("#c-name").value).toBe("");
     expect(q("#c-email").value).toBe("");
     expect(q("#c-message").value).toBe("");
-    expect(q("#c-interest").value).toBe("Internship");
+    expect(q("#c-interest").value).toBe("Training + Internship");
   });
 
   it("keeps what was typed when sending fails, so it can be corrected and retried", async () => {
@@ -110,9 +110,10 @@ describe("Request to apply form", () => {
     expect(q("#inquiry-college").value).toBe("GU");
   });
 
+  // A course request; Training + Internship asks a visitor to log in first (trainingApplyLogin.test.jsx).
   it("starts empty for a visitor who isn't logged in", async () => {
-    const item = { title: "Web Intern", slug: "web-intern" };
-    await render(<MemoryRouter><InquiryModal item={item} kind="internship" onClose={() => {}} /></MemoryRouter>);
+    const item = { title: "Web Course", slug: "web-course" };
+    await render(<MemoryRouter><InquiryModal item={item} kind="course" onClose={() => {}} /></MemoryRouter>);
     expect(q("#inquiry-name").value).toBe("");
     expect(q("#inquiry-email").value).toBe("");
   });

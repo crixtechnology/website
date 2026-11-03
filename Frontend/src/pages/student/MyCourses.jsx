@@ -18,7 +18,7 @@ import { startsInFuture, formatStartDate } from "../../utils/startDate.js";
 // (/dashboard?tab=apply), so the Careers page, emails and notifications can
 // link straight to one.
 const TABS = [
-  ["courses", "My Courses"],
+  ["courses", "My Programs"],
   ["applications", "My Applications"],
   ["wallet", "My Wallet"],
   ["refer", "Refer & Earn"],
@@ -151,12 +151,12 @@ export default function MyCourses() {
 
         {(isAdmin || tab === "courses") && (<>
         {!isAdmin && <PaymentRequests onPaid={load} />}
-        <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>{isAdmin ? "All courses & internships" : "My courses"}</h2>
+        <h2 style={{ margin: "0 0 16px", fontSize: "1.2rem" }}>{isAdmin ? "All programs" : "My programs"}</h2>
         {loading ? (
           <p style={{ color: "var(--muted)" }}>Loading...</p>
         ) : enrollments.length === 0 ? (
           <p style={{ color: "var(--muted)" }}>
-            You haven't purchased a course yet. <Link to="/programs">Browse courses →</Link>
+            You haven't enrolled in a program yet. <Link to="/training-internship">Browse training tracks →</Link>
           </p>
         ) : (
           <div className="admin-list">
@@ -167,7 +167,7 @@ export default function MyCourses() {
                     {!en.adminAccess && startsInFuture(en.course) && <span className="admin-pill new">starts {formatStartDate(en.course.startsAt)}</span>}</b>
                   <span className="admin-row-meta">
                     {en.adminAccess
-                      ? `${en.course?.type === "internship" ? "Internship" : "Course"} · admin access, no purchase needed`
+                      ? `${en.course?.type === "internship" ? "Training + Internship" : "Course"} · admin access, no purchase needed`
                       : `Purchased ${new Date(en.createdAt).toLocaleDateString("en-IN")}`}
                   </span>
                 </div>
@@ -186,7 +186,7 @@ export default function MyCourses() {
                     </span>
                   ) : (
                     en.course?.slug && (
-                      <Link className="btn btn-solid" to={`/learn/${en.course.slug}`}>{en.adminAccess ? "Open →" : "Go to course →"}</Link>
+                      <Link className="btn btn-solid" to={`/learn/${en.course.slug}`}>{en.adminAccess ? "Open →" : en.course.type === "internship" ? "Go to training →" : "Go to course →"}</Link>
                     )
                   )}
                   {/* Only real purchases carry a `payment` ref — an

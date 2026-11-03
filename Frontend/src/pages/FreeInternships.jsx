@@ -24,10 +24,12 @@ import {
 import { formatINR } from "../utils/tiers.js";
 
 // The free internships page, open to students of every field (the menu's
-// Internships & Courses → Free Internship). Roles are free; applying needs an account and a CV (PDF), which makes
+// Internships → Free Internship). Roles are free; applying needs an account and a CV (PDF), which makes
 // the candidate eligible for the aptitude test (pages/student/AptitudeTest.jsx).
 
-const LOADING_CAP_MS = 4000;
+// After this long still loading, a note says the list is on its way (the
+// backend may be waking up — getFreeOpenings keeps trying for about a minute).
+const SLOW_NOTE_MS = 4000;
 const CV_MAX_BYTES = CV_MAX_MB * 1024 * 1024;
 
 const INDEX = [
@@ -394,18 +396,23 @@ export default function FreeInternships() {
   const [live, setLive] = useState(false);
   const [terms, setTerms] = useState(defaultFreeTerms);
   const [loading, setLoading] = useState(hasBackend);
+  const [slow, setSlow] = useState(false);
   const [detail, setDetail] = useState(null);
   const [applying, setApplying] = useState(null);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
     let alive = true;
-    const cap = setTimeout(() => setLoading(false), LOADING_CAP_MS);
+    // Skeleton cards stay up until the list actually arrives (or every retry
+    // has failed): giving up after a few seconds is what used to show "We
+    // couldn't load the open roles" while the backend was still waking.
+    const cap = setTimeout(() => setSlow(true), SLOW_NOTE_MS);
     const load = () => getFreeOpenings().then((res) => {
       if (!alive) return;
       if (res.ok) { setOpenings((res.openings || []).filter((o) => o && o.status !== "closed")); setLive(true); }
       if (res.ok && res.terms) setTerms({ ...defaultFreeTerms, ...res.terms });
       setLoading(false);
+      clearTimeout(cap);
     });
     load();
     // Phones keep tabs in memory and bring them back without reloading, so a page
@@ -470,7 +477,10 @@ export default function FreeInternships() {
             </Reveal>
           )}
           {loading ? (
-            <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
+            <>
+              {slow && <p className="form-note" role="status" style={{ marginTop: 16 }}>Loading the open roles — this can take a few seconds the first time.</p>}
+              <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
+            </>
           ) : openings.length ? (
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
               {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} fee={feeFor(o, terms)} mine={openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />)}

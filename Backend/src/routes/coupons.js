@@ -87,11 +87,11 @@ async function parseCoupon(body, existing) {
     if (!untouched) {
       const ids = has("courseIds") ? b.courseIds : existing && existing.courseIds;
       if (!Array.isArray(ids) || ids.length === 0 || !ids.every((i) => typeof i === "string" && i)) {
-        return { error: "Pick at least one course or internship for this code." };
+        return { error: "Pick at least one training program or course for this code." };
       }
       const unique = [...new Set(ids)];
       const found = await prisma.course.count({ where: { id: { in: unique } } });
-      if (found !== unique.length) return { error: "One of the selected courses or internships no longer exists." };
+      if (found !== unique.length) return { error: "One of the selected training programs or courses no longer exists." };
       data.courseIds = unique;
     }
   } else {
