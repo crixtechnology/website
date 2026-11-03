@@ -280,11 +280,23 @@ describe("the details a free internship shows", () => {
     expect(facts().Seats).toBe("30 seats open");
   });
 
-  it("offers a request instead of the plans once every place is taken", async () => {
+  it("still offers the application once every place is taken", async () => {
     await renderPage({ ...detailed, positions: { total: 10, filled: 10, left: 0 } });
     expect(facts().Positions).toBe("All filled");
-    expect(q("#plans")).toBeNull();
-    expect(container.textContent).toContain("All 10 positions are filled right now.");
+    expect(container.textContent).toContain("All 10 positions are filled right now");
     expect([...container.querySelectorAll("#course-cta button")].map((b) => b.textContent)).toContain("Request to apply");
+  });
+
+  it("shows the training fee but no online checkout — apply, call or WhatsApp instead", async () => {
+    await renderPage(detailed);
+    const cta = q("#course-cta");
+    expect(q("#plans")).not.toBeNull(); // the fee is shown...
+    expect(q("#plans").textContent).toContain("₹1,000");
+    const labels = [...cta.querySelectorAll("button")].map((x) => x.textContent);
+    expect(labels).toEqual(["Request to apply"]); // ...but there's nothing to buy
+    expect(cta.querySelector('a[href^="tel:"]')).not.toBeNull();
+    expect(cta.querySelector('a[href^="https://wa.me/"]')).not.toBeNull();
+    await act(async () => { [...cta.querySelectorAll("button")][0].click(); });
+    expect(q(".modal-box, [role='dialog']")).not.toBeNull();
   });
 });

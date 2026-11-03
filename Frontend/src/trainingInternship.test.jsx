@@ -58,7 +58,7 @@ it("lists only paid training tracks, never courses, and explains the stipend sel
   expect(container.querySelector("#courses")).not.toBeNull();
 });
 
-it("shows each program's details on its card, and no Choose a plan once it's full", async () => {
+it("shows each program's details on its card, with Request to apply instead of an online checkout", async () => {
   api.getCourses.mockImplementation(async (type) => ({
     ok: true,
     courses: type === "internship"
@@ -79,9 +79,16 @@ it("shows each program's details on its card, and no Choose a plan once it's ful
   expect(internship.textContent).toContain("4 of 5 positions open");
   expect(internship.textContent).toContain("Up to ₹3,000/month");
   expect(internship.textContent).toContain("React");
-  expect([...internship.querySelectorAll("button")].some((b) => b.textContent === "Choose a plan")).toBe(true);
-  expect(full.querySelector("button[disabled]")).not.toBeNull();
-  expect([...full.querySelectorAll("button")].some((b) => b.textContent === "Choose a plan")).toBe(false);
+  // Training isn't bought online: every track — full or not — offers the application form.
+  for (const card of [internship, full]) {
+    const labels = [...card.querySelectorAll("button")].map((b) => b.textContent);
+    expect(labels).toContain("Request to apply");
+    expect(labels).not.toContain("Choose a plan");
+  }
+  // ...and the page gives the phone and WhatsApp options too.
+  const contact = container.querySelector("#programs .training-contact");
+  expect(contact.querySelector('a[href^="tel:"]')).not.toBeNull();
+  expect(contact.querySelector('a[href^="https://wa.me/"]')).not.toBeNull();
 });
 
 it("sends someone who already has a program to My Dashboard instead of offering its plans", async () => {
@@ -99,5 +106,5 @@ it("sends someone who already has a program to My Dashboard instead of offering 
   const [owned, other] = [...container.querySelectorAll("#programs .card")];
   const link = [...owned.querySelectorAll("a")].find((a) => a.textContent.startsWith("View in My Dashboard"));
   expect(link.getAttribute("href")).toBe("/dashboard");
-  expect([...other.querySelectorAll("button")].some((b) => b.textContent === "Choose a plan")).toBe(true);
+  expect([...other.querySelectorAll("button")].map((b) => b.textContent)).toContain("Request to apply");
 });

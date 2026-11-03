@@ -17,7 +17,7 @@ import { useJobOpenings, OpeningForm, OpeningList } from "./AdminJobOpenings.jsx
 // selected for a stipend-based internship. Courses are no longer listed on
 // the website; they stay here so enrolled students keep their access.
 const KINDS = [
-  { id: "internship", label: "Training + Internship", sub: "/training-internship · paid training, sold in plans" },
+  { id: "internship", label: "Training + Internship", sub: "/training-internship · students apply or call; send them a payment request" },
   { id: "free", label: "Free Internship", sub: "/free-internships · CV + aptitude test" },
   { id: "course", label: "Course", sub: "not shown on the website · enrolled students keep access" },
 ];

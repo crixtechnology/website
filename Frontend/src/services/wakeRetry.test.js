@@ -9,6 +9,8 @@ function loadApi(fetchImpl) {
   return api;
 }
 const answer = (body, status = 200) => ({ ok: status < 400, status, json: async () => body });
+// Calls to this one address only: other code loaded with api.js may use fetch too.
+const callsTo = (fetchMock, url) => fetchMock.mock.calls.filter(([u]) => u === url).length;
 const notJson = (status) => ({ ok: false, status, json: async () => { throw new SyntaxError("Unexpected token <"); } });
 
 describe("getJsonWhileWaking", () => {
@@ -18,23 +20,24 @@ describe("getJsonWhileWaking", () => {
       .mockResolvedValueOnce(notJson(502))
       .mockResolvedValueOnce(answer({ ok: true, openings: [{ slug: "web" }] }));
     const { getJsonWhileWaking } = loadApi(fetchMock);
-    const res = await getJsonWhileWaking("http://api.test/careers/free/openings", undefined, [0, 0, 0]);
+    const url = "http://api.test/careers/free/openings";
+    const res = await getJsonWhileWaking(url, undefined, [0, 0, 0]);
     expect(res).toEqual({ ok: true, openings: [{ slug: "web" }] });
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(callsTo(fetchMock, url)).toBe(3);
   });
 
   it("doesn't retry an ordinary 4xx answer", async () => {
     const fetchMock = jest.fn().mockResolvedValue(answer({ ok: false, error: "Not found" }, 404));
     const { getJsonWhileWaking } = loadApi(fetchMock);
     await expect(getJsonWhileWaking("http://api.test/courses/nope", undefined, [0, 0])).resolves.toEqual({ ok: false, error: "Not found" });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(callsTo(fetchMock, "http://api.test/courses/nope")).toBe(1);
   });
 
   it("gives up after the last retry", async () => {
     const fetchMock = jest.fn().mockRejectedValue(new TypeError("Failed to fetch"));
     const { getJsonWhileWaking } = loadApi(fetchMock);
     await expect(getJsonWhileWaking("http://api.test/courses", undefined, [0, 0])).rejects.toThrow();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(callsTo(fetchMock, "http://api.test/courses")).toBe(3);
   });
 });
 
@@ -46,6 +49,6 @@ describe("the public lists", () => {
       .mockResolvedValueOnce(answer({ ok: true, openings: [{ slug: "web" }] }));
     const { getFreeOpenings } = loadApi(fetchMock);
     await expect(getFreeOpenings()).resolves.toEqual({ ok: true, openings: [{ slug: "web" }] });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(callsTo(fetchMock, "http://api.test/careers/free/openings")).toBe(2);
   }, 10000);
 });

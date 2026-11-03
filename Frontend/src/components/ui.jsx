@@ -403,7 +403,9 @@ function PlanPrice({ plan, className = "" }) {
 // When the viewer already owns the course, `ownedTier` turns the buttons into
 // upgrade actions: their own plan is marked, lower plans read "included", and
 // each higher plan offers "Upgrade to …" (via onUpgrade) instead of "Choose".
-export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
+// readOnly: prices and features only, no buttons — Training + Internship
+// tracks aren't bought online (students apply or call; see TrainingContact).
+export function PlanCards({ plans, onChoose, ownedTier, onUpgrade, readOnly = false }) {
   const ownedRank = ownedTier ? TIER_ORDER.indexOf(ownedTier) : -1;
   return (
     <div className="plan-cards" role="list" style={{ "--plans": plans.length }}>
@@ -418,7 +420,9 @@ export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
                 {p.features.map((f) => <li key={f}>{f}</li>)}
               </ul>
             ) : null}
-            {!ownedTier ? (
+            {readOnly ? (
+              rank === ownedRank ? <span className="plan-owned">Your current plan</span> : null
+            ) : !ownedTier ? (
               <button className="btn btn-solid buy-btn" onClick={() => onChoose(p.tier)}>
                 Choose {tierLabel(p.tier)}
               </button>
@@ -434,6 +438,31 @@ export function PlanCards({ plans, onChoose, ownedTier, onUpgrade }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ---------- TrainingContact: how to join a Training + Internship track ----------
+   There's no online checkout for training: a student sends the Request to
+   apply form or calls / WhatsApps the Training + Internship team, who confirm
+   the seat and send a payment request (paid in My Dashboard). onApply opens
+   the form; leave it out to show only the phone options. */
+export function TrainingContact({ onApply, compact = false }) {
+  const tel = `tel:${site.phoneAlt.replace(/[^\d+]/g, "")}`;
+  return (
+    <div className={`training-contact${compact ? " training-contact--compact" : ""}`}>
+      {!compact && (
+        <p className="training-contact-note">
+          To join, fill in the <b>Request to apply</b> form or call our {site.phoneAltLabel} team. We'll confirm your
+          seat and send a secure payment request for the training fee to your account — pay it in My Dashboard.
+        </p>
+      )}
+      <div className="training-contact-row">
+        {onApply && <button type="button" className="btn btn-solid buy-btn" onClick={onApply}>Request to apply</button>}
+        <a className="btn btn-ghost" href={tel}>Call {site.phoneAlt}</a>
+        <a className="wa-pill" href={`https://wa.me/${site.whatsappAlt || site.whatsapp}`} target="_blank" rel="noopener noreferrer"
+          aria-label={`WhatsApp the ${site.phoneAltLabel} team`}>WhatsApp</a>
+      </div>
     </div>
   );
 }
@@ -521,6 +550,12 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
               </Link>
             ) : owned ? (
               <Link className="btn btn-solid buy-btn" to="/dashboard">View in My Dashboard →</Link>
+            ) : kind === "internship" ? (
+              // Training + Internship isn't bought online: the student applies
+              // (or calls), and the team sends a payment request to their account.
+              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Apply for this training — no account needed">
+                Request to apply
+              </button>
             ) : openForBuy && full ? (
               <button className="btn btn-solid buy-btn" disabled>All {placeWord({ type: kind || item.type })}s filled</button>
             ) : openForBuy ? (

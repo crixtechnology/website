@@ -164,7 +164,8 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
   const [footerSeen, setFooterSeen] = useState(false);
   const plans = offeredTiers(course);
   const full = isFull(course);
-  const openForBuy = isOpenForBuy(course) && !full;
+  // Training + Internship tracks are joined by applying, never bought online.
+  const openForBuy = course.type !== "internship" && isOpenForBuy(course) && !full;
   const show = !ctaSeen && !footerSeen;
 
   useEffect(() => {
@@ -196,7 +197,7 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const cheapest = plans.length ? Math.min(...plans.map(planPrice)) : null;
-  const sub = openForBuy && cheapest !== null ? `From ${formatINR(cheapest)}`
+  const sub = (openForBuy || course.type === "internship") && course.status !== "closed" && cheapest !== null ? `From ${formatINR(cheapest)}`
     : course.status === "closed" ? "Currently closed"
     : full ? `All ${placeWord(course)}s filled`
     : course.type === "internship" ? "Apply to join" : "Ask about the next batch";

@@ -53,13 +53,16 @@ const kind = (p) => (p.type === "internship" ? "internship" : "course");
 const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/training-internship", label: `Open ${p.title}` });
 
 function priceLine(p) {
+  // Training + Internship isn't bought online: quote the fee, then how to apply.
+  const howToJoin = "To join, use “Request to apply” on its page or call our Training + Internship team — we'll send a payment request for the fee.";
+  if (p.type === "internship" && !isOpenForBuy(p)) return `Ask our Training + Internship team about the fee for ${p.title}. ${howToJoin}`;
   if (!isOpenForBuy(p)) return `${p.title} isn't open for online enrolment right now — use “Request to ${p.type === "internship" ? "apply" : "enroll"}” on its page and the team will tell you about the next batch and price.`;
   const plans = offeredTiers(p);
   const lines = plans.map((t) => {
     const now = planPrice(t);
     return `• ${tierLabel(t.tier)}: ${formatINR(now)}${t.discountPercent ? ` (was ${formatINR(t.price)}, ${t.discountPercent}% off)` : ""}`;
   });
-  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\nWallet credit and offer codes are taken off at checkout.`;
+  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\n${p.type === "internship" ? howToJoin : "Wallet credit and offer codes are taken off at checkout."}`;
 }
 
 // A program named in the message: answers the aspect asked about, or a short overview.

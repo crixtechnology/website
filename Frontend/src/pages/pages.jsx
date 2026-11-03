@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
-  DownloadPdfButton,
+  DownloadPdfButton, TrainingContact,
 } from "../components/ui.jsx";
 import {
   site, hero, internships, services, process, benefits, trainingStages, selectionCriteria, stats, about, legal,
@@ -203,12 +203,11 @@ export function TrainingInternship() {
   // until then, so the page never shows empty.
   const [liveInternships, setLiveInternships] = useState(internships);
   const [loading, setLoading] = useState(hasBackend);
-  const [buyItem, setBuyItem] = useState(null);
-  const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on, if one was already clicked
+  // Training isn't bought online here: every card opens the Request to apply
+  // form (or the student calls), and the team sends a payment request.
   const [inquireItem, setInquireItem] = useState(null);
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
   const [params, setParams] = useSearchParams();
-  const { user } = useContext(UserContext);
   // What they already have: those cards say "View in My Dashboard" instead of offering plans again.
   const { hasAccess } = useMyPlans();
   usePageMeta(routeMeta("/training-internship"));
@@ -224,17 +223,15 @@ export function TrainingInternship() {
     return () => { alive = false; clearTimeout(cap); };
   }, []);
 
-  // Landed here as ?buy=<slug> — the user just finished their profile and is
-  // being brought back to the purchase they started (BuyModal's
-  // goCompleteProfile()). Re-open the buy modal for that program, then drop
-  // the param so a refresh doesn't reopen it.
+  // An older ?buy=<slug> link (from when training was bought online) opens
+  // that track's Request to apply form instead, then drops the param so a
+  // refresh doesn't reopen it.
   useEffect(() => {
     const slug = params.get("buy");
     if (!slug) return;
     const match = liveInternships.find((c) => c.slug === slug);
     if (match) {
-      setBuyItem(match);
-      setBuyTier(tierFromParams(params));
+      setInquireItem(match);
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
       nextParams.delete("tier");
@@ -298,6 +295,7 @@ export function TrainingInternship() {
             Training is paid, not free — each track shows its training fee. Your fee covers the training only; the stipend-based internship that follows is
             offered on performance. Looking for a free one? See <Link to="/free-internships">Free Internships</Link>.
           </Reveal>
+          <Reveal variant="reveal-l"><TrainingContact /></Reveal>
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
             {loading ? <SkeletonCards count={3} /> : programs.map((item, i) => (
               <InfoCard key={item.title || item._id} item={item} i={i} isProgram kind="internship" owned={hasAccess(item)}
@@ -306,7 +304,6 @@ export function TrainingInternship() {
           </div>
         </div>
       </section>
-      <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
       <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
       <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} />
 
@@ -394,11 +391,12 @@ export function CourseDetail() {
     return () => { alive = false; };
   }, [slug]);
 
-  // Came back from /profile via ?buy=<slug> — resume the purchase.
+  // Came back from /profile via ?buy=<slug> — resume the purchase (for a
+  // Training + Internship track, which isn't bought online, open its form).
   useEffect(() => {
     if (course && params.get("buy")) {
-      setBuyItem(course);
-      setBuyTier(tierFromParams(params));
+      if (course.type === "internship") setInquireOpen(true);
+      else { setBuyItem(course); setBuyTier(tierFromParams(params)); }
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
       nextParams.delete("tier");
@@ -429,7 +427,9 @@ export function CourseDetail() {
 
   const plans = offeredTiers(course);
   const closed = course.status === "closed";
-  const openForBuy = isOpenForBuy(course);
+  // Training + Internship: no online checkout — apply or call, and the team sends a payment request.
+  const byInquiry = course.type === "internship";
+  const openForBuy = !byInquiry && isOpenForBuy(course);
 
   return (
     <>
@@ -484,6 +484,22 @@ export function CourseDetail() {
                 </Link>
                 <span style={{ display: "block", marginTop: 8, color: "var(--muted)", fontSize: ".82rem" }}>Admin access — no payment needed</span>
               </div>
+            ) : byInquiry ? (
+              <>
+                {plans.length > 0 && !closed && (
+                  <div className="plans-block" id="plans">
+                    <h4 className="plans-heading" aria-level={2}>{ownedTier(course) ? "Your plan" : plans.length > 1 ? "Training fee by plan" : "Training fee"}</h4>
+                    <PlanCards plans={plans} ownedTier={ownedTier(course)} readOnly />
+                  </div>
+                )}
+                {isFull(course) && !hasAccess(course) && (
+                  <p className="form-note">
+                    All {course.positions.total} {placeWord(course)}{course.positions.total === 1 ? " is" : "s are"} filled right now —
+                    apply anyway and we'll tell you when the next batch opens.
+                  </p>
+                )}
+                {!hasAccess(course) && <TrainingContact onApply={() => setInquireOpen(true)} />}
+              </>
             ) : openForBuy && isFull(course) && !ownedTier(course) && !hasAccess(course) ? (
               // Every place is taken: nothing to buy, but they can ask about the next batch.
               <div style={{ maxWidth: 420, marginTop: 24 }}>
