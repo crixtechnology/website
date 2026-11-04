@@ -1,6 +1,6 @@
 # Training + Internship tracks: what to type in Admin
 
-Five tracks for the Training + Internship page (`/training-internship`), in the **same domains as the five free internship roles** (see `free-internship-roles.md`). Each domain is offered in **two durations, 1 month and 3 months**, which show on the site as one card with a duration switch.
+Five tracks for the Training + Internship page (`/training-internship`), in the **same domains as the five free internship roles** (see `free-internship-roles.md`). Each domain is offered in **two durations, 3 months and 6 months**, which show on the site as one card with a duration switch. The free internship roles use the same two durations.
 
 Go to **Admin → Training + Internship → Add a Training + Internship track**. Fill in one track, press **Create**, then do the next. That's 10 entries in all (5 domains × 2 durations).
 
@@ -12,7 +12,7 @@ Each section lists the fields **in the same order as the admin form**. Copy the 
 
 ## Before you start
 
-1. **Same domain = same Domain group.** Give the 1-month and the 3-month track of a domain exactly the same Domain group (e.g. `Frontend (React.js)`). That's what joins them into one card with a **1 month | 3 months** switch. Once one entry has a group, the field suggests it when you type.
+1. **Same domain = same Domain group.** Give the 3-month and the 6-month track of a domain exactly the same Domain group (e.g. `Frontend (React.js)`). That's what joins them into one card with a **3 months | 6 months** switch. Once one entry has a group, the field suggests it when you type.
 2. **There is no aptitude test for training.** The training form has no test section. Students apply (or call), you confirm their seat, then you send a payment request from **Admin → Applications → Send payment request**.
 3. **Training is paid.** Set a fee on at least one plan. A ₹0 plan is refused; free internships belong under Free Internship.
 4. **A new track starts Closed.** After you press Create, press **Closed** in the list to open it, so it shows on the site.
@@ -26,7 +26,7 @@ Each section lists the fields **in the same order as the admin form**. Copy the 
 | Experience | `Freshers welcome — no experience needed` |
 | Mode | `Remote` |
 | Stipend (selected interns only) | `Up to ₹5,000/month for selected interns (performance based)` ✏️ |
-| Positions available | 1 month: `30` · 3 months: `20` ✏️ (leave empty for no limit) |
+| Positions available | 3 months: `30` · 6 months: `20` ✏️ (leave empty for no limit) |
 | Starts on (optional) | e.g. `2nd week of January` ✏️ — an estimate shown on the card |
 
 ### Suggested training fee (Training fee for this track) ✏️
@@ -35,29 +35,29 @@ Only the **Basic** plan is needed. Leave Plus and Pro blank unless you want tier
 
 | Duration | Basic price (₹) | What's included (one per line) |
 |---|---|---|
-| 1 month | ✏️ e.g. `2999` | `Live classes`<br>`Recorded lectures`<br>`Mentor support`<br>`Training certificate` |
 | 3 months | ✏️ e.g. `6999` | `Live classes`<br>`Recorded lectures`<br>`Mentor support and code reviews`<br>`Capstone project`<br>`Training certificate` |
+| 6 months | ✏️ e.g. `11999` | `Live classes`<br>`Recorded lectures`<br>`Mentor support and code reviews`<br>`Advanced topics`<br>`Live client project work`<br>`Capstone project`<br>`Training certificate` |
 
-Keep the 3-month fee clearly better value per month than the 1-month one, and say on the 3-month entry what it adds. Otherwise most students pick the shorter one.
+Keep the 6-month fee clearly better value per month than the 3-month one, and say on the 6-month entry what it adds (advanced topics and live client project work). Otherwise most students pick the shorter one.
 
 ---
 
 ## 1. Frontend Developer (React.js)
 
-| Field | 1 month | 3 months |
+| Field | 3 months | 6 months |
 |---|---|---|
-| Title | `Frontend Developer Training (React.js) — 1 Month` | `Frontend Developer Training (React.js) — 3 Months` |
+| Title | `Frontend Developer Training (React.js) — 3 Months` | `Frontend Developer Training (React.js) — 6 Months` |
 | Domain group | `Frontend (React.js)` | `Frontend (React.js)` |
-| Duration | 1 month | 3 months |
+| Duration | 3 months | 6 months |
 
 **Short description**
-- 1 month:
-```
-A fast-track, mentored training in React and JavaScript. Build real screens step by step, then top performers move on to a stipend-based internship on live projects.
-```
 - 3 months:
 ```
 The complete React and JavaScript training: from the basics to a deployed capstone project, with code reviews from a mentor. Top performers are selected for a stipend-based internship on live projects.
+```
+- 6 months:
+```
+The advanced React track: everything in the 3-month training, then advanced React, performance and testing, and real work on a live client project with our team. Top performers are selected for a stipend-based internship.
 ```
 
 **Skills (separate with commas)** — same for both
@@ -66,14 +66,6 @@ HTML, CSS, JavaScript, React, Git basics, Responsive design
 ```
 
 **Responsibilities (one per line)** — shown as "What you'll do"
-- 1 month:
-```
-Learn React components, props and state through short daily tasks
-Build responsive pages that work on phones, tablets and laptops
-Fetch data from an API and show it clearly
-Use Git for your work and act on mentor feedback
-Finish a small React project at the end of the month
-```
 - 3 months:
 ```
 Learn React from components and state to routing and forms
@@ -82,6 +74,15 @@ Connect screens to real APIs and handle loading and errors
 Use Git and pull requests, and act on code-review feedback
 Plan, build and deploy a capstone React app
 Present your work to your mentor at the end of each month
+```
+- 6 months:
+```
+Learn React from components and state to routing and forms
+Build responsive pages that work on phones, tablets and laptops
+Connect screens to real APIs and handle loading and errors
+Learn advanced React: custom hooks, state management, performance and testing
+Work on a live client project with our team, using pull requests and code reviews
+Plan, build and deploy a capstone React app, and present it
 ```
 
 **Eligibility (one per line)** — same for both
@@ -97,20 +98,20 @@ Able to give about 2–3 hours a day for the length of the training
 
 ## 2. Python Developer
 
-| Field | 1 month | 3 months |
+| Field | 3 months | 6 months |
 |---|---|---|
-| Title | `Python Developer Training — 1 Month` | `Python Developer Training — 3 Months` |
+| Title | `Python Developer Training — 3 Months` | `Python Developer Training — 6 Months` |
 | Domain group | `Python Developer` | `Python Developer` |
-| Duration | 1 month | 3 months |
+| Duration | 3 months | 6 months |
 
 **Short description**
-- 1 month:
-```
-A fast-track, mentored Python training: write small tools and scripts that solve real tasks. Top performers move on to a stipend-based internship.
-```
 - 3 months:
 ```
 The complete Python training: clean code, files and data, simple APIs and testing, ending in a real project reviewed by a mentor. Top performers are selected for a stipend-based internship.
+```
+- 6 months:
+```
+The advanced Python track: everything in the 3-month training, then databases, web APIs and automation, and real work on a live client project with our team. Top performers are selected for a stipend-based internship.
 ```
 
 **Skills** — same for both
@@ -119,14 +120,6 @@ Python, Problem solving, Functions and loops, Lists and dictionaries, Working wi
 ```
 
 **Responsibilities**
-- 1 month:
-```
-Learn Python basics through short daily exercises
-Write scripts that read and write files and spreadsheets
-Break a problem into small, clear functions
-Use Git for your work and act on mentor feedback
-Finish a small automation project at the end of the month
-```
 - 3 months:
 ```
 Learn Python from the basics to clean, well-structured code
@@ -135,6 +128,15 @@ Write simple tests to check your code works
 Build a small back-end feature with a Python web framework
 Use Git and act on code-review feedback
 Plan and build a capstone Python project
+```
+- 6 months:
+```
+Learn Python from the basics to clean, well-structured code
+Work with files, spreadsheets, databases and web APIs
+Write tests and automate repetitive tasks with scripts
+Build and deploy a back-end service with a Python web framework
+Work on a live client project with our team, using code reviews
+Plan, build and present a capstone Python project
 ```
 
 **Eligibility** — same for both
@@ -150,20 +152,20 @@ Able to give about 2–3 hours a day for the length of the training
 
 ## 3. Web Developer
 
-| Field | 1 month | 3 months |
+| Field | 3 months | 6 months |
 |---|---|---|
-| Title | `Web Developer Training — 1 Month` | `Web Developer Training — 3 Months` |
+| Title | `Web Developer Training — 3 Months` | `Web Developer Training — 6 Months` |
 | Domain group | `Web Developer` | `Web Developer` |
-| Duration | 1 month | 3 months |
+| Duration | 3 months | 6 months |
 
 **Short description**
-- 1 month:
-```
-A fast-track, mentored training in how websites really work: build pages with HTML, CSS and JavaScript and publish them. Top performers move on to a stipend-based internship.
-```
 - 3 months:
 ```
 The complete web training: pages, forms and the server behind them, from HTML and CSS to a simple Node.js back end and a deployed website. Top performers are selected for a stipend-based internship.
+```
+- 6 months:
+```
+The advanced web track: everything in the 3-month training, then databases, logins and full-stack features, and real work on a live client website with our team. Top performers are selected for a stipend-based internship.
 ```
 
 **Skills** — same for both
@@ -172,14 +174,6 @@ HTML, CSS, JavaScript, How the web works (HTTP), Node.js basics, Git basics
 ```
 
 **Responsibilities**
-- 1 month:
-```
-Build web pages with HTML, CSS and JavaScript
-Make pages mobile-friendly and accessible
-Add interactive features with JavaScript
-Publish your site online
-Use Git for your work and act on mentor feedback
-```
 - 3 months:
 ```
 Build web pages with HTML, CSS and JavaScript
@@ -188,6 +182,15 @@ Build forms and the Node.js server code that receives them
 Test in different browsers and fix what breaks
 Use Git and act on code-review feedback
 Build and deploy a complete website as your capstone
+```
+- 6 months:
+```
+Build web pages with HTML, CSS and JavaScript
+Make pages fast, accessible and mobile-friendly
+Build forms, logins and the Node.js server code behind them
+Store and read data with a database
+Work on a live client website with our team, using code reviews
+Build, deploy and present a full-stack website as your capstone
 ```
 
 **Eligibility** — same for both
@@ -203,20 +206,20 @@ Able to give about 2–3 hours a day for the length of the training
 
 ## 4. AI/ML Developer
 
-| Field | 1 month | 3 months |
+| Field | 3 months | 6 months |
 |---|---|---|
-| Title | `AI/ML Developer Training — 1 Month` | `AI/ML Developer Training — 3 Months` |
+| Title | `AI/ML Developer Training — 3 Months` | `AI/ML Developer Training — 6 Months` |
 | Domain group | `AI/ML Developer` | `AI/ML Developer` |
-| Duration | 1 month | 3 months |
+| Duration | 3 months | 6 months |
 
 **Short description**
-- 1 month:
-```
-A fast-track, mentored introduction to machine learning: prepare data and train your first models in Python. Top performers move on to a stipend-based internship.
-```
 - 3 months:
 ```
 The complete AI/ML training: data preparation, model training and evaluation in Python, and building AI features with real APIs, ending in a capstone project. Top performers are selected for a stipend-based internship.
+```
+- 6 months:
+```
+The advanced AI/ML track: everything in the 3-month training, then deeper models, AI agents and retrieval (RAG), and real work on a live client AI project with our team. Top performers are selected for a stipend-based internship.
 ```
 
 **Skills** — same for both
@@ -225,14 +228,6 @@ Python, NumPy and Pandas, Machine learning concepts, scikit-learn, Basic statist
 ```
 
 **Responsibilities**
-- 1 month:
-```
-Learn the Python tools used in machine learning
-Clean and prepare a dataset for a model
-Train and test simple models with scikit-learn
-Explain how well a model works in plain words
-Finish a small ML project at the end of the month
-```
 - 3 months:
 ```
 Clean, explore and prepare real datasets
@@ -241,6 +236,15 @@ Measure model quality and explain the results simply
 Build a small AI feature with an AI API
 Write down your experiments so others can repeat them
 Plan and build a capstone AI/ML project
+```
+- 6 months:
+```
+Clean, explore and prepare real datasets
+Train, tune and compare models, and explain the results simply
+Build AI features with AI APIs, including a simple agent and retrieval (RAG)
+Deploy a model or AI feature so others can use it
+Work on a live client AI project with our team, using code reviews
+Plan, build and present a capstone AI/ML project
 ```
 
 **Eligibility** — same for both
@@ -256,20 +260,20 @@ Able to give about 2–3 hours a day for the length of the training
 
 ## 5. Data Scientist / Data Analyst
 
-| Field | 1 month | 3 months |
+| Field | 3 months | 6 months |
 |---|---|---|
-| Title | `Data Analyst Training — 1 Month` | `Data Scientist / Data Analyst Training — 3 Months` |
+| Title | `Data Scientist / Data Analyst Training — 3 Months` | `Data Scientist / Data Analyst Training — 6 Months` |
 | Domain group | `Data Science / Analytics` | `Data Science / Analytics` |
-| Duration | 1 month | 3 months |
+| Duration | 3 months | 6 months |
 
 **Short description**
-- 1 month:
-```
-A fast-track, mentored training in data analysis: clean data, write SQL queries and build clear charts. Open to students of any field. Top performers move on to a stipend-based internship.
-```
 - 3 months:
 ```
 The complete data training: spreadsheets, SQL, Python and Pandas, statistics and dashboards, ending in a real analysis project you present. Open to commerce, science and arts students. Top performers are selected for a stipend-based internship.
+```
+- 6 months:
+```
+The advanced data track: everything in the 3-month training, then deeper statistics, BI dashboards and simple prediction models, and real work on a live client dataset with our team. Top performers are selected for a stipend-based internship.
 ```
 
 **Skills** — same for both
@@ -278,14 +282,6 @@ Excel or Google Sheets, SQL, Python and Pandas, Basic statistics, Charts and das
 ```
 
 **Responsibilities**
-- 1 month:
-```
-Clean and organise data in spreadsheets
-Write SQL queries to pull and summarise data
-Build clear charts from your results
-Explain what the data shows in plain language
-Finish a small analysis project at the end of the month
-```
 - 3 months:
 ```
 Clean and organise data from spreadsheets, databases and files
@@ -293,6 +289,15 @@ Write SQL queries to pull and summarise data
 Explore data and find trends with Python and Pandas
 Build clear charts and simple dashboards
 Explain what the data shows in plain language
+Plan and present a capstone analysis project
+```
+- 6 months:
+```
+Clean and organise data from spreadsheets, databases and files
+Write SQL queries to pull and summarise data
+Explore data, test ideas with statistics and build simple prediction models
+Build interactive dashboards in a BI tool
+Work on a live client dataset with our team and report what it shows
 Plan and present a capstone analysis project
 ```
 
@@ -331,6 +336,6 @@ Anyone who wants a path to a paid internship
 
 ## After you've added them
 
-- **Check the page:** open `/training-internship`. You should see **5 cards** (one per domain), each with a **1 month | 3 months** switch.
+- **Check the page:** open `/training-internship`. You should see **5 cards** (one per domain), each with a **3 months | 6 months** switch.
 - **Duration switch looks wrong:** if a domain shows two separate cards, its two Domain group values aren't identical. Fix the spelling or spacing in Admin.
 - **A track doesn't show:** it's still **Closed**. Press the toggle in the Admin list.

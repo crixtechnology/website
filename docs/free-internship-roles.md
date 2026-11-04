@@ -1,6 +1,6 @@
 # Free internship roles: what to type in Admin
 
-Five roles for the free internships page (`/free-internships`). Go to **Admin → Job openings → Add a new opening**, fill in one role, press **Create**, then do the next one.
+Five roles for the free internships page (`/free-internships`), each offered in **two durations, 3 months and 6 months**. Go to **Admin → Training + Internship → Free Internship**, fill in one role, press **Create**, then do the next. That's 10 entries in all (5 roles × 2 durations).
 
 Each section below lists the fields **in the same order as the admin form**. Copy the text to the right of each field label.
 
@@ -16,6 +16,8 @@ Each section below lists the fields **in the same order as the admin form**. Cop
 3. **Fee:** once you pick *Listed on → Free internships page only*, the form shows no fee box. These roles always charge the **test processing fee** from Admin → Careers settings (₹94 now), which comes back in full as wallet credit. You don't type a fee per role.
 4. **Status:** a new role is **Open** as soon as you create it, so it appears on `/free-internships` straight away. Use the Open/Closed button in the list to hide one.
 5. **Shared sections:** free-internship roles automatically draw their quantitative, logical and verbal questions from the new, gentler **foundation** banks, which are meant for students of any field. There is nothing to set.
+6. **Each role twice: 3 months and 6 months.** Create every role twice, once with Duration `3 months` and once with `6 months`, and give both **exactly the same Domain group**. The page then shows them as **one card with a 3 months | 6 months switch**, like the Training + Internship page. Everything else (description, skills, test settings) can be the same for both. Once one entry has a group, the Domain group box suggests it when you type.
+7. **Starts on (optional)** is a text box, e.g. `2nd week of January`: an estimate shown on the card. Leave it empty to show nothing. ✏️
 
 ### Form limits (checked when you press Create)
 
@@ -50,9 +52,10 @@ Each section below lists the fields **in the same order as the admin form**. Cop
 
 | Field | Value |
 |---|---|
-| Title | `Frontend Developer Intern (React.js)` |
+| Title | `Frontend Developer Intern (React.js) — 3 Months`, then `Frontend Developer Intern (React.js) — 6 Months` |
 | Technical questions from | **Frontend (React & JavaScript)**. Before the deploy: *Web Development* |
-| Display order | `1` |
+| Display order | `1` (the same for both durations) |
+| Domain group | `Frontend (React.js)` (the same for both durations) |
 
 **Short description**
 ```
@@ -89,7 +92,7 @@ Able to give about 2–3 hours a day for the length of the internship
 |---|---|
 | Stipend | *(leave empty)* ✏️ |
 | Experience | `Freshers welcome — no experience needed` |
-| Duration | `3 months` ✏️ |
+| Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
 **Aptitude test for this role**
@@ -113,9 +116,10 @@ Able to give about 2–3 hours a day for the length of the internship
 
 | Field | Value |
 |---|---|
-| Title | `Python Developer Intern` |
+| Title | `Python Developer Intern — 3 Months`, then `Python Developer Intern — 6 Months` |
 | Technical questions from | **Python Programming**. Before the deploy: *Data Science* |
-| Display order | `2` |
+| Display order | `2` (the same for both durations) |
+| Domain group | `Python Developer` (the same for both durations) |
 
 **Short description**
 ```
@@ -152,7 +156,7 @@ Able to give about 2–3 hours a day for the length of the internship
 |---|---|
 | Stipend | *(leave empty)* ✏️ |
 | Experience | `Freshers welcome — no experience needed` |
-| Duration | `3 months` ✏️ |
+| Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
 **Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
@@ -165,9 +169,10 @@ Able to give about 2–3 hours a day for the length of the internship
 
 | Field | Value |
 |---|---|
-| Title | `Web Developer Intern` |
+| Title | `Web Developer Intern — 3 Months`, then `Web Developer Intern — 6 Months` |
 | Technical questions from | **Web Fundamentals (HTML, CSS, JS, HTTP)**. Before the deploy: *Web Development* |
-| Display order | `3` |
+| Display order | `3` (the same for both durations) |
+| Domain group | `Web Developer` (the same for both durations) |
 
 **Short description**
 ```
@@ -204,7 +209,7 @@ Able to give about 2–3 hours a day for the length of the internship
 |---|---|
 | Stipend | *(leave empty)* ✏️ |
 | Experience | `Freshers welcome — no experience needed` |
-| Duration | `3 months` ✏️ |
+| Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
 **Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
@@ -217,9 +222,10 @@ Able to give about 2–3 hours a day for the length of the internship
 
 | Field | Value |
 |---|---|
-| Title | `AI/ML Developer Intern` |
+| Title | `AI/ML Developer Intern — 3 Months`, then `AI/ML Developer Intern — 6 Months` |
 | Technical questions from | **AI / Machine Learning**. Before the deploy: *Data Science* |
-| Display order | `4` |
+| Display order | `4` (the same for both durations) |
+| Domain group | `AI/ML Developer` (the same for both durations) |
 
 **Short description**
 ```
@@ -256,7 +262,7 @@ Able to give about 2–3 hours a day for the length of the internship
 |---|---|
 | Stipend | *(leave empty)* ✏️ |
 | Experience | `Freshers welcome — no experience needed` |
-| Duration | `3 months` ✏️ |
+| Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
 **Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
@@ -269,9 +275,10 @@ Able to give about 2–3 hours a day for the length of the internship
 
 | Field | Value |
 |---|---|
-| Title | `Data Scientist / Data Analyst Intern` |
+| Title | `Data Scientist / Data Analyst Intern — 3 Months`, then `Data Scientist / Data Analyst Intern — 6 Months` |
 | Technical questions from | **Data Science** (same choice before and after the deploy; after it, the bank has 25 more SQL, statistics and data-cleaning questions) |
-| Display order | `5` |
+| Display order | `5` (the same for both durations) |
+| Domain group | `Data Science / Analytics` (the same for both durations) |
 
 **Short description**
 ```
@@ -308,7 +315,7 @@ Able to give about 2–3 hours a day for the length of the internship
 |---|---|
 | Stipend | *(leave empty)* ✏️ |
 | Experience | `Freshers welcome — no experience needed` |
-| Duration | `3 months` ✏️ |
+| Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
 **Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
@@ -332,3 +339,9 @@ You can see, edit or switch off any of these questions in **Admin → Question b
 In the applicants Excel download (Admin → Applicants), each candidate's scores sit in four columns: Quantitative, Logical Reasoning, Verbal Ability and Technical. Foundation scores go in the same columns as the standard ones. A "Technical questions from" column shows which bank the role used.
 
 The role pop-up on `/free-internships` now tells candidates what the test covers. It has quantitative, logical and verbal questions pitched for students of any field, and technical questions for the role.
+
+## After you've added them
+
+- **Check the page:** open `/free-internships`. You should see **5 cards** (one per role), each with a **3 months | 6 months** switch.
+- **Duration switch looks wrong:** if a role shows two separate cards, its two Domain group values aren't identical. Fix the spelling or spacing in Admin.
+- **Applications are per duration:** a student applies, takes the test and is selected for the 3-month or the 6-month entry they picked, so check both in Admin → Applicants.
