@@ -6,6 +6,9 @@
 // and the details a free internship shows too:
 //   skills, responsibilities, eligibility                 lists of short texts
 //   stipend, experience, mode                             short texts
+// and for Training + Internship cards:
+//   group          tracks sharing it show as one card with a duration switch
+//   startingFrom   the card's optional "Starting from …" tag
 //   positions      how many places (null clears it)       a whole number 1–1000
 //
 // Used by routes/courses.js on create and update. Anything not sent is left out of the result,
@@ -19,7 +22,7 @@ const LIST_LIMITS = {
   responsibilities: { label: "Responsibilities", max: 30, chars: 300 },
   eligibility: { label: "Eligibility", max: 30, chars: 300 },
 };
-const TEXT_FIELDS = { stipend: "Stipend", experience: "Experience", mode: "Mode" };
+const TEXT_FIELDS = { stipend: "Stipend", experience: "Experience", mode: "Mode", group: "Domain group", startingFrom: "Starting from" };
 const FAQ_LIMITS = { max: 15, qChars: 200, aChars: 1500 };
 
 const KEYS = [...Object.keys(LIST_LIMITS), "faqs", ...Object.keys(TEXT_FIELDS), "positions"];
