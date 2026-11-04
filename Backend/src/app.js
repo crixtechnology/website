@@ -1,7 +1,7 @@
 // The configured Express app, with no side effects of its own (no DB
 // connect, no .listen()) — split out of index.js specifically so tests can
 // `require("./app")` and hand it straight to supertest without also
-// connecting to whatever MONGODB_URI happens to be in the environment or
+// connecting to whatever DATABASE_URL happens to be in the environment or
 // binding a real port. index.js (the actual process entry point) is now
 // just: require this, connectDB(), then app.listen().
 require("dotenv").config();

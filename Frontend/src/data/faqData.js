@@ -122,7 +122,7 @@ export const FAQ_TOPICS = [
         a: "On the Log in box choose “Forgot password” and we'll email you a code. If the code doesn't arrive, call our Training + Internship team and we'll reset it for you.",
         dept: "programs" },
       { id: "a-logout", q: "Why was I logged out?", k: "logout signed out session device inactive timeout",
-        a: "For security, an account can be signed in on only one device at a time — signing in elsewhere ends the earlier session. You're also signed out automatically after 30 minutes of inactivity." },
+        a: "For security, an account can be signed in on only one device at a time. While you're signed in on one device, signing in on another is refused — log out on the first one, or wait until it has been inactive for 30 minutes. You're also signed out automatically after 30 minutes of inactivity." },
       { id: "a-profile", q: "How do I change my name, phone or education details?", k: "profile edit update details name phone settings college course branch department semester education year passing",
         a: "Open your Profile page after signing in. Your name, phone number and education (college, course, branch / department, semester and year of passing) can be updated there, under My Details; your password and account deletion have their own tabs there. Your wallet is in My Dashboard → My Wallet.",
         links: [{ to: "/profile", label: "Open Profile" }] },

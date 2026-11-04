@@ -10,10 +10,15 @@ function requireInternalToken(req, res, next) {
   }
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (!token || token.length !== expected.length) {
+  // Compare byte lengths, not string lengths: a token with multi-byte
+  // characters can match in .length but not in bytes, and timingSafeEqual
+  // throws (a 500) on buffers of different sizes.
+  const given = Buffer.from(token || "");
+  const want = Buffer.from(expected);
+  if (!token || given.length !== want.length) {
     return res.status(401).json({ ok: false, error: "Invalid internal token" });
   }
-  const ok = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+  const ok = crypto.timingSafeEqual(given, want);
   if (!ok) return res.status(401).json({ ok: false, error: "Invalid internal token" });
   next();
 }
