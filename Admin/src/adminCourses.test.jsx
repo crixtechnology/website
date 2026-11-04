@@ -274,10 +274,10 @@ describe("admin course form", () => {
       await act(async () => {
         fill(q('input[placeholder="Full Stack (MERN) Development"]'), "MERN Training");
         fill(q("#courses-group"), " MERN Stack ");
-        fill(q("#courses-starting-from"), "₹1,999");
+        fill(q("#courses-starting-from"), "15 December");
       });
       await submit();
-      expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ group: "MERN Stack", startingFrom: "₹1,999" });
+      expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ group: "MERN Stack", startingFrom: "15 December" });
     });
 
     it("won't save a ₹0 training fee — training is paid, not free", async () => {

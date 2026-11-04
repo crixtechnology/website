@@ -151,8 +151,9 @@ model Course {
   // Tracks with the same group (e.g. "MERN") are one domain offered in several
   // durations: the site shows them as a single card with a duration switch.
   group           String       @default("")
-  // Optional text the card shows as "Starting from …" (a price or a date — the
-  // admin's words). Empty: no tag.
+  // Optional text the card shows as "Starting from …": roughly when the batch
+  // is expected to start, in the admin's words ("15 December", "mid-January").
+  // An estimate only — startsAt is the exact date that opens access. Empty: no tag.
   startingFrom    String       @default("")
   positions       Int?
   durationDays    Int?

@@ -306,11 +306,11 @@ describe("a track offered in several durations", () => {
 
   it("links to the domain's other durations and shows its Starting from tag", async () => {
     api.getCourses.mockResolvedValue({ ok: true, courses: [mern("mern-3", 90), mern("mern-1", 30), { ...base, _id: "x", slug: "other", type: "internship" }] });
-    await renderPage({ ...mern("mern-1", 30), startingFrom: "₹1,999" });
+    await renderPage({ ...mern("mern-1", 30), startingFrom: "15 December" });
     const opts = qa(".duration-switch a");
     expect(opts.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["1 month", "/programs/mern-1"], ["3 months", "/programs/mern-3"]]);
     expect(opts[0].getAttribute("aria-current")).toBe("page");
-    expect(q(".starting-from").textContent).toBe("Starting from ₹1,999");
+    expect(q(".starting-from").textContent).toBe("Starting from 15 December");
   });
 
   it("shows no switch for a track without a group", async () => {

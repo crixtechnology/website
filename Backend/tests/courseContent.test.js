@@ -101,11 +101,11 @@ describe("rich course content", () => {
   });
 
   it("keeps a domain group and an optional Starting from tag, served publicly", async () => {
-    const res = await create({ group: "  MERN Stack ", startingFrom: " ₹1,999 " });
+    const res = await create({ group: "  MERN Stack ", startingFrom: " 15 December " });
     expect(res.status).toBe(201);
-    expect(res.body.course).toMatchObject({ group: "MERN Stack", startingFrom: "₹1,999" });
+    expect(res.body.course).toMatchObject({ group: "MERN Stack", startingFrom: "15 December" });
     const pub = await request(app).get(`/api/courses/${res.body.course.slug}`);
-    expect(pub.body.course).toMatchObject({ group: "MERN Stack", startingFrom: "₹1,999" });
+    expect(pub.body.course).toMatchObject({ group: "MERN Stack", startingFrom: "15 December" });
     const cleared = await update(res.body.course._id, { startingFrom: "" });
     expect(cleared.body.course).toMatchObject({ group: "MERN Stack", startingFrom: "" });
     const none = await create({});

@@ -47,8 +47,8 @@ describe("the Training + Internship page", () => {
     api.getCourses.mockResolvedValue({
       ok: true,
       courses: [
-        track("MERN — 3 Months", "mern-3", 90, { group: "MERN", startingFrom: "₹4,999" }),
-        track("MERN — 1 Month", "mern-1", 30, { group: "MERN", startingFrom: "₹1,999" }),
+        track("MERN — 3 Months", "mern-3", 90, { group: "MERN", startingFrom: "2nd week of January" }),
+        track("MERN — 1 Month", "mern-1", 30, { group: "MERN", startingFrom: "15 December" }),
         track("Android", "android", 30),
       ],
     });
@@ -66,12 +66,12 @@ describe("the Training + Internship page", () => {
     expect(opts.map((o) => o.textContent)).toEqual(["1 month", "3 months"]);
     expect(opts[0].getAttribute("aria-pressed")).toBe("true");
     expect(mern.querySelector("h3").textContent).toBe("MERN — 1 Month");
-    expect(mern.querySelector(".starting-from").textContent).toBe("Starting from ₹1,999");
+    expect(mern.querySelector(".starting-from").textContent).toBe("Starting from 15 December");
     expect(mern.querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-1");
 
     await act(async () => { opts[1].click(); });
     expect(mern.querySelector("h3").textContent).toBe("MERN — 3 Months");
-    expect(mern.querySelector(".starting-from").textContent).toBe("Starting from ₹4,999");
+    expect(mern.querySelector(".starting-from").textContent).toBe("Starting from 2nd week of January");
     expect(mern.querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-3");
 
     // A track on its own has no switch and, with no value set, no tag.
