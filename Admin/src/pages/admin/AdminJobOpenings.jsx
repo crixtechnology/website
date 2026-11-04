@@ -18,7 +18,7 @@ const COUNT_FIELDS = [["quantitative", "Quantitative"], ["logical", "Logical rea
 const EMPTY_FORM = {
   title: "", summary: "", techCategory: "web", skills: "", responsibilities: "", eligibility: "",
   stipend: "Up to ₹6,000/month (performance based)", experience: "0–1 year (freshers welcome)", duration: "3 months", mode: "Remote / Ahmedabad",
-  startsOn: "", positions: "", order: "", feeRequired: "yes", waiveFee: "no", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
+  startsOn: "", group: "", positions: "", order: "", feeRequired: "yes", waiveFee: "no", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
   marksPerQuestion: "1", cutoffScore: "0",
 };
 
@@ -30,7 +30,7 @@ function openingToForm(o) {
     responsibilities: (o.responsibilities || []).join("\n"),
     eligibility: (o.eligibility || []).join("\n"),
     stipend: o.stipend || "", experience: o.experience || "", duration: o.duration || "", mode: o.mode || "",
-    startsOn: o.startsOn || "",
+    startsOn: o.startsOn || "", group: o.group || "",
     positions: o.positions ? String(o.positions.total) : "",
     order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", waiveFee: o.waiveFee ? "yes" : "no", durationMinutes: String(o.test.durationMinutes),
     quantitative: String(c.quantitative ?? 0), logical: String(c.logical ?? 0), verbal: String(c.verbal ?? 0), technical: String(c.technical ?? 0),
@@ -124,7 +124,8 @@ export function ProcessingFeeEditor() {
 // "general" on Job openings (the Careers page), "free" on Training + Internship
 // (the Free Internships page). `editing` is the opening being edited, or null.
 // `head` is shown above the fields (e.g. a type picker); `title` is the heading.
-export function OpeningForm({ audience, editing, onSaved, onCancel, head = null, title }) {
+// groupNames: the free internships' groups already in use, suggested in the Group box.
+export function OpeningForm({ audience, editing, onSaved, onCancel, head = null, title, groupNames = [] }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -149,6 +150,8 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
       responsibilities: lines(form.responsibilities), eligibility: lines(form.eligibility),
       stipend: form.stipend.trim(), experience: form.experience.trim(), duration: form.duration.trim(), mode: form.mode.trim(),
       startsOn: form.startsOn.trim(),
+      // Only free internships are grouped into one card with a duration switch.
+      ...(free ? { group: form.group.trim() } : {}),
       positions,
       ...(form.order.trim() ? { order: Number(form.order) } : {}),
       feeRequired: form.feeRequired === "yes",
@@ -180,6 +183,12 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
           </select></div>
         <div className="field"><label htmlFor="jo-order">Display order</label>
           <input id="jo-order" type="number" min="0" value={form.order} onChange={set("order")} placeholder="Auto (last)" /></div>
+        {free && (
+          <div className="field"><label htmlFor="jo-group">Domain group (optional)</label>
+            <input id="jo-group" list="jo-group-list" maxLength={60} value={form.group} onChange={set("group")} placeholder="e.g. Frontend (React.js)" />
+            <datalist id="jo-group-list">{groupNames.map((g) => <option key={g} value={g} />)}</datalist>
+            <p className="form-note" style={{ margin: "6px 0 0" }}>Roles of one domain in several durations (e.g. 3 and 6 months) share a group: the page shows them as one card with a duration switch.</p></div>
+        )}
       </div>
       <div className="field"><label htmlFor="jo-summary">Short description</label>
         <textarea id="jo-summary" rows="2" value={form.summary} onChange={set("summary")} placeholder="Shown on the card" /></div>
@@ -287,6 +296,9 @@ export function OpeningList({ openings, bank, onEdit, onChanged, empty }) {
             <div className="admin-row" key={o._id}>
               <div className="admin-row-main">
                 <b>{o.title}</b>
+                {(o.group || o.duration) && (
+                  <span className="admin-row-meta">{[o.group && `group: ${o.group}`, o.duration].filter(Boolean).join(" · ")}</span>
+                )}
                 <span className="admin-row-meta">
                   {o.applicants} applicant{o.applicants === 1 ? "" : "s"} · {o.audience === "free" ? (o.waiveFee ? "no processing fee" : "processing fee") : o.feeRequired === false ? "free" : "fee"} · {o.test.questions} questions in {o.test.durationMinutes} min ·
                   {" "}+{o.test.marksPerQuestion} each · cut-off {o.test.cutoffScore}

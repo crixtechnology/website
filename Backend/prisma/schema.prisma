@@ -625,6 +625,10 @@ model JobOpening {
   // Roughly when it starts, in the admin's words ("2nd week of January") —
   // the same optional "Starts on" every program card shows. Empty: not shown.
   startsOn         String        @default("")
+  // Free internship roles sharing a group (e.g. "Frontend (React.js)") are one
+  // role offered in several durations: the page shows them as one card with a
+  // duration switch, like Training + Internship tracks. Empty: a card of its own.
+  group            String        @default("")
   // How many people the role takes (null = not stated). Applicants marked
   // "selected" fill them; once all are filled no new applications are taken.
   positions        Int?

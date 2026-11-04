@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, DownloadPdfButton,
+  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, DownloadPdfButton, DurationSwitch,
   useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
 import {
@@ -18,6 +18,7 @@ import { useTouched } from "../hooks/useTouched.js";
 import { EducationFields, educationForm, educationPayload, educationMissing, emptyEducation } from "../utils/education.js";
 import { careersContact, isRoleFull, positionsLabel, positionsTag } from "../data/careers.js";
 import { programFacts } from "../utils/positions.js";
+import { groupVariants } from "../utils/variants.js";
 import { legal } from "../data/content.js";
 import {
   FREE_PATH, freeHero, freeSteps, freeEligibility, freeRules, processingFeePoints, defaultFreeTerms, CV_MAX_MB, RESULT_DAYS,
@@ -70,7 +71,9 @@ function FeeBadge({ fee }) {
 }
 
 /* ---------- one opening's card ---------- */
-function FreeOpeningCard({ opening, i, fee, mine, onOpen, onApply }) {
+// switcher: the duration switch when this role is offered in several durations
+// (FreeOpeningGroupCard) — the same switch Training + Internship cards have.
+function FreeOpeningCard({ opening, i, fee, mine, onOpen, onApply, switcher = null }) {
   return (
     <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
       <TiltCard className="card-type-internship job-card">
@@ -83,6 +86,7 @@ function FreeOpeningCard({ opening, i, fee, mine, onOpen, onApply }) {
             {mine ? <StatusPill application={mine} /> : <FeeBadge fee={fee} />}
           </div>
           <h3>{opening.title}</h3>
+          {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}
           <p>{opening.summary}</p>
           <div className="deliverable-row">
             {(opening.skills || []).map((s) => <span key={s} className="deliverable-chip">{s}</span>)}
@@ -99,6 +103,18 @@ function FreeOpeningCard({ opening, i, fee, mine, onOpen, onApply }) {
         </div>
       </TiltCard>
     </Reveal>
+  );
+}
+
+/* ---------- one role offered in several durations ----------
+   Roles the admin put in the same group: one card, the selected duration's
+   role filling it — its details, fee, application and status follow the switch. */
+function FreeOpeningGroupCard({ variants, feeOf, mineOf, ...cardProps }) {
+  const [active, setActive] = useState(0);
+  const opening = variants[Math.min(active, variants.length - 1)];
+  return (
+    <FreeOpeningCard {...cardProps} opening={opening} fee={feeOf(opening)} mine={mineOf(opening)}
+      switcher={<DurationSwitch variants={variants} active={active} onPick={setActive} label={`${opening.title}: choose a duration`} />} />
   );
 }
 
@@ -479,7 +495,11 @@ export default function FreeInternships() {
             </>
           ) : openings.length ? (
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
-              {openings.map((o, i) => <FreeOpeningCard key={o.slug} opening={o} i={i} fee={feeFor(o, terms)} mine={openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />)}
+              {/* One card per role: roles sharing a group are its durations, picked with the switch. */}
+              {groupVariants(openings).map((g, i) => (
+                <FreeOpeningGroupCard key={g.key} variants={g.variants} i={i} feeOf={(o) => feeFor(o, terms)}
+                  mineOf={(o) => openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />
+              ))}
             </div>
           ) : (
             <div className="card no-openings" role="status" style={{ marginTop: 24 }}>

@@ -1,8 +1,17 @@
 import { formatDuration } from "./duration.js";
 
-// Training + Internship tracks that share a domain `group` (set in Admin) are
-// one domain offered in several durations. The site shows each group as a
-// single card with a duration switch; a track with no group is a group of one.
+// Training + Internship tracks — and Free Internship roles — that share a
+// domain `group` (set in Admin) are one domain offered in several durations.
+// The site shows each group as a single card with a duration switch; one with
+// no group is a group of one. A track's length is durationDays; a role's is
+// its Duration text ("6 months").
+
+const DAYS_PER = { day: 1, week: 7, month: 30, year: 365 };
+const daysOf = (v) => {
+  if (v && v.durationDays) return Number(v.durationDays);
+  const m = String((v && v.duration) || "").toLowerCase().match(/(\d+(?:\.\d+)?)\s*(day|week|month|year)/);
+  return m ? Number(m[1]) * DAYS_PER[m[2]] : Infinity;
+};
 
 const groupKey = (item) => {
   const g = String((item && item.group) || "").trim().toLowerCase();
@@ -21,8 +30,7 @@ export function groupVariants(items) {
     if (key) byKey.set(key, entry);
     groups.push(entry);
   });
-  const days = (v) => (v.durationDays ? Number(v.durationDays) : Infinity);
-  groups.forEach((g) => g.variants.sort((a, b) => days(a) - days(b)));
+  groups.forEach((g) => g.variants.sort((a, b) => daysOf(a) - daysOf(b)));
   return groups;
 }
 
@@ -33,5 +41,6 @@ export function siblingsOf(item, items) {
   return groupVariants((items || []).filter((c) => groupKey(c) === key))[0]?.variants || [item];
 }
 
-// What the switch calls a duration: "1 month", else the track's tag or title.
-export const variantLabel = (item) => formatDuration(item.durationDays) || item.tag || item.title;
+// What the switch calls a duration: "3 months" (a track's length or a role's
+// Duration text), else its tag or title.
+export const variantLabel = (item) => formatDuration(item.durationDays) || String(item.duration || "").trim() || item.tag || item.title;

@@ -316,6 +316,7 @@ export default function AdminCourses() {
 
         {kind === "free" ? (
           <OpeningForm audience="free" editing={editingOpening} head={kindPicker}
+            groupNames={[...new Set(jobs.openings.filter((o) => o.audience === "free").map((o) => (o.group || "").trim()).filter(Boolean))].sort()}
             title={editingOpening ? "Edit free internship" : "Add a free internship"}
             onSaved={() => { setEditingOpening(null); jobs.load(); }} onCancel={() => setEditingOpening(null)} />
         ) : (

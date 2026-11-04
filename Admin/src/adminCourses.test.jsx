@@ -205,9 +205,10 @@ describe("admin course form", () => {
       await act(async () => { fill(q("#jo-title"), "Free Data Intern"); });
       await act(async () => { fill(q("#jo-positions"), "6"); });
       await act(async () => { fill(q("#jo-starts-on"), " 2nd week of January "); });
+      await act(async () => { fill(q("#jo-group"), " Data Science / Analytics "); });
       await submit();
       expect(api.adminCreateJobOpening).toHaveBeenCalledTimes(1);
-      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6, waiveFee: false, startsOn: "2nd week of January" });
+      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6, waiveFee: false, startsOn: "2nd week of January", group: "Data Science / Analytics" });
       expect(api.adminCreateCourse).not.toHaveBeenCalled();
     });
 
