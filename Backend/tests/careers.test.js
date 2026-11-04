@@ -1334,3 +1334,16 @@ describe("a role's Starts on", () => {
     expect((await asAdmin(request(app).post("/api/admin/job-openings")).send({ title: "Bad", startsOn: 5 })).status).toBe(400);
   });
 });
+
+describe("a free internship role's group", () => {
+  it("joins roles of one domain in several durations, trimmed, and shown publicly", async () => {
+    const three = await opening({ audience: "free", group: "  Web Developer ", duration: "3 months" });
+    const six = await opening({ audience: "free", group: "Web Developer", duration: "6 months" });
+    expect(three.group).toBe("Web Developer");
+    expect(six.group).toBe("Web Developer");
+    expect((await opening()).group).toBe("");
+    const cleared = await asAdmin(request(app).put(`/api/admin/job-openings/${three._id}`)).send({ group: "" });
+    expect(cleared.body.opening.group).toBe("");
+    expect((await asAdmin(request(app).post("/api/admin/job-openings")).send({ title: "Bad", group: 7 })).status).toBe(400);
+  });
+});
