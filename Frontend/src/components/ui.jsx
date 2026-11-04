@@ -552,6 +552,7 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
         </div>
         <h3>{item.title}</h3>
         {switcher}
+        {/* Roughly when the batch starts (the admin's estimate, e.g. "15 December"). */}
         {isProgram && item.startingFrom ? <span className="starting-from">Starting from <b>{item.startingFrom}</b></span> : null}
         <div className="card-peek-wrap">
           <p className="card-benefit">{item.desc}</p>

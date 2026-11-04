@@ -8,7 +8,7 @@
 //   stipend, experience, mode                             short texts
 // and for Training + Internship cards:
 //   group          tracks sharing it show as one card with a duration switch
-//   startingFrom   the card's optional "Starting from …" tag
+//   startingFrom   the card's optional "Starting from …" tag: roughly when the batch starts
 //   positions      how many places (null clears it)       a whole number 1–1000
 //
 // Used by routes/courses.js on create and update. Anything not sent is left out of the result,

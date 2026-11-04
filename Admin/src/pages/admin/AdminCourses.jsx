@@ -31,7 +31,8 @@ const EMPTY_FORM = {
   type: "internship", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
   skills: "", responsibilities: "", eligibility: "", stipend: "", experience: "", mode: "", positions: "",
   // Training + Internship card: tracks sharing a group show as one card with a
-  // duration switch; startingFrom is the card's optional "Starting from …" tag.
+  // duration switch; startingFrom is the card's optional "Starting from …" tag —
+  // roughly when the batch is expected to start (not a price, not the exact date).
   group: "", startingFrom: "",
   plans: emptyPlans(),
 };
@@ -359,8 +360,8 @@ export default function AdminCourses() {
                   </datalist>
                   <span className="admin-row-meta">Give tracks of the same domain the same group: the site shows them as one card with a duration switch.</span></div>
                 <div className="field"><label htmlFor="courses-starting-from">Starting from (optional)</label>
-                  <input id="courses-starting-from" maxLength={60} value={form.startingFrom} onChange={set("startingFrom")} placeholder="e.g. ₹2,999 or 15 December" />
-                  <span className="admin-row-meta">Shown on the card as "Starting from …". Leave empty for no tag.</span></div>
+                  <input id="courses-starting-from" maxLength={60} value={form.startingFrom} onChange={set("startingFrom")} placeholder="e.g. 15 December or 2nd week of January" />
+                  <span className="admin-row-meta">Roughly when this batch is expected to start, shown on the card as "Starting from …". It's an estimate for students: the exact date that opens the training is "Starts on". Leave empty for no tag.</span></div>
               </>
             )}
           </div>
