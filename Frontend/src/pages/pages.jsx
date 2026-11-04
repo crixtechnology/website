@@ -433,7 +433,7 @@ export function CourseDetail() {
       <section className="section" style={{ paddingTop: 140 }}>
         <div className="wrap">
           <span className="eyebrow">Not found</span>
-          <h2 style={{ margin: "14px 0 16px" }}>We couldn't find that course.</h2>
+          <h2 style={{ margin: "14px 0 16px" }}>We couldn't find that training track.</h2>
           <p style={{ color: "var(--muted)", marginBottom: 24 }}>It may have been removed or renamed.</p>
           <Link className="btn btn-solid" to="/training-internship">← Back to Training + Internship</Link>
         </div>

@@ -26,7 +26,7 @@ describe("PUT /admin/courses/:id — open/plans invariant", () => {
 
   beforeEach(async () => {
     const create = await authed(request(app).post("/api/admin/courses")).send({
-      type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 999 }],
+      type: "internship", title: uniqueTitle(), tiers: [{ tier: "basic", price: 999 }],
     });
     expect(create.status).toBe(201);
     courseId = create.body.course._id;
@@ -62,8 +62,8 @@ describe("PUT /admin/courses/:id — open/plans invariant", () => {
 describe("POST /admin/courses — duplicate slug handling", () => {
   it("appends a numeric suffix instead of colliding when titles produce the same slug", async () => {
     const title = "Same Title Course";
-    const first = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title, tiers: [{ tier: "basic", price: 100 }] });
-    const second = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title, tiers: [{ tier: "basic", price: 100 }] });
+    const first = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title, tiers: [{ tier: "basic", price: 100 }] });
+    const second = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title, tiers: [{ tier: "basic", price: 100 }] });
     expect(first.status).toBe(201);
     expect(second.status).toBe(201);
     expect(first.body.course.slug).not.toBe(second.body.course.slug);
@@ -76,7 +76,7 @@ describe("course plans (basic / plus / pro)", () => {
   it("stores up to three plans and returns them in basic -> plus -> pro order", async () => {
     // Sent out of order on purpose.
     const res = await authed(request(app).post("/api/admin/courses")).send({
-      type: "course", title: uniqueTitle(), tiers: [
+      type: "internship", title: uniqueTitle(), tiers: [
         { tier: "pro", price: 9999, discountPercent: 10, features: ["1:1 mentoring", " Code review "] },
         { tier: "basic", price: 2999 },
         { tier: "plus", price: 5999, features: ["Live classes"] },
@@ -93,7 +93,7 @@ describe("course plans (basic / plus / pro)", () => {
   });
 
   it("serves the same plans on the public endpoint", async () => {
-    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "plus", price: 4000 }] });
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), tiers: [{ tier: "plus", price: 4000 }] });
     const pub = await request(app).get(`/api/courses/${create.body.course.slug}`);
     expect(pub.status).toBe(200);
     expect(pub.body.course.tiers).toHaveLength(1);
@@ -110,7 +110,7 @@ describe("course plans (basic / plus / pro)", () => {
 
   it("replaces the whole plan set on update, removing plans that are left out", async () => {
     const create = await authed(request(app).post("/api/admin/courses")).send({
-      type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 1000 }, { tier: "plus", price: 2000 }, { tier: "pro", price: 3000 }],
+      type: "internship", title: uniqueTitle(), tiers: [{ tier: "basic", price: 1000 }, { tier: "plus", price: 2000 }, { tier: "pro", price: 3000 }],
     });
     const id = create.body.course._id;
     const res = await authed(request(app).put(`/api/admin/courses/${id}`)).send({
@@ -123,7 +123,7 @@ describe("course plans (basic / plus / pro)", () => {
 
   it("leaves the plans alone when an update does not mention them", async () => {
     const create = await authed(request(app).post("/api/admin/courses")).send({
-      type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 1000 }, { tier: "pro", price: 3000 }],
+      type: "internship", title: uniqueTitle(), tiers: [{ tier: "basic", price: 1000 }, { tier: "pro", price: 3000 }],
     });
     const res = await authed(request(app).put(`/api/admin/courses/${create.body.course._id}`)).send({ tag: "Popular" });
     expect(res.body.course.tiers.map((t) => t.tier)).toEqual(["basic", "pro"]);
@@ -140,11 +140,23 @@ describe("course plans (basic / plus / pro)", () => {
     expect(opened.body.course.status).toBe("open");
   });
 
-  it("requires at least one priced plan to create a course", async () => {
-    const none = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle() });
-    expect(none.status).toBe(400);
-    const blank = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: "" }] });
-    expect(blank.status).toBe(400);
+  it("refuses to create or turn anything into a course — courses were dropped", async () => {
+    const made = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
+    expect(made.status).toBe(400);
+    expect(made.body.error).toMatch(/no longer offered/);
+    const track = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle() });
+    expect(track.status).toBe(201);
+    const turned = await authed(request(app).put(`/api/admin/courses/${track.body.course._id}`)).send({ type: "course" });
+    expect(turned.status).toBe(400);
+  });
+
+  it("hides any old course row everywhere", async () => {
+    const old = await prisma.course.create({ data: { type: "course", title: uniqueTitle(), slug: `old-course-${Date.now()}`, desc: "", status: "open" } });
+    expect((await request(app).get(`/api/courses/${old.slug}`)).status).toBe(404);
+    expect((await request(app).get("/api/courses")).body.courses.map((c) => c._id)).not.toContain(old.id);
+    expect((await request(app).get("/api/courses?type=course")).body.courses.map((c) => c._id)).not.toContain(old.id);
+    expect((await authed(request(app).get("/api/admin/courses"))).body.courses.map((c) => c._id)).not.toContain(old.id);
+    expect((await authed(request(app).put(`/api/admin/courses/${old.id}`)).send({ title: "x" })).status).toBe(404);
   });
 
   it.each([
@@ -155,12 +167,12 @@ describe("course plans (basic / plus / pro)", () => {
     ["a fractional discount", [{ tier: "basic", price: 100, discountPercent: 12.5 }]],
     ["a non-numeric price", [{ tier: "basic", price: "abc" }]],
   ])("rejects %s", async (_label, tiers) => {
-    const res = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers });
+    const res = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), tiers });
     expect(res.status).toBe(400);
   });
 
   it("deletes a course together with its plans", async () => {
-    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
     const id = create.body.course._id;
     const del = await authed(request(app).delete(`/api/admin/courses/${id}`));
     expect(del.status).toBe(200);
@@ -175,7 +187,7 @@ describe("DELETE /admin/courses/:id", () => {
   });
 
   it("refuses to delete a course with enrolled students, and says why (was a misleading 404)", async () => {
-    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
     const id = create.body.course._id;
     const student = await prisma.user.create({ data: { name: "Enrolled", email: `enrolled-${Date.now()}@test.com`, passwordHash: "x" } });
     await prisma.enrollment.create({ data: { userId: student.id, courseId: id } });
@@ -186,7 +198,7 @@ describe("DELETE /admin/courses/:id", () => {
   });
 
   it("deletes a course together with its lectures and videos when nobody is enrolled", async () => {
-    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
     const id = create.body.course._id;
     await prisma.lecture.create({ data: { courseId: id, title: "L1", scheduledAt: new Date(), scheduledEndAt: new Date(Date.now() + 3600000), link: "https://meet.example.com/x" } });
     await prisma.video.create({ data: { courseId: id, title: "V1", b2Key: `key-${Date.now()}`, dayNumber: 1 } });
@@ -200,17 +212,17 @@ describe("DELETE /admin/courses/:id", () => {
 
 describe("course field validation", () => {
   it("rejects a blank title and a junk duration instead of a 500", async () => {
-    const blank = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: "   ", tiers: [{ tier: "basic", price: 100 }] });
+    const blank = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: "   ", tiers: [{ tier: "basic", price: 100 }] });
     expect(blank.status).toBe(400);
-    const junk = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), durationDays: "abc", tiers: [{ tier: "basic", price: 100 }] });
+    const junk = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), durationDays: "abc", tiers: [{ tier: "basic", price: 100 }] });
     expect(junk.status).toBe(400);
-    const ok = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), durationDays: "30", tiers: [{ tier: "basic", price: 100 }] });
+    const ok = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), durationDays: "30", tiers: [{ tier: "basic", price: 100 }] });
     expect(ok.status).toBe(201);
     expect(ok.body.course.durationDays).toBe(30);
   });
 
   it("rejects unparseable lecture dates instead of a 500", async () => {
-    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), tiers: [{ tier: "basic", price: 100 }] });
     const res = await authed(request(app).post("/api/admin/lectures")).send({
       course: create.body.course._id, title: "Bad dates", scheduledAt: "not-a-date", scheduledEndAt: "also-not", link: "https://meet.example.com/x",
     });
@@ -239,25 +251,12 @@ describe("internship durations: 15 days, 1 month, 3 months or 6 months", () => {
     expect(res.body.error).toBe("An internship's duration must be 15 days, 1 month, 3 months or 6 months.");
   });
 
-  it("leaves courses free to use any number of days", async () => {
-    const res = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), durationDays: 45, tiers: [{ tier: "basic", price: 100 }] });
-    expect(res.status).toBe(201);
-    expect(res.body.course.durationDays).toBe(45);
-  });
-
-  it("applies the same rule when editing, and to a course turned into an internship", async () => {
+  it("applies the same rule when editing", async () => {
     const created = await authed(request(app).post("/api/admin/courses")).send(internship({ durationDays: 30 }));
     const id = created.body.course._id;
     expect((await authed(request(app).put(`/api/admin/courses/${id}`)).send({ durationDays: 90 })).body.course.durationDays).toBe(90);
     expect((await authed(request(app).put(`/api/admin/courses/${id}`)).send({ durationDays: 50 })).status).toBe(400);
     expect((await prisma.course.findUnique({ where: { id } })).durationDays).toBe(90); // refused edit changed nothing
-
-    const course = await authed(request(app).post("/api/admin/courses")).send({ type: "course", title: uniqueTitle(), durationDays: 45, tiers: [{ tier: "basic", price: 100 }] });
-    const turned = await authed(request(app).put(`/api/admin/courses/${course.body.course._id}`)).send({ type: "internship", durationDays: 45 });
-    // Turning it into an internship while keeping 45 days is a "new" length for an internship — but it is the
-    // existing value, so it is allowed to stay; picking a different off-list length is not.
-    expect(turned.status).toBe(200);
-    expect((await authed(request(app).put(`/api/admin/courses/${course.body.course._id}`)).send({ durationDays: 60 })).status).toBe(400);
   });
 
   it("lets an older internship with another length be saved unchanged, but not moved to another odd length", async () => {

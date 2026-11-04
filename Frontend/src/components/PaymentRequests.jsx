@@ -141,11 +141,11 @@ export default function PaymentRequests({ onPaid }) {
           <div className="admin-row" key={r._id}>
             <div className="admin-row-main">
               <b>
-                {r.course?.title || "Course"} {r.tier && <span className="plan-pill">{tierLabel(r.tier)}</span>}{" "}
+                {r.course?.title || "Training"} {r.tier && <span className="plan-pill">{tierLabel(r.tier)}</span>}{" "}
                 <span className={`admin-pill ${r.status === "paid" ? "lifetime" : "new"}`}>{r.status === "paid" ? "paid" : "payment due"}</span>
               </b>
               <span className="admin-row-meta">
-                {r.course?.type === "internship" ? "Training + Internship" : "Course"} · {formatINR(r.amount)}
+                Training + Internship · {formatINR(r.amount)}
                 {r.note ? ` · ${r.note}` : ""}
               </span>
             </div>

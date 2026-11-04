@@ -85,7 +85,7 @@ export default function WalletCard() {
         <span className="wallet-muted">credit available</span>
       </div>
       <p className="wallet-lede">
-        Use your credit to pay for any training program or course. It's taken off automatically when you pay — including a
+        Use your credit to pay for any training program. It's taken off automatically when you pay — including a
         payment request for your training — and if it covers the full price, you can pay with your wallet alone.
       </p>
       <ul className="check-list wallet-rules">

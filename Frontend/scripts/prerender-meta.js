@@ -104,7 +104,8 @@ async function livePrograms() {
       const res = await fetch(`${api.replace(/\/+$/, "")}/courses`, { signal: ctrl.signal });
       const json = await res.json();
       return (json.ok && Array.isArray(json.courses) ? json.courses : [])
-        .filter((c) => c && typeof c.slug === "string" && /^[a-z0-9-]+$/.test(c.slug) && typeof c.title === "string" && c.title.trim());
+        // Training + Internship tracks only — courses were dropped.
+        .filter((c) => c && c.type === "internship" && typeof c.slug === "string" && /^[a-z0-9-]+$/.test(c.slug) && typeof c.title === "string" && c.title.trim());
     } catch (e) {
       console.warn(`prerender-meta: courses fetch attempt ${attempt} failed (${e.name === "AbortError" ? "timed out" : e.message})`);
     } finally {

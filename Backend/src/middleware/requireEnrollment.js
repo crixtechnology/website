@@ -1,5 +1,6 @@
 const { prisma } = require("../db");
 const { hasValidAccess, isAdminUser, hasStarted, notStartedResponse } = require("../utils/enrollmentAccess");
+const { isProgram } = require("../utils/programs");
 
 // Runs AFTER requireAuth. Loads the logged-in user's active Enrollment for
 // the course in req.params.courseId and confirms their access hasn't
@@ -15,6 +16,9 @@ const { hasValidAccess, isAdminUser, hasStarted, notStartedResponse } = require(
 async function requireEnrollment(req, res, next) {
   try {
     const { courseId } = req.params;
+    // Courses were dropped: only a Training + Internship track can be opened.
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { type: true, startsAt: true } });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
 
     if (await isAdminUser(req.user)) {
       req.enrollment = null;
@@ -31,8 +35,7 @@ async function requireEnrollment(req, res, next) {
       return res.status(403).json({ ok: false, error: "Your access to this course has expired" });
     }
     // Bought, but the course hasn't begun yet.
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { type: true, startsAt: true } });
-    if (course && !hasStarted(course)) return res.status(403).json(notStartedResponse(course));
+    if (!hasStarted(course)) return res.status(403).json(notStartedResponse(course));
 
     req.enrollment = enrollment;
     next();

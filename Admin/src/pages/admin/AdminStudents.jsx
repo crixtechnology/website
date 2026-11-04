@@ -112,9 +112,9 @@ export default function AdminStudents() {
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="students-user-email">User email</label>
               <input id="students-user-email" type="email" value={grantForm.email} onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })} placeholder="student@example.com" /></div>
-            <div className="field"><label htmlFor="students-course">Course</label>
+            <div className="field"><label htmlFor="students-course">Training track</label>
               <select id="students-course" value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
-                <option value="">Choose a training program or course...</option>
+                <option value="">Choose a training track...</option>
                 {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
               </select>
             </div>
@@ -128,10 +128,10 @@ export default function AdminStudents() {
         </form>
 
         <input
-          className="admin-search" aria-label="Search by student name/email or course title"
+          className="admin-search" aria-label="Search by student name/email or track title"
           type="search"
           style={{ marginTop: 40 }}
-          placeholder="Search by student name/email or course title..."
+          placeholder="Search by student name/email or track title..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -151,7 +151,7 @@ export default function AdminStudents() {
                   <span className="admin-row-meta">{en.user?.email} {en.user?.phone ? `· ${en.user.phone}` : ""}</span>
                 </div>
                 <div className="admin-row-main">
-                  <b>{en.course?.title || "Course"}{en.tier && <> <span className="plan-pill">{tierLabel(en.tier)}</span></>}</b>
+                  <b>{en.course?.title || "Training track"}{en.tier && <> <span className="plan-pill">{tierLabel(en.tier)}</span></>}</b>
                   <span className="admin-row-meta">
                     {en.endDate ? (
                       <span className={`admin-pill ${en.expired ? "expired" : "new"}`}>

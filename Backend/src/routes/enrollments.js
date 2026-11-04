@@ -1,5 +1,6 @@
 const express = require("express");
 const { prisma } = require("../db");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
 const { serialize } = require("../utils/serialize");
@@ -24,7 +25,7 @@ router.get("/me/enrollments", requireAuth, async (req, res, next) => {
     // but flagged `adminAccess`, with no tier/payment/expiry, since nothing
     // was bought.
     if (await isAdminUser(req.user)) {
-      const courses = await prisma.course.findMany({ orderBy: [{ type: "asc" }, { createdAt: "desc" }] });
+      const courses = await prisma.course.findMany({ where: PROGRAM_WHERE, orderBy: { createdAt: "desc" } });
       return res.json({
         ok: true,
         enrollments: courses.map((c) => ({
@@ -41,7 +42,7 @@ router.get("/me/enrollments", requireAuth, async (req, res, next) => {
     }
 
     const enrollments = await prisma.enrollment.findMany({
-      where: { userId: req.user.sub, status: "active" },
+      where: { userId: req.user.sub, status: "active", course: PROGRAM_WHERE },
       include: { course: true },
       orderBy: { createdAt: "desc" },
     });
@@ -70,6 +71,7 @@ router.get("/admin/enrollments", requireAdmin, async (req, res, next) => {
     // for a course title surfaces every student in it.
     const where = {
       status: "active",
+      course: PROGRAM_WHERE, // old course enrollments (test data) stay out of view
       ...(q
         ? {
             OR: [
@@ -122,7 +124,7 @@ router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
     }
 
     const course = await prisma.course.findUnique({ where: { id: courseId } });
-    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
 
     if (tier !== undefined && tier !== null && tier !== "" && !isTier(tier)) {
       return res.status(400).json({ ok: false, error: "tier must be basic, plus or pro" });

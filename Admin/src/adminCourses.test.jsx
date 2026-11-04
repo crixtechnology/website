@@ -5,7 +5,7 @@ import { UserContext } from "./context/UserContext.jsx";
 import AdminCourses from "./pages/admin/AdminCourses.jsx";
 import * as api from "./services/api.js";
 
-// The admin course form (its optional rich-content fields).
+// The admin form for Training + Internship tracks (courses were dropped).
 jest.mock("./services/api.js");
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -27,7 +27,7 @@ const q = (sel) => container.querySelector(sel);
 const qa = (sel) => [...container.querySelectorAll(sel)];
 
 const base = {
-  _id: "c1", slug: "web-dev", type: "course", title: "Web Development", tag: "Course", desc: "Learn to build for the web.",
+  _id: "c1", slug: "web-dev", type: "internship", title: "Web Development", tag: "Flagship", desc: "Learn to build for the web.",
   points: ["Frontend fundamentals"], tiers: [{ tier: "basic", price: 1000, discountPercent: 0, features: [] }],
   durationDays: null, status: "open", outcomes: [], audience: [], prerequisites: [], faqs: [],
 };
@@ -161,27 +161,6 @@ describe("admin course form", () => {
       expect(api.adminUpdateCourse.mock.calls[0][1].durationDays).toBe(90);
     });
 
-    it("keeps a course's duration a free number of days", async () => {
-      await renderAdmin();
-      await pick("Course");
-      expect(q("#ac-duration").tagName).toBe("INPUT");
-      await act(async () => { fill(q("#ac-duration"), "45"); });
-      expect(q("#ac-duration").value).toBe("45");
-    });
-
-    it("drops an odd length when a course is switched to an internship, so it has to be re-picked", async () => {
-      await renderAdmin();
-      await pick("Course");
-      await act(async () => { fill(q("#ac-duration"), "45"); });
-      await pick("Training + Internship");
-      expect(q("#ac-duration").tagName).toBe("SELECT");
-      expect(q("#ac-duration").value).toBe("");
-      // ...but a valid one survives the switch.
-      await pick("Course");
-      await act(async () => { fill(q("#ac-duration"), "30"); });
-      await pick("Training + Internship");
-      expect(q("#ac-duration").value).toBe("30");
-    });
 
     it("keeps an older internship's other length selectable, labelled as current", async () => {
       await renderAdmin([{ ...internship, durationDays: 45 }]);
@@ -192,13 +171,13 @@ describe("admin course form", () => {
     });
 
     it("shows the length the way people say it in the list", async () => {
-      await renderAdmin([{ ...internship, durationDays: 90 }, { ...base, _id: "c2", title: "Other course", durationDays: 45 }]);
+      await renderAdmin([{ ...internship, durationDays: 90 }, { ...base, _id: "c2", title: "Older track", durationDays: 45 }]);
       expect(container.textContent).toContain("3 months");
       expect(container.textContent).toContain("45 days");
     });
   });
 
-  describe("one form for Training + Internship tracks, free internships and courses", () => {
+  describe("one form for Training + Internship tracks and free internships", () => {
     const freeRole = {
       _id: "o9", slug: "free-web", title: "Free Web Intern", audience: "free", status: "open", feeRequired: true, applicants: 0,
       summary: "", techCategory: "web", skills: [], responsibilities: [], eligibility: [], stipend: "", experience: "", duration: "", mode: "",
@@ -207,10 +186,12 @@ describe("admin course form", () => {
     };
     const careersRole = { ...freeRole, _id: "o8", slug: "careers-web", title: "Careers Web Intern", audience: "general" };
 
-    it("lists the three kinds apart, and leaves Careers roles out", async () => {
+    it("lists the two kinds apart, offers no Course, and leaves Careers roles out", async () => {
       await renderAdmin([base, { ...base, _id: "i1", type: "internship", title: "Paid Android Internship" }], [freeRole, careersRole]);
       const headings = qa("h3").map((h) => h.textContent);
-      expect(headings).toEqual(expect.arrayContaining(["Free internships", "Training + Internship tracks", "Courses"]));
+      expect(headings).toEqual(expect.arrayContaining(["Free internships", "Training + Internship tracks"]));
+      expect(headings).not.toContain("Courses");
+      expect(qa(".kind-option b").map((b) => b.textContent)).toEqual(["Training + Internship", "Free Internship"]);
       expect(container.textContent).toContain("Free Web Intern");
       expect(container.textContent).toContain("1 of 4 positions filled");
       expect(container.textContent).not.toContain("Careers Web Intern");
@@ -297,10 +278,10 @@ describe("admin course form", () => {
       await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
       expect(q("#jo-title").value).toBe("Free Web Intern");
       expect(q("#jo-positions").value).toBe("4");
-      expect(qa(".kind-option").find((b) => b.textContent.startsWith("Course")).disabled).toBe(true);
+      expect(qa(".kind-option").find((b) => b.textContent.startsWith("Training + Internship")).disabled).toBe(true);
     });
 
-    it("gives training tracks and courses the same details, and loads them back", async () => {
+    it("saves a training track's details, and loads them back", async () => {
       await renderAdmin();
       await pick("Training + Internship");
       await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
@@ -318,7 +299,7 @@ describe("admin course form", () => {
       act(() => root.unmount());
       root = createRoot(container);
       await renderAdmin([{ ...base, skills: ["SQL"], stipend: "", experience: "Freshers", mode: "", responsibilities: [], eligibility: [], positions: { total: 5, filled: 5, left: 0 } }]);
-      expect(container.textContent).toContain("5 of 5 seats filled — full, can't be bought");
+      expect(container.textContent).toContain("5 of 5 positions filled — full, can't be bought");
       await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
       expect(q("#cd-positions").value).toBe("5");
       expect(q("#cd-skills").value).toBe("SQL");

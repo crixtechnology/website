@@ -27,7 +27,7 @@ const ymd = (d) => new Date(d.getTime() + 5.5 * 60 * 60 * 1000).toISOString().sl
 
 async function createCourse(startsAt) {
   const created = await authed(request(app).post("/api/admin/courses"), adminToken).send({
-    type: "course", title: `Starts later ${Date.now()}-${Math.random()}`, tiers: [{ tier: "basic", price: 1000 }], durationDays: 30, startsAt,
+    type: "internship", title: `Starts later ${Date.now()}-${Math.random()}`, tiers: [{ tier: "basic", price: 1000 }], durationDays: 30, startsAt,
   });
   expect(created.status).toBe(201);
   const opened = await authed(request(app).put(`/api/admin/courses/${created.body.course._id}`), adminToken).send({ status: "open" });
@@ -38,7 +38,7 @@ async function buy(course, email) {
   const signup = await newStudent(app, { name: "Early Bird", email, phone: "9876500000", password: "a-real-password" });
   const token = signup.body.token;
   const appRes = await authed(request(app).post("/api/applications"), token).send({
-    type: "course", refTitle: course.title, courseSlug: course.slug, name: "Early Bird", email, phone: "9876500000",
+    type: "internship", refTitle: course.title, courseSlug: course.slug, name: "Early Bird", email, phone: "9876500000",
   });
   const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" });
   const paymentId = `pay_${Math.random().toString(36).slice(2)}`;

@@ -334,7 +334,7 @@ export default function AdminJobOpenings() {
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Job openings</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
               The roles on the public Careers page, and each role's aptitude test. Free internships are on{" "}
-              <button type="button" className="link-btn" onClick={() => navigate("/admin/courses?type=free")}>Courses &amp; Internships</button>.
+              <button type="button" className="link-btn" onClick={() => navigate("/admin/courses?type=free")}>Training + Internship</button>.
             </p>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>

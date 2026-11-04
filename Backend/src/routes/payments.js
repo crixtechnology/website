@@ -2,6 +2,7 @@ const express = require("express");
 const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { prisma } = require("../db");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
 const { safeEqual } = require("../utils/safeCompare");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
@@ -243,7 +244,7 @@ async function attachReceipt(payment, application) {
 // can never disagree. Returns { course, plan } or { error: { status, message } }.
 async function loadPurchasablePlan(courseSlug, tierName, userId) {
   const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_SEATS });
-  if (!course) return { error: { status: 404, message: "Course not found" } };
+  if (!isProgram(course)) return { error: { status: 404, message: "Course not found" } };
   if (course.status === "closed") {
     return { error: { status: 400, message: "This course is currently closed for enrollment" } };
   }
@@ -521,7 +522,7 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
         if (over) throw Object.assign(new Error(over), { couponLimit: over });
       }
       await tx.creditEntry.create({
-        data: { userId, amount: -pricing.totalDuePaise, kind: "redeemed", paymentId: payment.id, note: "Paid for a training program or course from the wallet" },
+        data: { userId, amount: -pricing.totalDuePaise, kind: "redeemed", paymentId: payment.id, note: "Paid for a training program from the wallet" },
       });
       await tx.application.update({
         where: { id: application.id },
@@ -572,7 +573,7 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
 router.get("/upgrade-options/:courseSlug", requireAuth, async (req, res, next) => {
   try {
     const course = await prisma.course.findUnique({ where: { slug: req.params.courseSlug }, include: WITH_TIERS });
-    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
 
     const result = await getUpgradeOptions(req.user.sub, course);
     if (!result.ok) return res.json({ ok: true, currentTier: null, options: [], reason: result.reason });
@@ -609,7 +610,7 @@ router.post("/create-upgrade-order", publicWriteLimiter, requireAuth, async (req
     if (!isTier(tierName)) return res.status(400).json({ ok: false, error: "Choose a plan to upgrade to." });
 
     const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_TIERS });
-    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
 
     const result = await getUpgradeOptions(req.user.sub, course);
     if (!result.ok) return res.status(400).json({ ok: false, error: result.reason });

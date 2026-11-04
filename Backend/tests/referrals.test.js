@@ -49,7 +49,7 @@ const referralOf = async (student) => (await authed(request(app).get("/api/me/re
 
 async function openCourse(price, title) {
   const create = await authed(request(app).post("/api/admin/courses"), adminToken).send({
-    type: "course", title: title || `Ref Course ${Date.now()}-${Math.random()}`, tiers: [{ tier: "basic", price }],
+    type: "internship", title: title || `Ref Course ${Date.now()}-${Math.random()}`, tiers: [{ tier: "basic", price }],
   });
   const open = await authed(request(app).put(`/api/admin/courses/${create.body.course._id}`), adminToken).send({ status: "open" });
   return open.body.course;
@@ -60,7 +60,7 @@ const quote = (student, course) => authed(request(app).post("/api/payments/quote
 // Runs a purchase end to end: application -> order -> Razorpay's confirmation callback.
 async function buy(student, course) {
   const appRes = await authed(request(app).post("/api/applications"), student.token).send({
-    type: "course", refTitle: course.title, courseSlug: course.slug, tier: "basic",
+    type: "internship", refTitle: course.title, courseSlug: course.slug, tier: "basic",
     name: "Student Person", email: student.email, phone: "9876500000",
   });
   const order = await authed(request(app).post("/api/payments/create-order"), student.token).send({ acceptTerms: true,
@@ -224,7 +224,7 @@ describe("referral pricing, rewards and credit", () => {
     const b = await openCourse(2000);
     const start = async (c) => {
       const appRes = await authed(request(app).post("/api/applications"), saver.token).send({
-        type: "course", refTitle: c.title, courseSlug: c.slug, tier: "basic", name: "Student Person", email: saver.email, phone: "9876500000",
+        type: "internship", refTitle: c.title, courseSlug: c.slug, tier: "basic", name: "Student Person", email: saver.email, phone: "9876500000",
       });
       return authed(request(app).post("/api/payments/create-order"), saver.token).send({ acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: c.slug, tier: "basic" });
     };
@@ -320,7 +320,7 @@ describe("referral rewards come only from real money", () => {
     await authed(request(app).post(`/api/admin/users/${friend.id}/wallet`), adminToken).send({ rupees: 2000, note: "test" });
     const course = await openCourse(1000);
     const appRes = await authed(request(app).post("/api/applications"), friend.token).send({
-      type: "course", refTitle: course.title, courseSlug: course.slug, tier: "basic",
+      type: "internship", refTitle: course.title, courseSlug: course.slug, tier: "basic",
       name: "Student Person", email: friend.email, phone: "9876500000",
     });
     const paid = await authed(request(app).post("/api/payments/pay-with-wallet"), friend.token).send({

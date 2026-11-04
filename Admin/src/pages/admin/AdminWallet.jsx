@@ -58,7 +58,7 @@ export default function AdminWallet() {
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
         </div>
         <p style={{ color: "var(--muted)", margin: "0 0 24px", lineHeight: 1.7 }}>
-          Give a student credit to spend on training programs and courses, or take some back. They see every change, with your note, in their profile.
+          Give a student credit to spend on training programs, or take some back. They see every change, with your note, in their profile.
         </p>
 
         <div className="admin-form">

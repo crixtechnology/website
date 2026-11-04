@@ -72,7 +72,6 @@ export default function AdminApplications() {
           <select className="admin-search" aria-label="Filter by type" value={type} onChange={(e) => setType(e.target.value)} style={{ flex: "0 0 auto" }}>
             <option value="">All types</option>
             <option value="internship">Internships</option>
-            <option value="course">Courses</option>
           </select>
         </div>
 
@@ -97,7 +96,7 @@ export default function AdminApplications() {
                 <div className="admin-row-main admin-row-message">
                   <p>
                     <span className={`type-pill type-pill--${a.type}`} style={{ marginRight: 8 }}>
-                      {a.type === "internship" ? "Training + Internship" : "Course"}
+                      Training + Internship
                     </span>
                     {a.course ? (
                       // `course` resolves for either type now that an internship

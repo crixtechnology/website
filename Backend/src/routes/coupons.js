@@ -9,7 +9,8 @@ const router = express.Router();
 // enter a code at checkout (POST /api/payments/quote and /create-order).
 
 const DISCOUNT_TYPES = ["percent", "fixed"];
-const SCOPES = ["all", "course", "internship", "selected"];
+// "course" was dropped with courses; an old code with it applies to nothing.
+const SCOPES = ["all", "internship", "selected"];
 const MAX_PERCENT = 90; // same ceiling as the referral welcome discount
 const MAX_RUPEES = 100000;
 
@@ -87,7 +88,7 @@ async function parseCoupon(body, existing) {
     if (!untouched) {
       const ids = has("courseIds") ? b.courseIds : existing && existing.courseIds;
       if (!Array.isArray(ids) || ids.length === 0 || !ids.every((i) => typeof i === "string" && i)) {
-        return { error: "Pick at least one training program or course for this code." };
+        return { error: "Pick at least one training track for this code." };
       }
       const unique = [...new Set(ids)];
       const found = await prisma.course.count({ where: { id: { in: unique } } });

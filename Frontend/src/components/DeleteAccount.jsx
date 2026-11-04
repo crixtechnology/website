@@ -64,7 +64,7 @@ export default function DeleteAccount() {
 
   const losing = summary
     ? [
-        summary.activeCourses > 0 && `access to your ${summary.activeCourses} active course${summary.activeCourses === 1 ? "" : "s"} or internship${summary.activeCourses === 1 ? "" : "s"}`,
+        summary.activeCourses > 0 && `access to your ${summary.activeCourses} active training program${summary.activeCourses === 1 ? "" : "s"} or internship${summary.activeCourses === 1 ? "" : "s"}`,
         summary.walletCredits > 0 && `${summary.walletCredits} wallet credits`,
         summary.jobApplications > 0 && `${summary.jobApplications} careers application${summary.jobApplications === 1 ? "" : "s"} and any test results`,
       ].filter(Boolean)
@@ -91,7 +91,7 @@ export default function DeleteAccount() {
           <p style={{ margin: "0 0 8px" }}><b>What is deleted, straight away</b></p>
           <ul className="check-list" style={{ margin: "0 0 12px" }}>
             <li>Your profile: name, email, phone, education and password</li>
-            <li>Your course and internship access, wallet credit and referrals</li>
+            <li>Your training access, wallet credit and referrals</li>
             <li>Careers applications, uploaded CVs, aptitude tests and their webcam photos</li>
             <li>Notifications, and messages you sent us through the contact form</li>
           </ul>

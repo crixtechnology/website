@@ -1,5 +1,6 @@
-// One-time migration: the internships and courses currently hardcoded in
-// Frontend/src/data/content.js (as `internships` / `courses`) were never
+// One-time migration (courses were dropped later, so only the training tracks
+// are seeded now): the internships hardcoded in
+// Frontend/src/data/content.js (as `internships`) were never
 // admin-managed — the live site was just showing static content, and with
 // no Course rows in the DB, nothing was actually purchasable. This inserts
 // the exact same titles/descriptions/points as real, admin-editable
@@ -57,51 +58,6 @@ const internships = [
   },
 ];
 
-const courses = [
-  {
-    tag: "Beginner friendly",
-    title: "Web Development Track",
-    desc: "HTML, CSS, JavaScript to full MERN stack — self-paced with mentor support.",
-    points: ["Frontend fundamentals", "React in depth", "Node.js & MongoDB", "Deploy your own projects"],
-  },
-  {
-    tag: "In demand",
-    title: "AI & ML Fundamentals",
-    desc: "Practical AI/ML for students — Python, APIs, and building real AI features.",
-    points: ["Python for AI", "Working with LLM APIs", "Prompt engineering", "Mini projects portfolio"],
-  },
-  {
-    tag: "Career",
-    title: "Building AI Agents & RAG Systems",
-    desc: "The advanced track — build agents that use tools, retrieve knowledge, and work in teams.",
-    points: ["LangChain & CrewAI", "RAG systems", "Multi-agent projects", "Certificate on completion"],
-  },
-  {
-    tag: "Mobile",
-    title: "Kotlin & Java for Android",
-    desc: "Beginner to pro — build native Android apps and publish a portfolio project.",
-    points: ["Java & Kotlin foundations", "Jetpack & Material UI", "REST APIs & local storage", "Ship a real app"],
-  },
-  {
-    tag: "Backend",
-    title: "Node.js Programming",
-    desc: "Server-side JavaScript — build REST APIs, auth, and database-backed services.",
-    points: ["Express & routing", "JWT authentication", "MongoDB & Mongoose", "Deploy your API"],
-  },
-  {
-    tag: "Frontend",
-    title: "React.js Programming",
-    desc: "Component-driven UIs — hooks, state, routing, and production patterns.",
-    points: ["Hooks & state management", "React Router", "API integration", "Build & deploy projects"],
-  },
-  {
-    tag: "Data",
-    title: "SQL & Databases",
-    desc: "Design schemas and write queries that scale — the data layer every developer needs.",
-    points: ["Relational modelling", "Joins, indexes & views", "Transactions", "Practical query projects"],
-  },
-];
-
 async function seed(list, type) {
   let created = 0, skipped = 0;
   for (const entry of list) {
@@ -118,7 +74,6 @@ async function seed(list, type) {
 
 async function run() {
   await seed(internships, "internship");
-  await seed(courses, "course");
   await prisma.$disconnect();
   process.exit(0);
 }

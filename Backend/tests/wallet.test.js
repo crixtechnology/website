@@ -45,7 +45,7 @@ async function signup(label) {
 
 async function openCourse(tiers, title) {
   const create = await authed(request(app).post("/api/admin/courses"), adminToken).send({
-    type: "course", title: title || `Wallet Course ${Date.now()}-${Math.random()}`,
+    type: "internship", title: title || `Wallet Course ${Date.now()}-${Math.random()}`,
     tiers: tiers.map(([tier, price]) => ({ tier, price })),
   });
   const open = await authed(request(app).put(`/api/admin/courses/${create.body.course._id}`), adminToken).send({ status: "open" });
@@ -58,7 +58,7 @@ const quote = (student, course, extra = {}) => authed(request(app).post("/api/pa
 
 async function application(student, course) {
   const res = await authed(request(app).post("/api/applications"), student.token).send({
-    type: "course", refTitle: course.title, courseSlug: course.slug, tier: "basic",
+    type: "internship", refTitle: course.title, courseSlug: course.slug, tier: "basic",
     name: "Student Person", email: student.email, phone: "9876500000",
   });
   expect(res.status).toBeLessThan(300);

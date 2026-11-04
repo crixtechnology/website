@@ -1,5 +1,6 @@
 const express = require("express");
 const { prisma } = require("../db");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
 const { hasValidAccess, isAdminUser, hasStarted, notStartedResponse } = require("../utils/enrollmentAccess");
@@ -46,7 +47,7 @@ router.post("/admin/lectures", requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: "End time must be after the start time" });
     }
     const courseDoc = await prisma.course.findUnique({ where: { id: course } });
-    if (!courseDoc) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(courseDoc)) return res.status(404).json({ ok: false, error: "Course not found" });
 
     const lecture = await prisma.lecture.create({
       data: {
@@ -114,9 +115,9 @@ router.delete("/admin/lectures/:id", requireAdmin, async (req, res, next) => {
 router.get("/learn/:courseSlug", requireAuth, async (req, res, next) => {
   try {
     const course = await prisma.course.findUnique({ where: { slug: req.params.courseSlug } });
-    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
 
-    // Admins can open any course or internship without being enrolled.
+    // Admins can open any track without being enrolled.
     if (!(await isAdminUser(req.user))) {
       const enrollment = await prisma.enrollment.findFirst({
         where: { userId: req.user.sub, courseId: course.id, status: "active" },

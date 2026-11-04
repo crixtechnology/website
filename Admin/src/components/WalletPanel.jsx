@@ -37,7 +37,7 @@ export default function WalletPanel({ userId, userName, wallet, onChange }) {
       <p className="form-note" style={{ margin: "0 0 12px" }}>
         Balance <b style={{ color: "var(--text)" }}>{money(wallet.balance)}</b>
         {" "}· received {money(wallet.earned)} · spent {money(wallet.spent)}.
-        {" "}They use it to pay for training programs and courses at checkout.
+        {" "}They use it to pay for training programs at checkout.
       </p>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         <div className="field" style={{ margin: 0, flex: "0 1 130px" }}>

@@ -11,7 +11,7 @@ const TILE_ICONS = {
   Users: <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6 M16 4.5a3.5 3.5 0 0 1 0 6.5 M18 14c2 .7 3.5 2.8 3.5 6" />,
   Subscriptions: <path d="M3 6h18v12H3z M3 10h18 M7 15h4" />,
   "Live class schedule": <path d="M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4 M9 14l2 2 4-4" />,
-  "Course videos": <path d="M3 5h18v14H3z M10 9.5v5l4.5-2.5z" />,
+  "Recorded lectures": <path d="M3 5h18v14H3z M10 9.5v5l4.5-2.5z" />,
   Services: <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M12 2v3 M12 19v3 M4.9 4.9 7 7 M17 17l2.1 2.1 M2 12h3 M19 12h3 M4.9 19.1 7 17 M17 7l2.1-2.1" />,
   "Offer codes": <path d="M3 12V4h8l10 10-8 8z M7.5 7.5h.01" />,
   Referrals: <path d="M16 3h5v5 M21 3l-7 7 M8 21H3v-5 M3 21l7-7" />,
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
       ]);
       const jobs = jobsRes && jobsRes.ok ? jobsRes : null;
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
-      const courses = entries.filter((c) => c.type !== "internship");
+      const courses = []; // courses were dropped; the API lists training tracks only
       const internships = entries.filter((c) => c.type === "internship");
       const enrollments = enrollRes.ok ? enrollRes.enrollments || [] : [];
       const students = new Set(enrollments.map((e) => e.user?._id).filter(Boolean));
@@ -90,18 +90,18 @@ export default function AdminDashboard() {
     // One tile: Training + Internship tracks, free internships and courses share one page and form.
     {
       label: "Training + Internship",
-      value: stats.courses + stats.internships + stats.freeInternships,
-      sub: `${stats.internships} training track${stats.internships === 1 ? "" : "s"} · ${stats.freeInternships} free internship${stats.freeInternships === 1 ? "" : "s"} · ${stats.courses} course${stats.courses === 1 ? "" : "s"} · ${stats.openCourses + stats.openInternships} on sale`,
+      value: stats.internships + stats.freeInternships,
+      sub: `${stats.internships} training track${stats.internships === 1 ? "" : "s"} · ${stats.freeInternships} free internship${stats.freeInternships === 1 ? "" : "s"} · ${stats.openCourses + stats.openInternships} on sale`,
       to: "/admin/courses",
     },
     { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },
     { label: "Subscriptions", value: stats.enrollments, sub: "paid & granted", to: "/admin/students" },
     { label: "Live class schedule", value: "Manage", sub: "Google Meet sessions", to: "/admin/lectures" },
-    { label: "Course videos", value: "Manage", sub: "recorded lectures", to: "/admin/videos" },
+    { label: "Recorded lectures", value: "Manage", sub: "training recordings", to: "/admin/videos" },
     { label: "Services", value: "Manage", sub: "public /services page", to: "/admin/services" },
-    { label: "Payment requests", value: "Manage", sub: "ask a student to pay for a training program or course", to: "/admin/payment-requests" },
+    { label: "Payment requests", value: "Manage", sub: "ask a student to pay for a training program", to: "/admin/payment-requests" },
     { label: "Wallet credit", value: "Manage", sub: "add credit to a student's wallet", to: "/admin/wallet" },
-    { label: "Offer codes", value: "Manage", sub: "discount codes for courses & internships", to: "/admin/coupons" },
+    { label: "Offer codes", value: "Manage", sub: "discount codes for training programs", to: "/admin/coupons" },
     { label: "Referrals", value: stats.referrals, sub: `${stats.referralsRewarded} led to a purchase · rules & credit`, to: "/admin/referrals" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
     { label: "Help agent questions", value: stats.botQuestions, sub: "questions the help agent couldn't answer", to: "/admin/bot-questions" },

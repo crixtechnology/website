@@ -22,7 +22,7 @@ beforeAll(async () => {
   student = await prisma.user.create({ data: { name: "Student", email: "student-access@test.com", passwordHash: "x", role: "student" } });
   adminToken = tokenFor(admin);
   studentToken = tokenFor(student);
-  course = await prisma.course.create({ data: { type: "course", title: "Paid Course", slug: "paid-course", desc: "d" } });
+  course = await prisma.course.create({ data: { type: "internship", title: "Paid Course", slug: "paid-course", desc: "d" } });
   internship = await prisma.course.create({ data: { type: "internship", title: "Some Internship", slug: "some-internship", desc: "d" } });
   video = await prisma.video.create({ data: { courseId: course.id, title: "Day 1", b2Key: "admin-access/day1.mp4", dayNumber: 1 } });
   process.env.VIDEO_GATEWAY_URL = "https://gateway.test";
@@ -65,7 +65,7 @@ describe("a course or internship the admin creates afterwards", () => {
   // anything created through the admin API is open to the admin straight away.
   it("is open to the admin immediately, and still closed to students", async () => {
     const newCourse = await request(app).post("/api/admin/courses").set(auth(adminToken))
-      .send({ type: "course", title: "Brand New Course", tiers: [{ tier: "basic", price: 999 }] });
+      .send({ type: "internship", title: "Brand New Course", tiers: [{ tier: "basic", price: 999 }] });
     const newInternship = await request(app).post("/api/admin/courses").set(auth(adminToken))
       .send({ type: "internship", title: "Brand New Internship" });
     expect(newCourse.status).toBe(201);

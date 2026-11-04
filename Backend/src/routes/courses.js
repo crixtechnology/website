@@ -2,6 +2,7 @@ const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { serialize } = require("../utils/serialize");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
 const { WITH_SEATS, withSeats, parseTiers } = require("../utils/tiers");
 const { parseCourseContent } = require("../utils/courseContent");
 const { accessStartFor, computeEndDate } = require("../utils/enrollmentAccess");
@@ -39,13 +40,14 @@ function validDuration(value) {
   return Number.isInteger(n) && n > 0 && n <= 36500;
 }
 
-function typeFilter(req) {
-  const type = req.query.type;
-  return type === "course" || type === "internship" ? { type } : {};
+// Only Training + Internship tracks are listed, whatever ?type= asks for
+// (courses were dropped — utils/programs.js).
+function typeFilter() {
+  return PROGRAM_WHERE;
 }
 
 // ---------- public ----------
-// ?type=course or ?type=internship filters; omit for everything.
+// Training + Internship tracks only (courses were dropped).
 router.get("/courses", async (req, res, next) => {
   try {
     const courses = await prisma.course.findMany({ where: typeFilter(req), orderBy: { createdAt: "asc" }, include: WITH_SEATS });
@@ -57,7 +59,8 @@ router.get("/courses", async (req, res, next) => {
 
 router.get("/courses/:slug", async (req, res, next) => {
   try {
-    const course = await prisma.course.findUnique({ where: { slug: req.params.slug }, include: WITH_SEATS });
+    const found = await prisma.course.findUnique({ where: { slug: req.params.slug }, include: WITH_SEATS });
+    const course = isProgram(found) ? found : null;
     if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
     res.json({ ok: true, course: serialize(withSeats(course)) });
   } catch (e) {
@@ -91,7 +94,8 @@ function courseTextError({ title, tag, desc, points }) {
 router.post("/admin/courses", requireAdmin, async (req, res, next) => {
   try {
     const { type, title, tag, desc, points, tiers, durationDays, status } = req.body || {};
-    const entryType = type === "internship" ? "internship" : "course";
+    if (type !== undefined && type !== "internship") return res.status(400).json({ ok: false, error: COURSES_DROPPED });
+    const entryType = "internship";
     const start = parseStartsAt((req.body || {}).startsAt);
     if (!start.ok) return res.status(400).json({ ok: false, error: start.error });
     if (!title || !String(title).trim()) {
@@ -109,9 +113,6 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     }
     const parsed = parseTiers(tiers === undefined ? [] : tiers);
     if (!parsed.ok) return res.status(400).json({ ok: false, error: parsed.error });
-    if (entryType === "course" && parsed.tiers.length === 0) {
-      return res.status(400).json({ ok: false, error: "Set a price on at least one plan (Basic, Plus or Pro) for a course." });
-    }
     let slug = slugify(title);
     let suffix = 1;
     while (await prisma.course.findUnique({ where: { slug } })) {
@@ -168,10 +169,11 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
 router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
   try {
     const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(existing)) return res.status(404).json({ ok: false, error: "Course not found" });
 
     const { type, title, tag, desc, points, tiers, durationDays, status } = req.body || {};
-    const effectiveType = type === "course" || type === "internship" ? type : existing.type;
+    if (type !== undefined && type !== "internship") return res.status(400).json({ ok: false, error: COURSES_DROPPED });
+    const effectiveType = "internship";
     const textError = courseTextError({ title, tag, desc, points });
     if (textError) return res.status(400).json({ ok: false, error: textError });
     const content = parseCourseContent(req.body);

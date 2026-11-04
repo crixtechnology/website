@@ -1,5 +1,6 @@
 const express = require("express");
 const { prisma } = require("../db");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
 const { attachUserIfPresent } = require("../middleware/requireAuth");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { sendApplicationEmail } = require("../utils/mailer");
@@ -30,8 +31,8 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
     if (!type || !refTitle || !name || !email || !phone) {
       return res.status(400).json({ ok: false, error: "type, refTitle, name, email and phone are required" });
     }
-    if (!["internship", "course"].includes(type)) {
-      return res.status(400).json({ ok: false, error: "type must be 'internship' or 'course'" });
+    if (type !== "internship") {
+      return res.status(400).json({ ok: false, error: type === "course" ? COURSES_DROPPED : "type must be 'internship'" });
     }
     // Training + Internship is paid through a payment request, which can only be
     // sent to an account — so applying needs one, and the application carries
@@ -73,7 +74,8 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
     // internship still links its Application to the right Course too.
     let course = null;
     if (courseSlug) {
-      course = await prisma.course.findUnique({ where: { slug: courseSlug } });
+      const found = await prisma.course.findUnique({ where: { slug: courseSlug } });
+      course = isProgram(found) ? found : null;
     }
 
     const application = await prisma.application.create({
@@ -123,7 +125,8 @@ router.get("/admin/applications", requireAdmin, async (req, res, next) => {
           ],
         }
       : {};
-    if (req.query.type === "internship" || req.query.type === "course") where.type = req.query.type;
+    // Training + Internship applications only (old course requests were test data).
+    where.type = "internship";
 
     const applications = await prisma.application.findMany({ where, orderBy: { createdAt: "desc" } });
     res.json({ ok: true, applications: serialize(applications, "application") });

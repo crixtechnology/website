@@ -169,7 +169,7 @@ async function grantSignupBonus(user) {
   sendCareerEmail("sendSignupBonusEmail", { to: user.email, name: user.name, credits: rupees, expiryMonths: settings.creditExpiryMonths });
   await addNotification(user.id, {
     title: `${rupees} bonus credits added`,
-    body: `Welcome to Crix Technology! ${rupees} credits (1 credit = ₹1) are in your wallet, ready to use on any training program or course.`,
+    body: `Welcome to Crix Technology! ${rupees} credits (1 credit = ₹1) are in your wallet, ready to use on any training program.`,
     link: "/dashboard?tab=wallet",
   });
   return rupees;

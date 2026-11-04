@@ -95,9 +95,6 @@ export const programDeliverables = {
   // Training + Internship: everyone is trained; the offer letter, stipend and
   // LOR come with the internship, which only top performers are selected for.
   internship: ["Paid mentored training", "Joining kit", "Training certificate", "Stipend internship for top performers"],
-  // Courses are training, not employment — a completion certificate only
-  // (no offer letter / LOR, those are internship-only, see above).
-  course: ["Certificate of completion"],
 };
 
 export const internships = [
@@ -234,51 +231,6 @@ export const whyCrix = [
   { title: "Talent pipeline", desc: "Our internship and training programs mean a steady bench of trained developers ready to staff new work quickly." },
 ];
 
-export const courses = [
-  {
-    tag: "Beginner friendly",
-    title: "Web Development Track",
-    desc: "HTML, CSS, JavaScript to full MERN stack — self-paced with mentor support.",
-    points: ["Frontend fundamentals", "React in depth", "Node.js & MongoDB", "Deploy your own projects"],
-  },
-  {
-    tag: "In demand",
-    title: "AI & ML Fundamentals",
-    desc: "Practical AI/ML for students — Python, APIs, and building real AI features.",
-    points: ["Python for AI", "Working with LLM APIs", "Prompt engineering", "Mini projects portfolio"],
-  },
-  {
-    tag: "Career",
-    title: "Building AI Agents & RAG Systems",
-    desc: "The advanced track — build agents that use tools, retrieve knowledge, and work in teams.",
-    points: ["LangChain & CrewAI", "RAG systems", "Multi-agent projects", "Certificate on completion"],
-  },
-  {
-    tag: "Mobile",
-    title: "Kotlin & Java for Android",
-    desc: "Beginner to pro — build native Android apps and publish a portfolio project.",
-    points: ["Java & Kotlin foundations", "Jetpack & Material UI", "REST APIs & local storage", "Ship a real app"],
-  },
-  {
-    tag: "Backend",
-    title: "Node.js Programming",
-    desc: "Server-side JavaScript — build REST APIs, auth, and database-backed services.",
-    points: ["Express & routing", "JWT authentication", "MongoDB & Mongoose", "Deploy your API"],
-  },
-  {
-    tag: "Frontend",
-    title: "React.js Programming",
-    desc: "Component-driven UIs — hooks, state, routing, and production patterns.",
-    points: ["Hooks & state management", "React Router", "API integration", "Build & deploy projects"],
-  },
-  {
-    tag: "Data",
-    title: "SQL & Databases",
-    desc: "Design schemas and write queries that scale — the data layer every developer needs.",
-    points: ["Relational modelling", "Joins, indexes & views", "Transactions", "Practical query projects"],
-  },
-];
-
 // The Training + Internship journey: train first, then the best performers
 // move on to a stipend-based internship.
 export const process = [
@@ -355,11 +307,11 @@ export const legal = {
   updated: "Effective date: October 2026 · Last updated: November 2026",
   privacy: {
     intro:
-      "At Crix Technology, we are committed to protecting your privacy. This policy explains how we collect, use, and safeguard your personal information when you use our website, our Training + Internship program and our courses.",
+      "At Crix Technology, we are committed to protecting your privacy. This policy explains how we collect, use, and safeguard your personal information when you use our website, our Training + Internship program.",
     sections: [
       {
         title: "1. Information We Collect",
-        content: `When you create an account, enroll in a training program, apply for an internship, purchase a course, join our referral program, or contact us, we collect:
+        content: `When you create an account, enroll in a training program, apply for an internship, join our referral program, or contact us, we collect:
 • Full name, email address, phone number
 • Education details — your college or university, course, branch / department, semester and year of passing — if you add them to your profile or apply for a free internship
 • College/university name and year of study, if you give them when applying for a training program
@@ -375,16 +327,16 @@ export const legal = {
 • Help chat questions — if the site's help assistant has no answer to something you type, we may save that question (without your name or contact details, and with any email address, phone number or link removed) so we can improve its answers
 • Any messages or project submissions you send us
 
-Payment for a course, a Training + Internship program, a plan upgrade, a payment request sent to your account or an aptitude-test registration fee is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Training programs on our Training + Internship page are paid. Some roles on our Careers page have no registration fee; no payment details are collected when you apply for one of those.`,
+Payment for a Training + Internship program, a plan upgrade, a payment request sent to your account or an aptitude-test registration fee is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Training programs on our Training + Internship page are paid. Some roles on our Careers page have no registration fee; no payment details are collected when you apply for one of those.`,
       },
       {
         title: "2. How We Use Your Information",
         content: `We use the information you provide to:
 • Create and maintain your account, and verify your identity when you log in
-• Process your training enrollment, internship application or course purchase
+• Process your training enrollment or internship application
 • Assess your performance during the training and decide who is selected for the stipend-based internship — and, if you are selected, issue your offer letter and pay your stipend
 • Run the aptitude test for a role you apply for — mark it, check that it was taken fairly and by you, and decide shortlisting and selection
-• Grant and manage access to purchased course content, live-class schedules, and recordings
+• Grant and manage access to your training's live-class schedules and recorded lectures
 • Send you tasks, updates, and certificates via email
 • Send account and transaction emails — one-time verification codes, receipts, payment requests, wallet credit notices, and security notices such as a password change
 • Verify that your email address is really yours — for example before a signup bonus is added to your wallet
@@ -398,14 +350,14 @@ Payment for a course, a Training + Internship program, a plan upgrade, a payment
       {
         title: "3. Information Sharing",
         content: `We do not sell, trade, or rent your personal information to third parties. We may share information only in these limited circumstances:
-• With service providers who assist in operating our website, under their own confidentiality and security obligations — our website hosting and database providers; our cloud storage provider, which stores aptitude-test webcam photos and uploaded CVs (in a private store) and recorded lectures; Cloudflare, which delivers course videos; Razorpay for payment processing; Google for "Sign in with Google" authentication and (where enabled) Google Analytics for aggregate site-usage statistics; and our email provider for sending account and transaction emails
+• With service providers who assist in operating our website, under their own confidentiality and security obligations — our website hosting and database providers; our cloud storage provider, which stores aptitude-test webcam photos and uploaded CVs (in a private store) and recorded lectures; Cloudflare, which delivers recorded lectures; Razorpay for payment processing; Google for "Sign in with Google" authentication and (where enabled) Google Analytics for aggregate site-usage statistics; and our email provider for sending account and transaction emails
 • With courier or delivery partners — only your name, phone number and postal address, to deliver a joining kit
 • If required by law or to protect the rights and safety of Crix Technology or its users
 • With your explicit consent`,
       },
       {
         title: "4. Payment Processing",
-        content: `All payments on this website — for courses, Training + Internship programs, plan upgrades, payment requests and aptitude-test registration fees — are processed through Razorpay, a licensed payment aggregator regulated by the Reserve Bank of India. When you make a payment, your card, UPI, net-banking, or wallet details are entered directly into Razorpay's secure payment interface and are never transmitted to or stored on Crix Technology's own servers — we receive only a payment status, an order/transaction reference, and the amount paid. Please refer to Razorpay's own privacy policy for details on how it handles your payment data.`,
+        content: `All payments on this website — for Training + Internship programs, plan upgrades, payment requests and aptitude-test registration fees — are processed through Razorpay, a licensed payment aggregator regulated by the Reserve Bank of India. When you make a payment, your card, UPI, net-banking, or wallet details are entered directly into Razorpay's secure payment interface and are never transmitted to or stored on Crix Technology's own servers — we receive only a payment status, an order/transaction reference, and the amount paid. Please refer to Razorpay's own privacy policy for details on how it handles your payment data.`,
       },
       {
         title: "5. Data Storage & Security",
@@ -413,11 +365,11 @@ Payment for a course, a Training + Internship program, a plan upgrade, a payment
       },
       {
         title: "6. Data Retention",
-        content: `We retain your account and course-related information for as long as your account remains active, and for a reasonable period afterward to respond to queries, resolve disputes, and comply with our legal obligations. Financial and transaction records — course and internship payments, aptitude-test fees, receipts, wallet credit, and the record of when you accepted our Terms & Conditions for each payment — are retained for the period required under applicable Indian tax and accounting law.
+        content: `We retain your account and training-related information for as long as your account remains active, and for a reasonable period afterward to respond to queries, resolve disputes, and comply with our legal obligations. Financial and transaction records — training program payments, aptitude-test fees, receipts, wallet credit, and the record of when you accepted our Terms & Conditions for each payment — are retained for the period required under applicable Indian tax and accounting law.
 
 Careers applications and aptitude-test results are kept while your account is active, so we can answer questions about a hiring decision. Aptitude-test webcam photos are kept only as long as needed to check that a test was taken fairly: they are deleted automatically 6 months after your application is closed (selected, not shortlisted or rejected), and in any case no later than 12 months after the test. They are deleted straight away if your account is deleted. CVs uploaded for a free internship follow the same periods as the webcam photos.
 
-You can delete your account yourself at any time, from your Profile page ("Delete my account"). We email a one-time code to your account's email address to confirm it's you, and once you enter it your account is deleted straight away — your profile, course access, wallet credit, referrals, careers applications (with any CVs) and aptitude tests (with their webcam photos), notifications and contact-form messages. Unused wallet credit and remaining course access are lost and are not refunded. The only things we keep are your payment records and receipts, with no link to an account, for as long as Indian tax and accounting law requires, along with a record that your account was deleted that contains no personal details. We email you a confirmation when it's done. If you can't log in, you can ask us to delete your account by writing from your registered email address to crixtechnology@gmail.com.`,
+You can delete your account yourself at any time, from your Profile page ("Delete my account"). We email a one-time code to your account's email address to confirm it's you, and once you enter it your account is deleted straight away — your profile, training access, wallet credit, referrals, careers applications (with any CVs) and aptitude tests (with their webcam photos), notifications and contact-form messages. Unused wallet credit and remaining training access are lost and are not refunded. The only things we keep are your payment records and receipts, with no link to an account, for as long as Indian tax and accounting law requires, along with a record that your account was deleted that contains no personal details. We email you a confirmation when it's done. If you can't log in, you can ask us to delete your account by writing from your registered email address to crixtechnology@gmail.com.`,
       },
       {
         title: "7. Cookies & Similar Technologies",
@@ -429,7 +381,7 @@ Analytics cookies are different: we use them only if you agree. When Google Anal
       },
       {
         title: "8. Third-Party Links & Services",
-        content: `Our website may contain links to third-party websites, and integrates third-party services such as Razorpay (payments), Google (sign-in and, where enabled, Google Analytics), Cloudflare (video delivery), cloud storage for test photos and lectures, and WhatsApp (contact and course inquiries), and uses courier partners to deliver kits. We are not responsible for the privacy practices or content of these third parties. We encourage you to review their respective privacy policies before using them.`,
+        content: `Our website may contain links to third-party websites, and integrates third-party services such as Razorpay (payments), Google (sign-in and, where enabled, Google Analytics), Cloudflare (video delivery), cloud storage for test photos and lectures, and WhatsApp (contact and training inquiries), and uses courier partners to deliver kits. We are not responsible for the privacy practices or content of these third parties. We encourage you to review their respective privacy policies before using them.`,
       },
       {
         title: "9. Your Rights",
@@ -484,13 +436,13 @@ Location: Ahmedabad, Gujarat, India`,
   },
   terms: {
     intro:
-      "Please read these Terms of Service carefully before using Crix Technology's website, enrolling in our Training + Internship program or any of our courses, or applying for a role through our Careers page. These terms constitute a legally binding agreement between you and Crix Technology. You will be asked to tick \"I have read and agree to the Terms & Conditions\" before every payment on this website — no payment can be made without it.",
+      "Please read these Terms of Service carefully before using Crix Technology's website, enrolling in our Training + Internship program, or applying for a role through our Careers page. These terms constitute a legally binding agreement between you and Crix Technology. You will be asked to tick \"I have read and agree to the Terms & Conditions\" before every payment on this website — no payment can be made without it.",
     sections: [
       {
         title: "1. Acceptance of Terms",
-        content: `By accessing or using Crix Technology's website, internship programs, courses, or careers and aptitude-test services, you agree to be bound by these Terms of Service. If you do not agree with any part of these terms, please do not use our services.
+        content: `By accessing or using Crix Technology's website, Training + Internship program, or careers and aptitude-test services, you agree to be bound by these Terms of Service. If you do not agree with any part of these terms, please do not use our services.
 
-Before you pay for anything on this website — a course, an internship, a plan upgrade, a payment request, or an aptitude-test registration fee — you must tick the box confirming that you have read and agree to these Terms & Conditions. The Pay button stays disabled until you do, and the date and time you agreed is recorded with that payment. By ticking the box and completing the payment, you confirm that you have read and accepted these Terms, including the payment and refund rules in section 6, as they stand on the date of that payment.`,
+Before you pay for anything on this website — a training program, a plan upgrade, a payment request, or an aptitude-test registration fee — you must tick the box confirming that you have read and agree to these Terms & Conditions. The Pay button stays disabled until you do, and the date and time you agreed is recorded with that payment. By ticking the box and completing the payment, you confirm that you have read and accepted these Terms, including the payment and refund rules in section 6, as they stand on the date of that payment.`,
       },
       {
         title: "2. Eligibility",
@@ -501,13 +453,13 @@ Before you pay for anything on this website — a course, an internship, a plan 
 
 If you are 16 or 17, you may use our services only with the permission of your parent or legal guardian, who agrees to these Terms and our Privacy Policy on your behalf. When creating an account you confirm that you are 18 or older, or that you have this permission. Careers roles and the aptitude test are open only to candidates aged 18 or older (see section 8).
 
-Our Training + Internship program, courses and careers roles (including the aptitude test) are open only to residents of India. Our IT services are available to clients in India and abroad, under our Client Services Terms.
+Our Training + Internship program and careers roles (including the aptitude test) are open only to residents of India. Our IT services are available to clients in India and abroad, under our Client Services Terms.
 
 By applying, you confirm that you meet the eligibility criteria.`,
       },
       {
         title: "3. User Accounts & Registration",
-        content: `To purchase a course or access enrolled course content, you must have an account. You create one by logging in with a valid email address and a password of your choice (an email with no account yet gets a new account, after you confirm), or by signing in with your Google account. Before you buy anything, you must add your full name and phone number to your profile. You agree to:
+        content: `To join a training program or access its live classes and recorded lectures, you must have an account. You create one by logging in with a valid email address and a password of your choice (an email with no account yet gets a new account, after you confirm), or by signing in with your Google account. Before you buy anything, you must add your full name and phone number to your profile. You agree to:
 • Provide accurate, current, and complete information in your account and profile
 • Keep your password confidential and not share your account with anyone else
 • Notify us immediately of any unauthorized use of your account
@@ -536,11 +488,11 @@ Every trainee receives a physical joining kit, shipped to the postal address you
 A training certificate is issued upon satisfactory completion of all assigned training tasks. Trainees selected for the stipend-based internship receive an offer letter on selection, and an internship certificate and Letter of Recommendation upon satisfactory completion of the internship.`,
       },
       {
-        title: "5. Courses",
-        content: `Course content provided by Crix Technology is for personal, non-commercial educational use only. You may not:
-• Reproduce, redistribute, or resell any course material
+        title: "5. Training Content",
+        content: `Training content provided by Crix Technology — live classes, recorded lectures and materials — is for your personal, non-commercial use only. You may not:
+• Reproduce, redistribute, or resell any training material
 • Share login credentials or access links with others
-• Record or screen-capture video lectures without written permission`,
+• Record or screen-capture live classes or recorded lectures without written permission`,
       },
       {
         title: "6. Payments, Refunds & Cancellations",
@@ -554,25 +506,25 @@ A training certificate is issued upon satisfactory completion of all assigned tr
 • If money is debited from your account but the payment fails or is not confirmed, Razorpay or your bank normally reverses it automatically within 5–7 working days. If it is not reversed, or the item you paid for is not unlocked, contact us with your payment reference and we will resolve it.
 • If you are charged twice for the same order, the duplicate payment is refunded to the original payment method once verified.
 
-Training programs on our Training + Internship page are paid programs, but they are not bought through an online checkout: you apply using the "Request to apply" form on the track's page while logged in to your account, or by calling or messaging our Training + Internship team (who will ask you to create an account if you don't have one). Once Crix Technology confirms your seat, it sends a payment request for the training fee to your account (see "Payment requests" below), and your enrollment is complete when that payment is confirmed. The stipend-based internship that follows is not sold: it is offered only to selected trainees (see section 4). Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A training program or course is available for online purchase only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
+Training programs on our Training + Internship page are paid programs, but they are not bought through an online checkout: you apply using the "Request to apply" form on the track's page while logged in to your account, or by calling or messaging our Training + Internship team (who will ask you to create an account if you don't have one). Once Crix Technology confirms your seat, it sends a payment request for the training fee to your account (see "Payment requests" below), and your enrollment is complete when that payment is confirmed. The stipend-based internship that follows is not sold: it is offered only to selected trainees (see section 4). Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A training program is open for enrollment only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
 
-Plans and upgrades: a training program or course may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and offer codes, referral discounts and wallet credit do not apply to upgrades.
+Plans and upgrades: a training program may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and offer codes, referral discounts and wallet credit do not apply to upgrades.
 
-Payment requests: Crix Technology may also send a payment request to a specific registered account for a particular training program or course, at an amount and (where applicable) plan set by us — including for a program that is currently closed or has no listed price. A payment request appears under "Payment requests" in your My Dashboard, is personal to your account, and can be paid only by you through Razorpay. Paying it grants you access to that training program or course on the same terms as a regular purchase, and a receipt is issued in the same way. Crix Technology may cancel a payment request that has not yet been paid; a request is not an offer to anyone else. When you pay a payment request, the same reductions as a checkout apply to the requested amount: a valid offer code (section 7), your referral welcome discount if you have not yet made a purchase, and your wallet credit — and if your credit covers the whole amount, you can pay it with your wallet alone.
+Payment requests: Crix Technology may also send a payment request to a specific registered account for a particular training program, at an amount and (where applicable) plan set by us — including for a program that is currently closed or has no listed price. A payment request appears under "Payment requests" in your My Dashboard, is personal to your account, and can be paid only by you through Razorpay. Paying it grants you access to that training program on the same terms as a regular purchase, and a receipt is issued in the same way. Crix Technology may cancel a payment request that has not yet been paid; a request is not an offer to anyone else. When you pay a payment request, the same reductions as a checkout apply to the requested amount: a valid offer code (section 7), your referral welcome discount if you have not yet made a purchase, and your wallet credit — and if your credit covers the whole amount, you can pay it with your wallet alone.
 
-Access to a purchased training program or course's live-class schedule and recorded lectures is granted upon confirmed payment and remains tied to your account. Crix Technology may reschedule live sessions, substitute mentors, or make reasonable changes to program content and delivery format, provided the overall quality and scope is not materially reduced.
+Access to a purchased training program's live-class schedule and recorded lectures is granted upon confirmed payment and remains tied to your account. Crix Technology may reschedule live sessions, substitute mentors, or make reasonable changes to program content and delivery format, provided the overall quality and scope is not materially reduced.
 
 Aptitude-test registration fees for roles on our Careers page are covered by section 8.
 
-All course and internship purchases, including plan upgrades and payments made against a payment request, are final. Crix Technology does not offer refunds or cancellations once payment has been completed, regardless of whether materials, recordings, or live sessions have been accessed. Please review the program's details and use the "Request to apply" or "Request to enroll" option on its page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
+All training purchases, including plan upgrades and payments made against a payment request, are final. Crix Technology does not offer refunds or cancellations once payment has been completed, regardless of whether materials, recordings, or live sessions have been accessed. Please review the program's details and use the "Request to apply" or "Request to enroll" option on its page to ask any questions before purchasing. This clause does not affect any statutory right you may have under applicable consumer protection law.`,
       },
       {
         title: "7. Referral Program, Wallet & Offer Codes",
         content: `Every registered student has a personal referral code. A new student may apply a friend's code once — when signing up, or at checkout before their first purchase — and receives a discount on that first purchase. You cannot use your own code, and a student can be referred only once.
 
-Your wallet. Your Crix wallet holds credit you can spend on training programs and courses. 1 credit = ₹1. Credit reaches your wallet in these ways: as a signup bonus when you create a new student account (where Crix Technology is offering one), added once you verify your email address — or straight away if you sign up with Google; as the return of an aptitude-test registration fee you have paid (see section 8); as a referral reward — when a referred friend's first training program or course purchase — including one paid through a payment request — paid with real money (not wallet credit alone) is confirmed, the student who referred them earns credit, up to the amount the friend actually paid; or when Crix Technology adds credit to your account. Your balance, and every change with its note, is shown on your Profile page and in your My Dashboard.
+Your wallet. Your Crix wallet holds credit you can spend on training programs. 1 credit = ₹1. Credit reaches your wallet in these ways: as a signup bonus when you create a new student account (where Crix Technology is offering one), added once you verify your email address — or straight away if you sign up with Google; as the return of an aptitude-test registration fee you have paid (see section 8); as a referral reward — when a referred friend's first training program purchase — including one paid through a payment request — paid with real money (not wallet credit alone) is confirmed, the student who referred them earns credit, up to the amount the friend actually paid; or when Crix Technology adds credit to your account. Your balance, and every change with its note, is shown on your Profile page and in your My Dashboard.
 
-Spending credit. Wallet credit is taken off the price automatically at checkout and when you pay a payment request, up to the share of a purchase that wallet credit may pay for, as shown on the Careers page. If your credit covers the full price of a training program or course, you can pay with your wallet alone, without a card or UPI payment. When you pay through Razorpay, the minimum payable on an order is ₹1, so credit never reduces such an order below ₹1. Credit applied to a checkout or payment you have started but not yet paid may be held for it until it is paid or abandoned. Wallet credit does not apply to plan upgrades or to aptitude-test registration fees (see section 8), although an amount you paid from your wallet counts as paid when your upgrade price is worked out.
+Spending credit. Wallet credit is taken off the price automatically at checkout and when you pay a payment request, up to the share of a purchase that wallet credit may pay for, as shown on the Careers page. If your credit covers the full price of a training program, you can pay with your wallet alone, without a card or UPI payment. When you pay through Razorpay, the minimum payable on an order is ₹1, so credit never reduces such an order below ₹1. Credit applied to a checkout or payment you have started but not yet paid may be held for it until it is paid or abandoned. Wallet credit does not apply to plan upgrades or to aptitude-test registration fees (see section 8), although an amount you paid from your wallet counts as paid when your upgrade price is worked out.
 
 Limits. Wallet credit has no cash value. It cannot be withdrawn, transferred to another account or exchanged for money, and can be used only for purchases on crixtechnology.com. Signup bonus credit and credit returned from an aptitude-test fee are valid for the period shown on the Careers page when the credit is added; credit that has expired is removed from your wallet automatically and cannot be restored. Referral rewards and credit added by Crix Technology do not expire. Crix Technology may add credit to, or take credit away from, a wallet — for example to correct a mistake or reverse a reward — and every change appears in your wallet history. Because purchases are final (section 6), credit spent on a purchase is not returned if you later cancel it or stop using it. If your account is deleted, any remaining credit is lost.
 
@@ -611,19 +563,19 @@ Results and selection. Your score, marks and answers are used by Crix Technology
       },
       {
         title: "10. Intellectual Property",
-        content: `All content on this website — including text, graphics, logos, icons, and course material — is the property of Crix Technology and is protected by applicable intellectual property laws. You may not use, copy, or distribute any content without our prior written consent.`,
+        content: `All content on this website — including text, graphics, logos, icons, and training material — is the property of Crix Technology and is protected by applicable intellectual property laws. You may not use, copy, or distribute any content without our prior written consent.`,
       },
       {
         title: "11. Certificates & Credentials",
-        content: `Certificates of completion are issued to students who meet the attendance, assessment, and project/assignment requirements specified for the respective course, and who have no outstanding fee dues or unresolved disciplinary action. Certification reflects successful completion of the course and does not constitute a guarantee of employment, salary, or any specific career outcome. Crix Technology reserves the right to withhold or revoke a certificate in cases of academic dishonesty, non-payment of fees, or breach of these Terms. Misrepresenting the nature of a Crix Technology certificate (e.g., claiming it is a government-issued credential) is strictly prohibited.`,
+        content: `Certificates of completion are issued to students who meet the attendance, assessment, and project/assignment requirements specified for the respective training program, and who have no outstanding fee dues or unresolved disciplinary action. Certification reflects successful completion of the training program and does not constitute a guarantee of employment, salary, or any specific career outcome. Crix Technology reserves the right to withhold or revoke a certificate in cases of academic dishonesty, non-payment of fees, or breach of these Terms. Misrepresenting the nature of a Crix Technology certificate (e.g., claiming it is a government-issued credential) is strictly prohibited.`,
       },
       {
         title: "12. Code of Conduct",
-        content: `Students are expected to maintain discipline, punctuality, and respectful behaviour towards trainers, staff, and fellow students at all times, whether in-person or online. Crix Technology maintains a zero-tolerance policy towards harassment, discrimination, cheating, plagiarism, or disruptive behaviour. Violations may result in warnings, suspension, or termination of enrollment without refund. Students must not record, reproduce, distribute, or resell course materials or live sessions without prior written permission.`,
+        content: `Students are expected to maintain discipline, punctuality, and respectful behaviour towards trainers, staff, and fellow students at all times, whether in-person or online. Crix Technology maintains a zero-tolerance policy towards harassment, discrimination, cheating, plagiarism, or disruptive behaviour. Violations may result in warnings, suspension, or termination of enrollment without refund. Students must not record, reproduce, distribute, or resell training materials or live sessions without prior written permission.`,
       },
       {
         title: "13. Placement Assistance Disclaimer",
-        content: `Where Crix Technology offers placement assistance, interview preparation, or job-referral support as part of a course, this is provided on a best-effort basis only. Crix Technology does not guarantee job placement, interviews, or employment outcomes for any student, as these depend on factors including market conditions, employer requirements, and individual performance.`,
+        content: `Where Crix Technology offers placement assistance, interview preparation, or job-referral support as part of a training program, this is provided on a best-effort basis only. Crix Technology does not guarantee job placement, interviews, or employment outcomes for any student, as these depend on factors including market conditions, employer requirements, and individual performance.`,
       },
       {
         title: "14. Student Work",
@@ -631,7 +583,7 @@ Results and selection. Your score, marks and answers are used by Crix Technology
       },
       {
         title: "15. Data Privacy",
-        content: `Personal data collected through your account and during enrollment is processed in accordance with the Digital Personal Data Protection Act, 2023 ("DPDP Act") and used solely for administration of your account and courses, communication, certification, payment processing, and (where applicable) placement assistance. Students may, by written request, access, correct, or request erasure of their personal data, or withdraw consent, subject to Crix Technology's legal and administrative record-keeping requirements. Crix Technology will not sell student personal data to third parties without consent. See our Privacy Policy for full details, including our designated Grievance Officer's contact information.`,
+        content: `Personal data collected through your account and during enrollment is processed in accordance with the Digital Personal Data Protection Act, 2023 ("DPDP Act") and used solely for administration of your account and training, communication, certification, payment processing, and (where applicable) placement assistance. Students may, by written request, access, correct, or request erasure of their personal data, or withdraw consent, subject to Crix Technology's legal and administrative record-keeping requirements. Crix Technology will not sell student personal data to third parties without consent. See our Privacy Policy for full details, including our designated Grievance Officer's contact information.`,
       },
       {
         title: "16. Limitation of Liability",
@@ -644,7 +596,7 @@ Our total liability in any matter shall not exceed the amount you paid for our s
       },
       {
         title: "17. Force Majeure",
-        content: `Crix Technology shall not be liable for any delay, cancellation, or change in course delivery caused by circumstances beyond its reasonable control, including natural disasters, government restrictions, internet outages, or public health emergencies. In such cases, Crix Technology will make reasonable efforts to reschedule or provide alternate arrangements.`,
+        content: `Crix Technology shall not be liable for any delay, cancellation, or change in training delivery caused by circumstances beyond its reasonable control, including natural disasters, government restrictions, internet outages, or public health emergencies. In such cases, Crix Technology will make reasonable efforts to reschedule or provide alternate arrangements.`,
       },
       {
         title: "18. Termination",
@@ -660,7 +612,7 @@ Our total liability in any matter shall not exceed the amount you paid for our s
       },
       {
         title: "21. Third-Party Services",
-        content: `Our website integrates third-party services, including Razorpay for payment processing, Google for sign-in and (where enabled) Google Analytics, Cloudflare for delivering course videos, cloud storage for aptitude-test webcam photos, uploaded CVs and recorded lectures, an email provider for account and transaction emails, and courier partners for delivering kits, and links to WhatsApp for inquiries and support. Your use of these services is also subject to their own terms and privacy policies, over which Crix Technology has no control. Crix Technology is not responsible for the availability, content, security, or practices of these third-party services.`,
+        content: `Our website integrates third-party services, including Razorpay for payment processing, Google for sign-in and (where enabled) Google Analytics, Cloudflare for delivering recorded lectures, cloud storage for aptitude-test webcam photos, uploaded CVs and recorded lectures, an email provider for account and transaction emails, and courier partners for delivering kits, and links to WhatsApp for inquiries and support. Your use of these services is also subject to their own terms and privacy policies, over which Crix Technology has no control. Crix Technology is not responsible for the availability, content, security, or practices of these third-party services.`,
       },
       {
         title: "22. General Provisions",
@@ -756,17 +708,12 @@ CIN: U63122GJ2026PTC179737`,
   },
 };
 
-// The static internships/courses above are only what shows before (or without)
+// The static internships above are only what shows before (or without)
 // the backend. They get the same URL slug the backend would give each title
 // (routes/courses.js slugify), so their "See more" opens the same
 // /programs/:slug page a database-backed card does — the page falls back to
 // this list (CourseDetail) when the API has no row for that slug, instead of
 // these cards being the one place "See more" opens a popup.
 const slugify = (title) => String(title).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-for (const list of [internships, courses]) {
-  for (const entry of list) if (!entry.slug) entry.slug = slugify(entry.title);
-}
-export const fallbackPrograms = [
-  ...internships.map((e) => ({ ...e, type: "internship" })),
-  ...courses.map((e) => ({ ...e, type: "course" })),
-];
+for (const entry of internships) if (!entry.slug) entry.slug = slugify(entry.title);
+export const fallbackPrograms = internships.map((e) => ({ ...e, type: "internship" }));
