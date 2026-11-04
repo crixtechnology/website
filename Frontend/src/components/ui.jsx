@@ -464,15 +464,91 @@ export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Dura
   );
 }
 
+/* ---------- TrainingCard: a Training + Internship track ----------
+   The same card as a Careers or Free Internship role (Careers.jsx OpeningCard,
+   FreeInternships.jsx FreeOpeningCard — .job-card): type pill and positions
+   tag, a badge on the right, title, short description, skills, the shared
+   facts (utils/positions.js programFacts), then the two buttons. Only the
+   content differs: "Paid training" instead of a test fee, Request to apply
+   instead of an application with a test, and View details opens the track's
+   own page. `switcher` is the duration switch of a grouped domain. */
+export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher = null }) {
+  const navigate = useNavigate();
+  const { isAdmin } = useContext(UserContext);
+  const full = isFull(item);
+  const facts = programFacts({ ...item, type: "internship" });
+  const skills = Array.isArray(item.skills) ? item.skills : [];
+  const open = () => {
+    if (item.slug) navigate(`/programs/${item.slug}`);
+    else if (onDetail) onDetail({ item, kind: "internship", isProgram: true });
+  };
+  return (
+    <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
+      <TiltCard className="card-type-internship job-card">
+        {/* The whole card opens the details; the buttons below are the keyboard route. */}
+        <div className="job-card-body" onClick={open}>
+          <div className="card-top">
+            <div className="card-top-left">
+              <span className="type-pill type-pill--internship">Training + Internship</span>
+              <span className={`tag${full ? " tag--full" : ""}`}>{positionsTag(item.positions, "Open")}</span>
+            </div>
+            {item.status === "closed"
+              ? <span className="closed-badge">Currently closed</span>
+              : <span className="fee-pill">Paid training</span>}
+          </div>
+          <h3>{item.title}</h3>
+          {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}
+          <p>{item.desc}</p>
+          {skills.length ? (
+            <div className="deliverable-row">
+              {skills.map((x) => <span key={x} className="deliverable-chip">{x}</span>)}
+            </div>
+          ) : null}
+          {facts.length ? (
+            <dl className="job-facts">
+              {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+            </dl>
+          ) : null}
+        </div>
+        <div className="card-btn-row">
+          {isAdmin && item.slug ? (
+            <Link className="btn btn-solid buy-btn" to={`/learn/${item.slug}`}>Open training →</Link>
+          ) : owned ? (
+            <Link className="btn btn-solid buy-btn" to="/dashboard">View in My Dashboard →</Link>
+          ) : (
+            // Full or not, students apply — a full track's applicants hear about the next batch.
+            <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)}>Request to apply</button>
+          )}
+          {item.slug ? (
+            // A real link, so open-in-new-tab and crawlers still reach the track's page.
+            <a className="btn btn-ghost see-more-btn" href={`/programs/${item.slug}`}
+              onClick={(e) => {
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+                open();
+              }}>
+              View details →
+            </a>
+          ) : (
+            <button className="btn btn-ghost see-more-btn" onClick={open}>View details →</button>
+          )}
+        </div>
+      </TiltCard>
+    </Reveal>
+  );
+}
+
 /* ---------- ProgramGroupCard: one card for a domain in several durations ----------
-   The selected duration's track fills the card — price, details, See more and
-   Request to apply all follow the switch. ownedOf(item) says whether the
-   student already has that track. A group of one is a plain InfoCard. */
-export function ProgramGroupCard({ variants, ownedOf, ...cardProps }) {
+   The selected duration's track fills the card — its details, Request to apply
+   and View details all follow the switch. ownedOf(item) says whether the
+   student already has that track. A group of one is a plain TrainingCard.
+   (isProgram / kind are accepted for the callers' sake; every card here is a track.) */
+// eslint-disable-next-line no-unused-vars
+export function ProgramGroupCard({ variants, ownedOf, isProgram, kind, ...cardProps }) {
   const [active, setActive] = useState(0);
   const item = variants[Math.min(active, variants.length - 1)];
   return (
-    <InfoCard {...cardProps} item={item} owned={ownedOf ? ownedOf(item) : false}
+    <TrainingCard {...cardProps} item={item} owned={ownedOf ? ownedOf(item) : false}
       switcher={<DurationSwitch variants={variants} active={active} onPick={setActive} label={`${item.title}: choose a duration`} />} />
   );
 }

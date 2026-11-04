@@ -229,7 +229,7 @@ export default function AdminCourses() {
       tiers,
       durationDays: form.durationDays ? Number(form.durationDays) : null,
       // Empty clears it: content opens as soon as it's bought.
-      startsAt: form.startsAt || "",
+      startsAt: "", // no program has an exact start date: clears any old one
     };
     const res = editingId ? await adminUpdateCourse(editingId, payload) : await adminCreateCourse(payload);
     setSaving(false);
@@ -273,7 +273,7 @@ export default function AdminCourses() {
               : <>Apply-only · {c.tag}</>}
             {c.durationDays ? ` · ${formatDuration(c.durationDays)}` : ""}
             {c.group ? ` · group: ${c.group}` : ""}
-            {c.startingFrom ? ` · Starting from ${c.startingFrom}` : ""}
+            {c.startingFrom ? ` · starts ${c.startingFrom}` : ""}
             {c.startsAt ? ` · ${startsInFuture(c) ? "starts" : "started"} ${formatStartDate(c.startsAt)}` : ""}
           </span>
           {c.positions && (
@@ -320,79 +320,80 @@ export default function AdminCourses() {
             onSaved={() => { setEditingOpening(null); jobs.load(); }} onCancel={() => setEditingOpening(null)} />
         ) : (
         <form onSubmit={onSubmit} className="admin-form">
-          <h3 style={{ margin: "0 0 16px" }}>{`${editingId ? "Edit" : "Add"} ${editingId ? "this" : "a"} Training + Internship track`}</h3>
+          {/* Laid out like the Free Internship / Careers form (AdminJobOpenings.jsx
+              OpeningForm): the same fields in the same order. Where those have
+              their aptitude test, training has its fee — it has no test. */}
+          <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit this Training + Internship track" : "Add a Training + Internship track"}</h3>
           {kindPicker}
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="courses-title">Title</label>
               <input id="courses-title" value={form.title} onChange={set("title")} placeholder="Full Stack (MERN) Development" /></div>
-            <div className="field"><label htmlFor="courses-tag">Tag</label>
-              <input id="courses-tag" value={form.tag} onChange={set("tag")} placeholder="Beginner friendly" /></div>
-            {kind === "internship" ? (
-              <div className="field"><label htmlFor="ac-duration">Duration</label>
-                <select id="ac-duration" value={form.durationDays} onChange={set("durationDays")}>
-                  <option value="">Not set (access never expires)</option>
-                  {INTERNSHIP_DURATIONS.map((d) => <option key={d} value={String(d)}>{formatDuration(d)}</option>)}
-                  {/* An internship from before this list existed may carry another length: keep it selectable so editing doesn't silently change it. */}
-                  {form.durationDays && !INTERNSHIP_DURATIONS.includes(Number(form.durationDays)) && (
-                    <option value={form.durationDays}>{formatDuration(form.durationDays)} (current)</option>
-                  )}
-                </select>
-              </div>
-            ) : (
-              <div className="field"><label htmlFor="ac-duration">Duration (days)</label>
-                <input id="ac-duration" type="number" min="1" value={form.durationDays} onChange={set("durationDays")} placeholder="30" /></div>
-            )}
-            <div className="field"><label htmlFor="courses-starts-on">Starts on (optional)</label>
-              <input id="courses-starts-on" type="date" value={form.startsAt} onChange={set("startsAt")} /></div>
-            {kind === "internship" && (
-              <>
-                <div className="field"><label htmlFor="courses-group">Domain group (optional)</label>
-                  <input id="courses-group" list="courses-group-list" maxLength={60} value={form.group} onChange={set("group")} placeholder="e.g. MERN Stack" />
-                  <datalist id="courses-group-list">
-                    {groupNames.map((g) => <option key={g} value={g} />)}
-                  </datalist>
-                  <span className="admin-row-meta">Give tracks of the same domain the same group: the site shows them as one card with a duration switch.</span></div>
-                <div className="field"><label htmlFor="courses-starting-from">Starting from (optional)</label>
-                  <input id="courses-starting-from" maxLength={60} value={form.startingFrom} onChange={set("startingFrom")} placeholder="e.g. 15 December or 2nd week of January" />
-                  <span className="admin-row-meta">Roughly when this batch is expected to start, shown on the card as "Starting from …". It's an estimate for students: the exact date that opens the training is "Starts on". Leave empty for no tag.</span></div>
-              </>
-            )}
+            <div className="field"><label htmlFor="courses-group">Domain group (optional)</label>
+              <input id="courses-group" list="courses-group-list" maxLength={60} value={form.group} onChange={set("group")} placeholder="e.g. MERN Stack" />
+              <datalist id="courses-group-list">
+                {groupNames.map((g) => <option key={g} value={g} />)}
+              </datalist>
+              <p className="form-note" style={{ margin: "6px 0 0" }}>Tracks of one domain in several durations share a group: the site shows them as one card with a duration switch.</p></div>
           </div>
-          <div className="field"><label htmlFor="courses-description">Description</label>
-            <textarea id="courses-description" rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
-          <div className="field"><label htmlFor="courses-points">Points (one per line)</label>
-            <textarea id="courses-points" rows="4" value={form.points} onChange={set("points")} placeholder={"Frontend fundamentals\nReact in depth\nNode.js & MongoDB"} /></div>
+          <div className="field"><label htmlFor="courses-description">Short description</label>
+            <textarea id="courses-description" rows="2" value={form.desc} onChange={set("desc")} placeholder="Shown on the card" /></div>
+          <div className="field"><label htmlFor="cd-skills">Skills (separate with commas)</label>
+            <input id="cd-skills" value={form.skills} onChange={set("skills")} placeholder="HTML, CSS, JavaScript, React basics" /></div>
+          <div className="admin-form-grid admin-form-grid--2">
+            <div className="field"><label htmlFor="cd-resp">Responsibilities (one per line)</label>
+              <textarea id="cd-resp" rows="4" value={form.responsibilities} onChange={set("responsibilities")} placeholder={"Ship features with the team\nJoin weekly reviews"} /></div>
+            <div className="field"><label htmlFor="cd-elig">Eligibility (one per line)</label>
+              <textarea id="cd-elig" rows="4" value={form.eligibility} onChange={set("eligibility")} placeholder={"Students of any year\nA laptop with internet"} /></div>
+          </div>
+          <div className="admin-form-grid">
+            <div className="field"><label htmlFor="cd-positions">Positions available</label>
+              <input id="cd-positions" type="number" min="1" max="1000" step="1" value={form.positions} onChange={set("positions")} placeholder="No limit" />
+              <p className="form-note" style={{ margin: "6px 0 0" }}>Each enrolled student fills one. When all are filled, the track shows “All positions filled”.</p></div>
+            <div className="field"><label htmlFor="cd-stipend">Stipend (selected interns only)</label>
+              <input id="cd-stipend" value={form.stipend} onChange={set("stipend")} placeholder="Up to ₹6,000/month (performance based)" /></div>
+            <div className="field"><label htmlFor="cd-exp">Experience</label>
+              <input id="cd-exp" value={form.experience} onChange={set("experience")} placeholder="0–1 year (freshers welcome)" /></div>
+            <div className="field"><label htmlFor="ac-duration">Duration</label>
+              <select id="ac-duration" value={form.durationDays} onChange={set("durationDays")}>
+                <option value="">Not set (access never expires)</option>
+                {INTERNSHIP_DURATIONS.map((d) => <option key={d} value={String(d)}>{formatDuration(d)}</option>)}
+                {/* A track from before this list existed may carry another length: keep it selectable so editing doesn't silently change it. */}
+                {form.durationDays && !INTERNSHIP_DURATIONS.includes(Number(form.durationDays)) && (
+                  <option value={form.durationDays}>{formatDuration(form.durationDays)} (current)</option>
+                )}
+              </select></div>
+            <div className="field"><label htmlFor="cd-mode">Mode</label>
+              <input id="cd-mode" value={form.mode} onChange={set("mode")} placeholder="Remote / Ahmedabad" /></div>
+            <div className="field"><label htmlFor="courses-starting-from">Starts on (optional)</label>
+              <input id="courses-starting-from" maxLength={60} value={form.startingFrom} onChange={set("startingFrom")} placeholder="e.g. 2nd week of January" />
+              <p className="form-note" style={{ margin: "6px 0 0" }}>Roughly when the batch starts — an estimate shown on the card. Leave empty to show nothing.</p></div>
+          </div>
 
-          <fieldset className="plan-editor-set">
-            <legend>Training + Internship details</legend>
-            <p className="admin-row-meta" style={{ margin: "0 0 14px" }}>
-              The same details a free internship shows, on the card and its own page. Anything left empty isn't shown.
-            </p>
-            <div className="admin-form-grid">
-              <div className="field"><label htmlFor="cd-positions">{kind === "internship" ? "Positions" : "Seats"} available</label>
-                <input id="cd-positions" type="number" min="1" max="1000" step="1" value={form.positions} onChange={set("positions")} placeholder="No limit" />
-                <p className="form-note" style={{ margin: "6px 0 0" }}>Each purchase takes one. When all are taken it shows “All filled” and can't be bought.</p></div>
-              <div className="field"><label htmlFor="cd-stipend">{kind === "internship" ? "Stipend (selected interns only)" : "Stipend"}</label>
-                <input id="cd-stipend" value={form.stipend} onChange={set("stipend")} placeholder={kind === "internship" ? "Up to ₹6,000/month (performance based)" : "Leave blank if none"} /></div>
-              <div className="field"><label htmlFor="cd-exp">Experience</label>
-                <input id="cd-exp" value={form.experience} onChange={set("experience")} placeholder="0–1 year (freshers welcome)" /></div>
-              <div className="field"><label htmlFor="cd-mode">Mode</label>
-                <input id="cd-mode" value={form.mode} onChange={set("mode")} placeholder="Remote / Ahmedabad" /></div>
-            </div>
-            <div className="field"><label htmlFor="cd-skills">Skills (separate with commas)</label>
-              <input id="cd-skills" value={form.skills} onChange={set("skills")} placeholder="HTML, CSS, JavaScript, React basics" /></div>
-            <div className="admin-form-grid admin-form-grid--2">
-              <div className="field"><label htmlFor="cd-resp">Responsibilities (one per line)</label>
-                <textarea id="cd-resp" rows="4" value={form.responsibilities} onChange={set("responsibilities")} placeholder={"Ship features with the team\nJoin weekly reviews"} /></div>
-              <div className="field"><label htmlFor="cd-elig">Eligibility (one per line)</label>
-                <textarea id="cd-elig" rows="4" value={form.eligibility} onChange={set("eligibility")} placeholder={"Students of any year\nA laptop with internet"} /></div>
-            </div>
-          </fieldset>
+          <h3 style={{ margin: "12px 0 8px" }}>Training fee for this track</h3>
+          <p className="form-note" style={{ margin: "0 0 14px" }}>
+            Training + Internship has no aptitude test — students apply, and you send a payment request for the fee.
+            Offer up to three plans; a plan with a blank price isn't offered, and with all three blank the page shows no fee.
+            Saving prices doesn't open the track — use the Open/Closed toggle in the list below. What you list under each plan is shown to students; it doesn't restrict access.
+          </p>
+          <div className="plan-editors">
+            {TIER_ORDER.map((tier) => (
+              <div className="plan-editor" key={tier}>
+                <h4>{TIER_LABEL[tier]}</h4>
+                <div className="field"><label htmlFor={`plan-${tier}-price`}>Price (₹)</label>
+                  <input id={`plan-${tier}-price`} type="number" min="0" value={form.plans[tier].price} onChange={setPlan(tier, "price")} placeholder="Not offered" /></div>
+                <div className="field"><label htmlFor={`plan-${tier}-discount`}>Discount (%)</label>
+                  <input id={`plan-${tier}-discount`} type="number" min="0" max="100" value={form.plans[tier].discountPercent} onChange={setPlan(tier, "discountPercent")} placeholder="0" /></div>
+                <div className="field"><label htmlFor={`plan-${tier}-features`}>What's included (one per line)</label>
+                  <textarea id={`plan-${tier}-features`} rows="5" value={form.plans[tier].features} onChange={setPlan(tier, "features")}
+                    placeholder={tier === "basic" ? "Live classes\nRecorded lectures" : tier === "plus" ? "Everything in Basic\nLive doubt sessions" : "Everything in Plus\n1:1 mentoring"} /></div>
+              </div>
+            ))}
+          </div>
 
-          <fieldset className="plan-editor-set">
-            <legend>Track page content (optional)</legend>
-            <p className="admin-row-meta" style={{ margin: "0 0 14px" }}>
-              Shown on this track's own page. Anything you leave empty is simply not shown, so add only what's true and useful.
+          <details className="plan-editor-set" style={{ marginTop: 18 }}>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>More for the track's own page (optional)</summary>
+            <p className="admin-row-meta" style={{ margin: "10px 0 14px" }}>
+              Shown only on the track's own page, not the card. Anything you leave empty is simply not shown.
             </p>
             <div className="field"><label htmlFor="cc-outcomes">What you'll learn (one per line)</label>
               <textarea id="cc-outcomes" rows="5" value={form.outcomes} onChange={set("outcomes")} placeholder={"Build and deploy a REST API\nWork with a real database"} /></div>
@@ -413,31 +414,7 @@ export default function AdminCourses() {
               ))}
               <button type="button" className="btn btn-ghost" onClick={addFaq} disabled={form.faqs.length >= MAX_FAQS}>+ Add a question</button>
             </div>
-          </fieldset>
-
-          <fieldset className="plan-editor-set">
-            <legend>Plans &amp; pricing</legend>
-            <p className="form-note" style={{ margin: "0 0 14px" }}>
-              Offer up to three plans. A plan with a blank price isn't offered.
-              {" Leave all three blank to show no fee on the track's page."}
-              {" "}Saving prices doesn't put it on sale yet — use the Open/Closed toggle in the list below when you're ready for
-              it to show as open. What you list under each plan is shown to students; it doesn't restrict access.
-            </p>
-            <div className="plan-editors">
-              {TIER_ORDER.map((tier) => (
-                <div className="plan-editor" key={tier}>
-                  <h4>{TIER_LABEL[tier]}</h4>
-                  <div className="field"><label htmlFor={`plan-${tier}-price`}>Price (₹)</label>
-                    <input id={`plan-${tier}-price`} type="number" min="0" value={form.plans[tier].price} onChange={setPlan(tier, "price")} placeholder="Not offered" /></div>
-                  <div className="field"><label htmlFor={`plan-${tier}-discount`}>Discount (%)</label>
-                    <input id={`plan-${tier}-discount`} type="number" min="0" max="100" value={form.plans[tier].discountPercent} onChange={setPlan(tier, "discountPercent")} placeholder="0" /></div>
-                  <div className="field"><label htmlFor={`plan-${tier}-features`}>What's included (one per line)</label>
-                    <textarea id={`plan-${tier}-features`} rows="5" value={form.plans[tier].features} onChange={setPlan(tier, "features")}
-                      placeholder={tier === "basic" ? "Recorded lectures\nCertificate" : tier === "plus" ? "Everything in Basic\nLive doubt sessions" : "Everything in Plus\n1:1 mentoring"} /></div>
-                </div>
-              ))}
-            </div>
-          </fieldset>
+          </details>
 
           {error && <p className="form-error">{error}</p>}
           <div className="admin-actions">

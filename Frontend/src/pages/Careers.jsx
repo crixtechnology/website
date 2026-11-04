@@ -17,6 +17,7 @@ import {
   careersHero, careersContact, vision, mission, values, feeBoxPoints, defaultTerms, rememberRole, careersRulesDocument,
   isRoleFull, positionsLabel, positionsTag,
 } from "../data/careers.js";
+import { programFacts } from "../utils/positions.js";
 
 // Skeleton cards show until the live openings arrive; after this long a note
 // says they're on their way (the backend may be waking up — getOpenings keeps
@@ -34,13 +35,8 @@ const scrollToId = (id) => (e) => {
 };
 
 // The facts every opening carries.
-const openingFacts = (o) => [
-  ["Positions", positionsLabel(o.positions)],
-  ["Stipend", o.stipend],
-  ["Experience", o.experience],
-  ["Duration", o.duration],
-  ["Mode", o.mode],
-].filter(([, v]) => v);
+// The facts every program card shows, the same list for all three (utils/positions.js).
+const openingFacts = programFacts;
 
 // Whether this role asks for the aptitude-test registration fee — the only
 // place on the page the fee is mentioned, role by role.

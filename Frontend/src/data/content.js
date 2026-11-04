@@ -475,6 +475,8 @@ You are responsible for all activity that occurs under your account. Crix Techno
 • Training — a paid (not free), mentored training program on the track you enroll in. Its price is shown on its page or communicated to you before you enroll (see section 6), and it runs for the duration shown there — 15 days, 1 month, 3 months or 6 months.
 • Stipend-based internship — after the training, Crix Technology may select trainees for a stipend-based internship, based on their performance during the training (assignments and tasks, the final project, attendance and participation, and professional conduct). Selection is at Crix Technology's sole discretion; the number of internship places, the stipend amount, the internship's duration and its terms are set by Crix Technology for each batch and are communicated to selected trainees in their offer letter.
 
+There is no aptitude test for Training + Internship: you apply, and Crix Technology confirms your seat. Aptitude tests apply only to Free Internship and Careers roles (section 8). Any "Starts on" shown for a track or role is an estimate of when the batch or role begins; the actual start is confirmed to you before it begins.
+
 Enrolling in and paying for the training does not guarantee selection for the internship, a stipend, or any employment. The training fee is for the training only and is not refunded or adjusted if you are not selected.
 
 Opportunities without a fee are not part of this program: they are listed as roles on our Careers page, under section 8. Whichever track you join, by enrolling you agree to:
@@ -716,4 +718,4 @@ CIN: U63122GJ2026PTC179737`,
 // these cards being the one place "See more" opens a popup.
 const slugify = (title) => String(title).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 for (const entry of internships) if (!entry.slug) entry.slug = slugify(entry.title);
-export const fallbackPrograms = internships.map((e) => ({ ...e, type: "internship" }));
+export const fallbackPrograms = internships.map((e) => ({ ...e, type: "internship", skills: e.skills || e.points || [] }));

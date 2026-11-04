@@ -17,6 +17,7 @@ import { FieldError } from "../components/FormFields.jsx";
 import { useTouched } from "../hooks/useTouched.js";
 import { EducationFields, educationForm, educationPayload, educationMissing, emptyEducation } from "../utils/education.js";
 import { careersContact, isRoleFull, positionsLabel, positionsTag } from "../data/careers.js";
+import { programFacts } from "../utils/positions.js";
 import { legal } from "../data/content.js";
 import {
   FREE_PATH, freeHero, freeSteps, freeEligibility, freeRules, processingFeePoints, defaultFreeTerms, CV_MAX_MB, RESULT_DAYS,
@@ -43,13 +44,8 @@ const scrollToId = (id) => (e) => {
   document.getElementById(id)?.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "start" });
 };
 
-const openingFacts = (o) => [
-  ["Positions", positionsLabel(o.positions)],
-  ["Stipend", o.stipend],
-  ["Experience", o.experience],
-  ["Duration", o.duration],
-  ["Mode", o.mode],
-].filter(([, v]) => v);
+// The facts every program card shows, the same list for all three (utils/positions.js).
+const openingFacts = programFacts;
 
 // Checks a chosen file before it is sent: a PDF of up to 2 MB.
 function cvProblem(file) {

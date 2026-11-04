@@ -5,7 +5,6 @@
 // simply left out, and the program's own page is always linked.
 import { offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
-import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 
 // Title words too common to tell one program from another.
 const GENERIC = new Set([
@@ -69,10 +68,12 @@ function priceLine(p) {
 export function programAnswer(p, n) {
   const facts = [];
   const dur = formatDuration(p.durationDays);
-  const starts = startsInFuture(p) ? formatStartDate(p.startsAt) : "";
+  // A rough estimate the admin typed ("2nd week of January"); never an exact date.
+  const starts = String(p.startingFrom || "").trim();
   if (asked(n, "price")) facts.push(priceLine(p));
   if (asked(n, "duration")) facts.push(dur ? `${p.title} runs for ${dur}.` : `The length of ${p.title} is on its page.`);
-  if (asked(n, "start")) facts.push(starts ? `The next batch starts on ${starts}.` : "You get access as soon as you enrol — there's no waiting for a batch.");
+  if (asked(n, "start")) facts.push(starts ? `The next batch is expected to start ${starts} — we confirm the exact start when we confirm your seat.` : "We confirm the batch start when we confirm your seat.");
+  if (asked(n, "test")) facts.push("There's no aptitude test for Training + Internship — you apply, and we confirm your seat. Aptitude tests are only for Free Internship and Careers roles.");
   if (asked(n, "certificate")) {
     facts.push(kind(p) === "internship"
       ? "Yes — you get a training certificate when you complete the training. If you're selected for the stipend-based internship, you also get an offer letter, and an internship certificate and Letter of Recommendation at the end."
@@ -108,6 +109,7 @@ export function roleAnswer(o, n) {
   if (asked(n, "stipend") && o.stipend) facts.push(`Stipend: ${o.stipend}.`);
   if (asked(n, "duration") && o.duration) facts.push(`Duration: ${o.duration}.`);
   if (asked(n, "mode") && o.mode) facts.push(`Mode: ${o.mode}.`);
+  if (asked(n, "start") && o.startsOn) facts.push(`Expected to start: ${o.startsOn}.`);
   if (asked(n, "eligibility")) facts.push(`Eligibility: ${[o.experience, ...(o.eligibility || [])].filter(Boolean).join("; ") || "freshers are welcome"}.`);
   if (asked(n, "test")) facts.push(`Aptitude test: ${test.questions ? `${test.questions} questions` : "multiple-choice questions"}${test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}, with no negative marking.`);
   if (asked(n, "price")) facts.push(free ? "This role is free to apply for — no registration fee." : "This role has an aptitude-test registration fee, shown on its card; the whole fee comes back to your wallet as credit.");

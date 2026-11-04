@@ -1321,3 +1321,16 @@ describe("keeping My Dashboard short", () => {
     expect(await list(other)).toHaveLength(1);
   });
 });
+
+describe("a role's Starts on", () => {
+  it("is optional text, trimmed, shown publicly and clearable — the same estimate a training card shows", async () => {
+    const o = await opening({ startsOn: "  2nd week of January " });
+    expect(o.startsOn).toBe("2nd week of January");
+    const listed = (await request(app).get("/api/careers/openings")).body.openings.find((x) => x._id === o._id);
+    expect(listed.startsOn).toBe("2nd week of January");
+    const cleared = await asAdmin(request(app).put(`/api/admin/job-openings/${o._id}`)).send({ startsOn: "" });
+    expect(cleared.body.opening.startsOn).toBe("");
+    expect((await opening()).startsOn).toBe("");
+    expect((await asAdmin(request(app).post("/api/admin/job-openings")).send({ title: "Bad", startsOn: 5 })).status).toBe(400);
+  });
+});

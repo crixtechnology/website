@@ -63,10 +63,16 @@ describe("a course nobody has filled in yet", () => {
 });
 
 describe("key facts", () => {
-  it("say what it is, that it is online, and what it costs — nothing invented", async () => {
-    await renderPage(base);
+  it("say what it is, that it is online, and what the training costs — nothing invented", async () => {
+    await renderPage({ ...base, type: "internship" });
     const facts = Object.fromEntries(qa(".course-facts > div").map((d) => [d.querySelector("dt").textContent, d.querySelector("dd").textContent]));
-    expect(facts).toEqual({ Type: "Course", Format: "Online", Access: "Lifetime", From: "₹1,000" });
+    expect(facts).toEqual({ Type: "Training + Internship", Format: "Online", "Training fee from": "₹1,000" });
+  });
+
+  it("list the same facts as every program card, Starts on included", async () => {
+    await renderPage({ ...base, type: "internship", stipend: "Up to ₹4,000/month", experience: "Freshers", mode: "Remote", durationDays: 90, startingFrom: "2nd week of January" });
+    const labels = qa(".course-facts > div dt").map((d) => d.textContent);
+    expect(labels).toEqual(["Type", "Format", "Training fee from", "Stipend", "Experience", "Duration", "Mode", "Starts on"]);
   });
 
   it("show the duration when there is one, and drop the price for a closed course", async () => {
@@ -74,7 +80,7 @@ describe("key facts", () => {
     const text = q(".course-facts").textContent;
     expect(text).toContain("Duration3 months");
     expect(text).not.toContain("Lifetime");
-    expect(text).not.toContain("From");
+    expect(text).not.toContain("fee from");
   });
 
   it("call an internship an internship, with no lifetime-access claim", async () => {
@@ -304,18 +310,18 @@ describe("the details a free internship shows", () => {
 describe("a track offered in several durations", () => {
   const mern = (slug, durationDays) => ({ ...base, _id: slug, slug, type: "internship", title: `MERN ${durationDays}`, group: "MERN", durationDays });
 
-  it("links to the domain's other durations and shows its Starting from tag", async () => {
+  it("links to the domain's other durations and shows when it starts", async () => {
     api.getCourses.mockResolvedValue({ ok: true, courses: [mern("mern-3", 90), mern("mern-1", 30), { ...base, _id: "x", slug: "other", type: "internship" }] });
     await renderPage({ ...mern("mern-1", 30), startingFrom: "15 December" });
     const opts = qa(".duration-switch a");
     expect(opts.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["1 month", "/programs/mern-1"], ["3 months", "/programs/mern-3"]]);
     expect(opts[0].getAttribute("aria-current")).toBe("page");
-    expect(q(".starting-from").textContent).toBe("Starting from 15 December");
+    expect(q(".course-facts").textContent).toContain("Starts on15 December");
   });
 
   it("shows no switch for a track without a group", async () => {
     await renderPage({ ...base, type: "internship", slug: "solo" });
     expect(q(".duration-switch")).toBeNull();
-    expect(q(".starting-from")).toBeNull();
+    expect(q(".course-facts").textContent).not.toContain("Starts on");
   });
 });
