@@ -204,9 +204,10 @@ describe("admin course form", () => {
       expect(q("#plan-basic-price")).toBeNull(); // no plans: it isn't sold
       await act(async () => { fill(q("#jo-title"), "Free Data Intern"); });
       await act(async () => { fill(q("#jo-positions"), "6"); });
+      await act(async () => { fill(q("#jo-starts-on"), " 2nd week of January "); });
       await submit();
       expect(api.adminCreateJobOpening).toHaveBeenCalledTimes(1);
-      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6, waiveFee: false });
+      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6, waiveFee: false, startsOn: "2nd week of January" });
       expect(api.adminCreateCourse).not.toHaveBeenCalled();
     });
 
@@ -259,6 +260,32 @@ describe("admin course form", () => {
       });
       await submit();
       expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ group: "MERN Stack", startingFrom: "15 December" });
+    });
+
+    it("lays the training form out like the Free Internship one, with no test and Starts on as text", async () => {
+      await renderAdmin();
+      const labels = qa("form label").map((l) => l.textContent);
+      // Same fields, same order as the Free Internship / Careers form…
+      const order = ["Title", "Short description", "Skills (separate with commas)", "Responsibilities (one per line)", "Eligibility (one per line)",
+        "Positions available", "Stipend (selected interns only)", "Experience", "Duration", "Mode", "Starts on (optional)"];
+      expect(labels.filter((l) => order.includes(l))).toEqual(order);
+      // …with no tag, points or exact date, and its fee where those have the aptitude test.
+      expect(labels).not.toContain("Tag");
+      expect(labels).not.toContain("Points (one per line)");
+      expect(q('input[type="date"]')).toBeNull();
+      expect(q("#courses-starting-from").type).toBe("text");
+      const headings = qa("form h3").map((h) => h.textContent);
+      expect(headings).toContain("Training fee for this track");
+      expect(headings.join(" ")).not.toMatch(/aptitude test/i);
+      expect(container.textContent).toContain("has no aptitude test");
+    });
+
+    it("saves Starts on as text and clears any old exact start date", async () => {
+      await renderAdmin([{ ...base, _id: "t1", startsAt: "2026-12-01T00:00:00.000Z" }]);
+      await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
+      await act(async () => { fill(q("#courses-starting-from"), "2nd week of January"); });
+      await submit();
+      expect(api.adminUpdateCourse.mock.calls[0][1]).toMatchObject({ startingFrom: "2nd week of January", startsAt: "" });
     });
 
     it("won't save a ₹0 training fee — training is paid, not free", async () => {

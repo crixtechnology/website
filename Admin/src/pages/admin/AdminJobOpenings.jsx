@@ -18,7 +18,7 @@ const COUNT_FIELDS = [["quantitative", "Quantitative"], ["logical", "Logical rea
 const EMPTY_FORM = {
   title: "", summary: "", techCategory: "web", skills: "", responsibilities: "", eligibility: "",
   stipend: "Up to ₹6,000/month (performance based)", experience: "0–1 year (freshers welcome)", duration: "3 months", mode: "Remote / Ahmedabad",
-  positions: "", order: "", feeRequired: "yes", waiveFee: "no", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
+  startsOn: "", positions: "", order: "", feeRequired: "yes", waiveFee: "no", durationMinutes: "30", quantitative: "10", logical: "10", verbal: "10", technical: "10",
   marksPerQuestion: "1", cutoffScore: "0",
 };
 
@@ -30,6 +30,7 @@ function openingToForm(o) {
     responsibilities: (o.responsibilities || []).join("\n"),
     eligibility: (o.eligibility || []).join("\n"),
     stipend: o.stipend || "", experience: o.experience || "", duration: o.duration || "", mode: o.mode || "",
+    startsOn: o.startsOn || "",
     positions: o.positions ? String(o.positions.total) : "",
     order: String(o.order ?? ""), feeRequired: o.feeRequired === false ? "no" : "yes", waiveFee: o.waiveFee ? "yes" : "no", durationMinutes: String(o.test.durationMinutes),
     quantitative: String(c.quantitative ?? 0), logical: String(c.logical ?? 0), verbal: String(c.verbal ?? 0), technical: String(c.technical ?? 0),
@@ -147,6 +148,7 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
       skills: form.skills.split(/[,\n]/).map((s) => s.trim()).filter(Boolean),
       responsibilities: lines(form.responsibilities), eligibility: lines(form.eligibility),
       stipend: form.stipend.trim(), experience: form.experience.trim(), duration: form.duration.trim(), mode: form.mode.trim(),
+      startsOn: form.startsOn.trim(),
       positions,
       ...(form.order.trim() ? { order: Number(form.order) } : {}),
       feeRequired: form.feeRequired === "yes",
@@ -202,6 +204,9 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
           <input id="jo-duration" value={form.duration} onChange={set("duration")} /></div>
         <div className="field"><label htmlFor="jo-mode">Mode</label>
           <input id="jo-mode" value={form.mode} onChange={set("mode")} /></div>
+        <div className="field"><label htmlFor="jo-starts-on">Starts on (optional)</label>
+          <input id="jo-starts-on" maxLength={60} value={form.startsOn} onChange={set("startsOn")} placeholder="e.g. 2nd week of January" />
+          <p className="form-note" style={{ margin: "6px 0 0" }}>Roughly when it starts — an estimate shown on the card. Leave empty to show nothing.</p></div>
       </div>
 
       <h3 style={{ margin: "12px 0 16px" }}>Aptitude test for this {what}</h3>

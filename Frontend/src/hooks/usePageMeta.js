@@ -42,7 +42,9 @@ export function routeMeta(path) {
 export function programKeywords(course) {
   if (!course || !course.title) return [];
   const kind = course.type === "internship" ? "internship" : "course";
-  const topics = (Array.isArray(course.points) ? course.points : [])
+  // Skills (what the card shows), else the older points list.
+  const source = Array.isArray(course.skills) && course.skills.length ? course.skills : Array.isArray(course.points) ? course.points : [];
+  const topics = source
     .filter((p) => typeof p === "string" && p.trim() && p.length <= 60)
     .map((p) => p.replace(/^Capstone:\s*/i, "").trim())
     .slice(0, 6);

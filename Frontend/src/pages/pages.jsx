@@ -35,7 +35,7 @@ import { useTouched, focusFirstError } from "../hooks/useTouched.js";
 import PhoneInput from "../components/PhoneInput.jsx";
 import { CourseFacts, CourseLists, CourseFaq, RelatedPrograms, EnrollBar, useCourseJsonLd } from "../components/CourseSections.jsx";
 import { offeredTiers, isOpenForBuy, isFreeProgram, TIER_ORDER } from "../utils/tiers.js";
-import { isFull, placeWord } from "../utils/positions.js";
+import { isFull, placeWord, positionsTag } from "../utils/positions.js";
 
 // The ?tier= a purchase link carries, if it names a real plan.
 const tierFromParams = (params) => {
@@ -54,7 +54,7 @@ const SPARKS = [
 
 export function Home() {
   const heroRef = useRef(null);
-  const [liveInternships, setLiveInternships] = useState(internships);
+  const [liveInternships, setLiveInternships] = useState(fallbackPrograms);
   const [loadingInternships, setLoadingInternships] = useState(hasBackend);
   const [inquireItem, setInquireItem] = useState(null);
   const [detailData, setDetailData] = useState(null);
@@ -203,7 +203,7 @@ export function TrainingInternship() {
   // Comes live from the backend, admin-managed, once it's connected
   // (REACT_APP_API_URL) — falls back to the static list in content.js
   // until then, so the page never shows empty.
-  const [liveInternships, setLiveInternships] = useState(internships);
+  const [liveInternships, setLiveInternships] = useState(fallbackPrograms);
   const [loading, setLoading] = useState(hasBackend);
   // Training isn't bought online here: every card opens the Request to apply
   // form (or the student calls), and the team sends a payment request.
@@ -460,16 +460,15 @@ export function CourseDetail() {
                     {course.type === "internship" ? "Training + Internship" : "Course"}
                   </span>
                 )}
-                <span className="tag">{course.tag}</span>
+                <span className={`tag${isFull(course) ? " tag--full" : ""}`}>{positionsTag(course.positions, "Open")}</span>
               </div>
-              {closed && <span className="closed-badge">Currently closed</span>}
+              {closed ? <span className="closed-badge">Currently closed</span> : <span className="fee-pill">Paid training</span>}
             </div>
             <h1 style={{ fontFamily: "'Unbounded',sans-serif", fontSize: "clamp(1.8rem,4vw,2.6rem)", lineHeight: 1.15, margin: "14px 0 16px" }}>
               {course.title}
             </h1>
             <DurationSwitch variants={siblings} active={siblings.findIndex((v) => v.slug === course.slug)}
               hrefOf={(v) => `/programs/${v.slug}`} label="Other durations of this track" />
-            {course.startingFrom ? <p className="starting-from">Starting from <b>{course.startingFrom}</b></p> : null}
             <p style={{ color: "var(--muted)", fontSize: "1.02rem", lineHeight: 1.7, maxWidth: "65ch" }}>{course.desc}</p>
 
             <CourseFacts course={course} />
@@ -479,10 +478,6 @@ export function CourseDetail() {
                 {programDeliverables[course.type].map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
               </div>
             ) : null}
-
-            <ul className="detail-points" style={{ maxWidth: "60ch" }}>
-              {(course.points || []).map((p) => <li key={p}>{p}</li>)}
-            </ul>
 
             <CourseLists course={course} />
 

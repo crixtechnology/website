@@ -32,7 +32,9 @@ const clip = (s, n = 158) => { s = String(s || "").replace(/\s+/g, " ").trim(); 
 // programKeywords() in src/hooks/usePageMeta.js, which the app uses.
 function programKeywords(c) {
   const kind = c.type === "internship" ? "internship" : "course";
-  const topics = (Array.isArray(c.points) ? c.points : [])
+  // Skills (what the card shows), else the older points list.
+  const source = Array.isArray(c.skills) && c.skills.length ? c.skills : Array.isArray(c.points) ? c.points : [];
+  const topics = source
     .filter((p) => typeof p === "string" && p.trim() && p.length <= 60)
     .map((p) => p.replace(/^Capstone:\s*/i, "").trim())
     .slice(0, 6);

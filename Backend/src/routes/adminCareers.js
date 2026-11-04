@@ -63,7 +63,7 @@ function openingData(body) {
     if (!isList(b[key])) return { error: `${key} must be a list of up to 30 short texts.` };
     data[key] = cleanList(b[key]);
   }
-  for (const key of ["stipend", "experience", "duration", "mode"]) {
+  for (const key of ["stipend", "experience", "duration", "mode", "startsOn"]) {
     if (b[key] === undefined) continue;
     if (!isText(b[key], 190)) return { error: `${key} must be text (up to 190 characters).` };
     data[key] = b[key].trim();

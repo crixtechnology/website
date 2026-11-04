@@ -8,7 +8,7 @@ import * as api from "./services/api.js";
 
 // One domain offered in several durations: tracks the admin gives the same
 // group show as a single card with a duration switch, plus an optional
-// "Starting from" tag.
+// "Starts on" estimate in the card's facts.
 jest.mock("./services/api.js");
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -66,16 +66,17 @@ describe("the Training + Internship page", () => {
     expect(opts.map((o) => o.textContent)).toEqual(["1 month", "3 months"]);
     expect(opts[0].getAttribute("aria-pressed")).toBe("true");
     expect(mern.querySelector("h3").textContent).toBe("MERN — 1 Month");
-    expect(mern.querySelector(".starting-from").textContent).toBe("Starting from 15 December");
+    const startsOn = (card) => [...card.querySelectorAll(".job-facts > div")].find((d) => d.querySelector("dt").textContent === "Starts on");
+    expect(startsOn(mern).querySelector("dd").textContent).toBe("15 December");
     expect(mern.querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-1");
 
     await act(async () => { opts[1].click(); });
     expect(mern.querySelector("h3").textContent).toBe("MERN — 3 Months");
-    expect(mern.querySelector(".starting-from").textContent).toBe("Starting from 2nd week of January");
+    expect(startsOn(mern).querySelector("dd").textContent).toBe("2nd week of January");
     expect(mern.querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-3");
 
     // A track on its own has no switch and, with no value set, no tag.
     expect(cards[1].querySelector(".duration-switch")).toBeNull();
-    expect(cards[1].querySelector(".starting-from")).toBeNull();
+    expect(startsOn(cards[1])).toBeUndefined();
   });
 });

@@ -93,6 +93,7 @@ function shapeOpening(o, { admin = false } = {}) {
     experience: o.experience,
     duration: o.duration,
     mode: o.mode,
+    startsOn: o.startsOn || "",
     positions: positionsOf(o),
     status: o.status,
     order: o.order,

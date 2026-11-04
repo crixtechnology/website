@@ -151,9 +151,9 @@ model Course {
   // Tracks with the same group (e.g. "MERN") are one domain offered in several
   // durations: the site shows them as a single card with a duration switch.
   group           String       @default("")
-  // Optional text the card shows as "Starting from …": roughly when the batch
-  // is expected to start, in the admin's words ("15 December", "mid-January").
-  // An estimate only — startsAt is the exact date that opens access. Empty: no tag.
+  // The card's optional "Starts on": roughly when the batch is expected to
+  // start, in the admin's words ("15 December", "mid-January"). Admin no longer
+  // sets an exact startsAt date — no program has one. Empty: not shown.
   startingFrom    String       @default("")
   positions       Int?
   durationDays    Int?
@@ -622,6 +622,9 @@ model JobOpening {
   experience       String        @default("")
   duration         String        @default("")
   mode             String        @default("")
+  // Roughly when it starts, in the admin's words ("2nd week of January") —
+  // the same optional "Starts on" every program card shows. Empty: not shown.
+  startsOn         String        @default("")
   // How many people the role takes (null = not stated). Applicants marked
   // "selected" fill them; once all are filled no new applications are taken.
   positions        Int?

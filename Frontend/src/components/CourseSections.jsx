@@ -23,11 +23,9 @@ const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" &&
 export function CourseFacts({ course }) {
   const plans = offeredTiers(course);
   const facts = [["Type", kindLabel(course)], ["Format", "Online"]];
-  if (course.durationDays) facts.push(["Duration", formatDuration(course.durationDays)]);
-  else if (course.type !== "internship" && plans.length) facts.push(["Access", "Lifetime"]);
-  if (startsInFuture(course)) facts.push(["Starts", formatStartDate(course.startsAt)]);
-  if (plans.length && isOpenForBuy(course)) facts.push(["From", formatINR(Math.min(...plans.map(planPrice)))]);
-  // Positions / seats, stipend, experience, mode — the details a free internship shows.
+  if (plans.length && course.status !== "closed") facts.push(["Training fee from", formatINR(Math.min(...plans.map(planPrice)))]);
+  // Positions, stipend, experience, duration, mode, starts on — the same facts
+  // every card shows (Careers and Free Internship roles too).
   facts.push(...programFacts(course));
   return (
     <dl className="course-facts">

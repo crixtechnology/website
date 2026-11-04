@@ -1,3 +1,5 @@
+import { formatDuration } from "./duration.js";
+
 // How many places a role, internship or course has, from the backend:
 // { total, filled, left }, or null when it doesn't state a number. Careers
 // roles and free internships are filled by selected applicants; paid
@@ -23,11 +25,15 @@ export function positionsTag(p, fallback, word = "position") {
   return fallback;
 }
 
-// The facts a program card / page shows beside its description, in the same
-// order as a free internship's. Empty ones are left out.
+// The facts every program card and page shows, in one order for all three —
+// Training + Internship tracks, Free Internship roles and Careers roles.
+// Duration is a role's own text, or a track's length; Starts on is the admin's
+// rough estimate (a role's startsOn, a track's startingFrom). Empty ones are left out.
 export const programFacts = (item) => [
   [placeWord(item) === "seat" ? "Seats" : "Positions", positionsLabel(item.positions, placeWord(item))],
   ["Stipend", item.stipend],
   ["Experience", item.experience],
+  ["Duration", item.duration || formatDuration(item.durationDays)],
   ["Mode", item.mode],
+  ["Starts on", item.startsOn || item.startingFrom],
 ].filter(([, v]) => v);
