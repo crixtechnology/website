@@ -2,8 +2,9 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
-  DownloadPdfButton, TrainingContact,
+  DownloadPdfButton, TrainingContact, ProgramGroupCard, DurationSwitch,
 } from "../components/ui.jsx";
+import { groupVariants, siblingsOf } from "../utils/variants.js";
 import {
   site, hero, internships, services, process, benefits, trainingStages, selectionCriteria, stats, about, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables, fallbackPrograms,
@@ -151,8 +152,9 @@ export function Home() {
           <Reveal as="span" variant="reveal-l" className="eyebrow">Training + Internship</Reveal>
           <Reveal as="h2" variant="reveal-l">Get trained. Perform. Earn a stipend.</Reveal>
           <div className="grid3 stagger">
-            {loadingInternships ? <SkeletonCards count={internships.length} /> : liveInternships.map((it, i) => (
-              <InfoCard key={it.title || it._id} item={it} i={i} isProgram kind="internship" owned={hasAccess(it)} onInquire={setInquireItem} onDetail={setDetailData} />
+            {/* One card per domain: tracks sharing a group get a duration switch. */}
+            {loadingInternships ? <SkeletonCards count={internships.length} /> : groupVariants(liveInternships).map((g, i) => (
+              <ProgramGroupCard key={g.key} variants={g.variants} i={i} isProgram kind="internship" ownedOf={hasAccess} onInquire={setInquireItem} onDetail={setDetailData} />
             ))}
           </div>
           <div className="hero-ctas">
@@ -297,8 +299,10 @@ export function TrainingInternship() {
           </Reveal>
           <Reveal variant="reveal-l"><TrainingContact /></Reveal>
           <div className="grid3 stagger" style={{ marginTop: 24 }}>
-            {loading ? <SkeletonCards count={3} /> : programs.map((item, i) => (
-              <InfoCard key={item.title || item._id} item={item} i={i} isProgram kind="internship" owned={hasAccess(item)}
+            {/* One card per domain: tracks the admin put in the same group are
+                its durations, picked with the switch on the card. */}
+            {loading ? <SkeletonCards count={3} /> : groupVariants(programs).map((g, i) => (
+              <ProgramGroupCard key={g.key} variants={g.variants} i={i} isProgram kind="internship" ownedOf={hasAccess}
                 onInquire={setInquireItem} onDetail={setDetailData} />
             ))}
           </div>
@@ -360,6 +364,8 @@ export function CourseDetail() {
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on
   const [inquireOpen, setInquireOpen] = useState(false);
   const [upgrade, setUpgrade] = useState(null); // { item, tier } | null — the plan-upgrade dialog
+  // The other durations of this track's domain (same Admin group), shortest first.
+  const [siblings, setSiblings] = useState([]);
   const { ownedTier, hasAccess, reload: reloadPlans } = useMyPlans();
   const { isLoggedIn, isAdmin, user, openAuthModal } = useContext(UserContext);
   useNoIndex(course === null); // a course that doesn't exist is a "not found" screen: keep it out of search results
@@ -390,6 +396,16 @@ export function CourseDetail() {
     });
     return () => { alive = false; };
   }, [slug]);
+
+  useEffect(() => {
+    let alive = true;
+    setSiblings([]);
+    if (!course || !String(course.group || "").trim()) return undefined;
+    getCourses(course.type).then((res) => {
+      if (alive && res.ok) setSiblings(siblingsOf(course, (res.courses || []).filter((c) => !isFreeProgram(c))));
+    });
+    return () => { alive = false; };
+  }, [course]);
 
   // Came back from /profile via ?buy=<slug> — resume the purchase (for a
   // Training + Internship track, which isn't bought online, open its form).
@@ -451,6 +467,9 @@ export function CourseDetail() {
             <h1 style={{ fontFamily: "'Unbounded',sans-serif", fontSize: "clamp(1.8rem,4vw,2.6rem)", lineHeight: 1.15, margin: "14px 0 16px" }}>
               {course.title}
             </h1>
+            <DurationSwitch variants={siblings} active={siblings.findIndex((v) => v.slug === course.slug)}
+              hrefOf={(v) => `/programs/${v.slug}`} label="Other durations of this track" />
+            {course.startingFrom ? <p className="starting-from">Starting from <b>{course.startingFrom}</b></p> : null}
             <p style={{ color: "var(--muted)", fontSize: "1.02rem", lineHeight: 1.7, maxWidth: "65ch" }}>{course.desc}</p>
 
             <CourseFacts course={course} />

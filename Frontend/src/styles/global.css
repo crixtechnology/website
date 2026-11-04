@@ -982,3 +982,13 @@ body.no-copy img{-webkit-user-drag:none}
 .training-contact-row .buy-btn{width:auto}
 .training-contact .wa-pill{margin-left:0}
 @media(max-width:560px){.training-contact-row>.btn{flex:1 1 100%;text-align:center;justify-content:center}}
+
+
+/* Training + Internship: a domain's durations, switched on its card or page. */
+.duration-switch{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;margin:2px 0 12px;border:1px solid var(--line);border-radius:999px;background:rgba(127,232,224,.04)}
+.duration-opt{font:inherit;font-family:'JetBrains Mono',monospace;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:none;border:0;border-radius:999px;padding:6px 12px;cursor:pointer;text-decoration:none;transition:background .2s,color .2s}
+.duration-opt:hover{color:var(--text)}
+.duration-opt.on{background:var(--teal);color:#04170c}
+.duration-opt:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.starting-from{display:inline-block;margin:0 0 12px;font-size:.82rem;color:var(--muted)}
+.starting-from b{color:var(--amber);font-weight:600}

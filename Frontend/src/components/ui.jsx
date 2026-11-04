@@ -21,6 +21,7 @@ import { FieldError, EmailFieldNote, emailFieldProblem } from "./FormFields.jsx"
 import { useEmailCheck } from "../hooks/useEmailCheck.js";
 import { useTouched, focusFirstError } from "../hooks/useTouched.js";
 import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
+import { variantLabel } from "../utils/variants.js";
 import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
@@ -442,6 +443,40 @@ export function PlanCards({ plans, onChoose, ownedTier, onUpgrade, readOnly = fa
   );
 }
 
+/* ---------- DurationSwitch: pick one duration of a domain ----------
+   variants: the domain's tracks, shortest first (utils/variants.js). Either
+   onPick(index) — the card switches in place — or hrefOf(variant), which makes
+   each option a link (a track's own page links to its other durations). */
+export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Duration" }) {
+  if (!variants || variants.length < 2) return null;
+  return (
+    <div className="duration-switch" role="group" aria-label={label}>
+      {variants.map((v, n) => {
+        const on = n === active;
+        const text = variantLabel(v);
+        return hrefOf ? (
+          <Link key={v.slug || n} to={hrefOf(v)} className={`duration-opt${on ? " on" : ""}`} aria-current={on ? "page" : undefined}>{text}</Link>
+        ) : (
+          <button key={v.slug || n} type="button" className={`duration-opt${on ? " on" : ""}`} aria-pressed={on} onClick={() => onPick(n)}>{text}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------- ProgramGroupCard: one card for a domain in several durations ----------
+   The selected duration's track fills the card — price, details, See more and
+   Request to apply all follow the switch. ownedOf(item) says whether the
+   student already has that track. A group of one is a plain InfoCard. */
+export function ProgramGroupCard({ variants, ownedOf, ...cardProps }) {
+  const [active, setActive] = useState(0);
+  const item = variants[Math.min(active, variants.length - 1)];
+  return (
+    <InfoCard {...cardProps} item={item} owned={ownedOf ? ownedOf(item) : false}
+      switcher={<DurationSwitch variants={variants} active={active} onPick={setActive} label={`${item.title}: choose a duration`} />} />
+  );
+}
+
 /* ---------- TrainingContact: how to join a Training + Internship track ----------
    There's no online checkout for training: a student sends the Request to
    apply form or calls / WhatsApps the Training + Internship team, who confirm
@@ -477,7 +512,9 @@ export function TrainingContact({ onApply, compact = false }) {
 // color, and the CTA verb, so the category reads even out of context (not
 // just from the section heading above the grid). Omit for Services cards.
 // owned: the logged-in student already has access — the card sends them to My Dashboard.
-export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isProgram, kind, owned }) {
+// switcher: the duration switch when this card stands for a domain offered in
+// several durations (ProgramGroupCard).
+export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isProgram, kind, owned, switcher = null }) {
   const navigate = useNavigate();
   const variant = i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top";
   // "See more" and "Choose a plan" both land here. A course or internship opens
@@ -514,6 +551,8 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
           {closed && <span className="closed-badge">Currently closed</span>}
         </div>
         <h3>{item.title}</h3>
+        {switcher}
+        {isProgram && item.startingFrom ? <span className="starting-from">Starting from <b>{item.startingFrom}</b></span> : null}
         <div className="card-peek-wrap">
           <p className="card-benefit">{item.desc}</p>
           {/* Desktop hover: the program's first key points fade in over the
@@ -525,7 +564,8 @@ export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isPro
             </ul>
           ) : null}
         </div>
-        {item.durationDays ? <span className="duration-chip">{formatDuration(item.durationDays)}</span> : null}
+        {/* With a duration switch, the switch already says how long it is. */}
+        {item.durationDays && !switcher ? <span className="duration-chip">{formatDuration(item.durationDays)}</span> : null}
         {skills.length ? (
           <div className="deliverable-row">
             {skills.map((s) => <span key={s} className="deliverable-chip">{s}</span>)}

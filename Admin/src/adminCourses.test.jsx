@@ -268,6 +268,18 @@ describe("admin course form", () => {
       expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ type: "internship", title: "Paid Cloud Internship" });
     });
 
+    it("saves an optional domain group and Starting from tag", async () => {
+      await renderAdmin();
+      await pick("Training + Internship");
+      await act(async () => {
+        fill(q('input[placeholder="Full Stack (MERN) Development"]'), "MERN Training");
+        fill(q("#courses-group"), " MERN Stack ");
+        fill(q("#courses-starting-from"), "₹1,999");
+      });
+      await submit();
+      expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ group: "MERN Stack", startingFrom: "₹1,999" });
+    });
+
     it("won't save a ₹0 training fee — training is paid, not free", async () => {
       await renderAdmin();
       await pick("Training + Internship");

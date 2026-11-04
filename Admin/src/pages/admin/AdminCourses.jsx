@@ -30,6 +30,9 @@ const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "
 const EMPTY_FORM = {
   type: "internship", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
   skills: "", responsibilities: "", eligibility: "", stipend: "", experience: "", mode: "", positions: "",
+  // Training + Internship card: tracks sharing a group show as one card with a
+  // duration switch; startingFrom is the card's optional "Starting from …" tag.
+  group: "", startingFrom: "",
   plans: emptyPlans(),
 };
 const MAX_FAQS = 15;
@@ -51,6 +54,7 @@ function courseToForm(c) {
     responsibilities: (c.responsibilities || []).join("\n"),
     eligibility: (c.eligibility || []).join("\n"),
     stipend: c.stipend || "", experience: c.experience || "", mode: c.mode || "",
+    group: c.group || "", startingFrom: c.startingFrom || "",
     positions: c.positions ? String(c.positions.total) : "",
     faqs: (c.faqs || []).map((f) => ({ q: f.q || "", a: f.a || "" })),
     durationDays: c.durationDays ? String(c.durationDays) : "",
@@ -93,6 +97,9 @@ export default function AdminCourses() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Domain groups already in use, so a second duration joins the right one.
+  const groupNames = [...new Set(entries.map((c) => (c.group || "").trim()).filter(Boolean))].sort();
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const setPlan = (tier, k) => (e) => {
@@ -221,6 +228,7 @@ export default function AdminCourses() {
       responsibilities: lines(form.responsibilities),
       eligibility: lines(form.eligibility),
       stipend: form.stipend.trim(), experience: form.experience.trim(), mode: form.mode.trim(),
+      group: form.group.trim(), startingFrom: form.startingFrom.trim(),
       positions,
       faqs: form.faqs.filter((f) => f.q.trim() && f.a.trim()).map((f) => ({ q: f.q.trim(), a: f.a.trim() })),
       tiers,
@@ -270,6 +278,8 @@ export default function AdminCourses() {
               ? <>{plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from {formatINR(cheapest)} · {c.tag}</>
               : <>Apply-only · {c.tag}</>}
             {c.durationDays ? ` · ${formatDuration(c.durationDays)}` : ""}
+            {c.group ? ` · group: ${c.group}` : ""}
+            {c.startingFrom ? ` · Starting from ${c.startingFrom}` : ""}
             {c.startsAt ? ` · ${startsInFuture(c) ? "starts" : "started"} ${formatStartDate(c.startsAt)}` : ""}
           </span>
           {c.positions && (
@@ -340,6 +350,19 @@ export default function AdminCourses() {
             )}
             <div className="field"><label htmlFor="courses-starts-on">Starts on (optional)</label>
               <input id="courses-starts-on" type="date" value={form.startsAt} onChange={set("startsAt")} /></div>
+            {kind === "internship" && (
+              <>
+                <div className="field"><label htmlFor="courses-group">Domain group (optional)</label>
+                  <input id="courses-group" list="courses-group-list" maxLength={60} value={form.group} onChange={set("group")} placeholder="e.g. MERN Stack" />
+                  <datalist id="courses-group-list">
+                    {groupNames.map((g) => <option key={g} value={g} />)}
+                  </datalist>
+                  <span className="admin-row-meta">Give tracks of the same domain the same group: the site shows them as one card with a duration switch.</span></div>
+                <div className="field"><label htmlFor="courses-starting-from">Starting from (optional)</label>
+                  <input id="courses-starting-from" maxLength={60} value={form.startingFrom} onChange={set("startingFrom")} placeholder="e.g. ₹2,999 or 15 December" />
+                  <span className="admin-row-meta">Shown on the card as "Starting from …". Leave empty for no tag.</span></div>
+              </>
+            )}
           </div>
           <div className="field"><label htmlFor="courses-description">Description</label>
             <textarea id="courses-description" rows="2" value={form.desc} onChange={set("desc")} placeholder="Short description shown on the card" /></div>
