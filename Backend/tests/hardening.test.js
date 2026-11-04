@@ -26,7 +26,7 @@ beforeAll(async () => {
   const admin = await prisma.user.create({ data: { name: "Admin", email: "admin@test.com", passwordHash: "x", role: "admin" } });
   adminToken = signToken({ sub: admin.id, role: "admin", email: admin.email }, { expiresIn: "1h" });
   const created = await request(app).post("/api/admin/courses").set("Authorization", `Bearer ${adminToken}`)
-    .send({ type: "course", title: "Hardening Course", tiers: [{ tier: "basic", price: 1000 }] });
+    .send({ type: "internship", title: "Hardening Course", tiers: [{ tier: "basic", price: 1000 }] });
   course = created.body.course;
 }, 60000);
 afterAll(async () => { await teardownTestDb(); });
@@ -49,10 +49,12 @@ describe("bad input is a 4xx, never a 500", () => {
   it("rejects wrongly-typed fields on the public forms", async () => {
     const contact = await request(app).post("/api/contact").send({ name: true, email: "real.person@gmail.com", message: "hello there" });
     expect(contact.status).toBe(400);
+    // Applying needs an account now, so a guest's bad form is refused either way — never a 500.
     const application = await request(app).post("/api/applications").send({
-      type: "course", refTitle: 12345, name: "Real Person", email: "real.person@gmail.com", phone: "+91 9876500000",
+      type: "internship", refTitle: 12345, name: "Real Person", email: "real.person@gmail.com", phone: "+91 9876500000",
     });
-    expect(application.status).toBe(400);
+    expect(application.status).toBeGreaterThanOrEqual(400);
+    expect(application.status).toBeLessThan(500);
   });
 
   it("answers a malformed JSON body with 400", async () => {

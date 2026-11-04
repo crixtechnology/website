@@ -25,7 +25,7 @@ export default function ReferralCard() {
   const { settings } = data;
   const link = referralLink(data.code);
   const shareText =
-    `I'm learning with Crix Technology — use my code ${data.displayCode} to get ${settings.refereeDiscountPercent}% off your first training program or course: ${link}`;
+    `I'm learning with Crix Technology — use my code ${data.displayCode} to get ${settings.refereeDiscountPercent}% off your first training program: ${link}`;
 
   const copy = async (which, text) => {
     const ok = await copyText(text);
@@ -57,7 +57,7 @@ export default function ReferralCard() {
         <h2 className="ref-title">Share Crix, earn credit.</h2>
         {settings.enabled ? (
           <p className="ref-lede">
-            Friends who use your code get <b>{settings.refereeDiscountPercent}% off</b> their first training program or course.
+            Friends who use your code get <b>{settings.refereeDiscountPercent}% off</b> their first training program.
             When they pay, you get up to <b>{money(settings.referrerCreditRupees)} credit</b> (never more than they paid, and not
             for purchases paid with wallet credit alone) — applied automatically to your next purchase.
           </p>

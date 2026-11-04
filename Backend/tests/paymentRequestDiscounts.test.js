@@ -222,11 +222,27 @@ describe("applying for Training + Internship", () => {
     expect(row.userId).toBe(idOf(student.user));
   });
 
-  it("still takes a course request from a guest", async () => {
-    const course = await prisma.course.create({ data: { type: "course", title: "Guest course", slug: `guest-course-${Date.now()}`, desc: "", status: "closed" } });
+  it("refuses a course request — courses were dropped", async () => {
     const guest = await request(app).post("/api/applications").send({
-      type: "course", refTitle: course.title, courseSlug: course.slug, name: "Guest Person", email: "guest.person@gmail.com", phone: "9876500000",
+      type: "course", refTitle: "Old course", name: "Guest Person", email: "guest.person@gmail.com", phone: "9876500000",
     });
-    expect(guest.status).toBe(201);
+    expect(guest.status).toBe(400);
+    expect(guest.body.error).toMatch(/no longer offered/);
+  });
+});
+
+describe("an old course a student was enrolled in", () => {
+  it("is no longer listed, opened or played — courses were dropped", async () => {
+    const student = await createStudent("oldcourse");
+    const old = await prisma.course.create({ data: { type: "course", title: "Old test course", slug: `old-test-course-${Date.now()}`, desc: "", status: "open" } });
+    await prisma.enrollment.create({ data: { userId: idOf(student.user), courseId: old.id, status: "active" } });
+    const mine = await authed(request(app).get("/api/me/enrollments"), student.token);
+    expect(mine.body.enrollments.map((e) => e.course && e.course._id)).not.toContain(old.id);
+    expect((await authed(request(app).get(`/api/learn/${old.slug}`), student.token)).status).toBe(404);
+    expect((await authed(request(app).get(`/api/courses/${old.id}/videos`), student.token)).status).toBe(404);
+    // Admins can't open it either, and can't send a payment request for it.
+    expect((await authed(request(app).get(`/api/learn/${old.slug}`), adminToken)).status).toBe(404);
+    const preq = await authed(request(app).post("/api/admin/payment-requests"), adminToken).send({ email: student.email, courseId: old.id, amount: 100 });
+    expect(preq.status).toBe(404);
   });
 });

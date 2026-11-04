@@ -108,14 +108,14 @@ export default function AdminLectures() {
             <span className="eyebrow">Admin</span>
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Live class schedule</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
-              Recorded lectures are managed under <Link to="/admin/videos">Course videos</Link>.
+              Recorded lectures are managed under <Link to="/admin/videos">Recorded lectures</Link>.
             </p>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
         </div>
 
         <div className="field" style={{ maxWidth: 420 }}>
-          <label htmlFor="lectures-course">Course</label>
+          <label htmlFor="lectures-course">Training track</label>
           <select id="lectures-course" value={courseId} onChange={(e) => { setCourseId(e.target.value); cancelEdit(); }}>
             {courses.length === 0 && <option value="">No courses yet</option>}
             {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}

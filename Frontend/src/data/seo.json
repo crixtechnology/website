@@ -115,7 +115,7 @@
     },
     "/privacy-policy": {
       "title": "Privacy Policy | Crix Technology",
-      "description": "How Crix Technology Private Limited collects, uses and protects your personal information across our website, Training + Internship program and courses.",
+      "description": "How Crix Technology Private Limited collects, uses and protects your personal information across our website, Training + Internship program.",
       "priority": "0.3",
       "changefreq": "yearly",
       "crumb": "Privacy Policy"

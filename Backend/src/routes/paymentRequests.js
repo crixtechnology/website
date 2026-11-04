@@ -17,6 +17,7 @@
 const express = require("express");
 const crypto = require("crypto");
 const { prisma } = require("../db");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
 const { safeEqual } = require("../utils/safeCompare");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
@@ -241,7 +242,7 @@ router.post("/admin/payment-requests", requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: "allowDiscounts must be true or false" });
     }
     if (typeof courseId !== "string" || !courseId) {
-      return res.status(400).json({ ok: false, error: "Choose a training program or course." });
+      return res.status(400).json({ ok: false, error: "Choose a training track." });
     }
     if ((userId != null && typeof userId !== "string") || (email != null && typeof email !== "string")) {
       return res.status(400).json({ ok: false, error: "userId and email must be text" });
@@ -275,7 +276,7 @@ router.post("/admin/payment-requests", requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: "Admins already have access to everything." });
     }
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: COURSE_SUMMARY });
-    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
 
     const pending = await prisma.paymentRequest.count({ where: { userId: user.id, courseId: course.id, status: "pending" } });
     if (pending > 0) {

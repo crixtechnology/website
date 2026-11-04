@@ -26,7 +26,7 @@ function fmtDuration(seconds) {
 }
 
 export default function AdminVideos() {
-  usePageMeta({ title: "Course Videos | Crix Technology" });
+  usePageMeta({ title: "Recorded Lectures | Crix Technology" });
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [courseId, setCourseId] = useState("");
@@ -93,7 +93,7 @@ export default function AdminVideos() {
     if (!res.ok) { setError(res.error || "Could not save."); return; }
     if (moving) {
       const target = courses.find((c) => c._id === form.courseId);
-      setNotice(`Moved "${patch.title}" to ${target ? courseLabel(target) : "the other course"}.`);
+      setNotice(`Moved "${patch.title}" to ${target ? courseLabel(target) : "the other track"}.`);
     }
     cancelEdit();
     load(courseId);
@@ -130,7 +130,7 @@ This removes it from the site AND deletes the video file from Backblaze storage.
         <div className="admin-head">
           <div>
             <span className="eyebrow">Admin</span>
-            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Course videos</h1>
+            <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Recorded lectures</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
               All recorded videos are playable any time once a student is enrolled. New recordings are added automatically by the sync script.
             </p>
@@ -139,7 +139,7 @@ This removes it from the site AND deletes the video file from Backblaze storage.
         </div>
 
         <div className="field" style={{ maxWidth: 420 }}>
-          <label htmlFor="videos-course">Course</label>
+          <label htmlFor="videos-course">Training track</label>
           <select id="videos-course" value={courseId} onChange={(e) => { setCourseId(e.target.value); cancelEdit(); setNotice(""); }}>
             {courses.length === 0 && <option value="">No courses yet</option>}
             {courses.map((c) => <option key={c._id} value={c._id}>{courseLabel(c)}</option>)}
@@ -189,8 +189,8 @@ This removes it from the site AND deletes the video file from Backblaze storage.
                       <select
                         value={form.courseId}
                         onChange={(e) => setForm({ ...form, courseId: e.target.value })}
-                        aria-label="Training program or course this video belongs to"
-                        title="Move this video to another training program or course"
+                        aria-label="Training track this video belongs to"
+                        title="Move this video to another training track"
                       >
                         {courses.map((c) => <option key={c._id} value={c._id}>{courseLabel(c)}</option>)}
                       </select>

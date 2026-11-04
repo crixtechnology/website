@@ -44,7 +44,7 @@ const authed = (req, token) => req.set("Authorization", `Bearer ${token}`);
 // actually encounter.
 async function createPricedCourse(overrides = {}) {
   const create = await authed(request(app).post("/api/admin/courses"), adminToken).send({
-    type: "course", title: `Course ${Date.now()}-${Math.random()}`, tiers: [{ tier: "basic", price: 5000 }], ...overrides,
+    type: "internship", title: `Course ${Date.now()}-${Math.random()}`, tiers: [{ tier: "basic", price: 5000 }], ...overrides,
   });
   const open = await authed(request(app).put(`/api/admin/courses/${create.body.course._id}`), adminToken).send({ status: "open" });
   return open.body.course;
@@ -92,7 +92,7 @@ describe("POST /api/payments/create-order — server-side guards", () => {
     await prisma.enrollment.create({ data: { userId: user.id, courseId: course._id, status: "active" } });
 
     const appRes = await authed(request(app).post("/api/applications"), token).send({
-      type: "course", refTitle: course.title, courseSlug: course.slug,
+      type: "internship", refTitle: course.title, courseSlug: course.slug,
       name: "Student", email: "repeat-buyer@example.com", phone: "9876500000",
     });
     const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true,
@@ -119,7 +119,7 @@ describe("Terms & Conditions must be accepted before paying", () => {
     const course = await createPricedCourse();
     const { token } = await createStudent("terms-buyer@example.com");
     const appRes = await authed(request(app).post("/api/applications"), token).send({
-      type: "course", refTitle: course.title, courseSlug: course.slug,
+      type: "internship", refTitle: course.title, courseSlug: course.slug,
       name: "Student", email: "terms-buyer@example.com", phone: "9876500000",
     });
     const order = await authed(request(app).post("/api/payments/create-order"), token).send({
@@ -147,7 +147,7 @@ describe("POST /api/payments/create-order — plans", () => {
     const { token } = await createStudent("plans-buyer@example.com");
     buyerToken = token;
     const appRes = await authed(request(app).post("/api/applications"), token).send({
-      type: "course", refTitle: course.title, courseSlug: course.slug, tier: "pro",
+      type: "internship", refTitle: course.title, courseSlug: course.slug, tier: "pro",
       name: "Student", email: "plans-buyer@example.com", phone: "9876500000",
     });
     applicationId = appRes.body.application._id;
@@ -199,7 +199,7 @@ describe("granting access records the purchased plan", () => {
     const course = await createPricedCourse({ tiers: [{ tier: "basic", price: 1000 }, { tier: "pro", price: 3000 }] });
     const { user, token } = await createStudent("grant-plan@example.com");
     const application = await prisma.application.create({
-      data: { type: "course", refTitle: course.title, name: "Grant Plan", email: "grant-plan@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "pro" },
+      data: { type: "internship", refTitle: course.title, name: "Grant Plan", email: "grant-plan@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "pro" },
     });
     const payment = await prisma.payment.create({
       data: { razorpayOrderId: `order_grant_${Date.now()}`, amount: 300000, status: "created", tier: "pro", applicationId: application.id, orderSnapshotBasePrice: 3000, orderSnapshotDiscountPercent: 0 },
@@ -237,7 +237,7 @@ describe("attachReceipt — concurrent /verify + webhook race", () => {
     const { user } = await createStudent("race-buyer@example.com");
     const application = await prisma.application.create({
       data: {
-        type: "course", refTitle: course.title, name: "Race Buyer", email: "race-buyer@example.com",
+        type: "internship", refTitle: course.title, name: "Race Buyer", email: "race-buyer@example.com",
         phone: "9876500000", userId: user.id, courseId: course._id,
       },
     });
@@ -300,7 +300,7 @@ describe("plan upgrades", () => {
     ({ user, token } = await createStudent("upgrader@example.com"));
     // A finished Basic purchase: application + paid payment (₹1000) + enrollment.
     const application = await prisma.application.create({
-      data: { type: "course", refTitle: course.title, name: "Upgrader", email: "upgrader@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "basic" },
+      data: { type: "internship", refTitle: course.title, name: "Upgrader", email: "upgrader@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "basic" },
     });
     const payment = await prisma.payment.create({
       data: { razorpayOrderId: `order_basic_${Date.now()}`, razorpayPaymentId: "pay_basic", amount: 100000, status: "paid", tier: "basic", applicationId: application.id },
@@ -394,7 +394,7 @@ describe("plan upgrades", () => {
   it("only counts what was paid for the current access, not for access that was removed", async () => {
     const { user: rebuyer, token: rebuyerToken } = await createStudent("rebuyer@example.com");
     const appFor = (tier) => prisma.application.create({
-      data: { type: "course", refTitle: course.title, name: "Rebuyer", email: "rebuyer@example.com", phone: "9876500001", userId: rebuyer.id, courseId: course._id, tier },
+      data: { type: "internship", refTitle: course.title, name: "Rebuyer", email: "rebuyer@example.com", phone: "9876500001", userId: rebuyer.id, courseId: course._id, tier },
     });
     const proApp = await appFor("pro");
     await prisma.payment.create({
@@ -422,7 +422,7 @@ describe("plan upgrades", () => {
   it("explains when what was already paid covers every higher plan", async () => {
     const { user: overpaid, token: overpaidToken } = await createStudent("overpaid@example.com");
     const application = await prisma.application.create({
-      data: { type: "course", refTitle: course.title, name: "Overpaid", email: "overpaid@example.com", phone: "9876500002", userId: overpaid.id, courseId: course._id, tier: "pro" },
+      data: { type: "internship", refTitle: course.title, name: "Overpaid", email: "overpaid@example.com", phone: "9876500002", userId: overpaid.id, courseId: course._id, tier: "pro" },
     });
     const payment = await prisma.payment.create({
       data: { razorpayOrderId: `order_overpaid_${Date.now()}`, razorpayPaymentId: "pay_overpaid", amount: 300000, status: "paid", tier: "pro", applicationId: application.id },
@@ -452,13 +452,12 @@ describe("create-order — bug-sweep regressions", () => {
 
   it("refuses an application with no account behind it instead of taking money it can't unlock", async () => {
     const course = await createPricedCourse();
-    // A guest application: no Authorization header, so no userId is attached.
-    const appRes = await request(app).post("/api/applications").send({
-      type: "course", refTitle: course.title, courseSlug: course.slug,
-      name: "Guest Buyer", email: "guest-buyer@example.com", phone: "9876500000",
+    // An application with no account behind it (applying now needs one, so it's
+    // made directly — like one left over from before that rule).
+    const orphan = await prisma.application.create({
+      data: { type: "internship", refTitle: course.title, name: "Guest Buyer", email: "guest-buyer@example.com", phone: "9876500000", courseId: course._id },
     });
-    expect(appRes.status).toBe(201);
-    const body = { acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" };
+    const body = { acceptTerms: true, applicationId: orphan.id, courseSlug: course.slug, tier: "basic" };
     // Not logged in: no orders at all.
     expect((await request(app).post("/api/payments/create-order").send(body)).status).toBe(401);
     // Logged in, but the application belongs to nobody: still refused.
@@ -473,7 +472,7 @@ describe("create-order — bug-sweep regressions", () => {
     const owner = await createStudent("app-owner@example.com");
     const stranger = await createStudent("app-stranger@example.com");
     const appRes = await authed(request(app).post("/api/applications"), owner.token).send({
-      type: "course", refTitle: course.title, courseSlug: course.slug,
+      type: "internship", refTitle: course.title, courseSlug: course.slug,
       name: "App Owner", email: "app-owner@example.com", phone: "9876500000",
     });
     const body = { acceptTerms: true, applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic" };
@@ -488,7 +487,7 @@ describe("create-order — bug-sweep regressions", () => {
     const course = await createPricedCourse({ tiers: [{ tier: "basic", price: 5999, discountPercent: 20 }] });
     const { token } = await createStudent("whole-rupees@example.com");
     const appRes = await authed(request(app).post("/api/applications"), token).send({
-      type: "course", refTitle: course.title, courseSlug: course.slug,
+      type: "internship", refTitle: course.title, courseSlug: course.slug,
       name: "Whole Rupees", email: "whole-rupees@example.com", phone: "9876500000",
     });
     const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true,
@@ -503,7 +502,7 @@ describe("create-order — bug-sweep regressions", () => {
     const { user, token } = await createStudent("owner-hint@example.com");
     await prisma.enrollment.create({ data: { userId: user.id, courseId: course._id, status: "active", tier: "basic" } });
     const appRes = await authed(request(app).post("/api/applications"), token).send({
-      type: "course", refTitle: course.title, courseSlug: course.slug,
+      type: "internship", refTitle: course.title, courseSlug: course.slug,
       name: "Owner Hint", email: "owner-hint@example.com", phone: "9876500000",
     });
     const order = await authed(request(app).post("/api/payments/create-order"), token).send({ acceptTerms: true,
@@ -519,7 +518,7 @@ describe("receipts add up when the price was discounted", () => {
     const course = await createPricedCourse({ tiers: [{ tier: "basic", price: 5999, discountPercent: 20 }] });
     const { user } = await createStudent("receipt-sum@example.com");
     const application = await prisma.application.create({
-      data: { type: "course", refTitle: course.title, name: "Receipt Sum", email: "receipt-sum@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "basic" },
+      data: { type: "internship", refTitle: course.title, name: "Receipt Sum", email: "receipt-sum@example.com", phone: "9876500000", userId: user.id, courseId: course._id, tier: "basic" },
     });
     const payment = await prisma.payment.create({
       data: { razorpayOrderId: `order_sum_${Date.now()}`, razorpayPaymentId: "pay_sum", amount: 479900, status: "paid", tier: "basic", applicationId: application.id, orderSnapshotBasePrice: 5999, orderSnapshotDiscountPercent: 20 },

@@ -609,7 +609,7 @@ async function sendAccountDeletedEmail({ to, name, paymentsKept }) {
   const kept = paymentsKept > 0
     ? `We have kept the records of your ${paymentsKept} payment${paymentsKept === 1 ? "" : "s"} and ${paymentsKept === 1 ? "its receipt" : "their receipts"}, with no link to an account, because Indian tax and accounting law requires us to.`
     : "We held no payment records for your account, so nothing was kept.";
-  const erased = "Your profile, course access, wallet credit, referrals, careers applications and CVs, aptitude tests and webcam photos, notifications and contact-form messages have been erased.";
+  const erased = "Your profile, training access, wallet credit, referrals, careers applications and CVs, aptitude tests and webcam photos, notifications and contact-form messages have been erased.";
   const grievance = "If you have a question or a complaint about how your data was handled, write to our Grievance Officer at crixtechnology@gmail.com.";
   const html = layout({
     preheader: "Your Crix Technology account and personal data have been deleted.",
@@ -676,7 +676,7 @@ async function sendWalletCreditEmail({ to, name, amount, balance, reason, note }
         ["Wallet balance", fmtRupees(balance), true],
       ]) +
       button("View my wallet", link) +
-      paragraph("Your credit is taken off the price automatically at checkout. If it covers the full price of a training program or course, you can pay with your wallet alone.", `font-size:13px;color:${BRAND.muted}`),
+      paragraph("Your credit is taken off the price automatically at checkout. If it covers the full price of a training program, you can pay with your wallet alone.", `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
     `Hi ${name || "there"},\n\n${fmtRupees(amount)} was added to your Crix Technology wallet.\n\n` +

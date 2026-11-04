@@ -32,7 +32,7 @@ beforeAll(async () => {
   student = await prisma.user.create({ data: { name: "Student", email: "student-videos@test.com", passwordHash: "x", role: "student" } });
   adminToken = tokenFor(admin);
   studentToken = tokenFor(student);
-  webDev = await prisma.course.create({ data: { type: "course", title: "Web Dev", slug: "web-dev", desc: "d" } });
+  webDev = await prisma.course.create({ data: { type: "internship", title: "Web Dev", slug: "web-dev", desc: "d" } });
   dataInternship = await prisma.course.create({ data: { type: "internship", title: "Data Internship", slug: "data-internship", desc: "d" } });
 }, 90000);
 afterAll(async () => { await teardownTestDb(); });
@@ -59,7 +59,7 @@ describe("moving a video to another course or internship", () => {
   });
 
   it("starts at day 1 in a course that has no videos yet", async () => {
-    const empty = await prisma.course.create({ data: { type: "course", title: "Empty Course", slug: "empty-course", desc: "d" } });
+    const empty = await prisma.course.create({ data: { type: "internship", title: "Empty Course", slug: "empty-course", desc: "d" } });
     const v = await makeVideo(webDev.id, 4);
     const res = await put(v.id, { courseId: empty.id });
     expect(res.body.video).toMatchObject({ course: empty.id, dayNumber: 1 });

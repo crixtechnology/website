@@ -34,7 +34,7 @@ const uniq = () => `${Date.now()}${++seq}`;
 // genuine purchase would meet (price set, then explicitly opened).
 async function createPriced(overrides = {}) {
   const create = await authed(request(app).post("/api/admin/courses"), adminToken).send({
-    type: "course", title: `Item ${uniq()}`, tiers: [{ tier: "basic", price: 5000 }], ...overrides,
+    type: "internship", title: `Item ${uniq()}`, tiers: [{ tier: "basic", price: 5000 }], ...overrides,
   });
   const open = await authed(request(app).put(`/api/admin/courses/${create.body.course._id}`), adminToken).send({ status: "open" });
   return open.body.course;
@@ -192,7 +192,7 @@ describe("when a code can be used (checkCoupon)", () => {
   // A payment that counts (or doesn't) against a code, for one student.
   async function usage(coupon, who, { status = "paid", minutesAgo = 0 } = {}) {
     const application = await prisma.application.create({
-      data: { type: "course", refTitle: "x", name: "S", email: who.email, phone: "9876500000", userId: who.user.id, courseId: course._id },
+      data: { type: "internship", refTitle: "x", name: "S", email: who.email, phone: "9876500000", userId: who.user.id, courseId: course._id },
     });
     return prisma.payment.create({
       data: { razorpayOrderId: `o_${uniq()}`, amount: 100, status, applicationId: application.id, couponId: coupon._id, couponCode: coupon.code, createdAt: new Date(Date.now() - minutesAgo * 60000) },
@@ -220,15 +220,17 @@ describe("when a code can be used (checkCoupon)", () => {
   });
 
   it("respects what the code applies to", async () => {
-    const onlyCourses = await makeCoupon({ appliesTo: "course" });
+    // `course` here is another training track (courses were dropped).
     const onlyInternships = await makeCoupon({ appliesTo: "internship" });
     const picked = await makeCoupon({ appliesTo: "selected", courseIds: [internship._id] });
-    expect((await check(onlyCourses.code, student, course)).ok).toBe(true);
-    expect((await check(onlyCourses.code, student, internship)).error).toMatch(/doesn't apply to this internship/);
     expect((await check(onlyInternships.code, student, internship)).ok).toBe(true);
-    expect((await check(onlyInternships.code, student, course)).error).toMatch(/doesn't apply to this course/);
     expect((await check(picked.code, student, internship)).ok).toBe(true);
     expect((await check(picked.code, student, course)).error).toMatch(/doesn't apply/);
+  });
+
+  it("no longer offers a courses-only scope", async () => {
+    const res = await authed(request(app).post("/api/admin/coupons"), adminToken).send({ code: `ONLYCOURSE${uniq()}`.slice(0, 20), discountType: "percent", discountValue: 10, appliesTo: "course" });
+    expect(res.status).toBe(400);
   });
 
   it("limits how many times one student can use it", async () => {
@@ -301,7 +303,8 @@ describe("POST /api/payments/create-order with an offer code", () => {
 
   it("refuses a code for something it doesn't apply to", async () => {
     const course = await createPriced();
-    const c = await makeCoupon({ appliesTo: "internship" });
+    const other = await createPriced();
+    const c = await makeCoupon({ appliesTo: "selected", courseIds: [other._id] });
     const s = await createStudent("scope");
     const res = await startOrder(s.token, s.email, course, c.code);
     expect(res.status).toBe(400);

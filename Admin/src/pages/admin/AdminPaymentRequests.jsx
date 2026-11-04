@@ -98,7 +98,7 @@ export default function AdminPaymentRequests() {
     if (sending) return;
     setFormOk("");
     if (!form.user || !form.courseId || !form.amount) {
-      setFormError("Student, course/internship and amount are required.");
+      setFormError("Student, training track and amount are required.");
       return;
     }
     setSending(true);
@@ -140,18 +140,18 @@ export default function AdminPaymentRequests() {
           <h3 style={{ margin: "0 0 16px" }}>Request a payment</h3>
           <p className="form-note" style={{ margin: "-8px 0 16px" }}>
             The student must already have an account. They'll see this on their dashboard (and get an email),
-            and get access as soon as they pay — whether the course/internship is open or closed. Enter the full fee: when they pay, their wallet credit, an offer code and their referral discount (first purchase only) come off it automatically, as at checkout — unless you untick that below.
+            and get access as soon as they pay — whether the track is open or closed. Enter the full fee: when they pay, their wallet credit, an offer code and their referral discount (first purchase only) come off it automatically, as at checkout — unless you untick that below.
           </p>
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="paymentrequests-student">Student</label>
               <UserPicker id="paymentrequests-student" users={students} loading={studentsLoading} value={form.user}
                 onChange={(user) => setForm((f) => ({ ...f, user }))} /></div>
-            <div className="field"><label htmlFor="paymentrequests-course-internship">Course / internship</label>
+            <div className="field"><label htmlFor="paymentrequests-course-internship">Training track</label>
               <select id="paymentrequests-course-internship" value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value, tier: "" })}>
-                <option value="">Choose a training program or course...</option>
+                <option value="">Choose a training track...</option>
                 {courses.map((c) => (
                   <option key={c._id} value={c._id}>
-                    {c.title} ({c.type === "internship" ? "internship" : "course"}{c.status === "closed" ? ", closed" : ""})
+                    {c.title}{c.status === "closed" ? " (closed)" : ""}
                   </option>
                 ))}
               </select>
@@ -182,10 +182,10 @@ export default function AdminPaymentRequests() {
 
         <div className="admin-filters" style={{ marginTop: 40 }}>
           <input
-            className="admin-search" aria-label="Search by student name/email or course title"
+            className="admin-search" aria-label="Search by student name/email or track title"
             type="search"
             style={{ margin: 0 }}
-            placeholder="Search by student name/email or course title..."
+            placeholder="Search by student name/email or track title..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -212,7 +212,7 @@ export default function AdminPaymentRequests() {
                   <span className="admin-row-meta">{r.user?.email} {r.user?.phone ? `· ${r.user.phone}` : ""}</span>
                 </div>
                 <div className="admin-row-main">
-                  <b>{r.course?.title || "Course"}{r.tier && <> <span className="plan-pill">{tierLabel(r.tier)}</span></>}</b>
+                  <b>{r.course?.title || "Training track"}{r.tier && <> <span className="plan-pill">{tierLabel(r.tier)}</span></>}</b>
                   <span className="admin-row-meta">
                     {formatINR(r.amount)}{r.allowDiscounts === false ? " (no discounts)" : ""} · sent {fmtDate(r.createdAt)}
                     {r.paidAt ? ` · paid ${fmtDate(r.paidAt)}` : ""}

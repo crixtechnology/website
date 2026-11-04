@@ -50,7 +50,7 @@ describe("deleting my own account", () => {
     const s = await student();
     await prisma.creditEntry.create({ data: { userId: s.id, amount: 25000, kind: "adjustment" } });
     const application = await prisma.application.create({
-      data: { type: "course", refTitle: "Some course", name: "Leaving Student", email: s.email, phone: "9876500000", college: "Some College", userId: s.id },
+      data: { type: "internship", refTitle: "Some course", name: "Leaving Student", email: s.email, phone: "9876500000", college: "Some College", userId: s.id },
     });
     const payment = await prisma.payment.create({
       data: { razorpayOrderId: `order_del_${seq}`, amount: 99900, status: "paid", userId: s.id, applicationId: application.id, receiptNumber: `CRX-CR-26-9${seq}`, receiptBuyerName: "Leaving Student", receiptBuyerEmail: s.email },

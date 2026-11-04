@@ -324,7 +324,7 @@ Only do this after confirming it's really them (WhatsApp or phone). Their curren
                     <div className="field" style={{ margin: 0, flex: "1 1 200px" }}>
                       <label htmlFor="users-grant-access-to">Grant access to</label>
                       <select id="users-grant-access-to" value={grantForm.courseId} onChange={(e) => setGrantForm({ ...grantForm, courseId: e.target.value })}>
-                        <option value="">Choose a training program or course...</option>
+                        <option value="">Choose a training track...</option>
                         {courses.map((c) => <option key={c._id} value={c._id}>{c.title}</option>)}
                       </select>
                     </div>

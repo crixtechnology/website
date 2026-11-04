@@ -68,7 +68,7 @@ describe("rich course content", () => {
   });
 
   it("works on a course (with plans) as well as an internship", async () => {
-    const res = await create({ type: "course", tiers: [{ tier: "basic", price: 999 }], outcomes: ["Ship a project"] });
+    const res = await create({ type: "internship", tiers: [{ tier: "basic", price: 999 }], outcomes: ["Ship a project"] });
     expect(res.status).toBe(201);
     expect(res.body.course.outcomes).toEqual(["Ship a project"]);
   });
@@ -153,7 +153,7 @@ describe("internship-style details and positions", () => {
   });
 
   it("fills a place per enrollment, and stops selling when all are taken", async () => {
-    const made = (await create({ type: "course", positions: 1, tiers: [{ tier: "basic", price: 500 }] })).body.course;
+    const made = (await create({ type: "internship", positions: 1, tiers: [{ tier: "basic", price: 500 }] })).body.course;
     await update(made._id, { status: "open" });
     const [first, second] = [await buyer(), await buyer()];
     expect((await quote(second, made.slug)).status).toBe(200);
@@ -163,7 +163,7 @@ describe("internship-style details and positions", () => {
     expect(pub.positions).toEqual({ total: 1, filled: 1, left: 0 });
     const refused = await quote(second, made.slug);
     expect(refused.status).toBe(400);
-    expect(refused.body.error).toMatch(/All seats for this course are filled/);
+    expect(refused.body.error).toMatch(/All positions for this internship are filled/);
 
     // One more place opens it again; clearing the number removes the limit.
     expect((await update(made._id, { positions: 2 })).body.course.positions).toEqual({ total: 2, filled: 1, left: 1 });

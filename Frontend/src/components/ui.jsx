@@ -2567,7 +2567,7 @@ function PaymentRequestBanner({ requests }) {
   };
   const first = requests[0];
   const text = requests.length === 1
-    ? `Payment requested: ${first.course?.title || "a course"} — ${formatINR(first.amount)}`
+    ? `Payment requested: ${first.course?.title || "a training program"} — ${formatINR(first.amount)}`
     : `You have ${requests.length} payment requests waiting`;
   return createPortal(
     <div className="preq-banner" role="status">
