@@ -2,7 +2,7 @@ const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { serialize } = require("../utils/serialize");
-const { WITH_TIERS, WITH_SEATS, withSeats, parseTiers } = require("../utils/tiers");
+const { WITH_SEATS, withSeats, parseTiers } = require("../utils/tiers");
 const { parseCourseContent } = require("../utils/courseContent");
 const { accessStartFor, computeEndDate } = require("../utils/enrollmentAccess");
 

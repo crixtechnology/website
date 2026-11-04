@@ -1,62 +1,64 @@
-# Crix Technology — React Website (Simple / Create React App style)
+# Crix Technology — website (Frontend)
 
-Classic React setup — wahi familiar workflow:
+The public website and student area (Create React App).
+
     npm install
     npm start          -> http://localhost:3000
-    npm run build      -> production build in build/ folder
+    npm run build      -> production build in build/ (then scripts/prerender-meta.js
+                          writes per-page SEO HTML + sitemap.xml)
+    npm test
 
-## Pages
-/ (Home) · /internships · /services · /courses · /about · /contact
+Frontend ko backend se connect karne ke liye, is folder mein `.env`:
 
-## Content edit karna
-Saara text EK file mein hai: src/data/content.js
-- site.phone / site.whatsapp / site.email  <- APNA ASLI NUMBER DAALO
-- testimonials                             <- asli student quotes daalo
-- services / courses / internships arrays  <- freely add/edit/remove
-
-## Deploy (Vercel)
-Option A (GitHub, best):
-  1. Folder ko GitHub repo mein push karo
-  2. vercel.com -> Add New Project -> repo import -> Deploy
-     (Create React App auto-detect hota hai)
-  3. Settings -> Domains -> crixtechnology.in add karo
-Option B: Netlify pe bhi same — repo import, build command `npm run build`,
-  publish directory `build`
-
-vercel.json included hai taaki /internships jaise direct URLs refresh pe
-bhi kaam karein (SPA routing).
-
-## Backend (server/) — Node + Express + MongoDB + Razorpay
-Poora backend `server/` folder mein hai — apna alag `package.json`, alag deploy (Render/Railway).
-
-Local run (koi MongoDB install/account nahi chahiye — in-memory DB use karta hai):
-    cd server
-    npm install
-    cp .env.example .env        <- fill in real values later; test Razorpay keys ke liye abhi placeholder chalega
-    npm run dev:memory          <- auto-seeds the admin from ADMIN_EMAIL/ADMIN_PASSWORD, starts on :5000
-
-Real MongoDB (Atlas) ke saath run karna ho:
-    npm run seed:admin          <- one-time, creates the first admin
-    npm run dev                 <- MONGODB_URI se real DB use karega
-
-Frontend ko backend se connect karne ke liye, root mein `.env`:
     REACT_APP_API_URL=http://localhost:5000/api
 
-### Test → Live Razorpay
-`server/.env` mein `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` —
-abhi apne Razorpay dashboard ke **Test Mode** keys daalo. Jab live jaana ho, sirf yeh
-teen values live keys se badal do — code mein kahin kuch change nahi karna padega.
+## Pages
+Public: `/` · `/training-internship` · `/programs/:slug` · `/services` · `/about` ·
+`/careers` · `/free-internships` · `/contact` · `/privacy-policy` ·
+`/terms-of-service` · `/client-terms`
 
-### Admin panel
-The admin panel is a separate app in `../Admin` with its own Vercel deployment (see `Admin/README.md`); it is no longer part of this site.
+Student (login needed): `/dashboard` · `/profile` · `/learn/:slug` · `/test/:applicationId`
+
+Old addresses (`/programs`, `/paid-internships`, `/internships`, `/courses`,
+`/payment`, `/ambassador`, `/bca-internships`) redirect — see `vercel.json`.
+
+## Content edit karna
+- Site text, contact numbers, legal pages: `src/data/content.js`
+  (Privacy Policy / Terms change karo to `legal.updated` date bhi badlo)
+- Page titles, descriptions, keywords, sitemap priority: `src/data/seo.json`
+- Help chat answers: `src/data/faqData.js`
+- Live courses / Training + Internship programs come from the backend (Admin panel).
+
+## Deploy (Vercel)
+Project root = `Frontend`, build command `npm run build`, output `build`.
+`vercel.json` holds the redirects, the rewrites that serve each page's
+prerendered HTML, and security headers. Set `REACT_APP_API_URL` (and the
+optional Google / analytics variables) in the Vercel project's environment.
+
+## Rest of the repo
+- `../Backend` — Node + Express + Prisma (MySQL) + Razorpay API. Copy
+  `Backend/.env.example` to `Backend/.env`, then `npx prisma migrate deploy`,
+  `npm run seed:admin`, `npm run dev` (port 5000). Tests need a local MySQL
+  database named `crix_test`: `npm test`.
+- `../Admin` — the admin panel, a separate React app with its own Vercel
+  deployment (port 3001 locally).
+- `../cloudflare-worker` — the signed-URL video gateway (see `../VIDEO_SYSTEM.md`).
+- `../scripts/drive-to-b2-sync` — copies lecture recordings from Google Drive to B2.
+
+### Test → Live Razorpay
+`Backend/.env` mein `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`
+— pehle Razorpay **Test Mode** keys. Live keys (`rzp_live_...`) tabhi charge karenge
+jab `ALLOW_LIVE_PAYMENTS=true` bhi set ho.
 
 ## Structure
-src/
-  data/content.js    <- SAB CONTENT YAHAN
-  services/api.js    <- backend layer (fetch)
-  components/ui.jsx  <- Navbar, Footer, Hero3D, Reveal, cards, chrome
-  pages/pages.jsx    <- saare 6 pages
-  styles/global.css  <- design system
-  index.js, App.jsx  <- entry + routing
-public/
-  index.html
+    src/
+      data/content.js     <- site text + legal pages
+      data/seo.json       <- titles / descriptions / sitemap
+      services/api.js     <- backend calls (fetch)
+      components/ui.jsx   <- Navbar, Footer, cards, popups
+      pages/pages.jsx     <- public pages
+      pages/Careers.jsx, pages/FreeInternships.jsx, pages/student/*
+      styles/             <- design system
+      index.js, App.jsx   <- entry + routing
+    public/               <- index.html, icons, robots.txt, fallback sitemap.xml
+    scripts/prerender-meta.js

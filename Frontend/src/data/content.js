@@ -85,7 +85,7 @@ export const techStack = [
 // only), not a per-entry choice, so it lives here once instead of being
 // repeated on every internship/course object. Bug fix (2026-09-12): it used
 // to be copied onto each static entry's own `deliverables` field, but the
-// live `Course` Mongo schema (Backend/src/models/Course.js) has no such
+// live `Course` model (Backend/prisma/schema.prisma) has no such
 // field — any course/internship fetched from a real, connected backend
 // would have silently lost its deliverable chips. Deriving from `type`
 // instead (already a required field on the live model) means InfoCard and
@@ -352,7 +352,7 @@ export const about = {
 // on /privacy-policy and /terms-of-service.
 // ============================================================
 export const legal = {
-  updated: "Effective date: October 2026 · Last updated: October 2026",
+  updated: "Effective date: October 2026 · Last updated: November 2026",
   privacy: {
     intro:
       "At Crix Technology, we are committed to protecting your privacy. This policy explains how we collect, use, and safeguard your personal information when you use our website, our Training + Internship program and our courses.",
@@ -362,7 +362,7 @@ export const legal = {
         content: `When you create an account, enroll in a training program, apply for an internship, purchase a course, join our referral program, or contact us, we collect:
 • Full name, email address, phone number
 • Education details — your college or university, course, branch / department, semester and year of passing — if you add them to your profile or apply for a free internship
-• College/university name and year of study (where applicable)
+• College/university name and year of study, if you give them when applying for a training program
 • Training track or internship preference
 • Training performance — your assignments and tasks, project work, attendance and your mentor's assessment, which we use to decide selection for the stipend-based internship
 • If you are selected for the stipend-based internship — the details we need to pay your stipend, which we ask you for at that time
@@ -421,7 +421,7 @@ You can delete your account yourself at any time, from your Profile page ("Delet
       },
       {
         title: "7. Cookies & Similar Technologies",
-        content: `When you log in, an authentication token is kept in your browser's session storage for that tab only: it is cleared when you close the tab, and you are signed out automatically after 30 minutes of inactivity. For security, an account can be signed in on only one device at a time — signing in on a new device ends the earlier session.
+        content: `When you log in, an authentication token is kept in your browser's session storage for that tab only: it is cleared when you close the tab, and you are signed out automatically after 30 minutes of inactivity. For security, an account can be signed in on only one device at a time — while it is signed in on one device, signing in on another is refused until you log out on the first, or it has been inactive for 30 minutes.
 
 We also use your browser's local storage for a few small conveniences: your light/dark theme choice, your cookie choice (below), and a referral code from a link you followed, so it can be applied when you create your account. These are needed for the site to work as you'd expect, so we don't ask for them.
 
@@ -513,7 +513,7 @@ By applying, you confirm that you meet the eligibility criteria.`,
 • Notify us immediately of any unauthorized use of your account
 • Register with a permanent, valid email address — disposable or temporary email services are not accepted
 
-For your security, an account can be signed in on only one device at a time — signing in on a new device ends the earlier session — and you are signed out automatically after 30 minutes of inactivity.
+For your security, an account can be signed in on only one device at a time — while it is signed in on one device, signing in on another is refused until you log out on the first, or it has been inactive for 30 minutes — and you are signed out automatically after 30 minutes of inactivity.
 
 You are responsible for all activity that occurs under your account. Crix Technology reserves the right to suspend or terminate accounts registered with false information or used in violation of these Terms. Admin accounts are provisioned only by Crix Technology and are not available through public registration.`,
       },
@@ -660,7 +660,7 @@ Our total liability in any matter shall not exceed the amount you paid for our s
       },
       {
         title: "21. Third-Party Services",
-        content: `Our website integrates third-party services, including Razorpay for payment processing, Google for sign-in and (where enabled) Google Analytics, cloud storage for aptitude-test webcam photos, and courier partners for delivering kits, and links to WhatsApp for inquiries and support. Your use of these services is also subject to their own terms and privacy policies, over which Crix Technology has no control. Crix Technology is not responsible for the availability, content, security, or practices of these third-party services.`,
+        content: `Our website integrates third-party services, including Razorpay for payment processing, Google for sign-in and (where enabled) Google Analytics, Cloudflare for delivering course videos, cloud storage for aptitude-test webcam photos, uploaded CVs and recorded lectures, an email provider for account and transaction emails, and courier partners for delivering kits, and links to WhatsApp for inquiries and support. Your use of these services is also subject to their own terms and privacy policies, over which Crix Technology has no control. Crix Technology is not responsible for the availability, content, security, or practices of these third-party services.`,
       },
       {
         title: "22. General Provisions",

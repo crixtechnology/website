@@ -54,7 +54,7 @@ const {
 
   COURSE_API_URL, // e.g. https://api.crixtechnology.com
   COURSE_API_INTERNAL_TOKEN,
-  COURSE_ID, // the Mongo _id of the Course these recordings belong to
+  COURSE_ID, // the id of the Course these recordings belong to
 
   // One Google Meet folder often holds recordings for several courses. These
   // narrow which files this run picks up, matched case-insensitively against
