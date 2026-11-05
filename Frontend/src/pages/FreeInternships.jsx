@@ -87,10 +87,6 @@ function FreeOpeningCard({ opening, i, fee, mine, onOpen, onApply, switcher = nu
           </div>
           <h3>{opening.title}</h3>
           {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}
-          <p>{opening.summary}</p>
-          <div className="deliverable-row">
-            {(opening.skills || []).map((s) => <span key={s} className="deliverable-chip">{s}</span>)}
-          </div>
           <dl className="job-facts">
             {openingFacts(opening).map(([label, value]) => (
               <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
@@ -148,6 +144,12 @@ function FreeOpeningModal({ opening, fee, mine, onClose, onApply }) {
             <ul className="detail-points">{items.map((x) => <li key={x}>{x}</li>)}</ul>
           </div>
         ))}
+        {opening.skills && opening.skills.length > 0 && (
+          <>
+            <h4 className="job-modal-heading">Skills</h4>
+            <div className="deliverable-row">{opening.skills.map((s) => <span key={s} className="deliverable-chip">{s}</span>)}</div>
+          </>
+        )}
         <h4 className="job-modal-heading">Aptitude test</h4>
         <p className="form-note" style={{ marginTop: 0 }}>
           {test.questions ? `${test.questions} multiple-choice questions` : "A multiple-choice test"}

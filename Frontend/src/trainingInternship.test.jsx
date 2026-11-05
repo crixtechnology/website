@@ -78,7 +78,10 @@ it("shows each program's details on its card, with Request to apply instead of a
   const [internship, full] = [...container.querySelectorAll("#programs .card")];
   expect(internship.textContent).toContain("4 of 5 positions open");
   expect(internship.textContent).toContain("Up to ₹3,000/month");
-  expect(internship.textContent).toContain("React");
+  expect(internship.textContent).toContain("Remote");
+  // The description and skills are only in View details, not on the card.
+  expect(internship.textContent).not.toContain("React");
+  expect(internship.querySelector(".deliverable-chip")).toBeNull();
   // Training isn't bought online: every track — full or not — offers the application form.
   for (const card of [internship, full]) {
     const labels = [...card.querySelectorAll("button")].map((b) => b.textContent);

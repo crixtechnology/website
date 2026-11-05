@@ -467,8 +467,9 @@ export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Dura
 /* ---------- TrainingCard: a Training + Internship track ----------
    The same card as a Careers or Free Internship role (Careers.jsx OpeningCard,
    FreeInternships.jsx FreeOpeningCard — .job-card): type pill and positions
-   tag, a badge on the right, title, short description, skills, the shared
-   facts (utils/positions.js programFacts), then the two buttons. Only the
+   tag, a badge on the right, title, the shared facts (utils/positions.js
+   programFacts), then the two buttons. The description and skills live only
+   in View details. Only the
    content differs: "Paid training" instead of a test fee, Request to apply
    instead of an application with a test, and View details opens the track's
    own page. `switcher` is the duration switch of a grouped domain. */
@@ -477,7 +478,6 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher
   const { isAdmin } = useContext(UserContext);
   const full = isFull(item);
   const facts = programFacts({ ...item, type: "internship" });
-  const skills = Array.isArray(item.skills) ? item.skills : [];
   const open = () => {
     if (item.slug) navigate(`/programs/${item.slug}`);
     else if (onDetail) onDetail({ item, kind: "internship", isProgram: true });
@@ -498,12 +498,6 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher
           </div>
           <h3>{item.title}</h3>
           {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}
-          <p>{item.desc}</p>
-          {skills.length ? (
-            <div className="deliverable-row">
-              {skills.map((x) => <span key={x} className="deliverable-chip">{x}</span>)}
-            </div>
-          ) : null}
           {facts.length ? (
             <dl className="job-facts">
               {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}

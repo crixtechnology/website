@@ -61,10 +61,6 @@ function OpeningCard({ opening, terms, i, mine, onOpen, onApply }) {
             {mine ? <StatusPill application={mine} /> : <FeeBadge opening={opening} terms={terms} />}
           </div>
           <h3>{opening.title}</h3>
-          <p>{opening.summary}</p>
-          <div className="deliverable-row">
-            {(opening.skills || []).map((s) => <span key={s} className="deliverable-chip">{s}</span>)}
-          </div>
           <dl className="job-facts">
             {openingFacts(opening).map(([label, value]) => (
               <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
