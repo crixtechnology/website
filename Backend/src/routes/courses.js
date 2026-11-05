@@ -139,11 +139,9 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
           tiers: { create: parsed.tiers },
           durationDays: durationDays ? Number(durationDays) : null,
           startsAt: start.value || null,
-          // Always starts closed, even with plans already set — saving a
-          // price is not the same action as publishing it for sale. The admin
-          // list's separate Open/Closed toggle is the actual trigger; opening
-          // it requires that explicit second step (enforced below too).
-          status: status === "open" && parsed.tiers.length > 0 ? "open" : "closed",
+          // Whether the track takes applications — Admin's Open/Closed switch.
+          // Tracks are joined by applying (never bought online), so it needs no price.
+          status: status === "closed" ? "closed" : "open",
         },
         include: WITH_SEATS,
       });
@@ -216,37 +214,10 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
       if (!parsed.ok) return res.status(400).json({ ok: false, error: parsed.error });
     }
 
-    const existingPlanCount = await prisma.courseTier.count({ where: { courseId: existing.id } });
-    // The number of plans after this update — 0 means nothing to buy.
-    const resultingPlanCount = parsed ? parsed.tiers.length : existingPlanCount;
-
-    // Saving plans is not the same action as putting a course on sale —
-    // adding the first one (none -> some) never opens it by itself; the admin
-    // has to separately flip the list's Open/Closed toggle (a plain
-    // { status } request, with no tiers in it) afterward.
-    const addingFirstPlan = existingPlanCount === 0 && resultingPlanCount > 0;
-    if (addingFirstPlan) update.status = "closed";
-
-    // Can't be "open" with nothing to buy, however that was attempted — via
-    // the toggle on an unpriced entry, or a status sent alongside no plans.
-    // Checked against the RESULTING status (falls back to existing.status
-    // when this request doesn't touch status at all — e.g. an admin clearing
-    // every plan of an already-open course), not just `update.status`: that
-    // field is only ever set when the request body itself includes `status`,
-    // so a plans-only edit on an already-open course would otherwise skip
-    // this guard and leave it open with no price.
-    const resultingStatus = update.status !== undefined ? update.status : existing.status;
-    if (resultingStatus === "open" && resultingPlanCount === 0) {
-      if (update.status === "open") {
-        // Attempted specifically via the toggle — clear, actionable error.
-        return res.status(400).json({ ok: false, error: "Set a price on at least one plan before opening this for purchase." });
-      }
-      // Attempted via a plans-only edit that would silently leave an
-      // already-open course with nothing to buy — close it instead of
-      // erroring, same as addingFirstPlan above chooses to close rather
-      // than reject.
-      update.status = "closed";
-    }
+    // status is whether the track takes applications (Admin's Open/Closed
+    // switch). It no longer depends on the plans: tracks are joined by
+    // applying, and an apply-only track (no plans) can be open. Online
+    // checkout still refuses a track with no plans (payments.js).
 
     // One transaction so a failure part-way can't leave the plan set and the
     // course row disagreeing (e.g. plans removed but the status still open).

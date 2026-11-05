@@ -8,6 +8,7 @@ const { startSnapshotCleanup } = require("./utils/proctorRetention");
 const { storageStatus } = require("./utils/proctorStorage");
 const { careersStartup } = require("./utils/careersFirstRun");
 const { switchServicesOnce } = require("./utils/servicesSwitch");
+const { openTracksOnce } = require("./utils/tracksOpenOnce");
 const { startBotDigest } = require("./utils/botDigest");
 
 // A guessable JWT_SECRET would let anyone forge an admin login: stop here in production.
@@ -65,4 +66,6 @@ connectWithRetry().then((connected) => {
   if (connected) careersStartup().catch((e) => console.error("[careers] first-run setup failed (will retry on next start):", e.message));
   // The switch to the new IT services list, once (utils/servicesSwitch.js).
   if (connected) switchServicesOnce().catch((e) => console.error("[services] switch to the new list failed (will retry on next start):", e.message));
+  // Opens every existing track once, now that status is the applications switch (utils/tracksOpenOnce.js).
+  if (connected) openTracksOnce().catch((e) => console.error("[tracks] opening existing tracks failed (will retry on next start):", e.message));
 });

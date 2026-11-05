@@ -237,9 +237,8 @@ export default function AdminCourses() {
     else setError(res.error || "Could not save.");
   };
 
-  // The explicit trigger — saving prices never opens a course for sale by
-  // itself (see routes/courses.js); this toggle is the separate, deliberate
-  // step that actually does.
+  // Open/Closed: whether the track takes applications. A closed track shows
+  // "Currently closed" on the website and refuses new applications.
   const toggleStatus = async (c) => {
     const res = await adminUpdateCourse(c._id, { status: c.status === "open" ? "closed" : "open" });
     if (res.ok) load(); else setError(res.error || "Could not update status.");
@@ -269,8 +268,9 @@ export default function AdminCourses() {
           <b>{c.title}</b>
           <span className="admin-row-meta">
             {hasPlans
-              ? <>{plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from {formatINR(cheapest)} · {c.tag}</>
-              : <>Apply-only · {c.tag}</>}
+              ? <>{plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from {formatINR(cheapest)}</>
+              : <>Apply-only</>}
+            {c.tag ? ` · ${c.tag}` : ""}
             {c.durationDays ? ` · ${formatDuration(c.durationDays)}` : ""}
             {c.group ? ` · group: ${c.group}` : ""}
             {c.startingFrom ? ` · starts ${c.startingFrom}` : ""}
@@ -284,17 +284,12 @@ export default function AdminCourses() {
           )}
         </div>
         <div className="admin-row-actions">
-          {hasPlans ? (
-            <button className={`status-toggle ${c.status}`} onClick={() => toggleStatus(c)}
-              title={c.status === "open" ? "Buy now is live — click to take it off sale" : "Not for sale yet — click to enable Buy now"}>
-              {c.status === "open" ? "Open" : "Closed"}
-            </button>
-          ) : (
-            <span className="status-toggle closed" style={{ opacity: 0.5, cursor: "not-allowed" }}
-              title={c.type === "internship" ? "Apply-only — set a price on a plan above to make this purchasable" : "Set a price on a plan above before this can go on sale"}>
-              {c.type === "internship" ? "Apply-only" : "No price yet"}
-            </span>
-          )}
+          <button className={`status-toggle ${c.status === "closed" ? "closed" : "open"}`} onClick={() => toggleStatus(c)}
+            title={c.status === "closed"
+              ? "Closed — the website shows Currently closed and takes no applications. Click to open it."
+              : "Open — students can request to apply. Click to close it."}>
+            {c.status === "closed" ? "Closed" : "Open"}
+          </button>
           <button className="btn btn-ghost" onClick={() => startEdit(c)}>Edit</button>
           <button className="btn btn-ghost admin-danger" onClick={() => remove(c)}>Delete</button>
         </div>
@@ -374,7 +369,7 @@ export default function AdminCourses() {
           <p className="form-note" style={{ margin: "0 0 14px" }}>
             Training + Internship has no aptitude test — students apply, and you send a payment request for the fee.
             Offer up to three plans; a plan with a blank price isn't offered, and with all three blank the page shows no fee.
-            Saving prices doesn't open the track — use the Open/Closed toggle in the list below. What you list under each plan is shown to students; it doesn't restrict access.
+            Use the Open/Closed switch in the list below to stop or restart applications for a track. What you list under each plan is shown to students; it doesn't restrict access.
           </p>
           <div className="plan-editors">
             {TIER_ORDER.map((tier) => (

@@ -61,6 +61,21 @@ describe("admin course form", () => {
     });
   };
 
+  it("gives every track an Open/Closed switch, apply-only ones too, and tidies the row text", async () => {
+    const applyOnly = { ...base, _id: "c2", title: "Python Developer", tag: "", tiers: [], status: "closed" };
+    await renderAdmin([base, applyOnly]);
+    const row = (title) => qa(".admin-row").find((r) => r.querySelector("b").textContent === title);
+    const toggle = (title) => row(title).querySelector("button.status-toggle");
+    expect(toggle("Web Development").textContent).toBe("Open");
+    expect(toggle("Python Developer").textContent).toBe("Closed");
+    // No tag: no stray "Apply-only · · 3 months".
+    expect(row("Python Developer").querySelector(".admin-row-meta").textContent).not.toContain("· ·");
+    await act(async () => { toggle("Python Developer").click(); });
+    expect(api.adminUpdateCourse).toHaveBeenCalledWith("c2", { status: "open" });
+    await act(async () => { toggle("Web Development").click(); });
+    expect(api.adminUpdateCourse).toHaveBeenCalledWith("c1", { status: "closed" });
+  });
+
   it("sends the new lists, one item per line, with blank lines dropped", async () => {
     await renderAdmin();
     await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Cloud Basics"); });

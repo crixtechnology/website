@@ -195,8 +195,8 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const cheapest = plans.length ? Math.min(...plans.map(planPrice)) : null;
-  // A track's status is Admin's online-sale switch, so it never reads as closed here.
-  const closed = course.type !== "internship" && course.status === "closed";
+  // Admin's Open/Closed switch: a closed track takes no applications.
+  const closed = course.status === "closed";
   const sub = (openForBuy || course.type === "internship") && !closed && cheapest !== null ? `From ${formatINR(cheapest)}`
     : closed ? "Currently closed"
     : full ? `All ${placeWord(course)}s filled`
@@ -207,6 +207,8 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
       <div className="enroll-bar-text"><b>{course.title}</b><span>{sub}</span></div>
       {openForBuy ? (
         <button type="button" className="btn btn-solid" tabIndex={show ? 0 : -1} onClick={goToPlans}>Choose a plan</button>
+      ) : closed ? (
+        <button type="button" className="btn btn-solid" tabIndex={show ? 0 : -1} disabled>Applications closed</button>
       ) : (
         <button type="button" className="btn btn-solid" tabIndex={show ? 0 : -1} onClick={onInquire}>
           {course.type === "internship" ? "Request to apply" : "Request to enroll"}

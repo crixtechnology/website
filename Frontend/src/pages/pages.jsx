@@ -444,9 +444,8 @@ export function CourseDetail() {
   const plans = offeredTiers(course);
   // Training + Internship: no online checkout — apply or call, and the team sends a payment request.
   const byInquiry = course.type === "internship";
-  // status is Admin's online-sale switch (an unpriced track is stored as closed),
-  // so it never marks a Training + Internship track closed.
-  const closed = !byInquiry && course.status === "closed";
+  // Admin's Open/Closed switch: a closed track takes no applications.
+  const closed = course.status === "closed";
   const openForBuy = !byInquiry && isOpenForBuy(course);
 
   return (
@@ -462,7 +461,7 @@ export function CourseDetail() {
                     {course.type === "internship" ? "Training + Internship" : "Course"}
                   </span>
                 )}
-                <span className={`tag${isFull(course) ? " tag--full" : ""}`}>{positionsTag(course.positions, "Open")}</span>
+                {!closed && <span className={`tag${isFull(course) ? " tag--full" : ""}`}>{positionsTag(course.positions, "Open")}</span>}
               </div>
               {closed ? <span className="closed-badge">Currently closed</span> : <span className="fee-pill">Paid training</span>}
             </div>
@@ -508,13 +507,20 @@ export function CourseDetail() {
                     <PlanCards plans={plans} ownedTier={ownedTier(course)} readOnly />
                   </div>
                 )}
-                {isFull(course) && !hasAccess(course) && (
+                {closed && !hasAccess(course) ? (
+                  // Closed in Admin: no applications until it reopens.
+                  <div style={{ maxWidth: 420, marginTop: 24 }}>
+                    <p className="form-note" style={{ marginTop: 0 }}>This track isn't taking applications right now. Check back soon, or see the other tracks below.</p>
+                    <button className="btn btn-solid buy-btn" disabled>Applications closed</button>
+                  </div>
+                ) : null}
+                {isFull(course) && !closed && !hasAccess(course) && (
                   <p className="form-note">
                     All {course.positions.total} {placeWord(course)}{course.positions.total === 1 ? " is" : "s are"} filled right now —
                     apply anyway and we'll tell you when the next batch opens.
                   </p>
                 )}
-                {!hasAccess(course) && <TrainingContact onApply={() => setInquireOpen(true)} />}
+                {!hasAccess(course) && !closed && <TrainingContact onApply={() => setInquireOpen(true)} />}
               </>
             ) : openForBuy && isFull(course) && !ownedTier(course) && !hasAccess(course) ? (
               // Every place is taken: nothing to buy, but they can ask about the next batch.

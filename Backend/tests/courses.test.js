@@ -1,6 +1,7 @@
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 const { signToken } = require("../src/utils/jwt");
+const { newStudent } = require("./helpers/newStudent");
 
 let app, prisma, adminToken;
 
@@ -15,13 +16,9 @@ afterAll(async () => { await teardownTestDb(); });
 const authed = (req) => req.set("Authorization", `Bearer ${adminToken}`);
 const uniqueTitle = () => `Test Course ${Date.now()}-${Math.random()}`;
 
-// Covers the plans/status invariant: PUT /admin/courses/:id checked
-// `update.status === "open"` — only ever set when the request body itself
-// included `status` — instead of the RESULTING status, so a plans-only edit
-// on an already-open course (e.g. clearing every plan with { tiers: [] })
-// would skip the guard entirely and leave the course persisted as
-// status:"open" with nothing to buy, showing as purchasable on the public site.
-describe("PUT /admin/courses/:id — open/plans invariant", () => {
+// status is Admin's Open/Closed switch: whether the track takes applications.
+// Tracks are joined by applying, so it has nothing to do with the plans.
+describe("PUT /admin/courses/:id — the Open/Closed switch", () => {
   let courseId;
 
   beforeEach(async () => {
@@ -30,25 +27,36 @@ describe("PUT /admin/courses/:id — open/plans invariant", () => {
     });
     expect(create.status).toBe(201);
     courseId = create.body.course._id;
-    // Saving plans never auto-opens a course (separate deliberate business
-    // rule) — explicitly open it so the test starts from the exact "already
-    // open, already priced" state the bug required.
-    const open = await authed(request(app).put(`/api/admin/courses/${courseId}`)).send({ status: "open" });
-    expect(open.body.course.status).toBe("open");
+    expect(create.body.course.status).toBe("open"); // a new track takes applications
   });
 
-  it("auto-closes the course when a plans-only edit clears every plan, instead of leaving it open with nothing to buy", async () => {
+  it("keeps a track open when every plan is cleared — an apply-only track can be open", async () => {
     const res = await authed(request(app).put(`/api/admin/courses/${courseId}`)).send({ tiers: [] });
     expect(res.status).toBe(200);
     expect(res.body.course.tiers).toEqual([]);
-    expect(res.body.course.status).toBe("closed");
+    expect(res.body.course.status).toBe("open");
   });
 
-  it("still rejects an explicit attempt to open a course with no plans", async () => {
+  it("closes and reopens an apply-only track", async () => {
     await authed(request(app).put(`/api/admin/courses/${courseId}`)).send({ tiers: [] });
-    const res = await authed(request(app).put(`/api/admin/courses/${courseId}`)).send({ status: "open" });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/price/i);
+    const closed = await authed(request(app).put(`/api/admin/courses/${courseId}`)).send({ status: "closed" });
+    expect(closed.body.course.status).toBe("closed");
+    const opened = await authed(request(app).put(`/api/admin/courses/${courseId}`)).send({ status: "open" });
+    expect(opened.status).toBe(200);
+    expect(opened.body.course.status).toBe("open");
+  });
+
+  it("refuses new applications for a closed track, and takes them again once reopened", async () => {
+    const course = (await authed(request(app).put(`/api/admin/courses/${courseId}`)).send({ status: "closed" })).body.course;
+    const signup = await newStudent(app, { name: "Asha", email: "asha@gmail.com", phone: "9876500000", password: "a-real-password" });
+    const apply = () => request(app).post("/api/applications").set("Authorization", `Bearer ${signup.body.token}`).send({
+      type: "internship", refTitle: course.title, courseSlug: course.slug, name: "Asha", email: "asha@gmail.com", phone: "9876500000",
+    });
+    const refused = await apply();
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toMatch(/isn't taking applications/);
+    await authed(request(app).put(`/api/admin/courses/${courseId}`)).send({ status: "open" });
+    expect((await apply()).status).toBe(201);
   });
 
   it("leaves an already-open, already-priced course open on an unrelated field edit", async () => {
@@ -89,7 +97,7 @@ describe("course plans (basic / plus / pro)", () => {
     expect(pro.discountPercent).toBe(10);
     expect(pro.features).toEqual(["1:1 mentoring", "Code review"]); // trimmed
     expect(res.body.course.tiers[0].features).toEqual([]);
-    expect(res.body.course.status).toBe("closed"); // saving plans never opens it
+    expect(res.body.course.status).toBe("open"); // takes applications unless the admin closes it
   });
 
   it("serves the same plans on the public endpoint", async () => {
@@ -129,15 +137,14 @@ describe("course plans (basic / plus / pro)", () => {
     expect(res.body.course.tiers.map((t) => t.tier)).toEqual(["basic", "pro"]);
   });
 
-  it("adding the first plan to an unpriced internship keeps it closed until the admin opens it", async () => {
-    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle() });
+  it("adding the first plan doesn't change whether a track is open or closed", async () => {
+    const create = await authed(request(app).post("/api/admin/courses")).send({ type: "internship", title: uniqueTitle(), status: "closed" });
     expect(create.status).toBe(201);
     expect(create.body.course.tiers).toEqual([]);
+    expect(create.body.course.status).toBe("closed");
     const id = create.body.course._id;
-    const withPlan = await authed(request(app).put(`/api/admin/courses/${id}`)).send({ tiers: [{ tier: "basic", price: 500 }], status: "open" });
+    const withPlan = await authed(request(app).put(`/api/admin/courses/${id}`)).send({ tiers: [{ tier: "basic", price: 500 }] });
     expect(withPlan.body.course.status).toBe("closed");
-    const opened = await authed(request(app).put(`/api/admin/courses/${id}`)).send({ status: "open" });
-    expect(opened.body.course.status).toBe("open");
   });
 
   it("refuses to create or turn anything into a course — courses were dropped", async () => {
