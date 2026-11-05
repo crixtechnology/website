@@ -77,6 +77,11 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
       const found = await prisma.course.findUnique({ where: { slug: courseSlug } });
       course = isProgram(found) ? found : null;
     }
+    // A track the admin closed (Admin → Training + Internship's Open/Closed
+    // switch) takes no new applications.
+    if (course && course.status === "closed") {
+      return res.status(400).json({ ok: false, error: "This track isn't taking applications right now." });
+    }
 
     const application = await prisma.application.create({
       data: {

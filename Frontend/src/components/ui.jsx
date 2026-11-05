@@ -477,6 +477,8 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher
   const navigate = useNavigate();
   const { isAdmin } = useContext(UserContext);
   const full = isFull(item);
+  // Admin's Open/Closed switch: a closed track takes no applications.
+  const closed = item.status === "closed";
   const facts = programFacts({ ...item, type: "internship" });
   const open = () => {
     if (item.slug) navigate(`/programs/${item.slug}`);
@@ -490,11 +492,10 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher
           <div className="card-top">
             <div className="card-top-left">
               <span className="type-pill type-pill--internship">Training + Internship</span>
-              <span className={`tag${full ? " tag--full" : ""}`}>{positionsTag(item.positions, "Open")}</span>
+              {/* Closed (Admin's Open/Closed switch): the badge says so, never "Open" too. */}
+              {!closed && <span className={`tag${full ? " tag--full" : ""}`}>{positionsTag(item.positions, "Open")}</span>}
             </div>
-            {/* No "Currently closed": a track's status is Admin's online-sale switch
-                (an unpriced track is stored as closed), and tracks aren't sold online. */}
-            <span className="fee-pill">Paid training</span>
+            {closed ? <span className="closed-badge">Currently closed</span> : <span className="fee-pill">Paid training</span>}
           </div>
           <h3>{item.title}</h3>
           {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}
@@ -509,6 +510,8 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher
             <Link className="btn btn-solid buy-btn" to={`/learn/${item.slug}`}>Open training →</Link>
           ) : owned ? (
             <Link className="btn btn-solid buy-btn" to="/dashboard">View in My Dashboard →</Link>
+          ) : closed ? (
+            <button className="btn btn-solid buy-btn" disabled>Applications closed</button>
           ) : (
             // Full or not, students apply — a full track's applicants hear about the next batch.
             <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)}>Request to apply</button>
@@ -1765,7 +1768,9 @@ export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
 
         <div style={{ marginTop: 24 }}>
           {isProgram ? (
-            kind === "internship" ? (
+            kind === "internship" && closed ? (
+              <button className="btn btn-solid buy-btn" disabled>Applications closed</button>
+            ) : kind === "internship" ? (
               <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to apply</button>
             ) : (
               <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to enroll</button>

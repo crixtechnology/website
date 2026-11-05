@@ -94,9 +94,8 @@ it("shows each program's details on its card, with Request to apply instead of a
   expect(contact.querySelector('a[href^="https://wa.me/"]')).not.toBeNull();
 });
 
-// status is Admin's online-sale switch (an unpriced, apply-only track is stored
-// as closed), not whether the track takes students.
-it("never shows Currently closed on a track, even one stored as closed", async () => {
+// status is Admin's Open/Closed switch for taking applications.
+it("shows a closed track as Currently closed, never Open, with applying turned off", async () => {
   api.getCourses.mockImplementation(async (type) => ({
     ok: true,
     courses: type === "internship"
@@ -112,11 +111,16 @@ it("never shows Currently closed on a track, even one stored as closed", async (
   });
   const cards = [...container.querySelectorAll("#programs .card")];
   const byTitle = (t) => cards.find((c) => c.querySelector("h3").textContent === t);
-  for (const card of [byTitle("Web Internship"), byTitle("Data Internship")]) {
-    expect(card.querySelector(".tag").textContent).toBe("Open");
-    expect(card.querySelector(".closed-badge")).toBeNull();
-    expect(card.querySelector(".fee-pill").textContent).toBe("Paid training");
-  }
+  const open = byTitle("Web Internship");
+  expect(open.querySelector(".tag").textContent).toBe("Open");
+  expect(open.querySelector(".closed-badge")).toBeNull();
+  expect(open.querySelector(".fee-pill").textContent).toBe("Paid training");
+  const closed = byTitle("Data Internship");
+  expect(closed.querySelector(".tag")).toBeNull();
+  expect(closed.querySelector(".fee-pill")).toBeNull();
+  expect(closed.querySelector(".closed-badge").textContent).toBe("Currently closed");
+  const apply = [...closed.querySelectorAll("button")].find((b) => b.textContent === "Applications closed");
+  expect(apply.disabled).toBe(true);
 });
 
 it("sends someone who already has a program to My Dashboard instead of offering its plans", async () => {
