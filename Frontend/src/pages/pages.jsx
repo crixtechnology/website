@@ -442,9 +442,11 @@ export function CourseDetail() {
   }
 
   const plans = offeredTiers(course);
-  const closed = course.status === "closed";
   // Training + Internship: no online checkout — apply or call, and the team sends a payment request.
   const byInquiry = course.type === "internship";
+  // status is Admin's online-sale switch (an unpriced track is stored as closed),
+  // so it never marks a Training + Internship track closed.
+  const closed = !byInquiry && course.status === "closed";
   const openForBuy = !byInquiry && isOpenForBuy(course);
 
   return (

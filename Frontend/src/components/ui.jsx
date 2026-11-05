@@ -492,9 +492,9 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher
               <span className="type-pill type-pill--internship">Training + Internship</span>
               <span className={`tag${full ? " tag--full" : ""}`}>{positionsTag(item.positions, "Open")}</span>
             </div>
-            {item.status === "closed"
-              ? <span className="closed-badge">Currently closed</span>
-              : <span className="fee-pill">Paid training</span>}
+            {/* No "Currently closed": a track's status is Admin's online-sale switch
+                (an unpriced track is stored as closed), and tracks aren't sold online. */}
+            <span className="fee-pill">Paid training</span>
           </div>
           <h3>{item.title}</h3>
           {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}

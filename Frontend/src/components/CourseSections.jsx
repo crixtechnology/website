@@ -195,8 +195,10 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const cheapest = plans.length ? Math.min(...plans.map(planPrice)) : null;
-  const sub = (openForBuy || course.type === "internship") && course.status !== "closed" && cheapest !== null ? `From ${formatINR(cheapest)}`
-    : course.status === "closed" ? "Currently closed"
+  // A track's status is Admin's online-sale switch, so it never reads as closed here.
+  const closed = course.type !== "internship" && course.status === "closed";
+  const sub = (openForBuy || course.type === "internship") && !closed && cheapest !== null ? `From ${formatINR(cheapest)}`
+    : closed ? "Currently closed"
     : full ? `All ${placeWord(course)}s filled`
     : course.type === "internship" ? "Apply to join" : "Ask about the next batch";
 
