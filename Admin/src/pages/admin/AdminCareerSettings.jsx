@@ -7,8 +7,8 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 const NUMBERS = ["signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent", "reapplyCooldownDays"];
 const TOGGLES = ["requireWebcam", "requireDesktopApp"];
 
-// The rules of the careers flow: what the aptitude test costs, the credit new
-// accounts and test-takers get and how it can be used, and how strict the test is.
+// The rules of the careers flow: the credit new accounts get and how it can be
+// used, and how strict the test is. (The test itself is free: there is no fee to set.)
 export default function AdminCareerSettings() {
   usePageMeta({ title: "Careers settings | Crix Technology" });
   const navigate = useNavigate();

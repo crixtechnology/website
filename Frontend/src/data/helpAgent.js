@@ -221,7 +221,7 @@ function applyReply(state, ctx) {
   const missing = ctx.user && (ctx.user.profilePending || !String(ctx.user.phone || "").trim());
   const profileNote = missing ? "\nBefore paying, add your full name and phone number in your Profile — checkout asks for them." : "";
   if (state.topic === "careers") {
-    return { text: `• Log in (a new email gets an account straight away)\n• Pick a role on the Careers page and press Apply Now\n• Accept the terms (applying and the test are free)\n• Take the online aptitude test${profileNote}`, links: [{ to: "/careers", label: "Careers page" }] };
+    return { text: `• Log in (a new email gets an account straight away)\n• Pick a role on the Careers page and press Apply Now\n• Accept the terms (applying and the test are free)\n• Take the online aptitude test`, links: [{ to: "/careers", label: "Careers page" }] };
   }
   if (state.topic === "services") {
     return { text: "Send us your requirements from the Services page (or the contact form). Our IT team replies, sets up a quick call, and shares a plan and quote.", links: [{ to: "/services", label: "Services page" }] };
