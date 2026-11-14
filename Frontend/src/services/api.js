@@ -739,21 +739,6 @@ export async function getFreeOpenings() {
   }
 }
 
-// Uploads (or replaces) the CV for an application. `file` is a PDF File.
-export async function uploadApplicationCv(applicationId, file) {
-  try {
-    const res = await authFetch(`/me/job-applications/${applicationId}/cv`, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": "application/pdf", "X-File-Name": encodeURIComponent(file.name || "cv.pdf") },
-    });
-    if (res.status === 413) return { ok: false, error: "That file is too large — the CV can be up to 2 MB." };
-    return await jsonOr(res, "Could not upload your CV");
-  } catch (e) {
-    return { ok: false, error: "Could not upload your CV right now." };
-  }
-}
-
 // The logged-in student's applications: { applications, terms }.
 // Clear an ended application from My Applications (by id), or every ended one.
 export async function clearJobApplications(id) {

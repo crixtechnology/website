@@ -385,8 +385,8 @@ export function ApplicationsTab({ onGoToApply }) {
                 </div>
                 <div className="admin-row-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   {a.status === "payment_pending" && (a.opening && a.opening.audience === "free"
-                    // Free-internship roles aren't in the Apply tab: they're finished on their own page.
-                    ? <Link className="btn btn-solid" to="/free-internships">Finish applying</Link>
+                    // Free internships are applied for through the form on their own page now.
+                    ? <Link className="btn btn-solid" to="/free-internships">Apply through the form</Link>
                     : <button className="btn btn-solid" onClick={onGoToApply}>Unlock test</button>)}
                   {a.status === "test_pending" && <Link className="btn btn-solid" to={`/test/${a._id}`}>{t ? "Resume test →" : "Start test →"}</Link>}
                   {a.paidPaymentId && (

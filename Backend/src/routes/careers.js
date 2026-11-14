@@ -124,7 +124,7 @@ router.get("/careers/free/openings", async (req, res, next) => {
     res.json({
       ok: true,
       openings: openings.map((o) => shapeOpening(o)),
-      // applyFormUrl: where "Apply Now" sends a new applicant (Admin → Careers settings).
+      // applyFormUrl: where "Apply Now" sends a new applicant (Admin → Training + Internship → Free internships).
       terms: { applyFormUrl: settings.freeApplyFormUrl, creditExpiryMonths: settings.creditExpiryMonths, creditUsagePercent: settings.creditUsagePercent },
     });
   } catch (e) {

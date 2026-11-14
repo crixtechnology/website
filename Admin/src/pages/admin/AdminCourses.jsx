@@ -8,7 +8,7 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, formatINR } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate, toStartDateInput } from "../../utils/startDate.js";
 import { formatDuration, INTERNSHIP_DURATIONS } from "../../utils/duration.js";
-import { useJobOpenings, OpeningForm, OpeningList } from "./AdminJobOpenings.jsx";
+import { useJobOpenings, OpeningForm, OpeningList, FreeApplyFormLink } from "./AdminJobOpenings.jsx";
 
 // What the one form adds. A free internship is a job opening listed on
 // /free-internships (applied for through the Google Form); a Training + Internship
@@ -436,6 +436,7 @@ export default function AdminCourses() {
         ) : (
           <>
             <h3 style={{ margin: "40px 0 16px" }}>Free internships</h3>
+            <FreeApplyFormLink />
             {jobs.error && <p className="form-error">{jobs.error}</p>}
             {jobs.loading ? <p style={{ color: "var(--muted)" }}>Loading...</p> : (
               <OpeningList openings={freeInternships} bank={jobs.bank} onEdit={startEditOpening} onChanged={jobs.load}
