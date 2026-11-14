@@ -167,6 +167,13 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
       </div>
 
       <h3 style={{ margin: "12px 0 16px" }}>Aptitude test for this {what}</h3>
+      {free && (
+        <p className="form-note" style={{ margin: "-8px 0 16px" }}>
+          New applicants apply through the Google Form (the link is in Careers settings) and are invited to the test by your team. The
+          number of questions and minutes below is what the role's details show on the page, and what the on-site test uses for
+          candidates who applied on the website earlier.
+        </p>
+      )}
       <div className="admin-form-grid">
         <div className="field"><label htmlFor="jo-mins">Duration (minutes)</label>
           <input id="jo-mins" type="number" min="5" max="300" step="1" value={form.durationMinutes} onChange={set("durationMinutes")} /></div>

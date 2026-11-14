@@ -45,6 +45,7 @@ export default function AdminCareerSettings() {
     setSaving(true);
     setMsg({ kind: "", text: "" });
     const res = await adminUpdateCareerSettings({
+      freeApplyFormUrl: String(settings.freeApplyFormUrl || "").trim(),
       ...Object.fromEntries(NUMBERS.map((k) => [k, Number(settings[k])])),
       ...Object.fromEntries(TOGGLES.map((k) => [k, !!settings[k]])),
     });
@@ -81,6 +82,15 @@ export default function AdminCareerSettings() {
                 Applying and the aptitude test are free for every role, so there is no fee to set here.
                 The expiry applies to signup bonus credit added from now on (1 credit = ₹1) — credit already in a wallet keeps the expiry it was given, and referral or admin credit doesn't expire.
                 The usage limit applies to every purchase: at 100% credit can pay for a whole course.
+              </p>
+
+              <h3 style={{ margin: "0 0 16px" }}>Free internships</h3>
+              <div className="field"><label htmlFor="cs-form">Application form link (Google Form)</label>
+                <input id="cs-form" type="url" inputMode="url" maxLength={500} placeholder="https://forms.gle/..." value={settings.freeApplyFormUrl || ""} onChange={setField("freeApplyFormUrl")} /></div>
+              <p className="form-note" style={{ margin: "-4px 0 20px" }}>
+                “Apply Now” on every role of the Free Internships page opens this link in a new tab. People who apply through the form are in
+                the form's own responses (Google Forms / its Sheet), not under Applicants here — contact them from there about the aptitude test and interview.
+                The form should ask which role and duration they are applying for.
               </p>
 
               <h3 style={{ margin: "0 0 16px" }}>The test</h3>

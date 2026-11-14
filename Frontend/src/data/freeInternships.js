@@ -16,6 +16,8 @@ export const FREE_PATH = "/free-internships";
 export const CV_MAX_MB = 2;
 export const RESULT_DAYS = 7;
 // Where "Apply Now" on a free internship sends a new applicant: our Google Form.
+// The live link comes from the backend (Admin → Careers settings); this one is
+// used until it arrives, or if the backend can't be reached.
 export const FREE_APPLY_FORM_URL = "https://forms.gle/eaX7kab7zPG7w6SX6";
 
 export const freeHero = {

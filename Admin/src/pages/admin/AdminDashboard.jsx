@@ -110,7 +110,7 @@ export default function AdminDashboard() {
     { label: "Job applicants", value: stats.jobApplicants, sub: `${stats.jobToReview} test${stats.jobToReview === 1 ? "" : "s"} waiting for a decision · ${stats.jobSelected} selected`, to: "/admin/applicants" },
     { label: "Job openings", value: "Manage", sub: "Careers page roles only & their test settings", to: "/admin/job-openings" },
     { label: "Question bank", value: "Manage", sub: "aptitude test questions · Excel/CSV upload", to: "/admin/test-questions" },
-    { label: "Careers settings", value: "Manage", sub: "credits, violation limit, webcam", to: "/admin/careers-settings" },
+    { label: "Careers settings", value: "Manage", sub: "free internship form link, credits, test rules", to: "/admin/careers-settings" },
   ];
 
   return (

@@ -104,9 +104,29 @@ describe("Free internships", () => {
     expect(careers.headers["cache-control"]).toBe("no-store");
     expect(page.body.openings.map((o) => o.slug)).toEqual(expect.arrayContaining([free.slug]));
     expect(page.body.openings.every((o) => o.audience === "free")).toBe(true);
+    // Where Apply Now sends a new applicant: the Google Form.
+    expect(page.body.terms.applyFormUrl).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
     // No fee is quoted: not in the terms, not on a role.
     expect(page.body.terms.processingFee).toBeUndefined();
     expect(page.body.openings.every((o) => o.feeRequired === undefined && o.waiveFee === undefined)).toBe(true);
+  });
+
+  it("lets an admin change the application form link, and only to an https link", async () => {
+    const put = (freeApplyFormUrl) => asAdmin(request(app).put("/api/admin/careers/settings")).send({ freeApplyFormUrl });
+    for (const bad of ["", "   ", "forms.gle/abc", "http://forms.gle/abc", "javascript:alert(1)", "https://", "https://forms.gle/a b", 42, null, `https://forms.gle/${"x".repeat(600)}`]) {
+      expect((await put(bad)).status).toBe(400);
+    }
+    const page = () => request(app).get("/api/careers/free/openings").then((r) => r.body.terms.applyFormUrl);
+    expect(await page()).toBe("https://forms.gle/eaX7kab7zPG7w6SX6"); // a refused link changes nothing
+
+    const ok = await put("  https://forms.gle/NewForm123  ");
+    expect(ok.status).toBe(200);
+    expect(ok.body.settings.freeApplyFormUrl).toBe("https://forms.gle/NewForm123");
+    expect(await page()).toBe("https://forms.gle/NewForm123");
+    // Saving other settings leaves the link alone.
+    await asAdmin(request(app).put("/api/admin/careers/settings")).send({ generatedQuestionsPercent: 0 });
+    expect(await page()).toBe("https://forms.gle/NewForm123");
+    await put("https://forms.gle/eaX7kab7zPG7w6SX6");
   });
 
   it("refuses an unknown audience", async () => {

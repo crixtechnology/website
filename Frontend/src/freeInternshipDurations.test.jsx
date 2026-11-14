@@ -84,4 +84,22 @@ describe("the Free Internship page", () => {
     const inDetails = [...document.querySelectorAll("[role='dialog'] a")].find((a) => a.textContent === "Apply Now — Free");
     expect(inDetails.getAttribute("href")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
   });
+
+  it("uses the application form link set in Admin, and ignores one that isn't https", async () => {
+    const render = async (applyFormUrl) => {
+      api.getFreeOpenings.mockResolvedValue({ ok: true, terms: { applyFormUrl }, openings: [role("Python Intern", "py", "3 months")] });
+      await act(async () => {
+        root.render(
+          <UserContext.Provider value={{ user: null, isLoggedIn: false, isAdmin: false, openAuthModal: jest.fn() }}>
+            <MemoryRouter><FreeInternships /></MemoryRouter>
+          </UserContext.Provider>
+        );
+      });
+      return container.querySelector("#openings .job-card a.buy-btn").getAttribute("href");
+    };
+    expect(await render("https://forms.gle/NewForm123")).toBe("https://forms.gle/NewForm123");
+    act(() => root.unmount());
+    root = createRoot(container);
+    expect(await render("javascript:alert(1)")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
+  });
 });

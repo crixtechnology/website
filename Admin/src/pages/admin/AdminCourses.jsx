@@ -11,14 +11,14 @@ import { formatDuration, INTERNSHIP_DURATIONS } from "../../utils/duration.js";
 import { useJobOpenings, OpeningForm, OpeningList } from "./AdminJobOpenings.jsx";
 
 // What the one form adds. A free internship is a job opening listed on
-// /free-internships (with a CV and an aptitude test); a Training + Internship
+// /free-internships (applied for through the Google Form); a Training + Internship
 // track is a courses-table entry (type "internship") sold on
 // /training-internship — paid training, after which top performers are
 // selected for a stipend-based internship. Courses were dropped: only
 // Training + Internship tracks and free internships are added here.
 const KINDS = [
   { id: "internship", label: "Training + Internship", sub: "/training-internship · students apply or call; send them a payment request" },
-  { id: "free", label: "Free Internship", sub: "/free-internships · CV + aptitude test" },
+  { id: "free", label: "Free Internship", sub: "/free-internships · applies through the Google Form" },
 ];
 const kindFromParam = (v) => (KINDS.some((k) => k.id === v) ? v : "internship");
 

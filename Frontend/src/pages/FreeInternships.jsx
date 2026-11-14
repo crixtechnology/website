@@ -62,20 +62,20 @@ function cvProblem(file) {
 const FreeBadge = () => <span className="fee-pill fee-pill--free">Free</span>;
 
 /* ---------- a role's Apply button ----------
-   A new application goes to our Google Form (FREE_APPLY_FORM_URL), in a new
-   tab. Someone who already applied on this site keeps their own button
+   A new application goes to our Google Form (formUrl: the link from Admin →
+   Careers settings), in a new tab. Someone who already applied on this site keeps their own button
    (Continue application / View my application), and a full role stays off. */
-function FreeApplyButton({ opening, mine, onApply, label, fullLabel, className = "btn btn-solid", style }) {
+function FreeApplyButton({ opening, mine, onApply, formUrl, label, fullLabel, className = "btn btn-solid", style }) {
   if (mine || isRoleFull(opening)) {
     return <RoleApplyButton opening={opening} mine={mine} onApply={onApply} className={className} style={style} label={label} fullLabel={fullLabel} />;
   }
-  return <a className={className} style={style} href={FREE_APPLY_FORM_URL} target="_blank" rel="noopener noreferrer">{label}</a>;
+  return <a className={className} style={style} href={formUrl} target="_blank" rel="noopener noreferrer">{label}</a>;
 }
 
 /* ---------- one opening's card ---------- */
 // switcher: the duration switch when this role is offered in several durations
 // (FreeOpeningGroupCard) — the same switch Training + Internship cards have.
-function FreeOpeningCard({ opening, i, mine, onOpen, onApply, switcher = null }) {
+function FreeOpeningCard({ opening, i, mine, onOpen, onApply, formUrl, switcher = null }) {
   return (
     <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
       <TiltCard className="card-type-internship job-card">
@@ -96,7 +96,7 @@ function FreeOpeningCard({ opening, i, mine, onOpen, onApply, switcher = null })
           </dl>
         </div>
         <div className="card-btn-row">
-          <FreeApplyButton opening={opening} mine={mine} onApply={onApply} className="btn btn-solid buy-btn" label="Apply Now" fullLabel="Positions filled" />
+          <FreeApplyButton opening={opening} mine={mine} onApply={onApply} formUrl={formUrl} className="btn btn-solid buy-btn" label="Apply Now" fullLabel="Positions filled" />
           <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
         </div>
       </TiltCard>
@@ -117,7 +117,7 @@ function FreeOpeningGroupCard({ variants, mineOf, ...cardProps }) {
 }
 
 /* ---------- full details of one opening ---------- */
-function FreeOpeningModal({ opening, mine, onClose, onApply }) {
+function FreeOpeningModal({ opening, mine, onClose, onApply, formUrl }) {
   useBodyScrollLock(!!opening);
   useModalFocus(!!opening);
   useModalEscape(!!opening, onClose);
@@ -161,7 +161,7 @@ function FreeOpeningModal({ opening, mine, onClose, onApply }) {
           we email you how and when to take it. Candidates who do well are invited to an interview.
         </p>
         {mine && <p className="form-note" style={{ margin: "16px 0 0" }}>You've applied for this internship. Status: <StatusPill application={mine} /></p>}
-        <FreeApplyButton opening={opening} mine={mine} onApply={onApply} style={{ width: "100%", marginTop: 16 }}
+        <FreeApplyButton opening={opening} mine={mine} onApply={onApply} formUrl={formUrl} style={{ width: "100%", marginTop: 16 }}
           label="Apply Now — Free" fullLabel="All positions filled" />
       </div>
     </div>
@@ -381,6 +381,8 @@ export default function FreeInternships() {
   const { applications, reload: reloadApplications } = useMyJobApplications(isLoggedIn && !isAdmin);
   const [openings, setOpenings] = useState([]);
   const [live, setLive] = useState(false);
+  // The application form "Apply Now" opens: the admin's link once it arrives.
+  const [formUrl, setFormUrl] = useState(FREE_APPLY_FORM_URL);
   const [loading, setLoading] = useState(hasBackend);
   const [slow, setSlow] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -396,6 +398,9 @@ export default function FreeInternships() {
     const load = () => getFreeOpenings().then((res) => {
       if (!alive) return;
       if (res.ok) { setOpenings((res.openings || []).filter((o) => o && o.status !== "closed")); setLive(true); }
+      // Only ever an https link, whatever the server sends.
+      const link = res.ok && res.terms && res.terms.applyFormUrl;
+      if (typeof link === "string" && /^https:\/\/\S+$/.test(link)) setFormUrl(link);
       setLoading(false);
       clearTimeout(cap);
     });
@@ -470,7 +475,7 @@ export default function FreeInternships() {
             <div className="grid3 stagger" style={{ marginTop: 24 }}>
               {/* One card per role: roles sharing a group are its durations, picked with the switch. */}
               {groupVariants(openings).map((g, i) => (
-                <FreeOpeningGroupCard key={g.key} variants={g.variants} i={i}
+                <FreeOpeningGroupCard key={g.key} variants={g.variants} i={i} formUrl={formUrl}
                   mineOf={(o) => openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />
               ))}
             </div>
@@ -500,7 +505,7 @@ export default function FreeInternships() {
           </div>
         </div>
       </section>
-      <FreeOpeningModal opening={detail} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} onApply={apply} />
+      <FreeOpeningModal opening={detail} formUrl={formUrl} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} onApply={apply} />
       <FreeApplyModal opening={applying} onClose={() => { setApplying(null); reloadApplications(); }} />
 
       {/* How it works */}

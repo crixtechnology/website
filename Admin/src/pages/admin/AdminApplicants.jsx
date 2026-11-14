@@ -343,7 +343,8 @@ export default function AdminApplicants() {
           <div>
             <span className="eyebrow">Admin</span>
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Applicants</h1>
-            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Everyone who applied for a role: payment, test result, violations and where their application stands.</p>
+            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Everyone who applied for a role on the website: test result, violations and where their application stands.
+              Free-internship applications made through the Google Form are in that form's responses, not here.</p>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
         </div>

@@ -14,6 +14,8 @@ const { prisma } = require("../db");
 //                          after an application there ended without an offer
 //                          (0 = straight away).
 // Applying and the test are free, so there is no fee setting.
+//   freeApplyFormUrl       the Google Form "Apply Now" opens on the Free Internships
+//                          page (an https link)
 //   requireWebcam          refuse to start a test without a working webcam
 //   requireDesktopApp      only allow the test inside the desktop lockdown app
 const SETTINGS_KEY = "careers";
@@ -25,6 +27,7 @@ const DEFAULT_SETTINGS = {
   snapshotIntervalSeconds: 60,
   generatedQuestionsPercent: 30,
   reapplyCooldownDays: 30,
+  freeApplyFormUrl: "https://forms.gle/eaX7kab7zPG7w6SX6",
   requireWebcam: true,
   requireDesktopApp: false,
 };
@@ -40,6 +43,20 @@ const INT_RANGES = {
   reapplyCooldownDays: [0, 365, "The re-apply wait must be a whole number of days from 0 to 365"],
 };
 const BOOLEANS = ["requireWebcam", "requireDesktopApp"];
+const MAX_URL_LENGTH = 500;
+
+// A link the public page can safely send people to: https only, nothing else.
+function httpsUrl(value) {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  if (!text || text.length > MAX_URL_LENGTH || /\s/.test(text)) return "";
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" && url.hostname.includes(".") ? url.href : "";
+  } catch (e) {
+    return "";
+  }
+}
 
 // `db` lets a caller already inside a transaction read through it.
 async function getCareerSettings(db = prisma) {
@@ -64,6 +81,11 @@ async function saveCareerSettings(input) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") return { ok: false, error: `${key} must be true or false` };
     next[key] = body[key];
+  }
+  if (body.freeApplyFormUrl !== undefined) {
+    const url = httpsUrl(body.freeApplyFormUrl);
+    if (!url) return { ok: false, error: "The free internships form link must be a full https:// link (for example a Google Form link)." };
+    next.freeApplyFormUrl = url;
   }
   await prisma.setting.upsert({
     where: { key: SETTINGS_KEY },
