@@ -174,7 +174,7 @@ function careersReply(ctx) {
     };
   }
   return {
-    text: `We're hiring for:\n${roles.slice(0, 6).map((o) => `• ${o.title} — ${o.feeRequired === false ? "free to apply" : "registration fee applies"}${o.stipend ? ` · ${o.stipend}` : ""}`).join("\n")}\nFreshers are welcome. You apply on the Careers page, take an online aptitude test, and shortlisted candidates get an interview.`,
+    text: `We're hiring for:\n${roles.slice(0, 6).map((o) => `• ${o.title} — free to apply${o.stipend ? ` · ${o.stipend}` : ""}`).join("\n")}\nFreshers are welcome. You apply on the Careers page, take an online aptitude test, and shortlisted candidates get an interview.`,
     links: [{ to: "/careers", label: "See roles & apply" }],
     chips: [{ label: "How does the test work?", say: "What is the aptitude test like?" }, { label: "Is there a fee?", say: "Is there a fee for careers?" }, { label: "When do I get results?", say: "When will I get my result?" }],
   };
@@ -203,7 +203,7 @@ function servicesReply(ctx, n) {
 
 function priceReply(state, ctx) {
   if (state.topic === "careers") {
-    return { text: "It depends on the role: each role on the Careers page shows either “Free to apply” or its aptitude-test registration fee. Where there is a fee, the whole amount comes back to your wallet as credit.", links: [{ to: "/careers", label: "See roles" }] };
+    return { text: "No — applying for a role and taking its aptitude test are free. There is no registration, test or processing fee.", links: [{ to: "/careers", label: "See roles" }] };
   }
   if (state.topic === "services") {
     return { text: "IT projects are quoted individually — the price depends on what you need (pages, features, integrations). Send your requirements through the Services page and we'll send a quote.", links: [{ to: "/services", label: "Request a quote" }] };
@@ -213,7 +213,7 @@ function priceReply(state, ctx) {
   }
   return {
     text: "Happy to help with pricing — which one is it about?",
-    chips: [{ label: "Training + Internship", say: "Price of training and internships" }, { label: "Careers test fee", say: "Is there a fee for careers?" }, { label: "IT services", say: "Price of IT services" }],
+    chips: [{ label: "Training + Internship", say: "Price of training and internships" }, { label: "Careers", say: "Is there a fee for careers?" }, { label: "IT services", say: "Price of IT services" }],
   };
 }
 
@@ -221,7 +221,7 @@ function applyReply(state, ctx) {
   const missing = ctx.user && (ctx.user.profilePending || !String(ctx.user.phone || "").trim());
   const profileNote = missing ? "\nBefore paying, add your full name and phone number in your Profile — checkout asks for them." : "";
   if (state.topic === "careers") {
-    return { text: `• Log in (a new email gets an account straight away)\n• Pick a role on the Careers page and press Apply Now\n• Accept the terms — and pay the registration fee if the role has one\n• Take the online aptitude test${profileNote}`, links: [{ to: "/careers", label: "Careers page" }] };
+    return { text: `• Log in (a new email gets an account straight away)\n• Pick a role on the Careers page and press Apply Now\n• Accept the terms (applying and the test are free)\n• Take the online aptitude test${profileNote}`, links: [{ to: "/careers", label: "Careers page" }] };
   }
   if (state.topic === "services") {
     return { text: "Send us your requirements from the Services page (or the contact form). Our IT team replies, sets up a quick call, and shares a plan and quote.", links: [{ to: "/services", label: "Services page" }] };

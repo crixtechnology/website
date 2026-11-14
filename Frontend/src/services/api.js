@@ -717,8 +717,8 @@ export async function verifyPaymentRequest({ razorpay_order_id, razorpay_payment
   }
 }
 
-// ---------- Careers: job openings, applications, the aptitude-test fee ----------
-// Open roles for the Careers page, plus the live terms (test fee, signup bonus, credit rules).
+// ---------- Careers: job openings, applications, the aptitude test ----------
+// Open roles for the Careers page, plus the live terms (signup bonus, credit rules).
 export async function getOpenings() {
   if (!API) return { ok: false, openings: [] };
   try {
@@ -784,20 +784,7 @@ export async function applyForRole(opening) {
   }
 }
 
-// Same response shape as createRazorpayOrder. The amount is the server's.
-export async function createTestFeeOrder(applicationId) {
-  try {
-    const res = await authFetch(`/me/job-applications/${applicationId}/create-order`, { method: "POST", body: JSON.stringify({ acceptTerms: true, confirmAdult: true }) });
-    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
-    const data = await res.json();
-    if (!res.ok) return { ok: false, error: data.error || "Could not start payment" };
-    return data;
-  } catch (e) {
-    return { ok: false, error: "Could not start payment right now." };
-  }
-}
-
-// A free role (no registration fee): unlocks the test once terms and 18+ are accepted.
+// Unlocks an application's test (free for every role) once terms and 18+ are accepted.
 export async function unlockFreeTest(applicationId) {
   try {
     const res = await authFetch(`/me/job-applications/${applicationId}/unlock-free`, { method: "POST", body: JSON.stringify({ acceptTerms: true, confirmAdult: true }) });
@@ -807,21 +794,6 @@ export async function unlockFreeTest(applicationId) {
     return data;
   } catch (e) {
     return { ok: false, error: "Could not unlock the test right now." };
-  }
-}
-
-export async function verifyTestFee({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
-  try {
-    const res = await fetch(`${API}/careers/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature }),
-    });
-    const data = await res.json();
-    if (!res.ok) return { ok: false, error: data.error || "Could not confirm payment" };
-    return data;
-  } catch (e) {
-    return { ok: false, error: "Could not confirm your payment right now." };
   }
 }
 

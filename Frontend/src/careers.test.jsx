@@ -37,7 +37,7 @@ const opening = (overrides = {}) => ({
   test: { durationMinutes: 45, questions: 34, marksPerQuestion: 1 },
   ...overrides,
 });
-const terms = { testFee: 289, signupBonus: 300, creditExpiryMonths: 12, creditUsagePercent: 100 };
+const terms = { signupBonus: 300, creditExpiryMonths: 12, creditUsagePercent: 100 };
 
 // Shows where the router ended up, so a test can see a redirect.
 function Where() {
@@ -46,7 +46,7 @@ function Where() {
 }
 
 async function renderCareers(ctx) {
-  api.getOpenings.mockResolvedValue({ ok: true, openings: [opening(), opening({ _id: "o2", slug: "data-science-intern", title: "Data Science Intern", feeRequired: false })], terms });
+  api.getOpenings.mockResolvedValue({ ok: true, openings: [opening(), opening({ _id: "o2", slug: "data-science-intern", title: "Data Science Intern" })], terms });
   await act(async () => {
     root.render(
       <UserContext.Provider value={ctx}>
@@ -62,7 +62,7 @@ async function renderCareers(ctx) {
 }
 
 describe("Careers page", () => {
-  it("shows the sections, the live openings with each role's fee or free badge, and job-posting markup", async () => {
+  it("shows the sections, the live openings (every one free to apply), and job-posting markup", async () => {
     await renderCareers({ isLoggedIn: false, isAdmin: false, openAuthModal: jest.fn() });
 
     expect(q("h1").textContent).toBe("Build Real Products. Start Your Tech Career at Crix.");
@@ -73,15 +73,17 @@ describe("Careers page", () => {
     expect(document.getElementById("faq-jsonld")).toBeNull();
 
     expect(all(".job-card h3").map((h) => h.textContent)).toEqual(["Web Development Intern", "Data Science Intern"]);
-    // The fee shows only on the card of a role that has one.
-    expect(all(".job-card .fee-pill").map((p) => p.textContent)).toEqual(["₹289 registration", "Free to apply"]);
+    // No role has a fee: every card says so, and no amount is quoted anywhere on the page.
+    expect(all(".job-card .fee-pill").map((p) => p.textContent)).toEqual(["Free to apply", "Free to apply"]);
+    expect(container.textContent).not.toMatch(/₹289|registration fee|Pay ₹/i);
     const outsideCards = [...container.querySelectorAll("section")].filter((sec) => sec.id !== "openings").map((sec) => sec.textContent).join(" ");
     expect(outsideCards).not.toMatch(/₹|\bfees?\b/i);
     expect(document.title).toBe("Careers & Internships | Crix Technology");
 
     const jobs = JSON.parse(document.getElementById("jobs-jsonld").textContent)["@graph"];
-    // Only the free role: job listings in search don't allow a fee from applicants.
+    // Every role is free to apply for, so every one is listed for search engines.
     expect(jobs.map((j) => [j["@type"], j.title, j.employmentType])).toEqual([
+      ["JobPosting", "Web Development Intern", "INTERN"],
       ["JobPosting", "Data Science Intern", "INTERN"],
     ]);
   });
@@ -95,42 +97,42 @@ describe("Careers page", () => {
     expect(modal.textContent).toContain("Ship pages");
     expect(modal.textContent).toContain("Freshers welcome");
     expect(modal.textContent).toContain("34 multiple-choice questions in 45 minutes");
-    expect(modal.textContent).toContain("registration fee of ₹289");
-    expect(modal.textContent).toContain("does not guarantee selection");
+    expect(modal.textContent).toContain("Applying and the aptitude test are free");
+    expect(modal.textContent).not.toMatch(/₹289|registration fee|wallet credit/);
+    expect(button("Apply Now — Free", modal)).toBeTruthy();
   });
 
-  it("says a free role has no fee in its details", async () => {
-    await renderCareers({ isLoggedIn: false, isAdmin: false, openAuthModal: jest.fn() });
-    await click(all(".job-card-body")[1]);
-    const modal = q(".modal-box");
-    expect(modal.textContent).toContain("no registration fee for this role");
-    expect(modal.textContent).not.toContain("₹289");
-  });
-
-  it("unlocks a free role's test without payment, once the terms are accepted", async () => {
+  it("unlocks a role's test without payment, once the terms are accepted", async () => {
     api.getMyJobApplications.mockResolvedValue({ ok: true, applications: [], terms });
     await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
     await click(button("Apply Now", all(".job-card")[1]));
     const modal = feeModal();
     expect(modal.textContent).not.toContain("₹289");
+    expect(modal.querySelector(".order-summary")).toBeNull();
     const unlock = button("Unlock Free Test", modal);
     expect(unlock.disabled).toBe(true);
+    await click(unlock);
+    expect(api.applyForRole).not.toHaveBeenCalled();
 
     api.applyForRole.mockResolvedValue({ ok: true, application: { _id: "a5", status: "payment_pending" } });
     api.unlockFreeTest.mockResolvedValue({ ok: true, application: { _id: "a5", status: "test_pending" } });
     await click(modal.querySelector(".terms-check input"));
+    expect(unlock.disabled).toBe(true); // the 18+ box too
     await click(modal.querySelector(".adult-check input"));
+    expect(unlock.disabled).toBe(false);
     await click(unlock);
     expect(api.applyForRole).toHaveBeenCalledWith("data-science-intern");
     expect(api.unlockFreeTest).toHaveBeenCalledWith("a5");
-    expect(api.createTestFeeOrder).not.toHaveBeenCalled();
+    // There is no payment call left to make.
+    expect(api.createTestFeeOrder).toBeUndefined();
+    expect(api.verifyTestFee).toBeUndefined();
     expect(button("Start test now", modal).getAttribute("href")).toBe("/test/a5");
   });
 
   const feeModal = () => q(".test-fee-modal");
   const student = { name: "Asha", email: "asha@example.com", phone: "+919876543210" };
 
-  it("sends a visitor to log in first, remembering the role, then opens the fee popup for it", async () => {
+  it("sends a visitor to log in first, remembering the role, then opens the apply popup for it", async () => {
     const openAuthModal = jest.fn();
     api.getMyJobApplications.mockResolvedValue({ ok: true, applications: [], terms });
     await renderCareers({ isLoggedIn: false, isAdmin: false, openAuthModal });
@@ -144,7 +146,7 @@ describe("Careers page", () => {
     expect(feeModal().querySelector("h3").textContent).toBe("Data Science Intern");
   });
 
-  it("lets a logged-in student pay the registration fee right on the Careers page, once the terms are accepted", async () => {
+  it("shows the server's reason when the test can't be unlocked", async () => {
     const openAuthModal = jest.fn();
     api.getMyJobApplications.mockResolvedValue({ ok: true, applications: [], terms });
     await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal });
@@ -153,47 +155,35 @@ describe("Careers page", () => {
 
     const modal = feeModal();
     expect(modal.querySelector("h3").textContent).toBe("Web Development Intern");
-    expect(modal.querySelector(".order-summary").textContent).toContain("+289 credits");
-    const pay = button("Pay ₹289", modal);
-    expect(pay.disabled).toBe(true);
-    await click(pay);
-    expect(api.applyForRole).not.toHaveBeenCalled();
-
-    // Ticked: Pay goes through the same checkout as the dashboard.
-    api.applyForRole.mockResolvedValue({ ok: true, application: { _id: "a9" } });
-    api.createTestFeeOrder.mockResolvedValue({ ok: false, error: "This role is closed for applications right now." });
+    api.applyForRole.mockResolvedValue({ ok: true, application: { _id: "a9", status: "payment_pending" } });
+    api.unlockFreeTest.mockResolvedValue({ ok: false, error: "This role is closed for applications right now." });
     await click(modal.querySelector(".terms-check input"));
-    expect(pay.disabled).toBe(true); // the 18+ box too
     await click(modal.querySelector(".adult-check input"));
-    expect(pay.disabled).toBe(false);
-    await click(pay);
-    expect(api.applyForRole).toHaveBeenCalledWith("web-development-intern");
-    expect(api.createTestFeeOrder).toHaveBeenCalledWith("a9");
+    await click(button("Unlock Free Test", modal));
+    expect(api.unlockFreeTest).toHaveBeenCalledWith("a9");
     expect(modal.querySelector(".alert-error").textContent).toContain("closed for applications");
   });
 
-  it("asks for the missing profile details instead of showing Pay", async () => {
+  it("doesn't hold a student with an unfinished profile back from a free test", async () => {
     api.getMyJobApplications.mockResolvedValue({ ok: true, applications: [], terms });
     const fresh = { name: "Asha", email: "asha@example.com", phone: "", profilePending: true };
     await renderCareers({ user: fresh, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
     await click(button("Apply Now", all(".job-card")[0]));
     const modal = feeModal();
-    expect(button("Pay ₹289", modal)).toBeUndefined();
-    expect(modal.querySelector(".profile-gate").textContent).toContain("full name and phone number");
-    await click(button("Complete your profile", modal));
-    expect(q('[data-testid="where"]').textContent).toMatch(/^\/profile\?reason=complete&next=%2Fcareers/);
+    expect(modal.querySelector(".profile-gate")).toBeNull();
+    expect(button("Unlock Free Test", modal)).toBeTruthy();
   });
 
-  it("offers to start the test instead of payment when the role is already paid for", async () => {
+  it("offers to start the test when the role is already unlocked", async () => {
     api.getMyJobApplications.mockResolvedValue({
       ok: true, terms,
       applications: [{ _id: "a1", status: "test_pending", statusLabel: "Test pending", opening: { _id: "o1" }, attempt: null }],
     });
     await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
-    // Paid but not taken yet: the card says so, and continuing opens the test.
+    // Unlocked but not taken yet: the card says so, and continuing opens the test.
     await click(button("Continue application", all(".job-card")[0]));
     expect(button("Start test", feeModal()).getAttribute("href")).toBe("/test/a1");
-    expect(feeModal().textContent).not.toContain("Pay ₹289");
+    expect(feeModal().textContent).not.toMatch(/Pay ₹|paid/);
   });
 
   it("sends someone whose test is being reviewed to My Applications instead of applying again", async () => {
@@ -272,43 +262,48 @@ describe("Careers page", () => {
 
 describe("My Dashboard: Apply / Aptitude Test", () => {
   const application = (overrides = {}) => ({
-    _id: "a1", status: "payment_pending", statusLabel: "Payment pending", opening: { _id: "o1", slug: "web-development-intern", title: "Web Development Intern" },
+    _id: "a1", status: "payment_pending", statusLabel: "Application incomplete", opening: { _id: "o1", slug: "web-development-intern", title: "Web Development Intern" },
     createdAt: "2026-10-10T07:00:00.000Z", paidAt: null, paidPaymentId: null, interview: null, attempt: null, ...overrides,
   });
   const renderApply = async (applications, props = {}) => {
     api.getOpenings.mockResolvedValue({ ok: true, openings: [opening(), opening({ _id: "o2", slug: "data-science-intern", title: "Data Science Intern" })], terms });
     api.getMyJobApplications.mockResolvedValue({ ok: true, applications, terms });
     await act(async () => {
-      root.render(<MemoryRouter><ApplyTab user={{ name: "Asha", email: "asha@example.com" }} onGoToApplications={jest.fn()} {...props} /></MemoryRouter>);
+      root.render(<MemoryRouter><ApplyTab onGoToApplications={jest.fn()} {...props} /></MemoryRouter>);
     });
   };
 
-  it("opens on the role chosen on the Careers page and offers to pay the fee", async () => {
+  it("opens on the role chosen on the Careers page and offers the free test, with nothing to pay", async () => {
     await renderApply([], { initialRole: "data-science-intern" });
     expect(q(".plan-option.is-selected b").textContent).toBe("Data Science Intern");
     expect(q(".apply-panel h3").textContent).toBe("Data Science Intern");
-    expect(button("Pay", q(".apply-panel")).textContent).toBe("Pay ₹289 & Take Test");
-    expect(q(".order-summary").textContent).toContain("+289 credits");
+    expect(button("Unlock Free Test", q(".apply-panel"))).toBeTruthy();
+    expect(q(".order-summary")).toBeNull();
+    expect(container.textContent).not.toMatch(/₹289|Pay ₹|test fee|wallet credit/i);
+    expect(all(".plan-option").every((o) => o.textContent.includes("· Free ·"))).toBe(true);
   });
 
-  it("shows the server's reason when payment can't be started, and never opens the gateway", async () => {
+  it("unlocks the test once the terms and 18+ boxes are ticked, and shows the server's reason when it can't", async () => {
     await renderApply([]);
     api.applyForRole.mockResolvedValue({ ok: true, application: application() });
-    api.createTestFeeOrder.mockResolvedValue({ ok: false, error: "This role is closed for applications right now." });
-    expect(button("Pay", q(".apply-panel")).disabled).toBe(true);
+    api.unlockFreeTest.mockResolvedValue({ ok: false, error: "This role is closed for applications right now." });
+    expect(button("Unlock Free Test", q(".apply-panel")).disabled).toBe(true);
     await click(q(".apply-panel .terms-check input"));
     await click(q(".apply-panel .adult-check input"));
-    await click(button("Pay", q(".apply-panel")));
+    await click(button("Unlock Free Test", q(".apply-panel")));
     expect(api.applyForRole).toHaveBeenCalledWith("web-development-intern");
-    expect(api.createTestFeeOrder).toHaveBeenCalledWith("a1");
+    expect(api.unlockFreeTest).toHaveBeenCalledWith("a1");
     expect(q(".apply-panel .alert-error").textContent).toContain("closed for applications");
-    expect(api.verifyTestFee).not.toHaveBeenCalled();
+
+    api.unlockFreeTest.mockResolvedValue({ ok: true, application: application({ status: "test_pending" }) });
+    await click(button("Unlock Free Test", q(".apply-panel")));
+    expect(q(".apply-panel .alert-success").textContent).toContain("Your test is unlocked.");
   });
 
-  it("offers the test once the fee is paid, and to resume one that is under way", async () => {
-    await renderApply([application({ status: "test_pending", statusLabel: "Test pending", paidAt: "2026-10-10T07:05:00.000Z" })]);
+  it("offers the test once it is unlocked, and to resume one that is under way", async () => {
+    await renderApply([application({ status: "test_pending", statusLabel: "Test pending" })]);
     expect(button("Start test", q(".apply-panel")).getAttribute("href")).toBe("/test/a1");
-    expect(q(".apply-panel").textContent).not.toContain("Pay ₹289");
+    expect(q(".apply-panel").textContent).not.toMatch(/Pay ₹|Payment received/);
 
     act(() => root.unmount());
     root = createRoot(container);

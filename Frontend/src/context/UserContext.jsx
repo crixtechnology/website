@@ -7,7 +7,7 @@ import {
 import { useIdleLogout, IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
 
 // The details every purchase needs on file (BuyModal, upgrades, payment
-// requests, the aptitude-test fee) — the server checks the same before any
+// requests) — the server checks the same before any
 // payment (Backend utils/accounts.js profileMissing). An account made from the
 // login form starts with a placeholder name (profilePending) until its owner
 // saves their real one. Missing any of these sends the user to /profile first.

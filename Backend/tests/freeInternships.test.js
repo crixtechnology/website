@@ -5,8 +5,7 @@ const { signToken } = require("../src/utils/jwt");
 
 // Free internships: roles listed only on the unlinked /free-internships page,
 // unlocked only once the candidate has uploaded a CV (a PDF) and filled in their
-// education — and, while the processing fee setting is above 0, paid it (it
-// comes back as wallet credit). Same stand-ins as careers.test.js: no real
+// education. Nothing is paid: there is no processing fee. Same stand-ins as careers.test.js: no real
 // mail, storage, Razorpay call or rate limiting.
 process.env.RAZORPAY_KEY_SECRET = "free-internships-key-secret";
 jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next) => next() }));
@@ -54,7 +53,7 @@ async function opening(overrides = {}) {
   const res = await asAdmin(request(app).post("/api/admin/job-openings")).send({
     title: `Free Intern ${++seq}`, summary: "Learn by building.", techCategory: "web",
     durationMinutes: 20, questionCounts: { quantitative: 1, logical: 1, verbal: 1, technical: 1 },
-    feeRequired: false, audience: "free",
+    audience: "free",
     ...overrides,
   });
   expect(res.status).toBe(201);
@@ -64,7 +63,6 @@ async function opening(overrides = {}) {
 const apply = (s, o) => authed(request(app).post("/api/me/job-applications"), s.token).send({ opening: o.slug });
 const uploadCv = (s, id, body = PDF, type = "application/pdf") =>
   authed(request(app).put(`/api/me/job-applications/${id}/cv`), s.token).set("Content-Type", type).set("X-File-Name", encodeURIComponent("My CV (final).pdf")).send(body);
-const setFee = (processingFeeRupees) => asAdmin(request(app).put("/api/admin/careers/settings")).send({ processingFeeRupees });
 const createOrder = (s, id) => authed(request(app).post(`/api/me/job-applications/${id}/create-order`), s.token).send({ acceptTerms: true, confirmAdult: true });
 const verify = (orderId, paymentId) => request(app).post("/api/careers/verify").send({
   razorpay_order_id: orderId, razorpay_payment_id: paymentId,
@@ -82,7 +80,7 @@ beforeAll(async () => {
     for (let n = 1; n <= 3; n++) rows.push({ category, text: `${category} ${n}`, options: ["right", "wrong"], correctIndex: 0 });
   }
   await prisma.testQuestion.createMany({ data: rows });
-  await asAdmin(request(app).put("/api/admin/careers/settings")).send({ generatedQuestionsPercent: 0, processingFeeRupees: 0 });
+  await asAdmin(request(app).put("/api/admin/careers/settings")).send({ generatedQuestionsPercent: 0 });
 }, 180000); // wiping every table outruns the default in a full --runInBand run
 
 afterAll(async () => {
@@ -105,7 +103,10 @@ describe("Free internships", () => {
     expect(page.headers["cache-control"]).toBe("no-store");
     expect(careers.headers["cache-control"]).toBe("no-store");
     expect(page.body.openings.map((o) => o.slug)).toEqual(expect.arrayContaining([free.slug]));
-    expect(page.body.openings.every((o) => o.audience === "free" && o.feeRequired === false)).toBe(true);
+    expect(page.body.openings.every((o) => o.audience === "free")).toBe(true);
+    // No fee is quoted: not in the terms, not on a role.
+    expect(page.body.terms.processingFee).toBeUndefined();
+    expect(page.body.openings.every((o) => o.feeRequired === undefined && o.waiveFee === undefined)).toBe(true);
   });
 
   it("refuses an unknown audience", async () => {
@@ -286,74 +287,44 @@ describe("Free internships", () => {
     expect(mailer.sendApplicationStatusEmail).toHaveBeenCalledWith(expect.objectContaining({ status: "not_shortlisted", free: true }));
   });
 
-  describe("with the ₹94 processing fee", () => {
-    beforeAll(async () => { expect((await setFee(94)).status).toBe(200); });
-    afterAll(async () => { await setFee(0); });
+  describe("with no processing fee", () => {
+    it("has no payment step, even with the old fee settings sent again", async () => {
+      // Settings from when there was a fee are ignored.
+      expect((await asAdmin(request(app).put("/api/admin/careers/settings")).send({ processingFeeRupees: 94, testFeeRupees: 289 })).status).toBe(200);
+      expect((await request(app).get("/api/careers/free/openings")).body.terms.processingFee).toBeUndefined();
 
-    it("lists the fee with the openings and refuses to unlock without paying", async () => {
-      const page = await request(app).get("/api/careers/free/openings");
-      expect(page.body.terms).toMatchObject({ processingFee: 94 });
-
-      const o = await opening();
+      // So is a per-role "charge the fee" choice.
+      const o = await opening({ waiveFee: false, feeRequired: true });
       const s = await student();
       const id = (await apply(s, o)).body.application._id;
-      await uploadCv(s, id);
-      const refused = await unlock(s, id);
-      expect(refused.status).toBe(400);
-      expect(refused.body.code).toBe("FEE_REQUIRED");
-    });
+      // The old "start paying" endpoint is gone.
+      expect((await createOrder(s, id)).status).toBe(404);
 
-    it("skips the fee for a role the admin waived it on, and only that role", async () => {
-      expect((await opening({ waiveFee: "yes" }).catch(() => null))).toBeNull(); // must be true/false
-      const waived = await opening({ waiveFee: true });
-      const charged = await opening();
-      expect(waived.waiveFee).toBe(true);
-      expect(charged.waiveFee).toBe(false);
-      const listed = (await request(app).get("/api/careers/free/openings")).body.openings;
-      expect(listed.find((o) => o._id === waived._id).waiveFee).toBe(true);
-
-      const s = await student();
-      const id = (await apply(s, waived)).body.application._id;
       await uploadCv(s, id);
       const res = await unlock(s, id);
       expect(res.status).toBe(200);
-      expect((await prisma.jobApplication.findUnique({ where: { id } })).status).toBe("test_pending");
-
-      const other = (await apply(s, charged)).body.application._id;
-      await uploadCv(s, other);
-      expect((await unlock(s, other)).body.code).toBe("FEE_REQUIRED");
-
-      // Turning the waiver off brings the fee back.
-      const off = await asAdmin(request(app).put(`/api/admin/job-openings/${waived._id}`)).send({ waiveFee: false });
-      expect(off.body.opening.waiveFee).toBe(false);
+      expect(res.body.application.status).toBe("test_pending");
+      expect(await prisma.payment.count({ where: { jobApplicationId: id } })).toBe(0);
+      expect(await prisma.creditEntry.count({ where: { userId: s.id } })).toBe(0);
     });
 
-    it("needs the CV and education before taking payment", async () => {
-      const o = await opening();
-      const s = await student({});
-      const id = (await apply(s, o)).body.application._id;
-      expect((await createOrder(s, id)).body.code).toBe("CV_REQUIRED");
-      await uploadCv(s, id);
-      expect((await createOrder(s, id)).body.code).toBe("PROFILE_INCOMPLETE");
-    });
-
-    it("charges ₹94, unlocks the test, credits 94 and issues a processing-fee receipt", async () => {
+    it("still settles a processing-fee order made before the fee was removed", async () => {
       const o = await opening();
       const s = await student();
       const id = (await apply(s, o)).body.application._id;
       await uploadCv(s, id);
-      const order = await createOrder(s, id);
-      expect(order.status).toBe(201);
-      expect(order.body.amount).toBe(9400);
+      const orderId = `order_free_${Math.random().toString(36).slice(2)}`;
+      await prisma.payment.create({
+        data: { termsAcceptedAt: new Date(), razorpayOrderId: orderId, amount: 9400, status: "created", userId: s.id, jobApplicationId: id, orderSnapshotBasePrice: 94, orderSnapshotDiscountPercent: 0 },
+      });
 
       const paymentId = `pay_${Math.random().toString(36).slice(2)}`;
-      expect((await verify(order.body.orderId, paymentId)).body).toMatchObject({ ok: true, unlocked: true });
+      expect((await verify(orderId, paymentId)).body).toMatchObject({ ok: true, unlocked: true });
       // A second confirmation (the webhook) changes nothing.
-      await verify(order.body.orderId, paymentId);
+      await verify(orderId, paymentId);
 
       const app1 = await prisma.jobApplication.findUnique({ where: { id }, include: { payments: true } });
       expect(app1.status).toBe("test_pending");
-      expect(app1.education).toEqual(EDUCATION);
       expect(app1.payments[0]).toMatchObject({ status: "paid", amount: 9400, receiptItemTitle: `Test Processing Fee - ${o.title}` });
 
       const credits = await prisma.creditEntry.findMany({ where: { userId: s.id } });
@@ -361,14 +332,6 @@ describe("Free internships", () => {
       expect(credits[0]).toMatchObject({ amount: 9400, kind: "test_fee_credit" });
       expect(credits[0].note).toMatch(/^Test processing fee/);
       expect(mailer.sendTestPaymentEmail).toHaveBeenCalledWith(expect.objectContaining({ to: s.email, amount: 94, credits: 94 }));
-    });
-
-    it("leaves a regular paid role on the normal test fee", async () => {
-      const general = await opening({ audience: "general", feeRequired: true, title: `Paid ${++seq}` });
-      const s = await student();
-      const id = (await apply(s, general)).body.application._id;
-      const order = await createOrder(s, id);
-      expect(order.body.amount).toBe(28900);
     });
   });
 });

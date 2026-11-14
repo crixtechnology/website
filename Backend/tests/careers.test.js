@@ -5,7 +5,8 @@ const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 // The careers flow end to end: signup bonus and credit rules, applying and
-// paying the test fee (verified by signature AND webhook, credited once), the
+// unlocking the test for free (plus settling a fee order left from when tests
+// had a fee: verified by signature AND webhook, credited once), the
 // test engine (server-side paper, clock, scoring, sessions, violations) and the
 // admin side. Same stand-ins as the other suites: no PDF work, no real mail, no
 // live Razorpay call, no rate limiting.
@@ -83,16 +84,38 @@ async function opening(overrides = {}) {
 }
 
 const apply = (s, o) => authed(request(app).post("/api/me/job-applications"), s.token).send({ opening: o.slug });
-const createOrder = (s, applicationId) => authed(request(app).post(`/api/me/job-applications/${applicationId}/create-order`), s.token).send({ acceptTerms: true, confirmAdult: true });
+const unlock = (s, applicationId, body = { acceptTerms: true, confirmAdult: true }) =>
+  authed(request(app).post(`/api/me/job-applications/${applicationId}/unlock-free`), s.token).send(body);
+// Tests are free now, so no fee order can be created any more. One made before
+// that still has to settle: this writes the Payment row such an order left behind.
+async function legacyOrder(s, applicationId, rupees = 289) {
+  const orderId = `order_job_${Math.random().toString(36).slice(2)}`;
+  await prisma.payment.create({
+    data: {
+      termsAcceptedAt: new Date(), razorpayOrderId: orderId, amount: rupees * 100, status: "created",
+      userId: s.id, jobApplicationId: applicationId, orderSnapshotBasePrice: rupees, orderSnapshotDiscountPercent: 0,
+    },
+  });
+  return { status: 201, body: { orderId } };
+}
 const signature = (orderId, paymentId) => crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(`${orderId}|${paymentId}`).digest("hex");
 const verify = (orderId, paymentId, sig = signature(orderId, paymentId)) =>
   request(app).post("/api/careers/verify").send({ razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: sig });
 
-// Applies and pays: the application comes back unlocked (test_pending).
+// Applies and accepts the terms: the application comes back unlocked (test_pending), free.
+async function unlockedApplication(s, o) {
+  const applied = await apply(s, o);
+  expect(applied.status).toBeLessThan(300);
+  const res = await unlock(s, applied.body.application._id);
+  expect(res.status).toBe(200);
+  return { applicationId: applied.body.application._id };
+}
+
+// An application whose (old) test fee was paid: unlocked by the payment.
 async function paidApplication(s, o) {
   const applied = await apply(s, o);
   expect(applied.status).toBeLessThan(300);
-  const order = await createOrder(s, applied.body.application._id);
+  const order = await legacyOrder(s, applied.body.application._id);
   expect(order.status).toBe(201);
   const paymentId = `pay_${Math.random().toString(36).slice(2)}`;
   const v = await verify(order.body.orderId, paymentId);
@@ -108,10 +131,10 @@ const answer = (s, t, questionId, selected, extra = {}) =>
 const violate = (s, t, type) => inTest(request(app).post(`/api/me/test/${t.attempt._id}/violations`), s, t.sessionId).send({ type });
 const submit = (s, t) => inTest(request(app).post(`/api/me/test/${t.attempt._id}/submit`), s, t.sessionId).send({});
 
-// Paid, started, ready to answer.
+// Unlocked, started, ready to answer.
 async function sitting(o) {
   const s = await student();
-  const { applicationId } = await paidApplication(s, o);
+  const { applicationId } = await unlockedApplication(s, o);
   const res = await start(s, applicationId);
   expect(res.status).toBe(200);
   return { s, applicationId, t: res.body };
@@ -308,15 +331,19 @@ describe("careers settings", () => {
   it("are admin-only and validated", async () => {
     const s = await student();
     expect((await authed(request(app).get("/api/admin/careers/settings"), s.token)).status).toBe(403);
-    expect((await authed(request(app).put("/api/admin/careers/settings"), s.token).send({ testFeeRupees: 1 })).status).toBe(403);
+    expect((await authed(request(app).put("/api/admin/careers/settings"), s.token).send({ violationLimit: 1 })).status).toBe(403);
     expect((await request(app).get("/api/admin/careers/settings")).status).toBe(401);
 
-    for (const bad of [{ testFeeRupees: 0 }, { testFeeRupees: "289" }, { creditUsagePercent: 101 }, { violationLimit: 0 }, { requireWebcam: "yes" }, { creditExpiryMonths: -1 }]) {
+    for (const bad of [{ creditUsagePercent: 101 }, { violationLimit: 0 }, { requireWebcam: "yes" }, { creditExpiryMonths: -1 }]) {
       expect((await setSettings(bad)).status).toBe(400);
     }
-    const ok = await setSettings({ violationLimit: 3, requireWebcam: true });
+    // There is no fee setting any more: one sent anyway (or left in the database) is dropped.
+    await prisma.setting.upsert({ where: { key: "careers" }, create: { key: "careers", value: { testFeeRupees: 289, processingFeeRupees: 94 } }, update: {} });
+    const ok = await setSettings({ violationLimit: 3, requireWebcam: true, testFeeRupees: 500, processingFeeRupees: 50 });
     expect(ok.status).toBe(200);
-    expect(ok.body.settings).toMatchObject({ testFeeRupees: 289, violationLimit: 3, requireWebcam: true });
+    expect(ok.body.settings).toMatchObject({ violationLimit: 3, requireWebcam: true });
+    expect(ok.body.settings.testFeeRupees).toBeUndefined();
+    expect(ok.body.settings.processingFeeRupees).toBeUndefined();
   });
 });
 
@@ -331,7 +358,10 @@ describe("job openings", () => {
     expect(slugs).not.toContain(closed.slug);
     const shown = res.body.openings.find((x) => x.slug === o.slug);
     expect(shown.test).toEqual({ durationMinutes: 30, questions: 10, marksPerQuestion: 1 });
-    expect(res.body.terms).toMatchObject({ testFee: 289, creditExpiryMonths: 12 });
+    expect(res.body.terms).toMatchObject({ creditExpiryMonths: 12 });
+    // Applying is free: no fee is quoted anywhere.
+    expect(res.body.terms.testFee).toBeUndefined();
+    expect(shown.feeRequired).toBeUndefined();
 
     const one = await request(app).get(`/api/careers/openings/${o.slug}`);
     expect(one.body.opening.responsibilities).toEqual(["Ship pages"]);
@@ -398,7 +428,7 @@ describe("job openings", () => {
   });
 });
 
-describe("applying and paying the test fee", () => {
+describe("applying and unlocking the test (free)", () => {
   let o;
   beforeAll(async () => { o = await opening(); });
 
@@ -419,42 +449,31 @@ describe("applying and paying the test fee", () => {
     expect(await prisma.jobApplication.count({ where: { userId: s.id, openingId: o._id } })).toBe(1);
   });
 
-  it("won't start the payment until the terms are accepted, and records when they were", async () => {
+  it("won't unlock the test until the terms are accepted and the candidate confirms they're 18 or older", async () => {
     const s = await student();
-    const applied = await apply(s, o);
-    const id = applied.body.application._id;
-    razorpay.orders.create.mockClear();
-    for (const body of [{}, { acceptTerms: false }, { acceptTerms: "yes" }]) {
-      const refused = await authed(request(app).post(`/api/me/job-applications/${id}/create-order`), s.token).send(body);
+    const id = (await apply(s, o)).body.application._id;
+    for (const body of [{}, { acceptTerms: false, confirmAdult: true }, { acceptTerms: "yes", confirmAdult: true }]) {
+      const refused = await unlock(s, id, body);
       expect(refused.status).toBe(400);
       expect(refused.body.code).toBe("TERMS_REQUIRED");
     }
-    expect(razorpay.orders.create).not.toHaveBeenCalled();
-
-    const order = await createOrder(s, id);
-    expect(order.status).toBe(201);
-    const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: order.body.orderId } });
-    expect(payment.termsAcceptedAt).toBeInstanceOf(Date);
-  });
-
-  it("only takes the fee from candidates who confirm they're 18 or older", async () => {
-    const s = await student();
-    const applied = await apply(s, o);
-    const id = applied.body.application._id;
-    razorpay.orders.create.mockClear();
     for (const confirmAdult of [undefined, false, "yes"]) {
-      const refused = await authed(request(app).post(`/api/me/job-applications/${id}/create-order`), s.token).send({ acceptTerms: true, confirmAdult });
+      const refused = await unlock(s, id, { acceptTerms: true, confirmAdult });
       expect(refused.status).toBe(400);
       expect(refused.body.code).toBe("ADULT_REQUIRED");
     }
-    expect(razorpay.orders.create).not.toHaveBeenCalled();
-    expect((await createOrder(s, id)).status).toBe(201);
+    expect((await prisma.jobApplication.findUnique({ where: { id } })).status).toBe("payment_pending");
+    expect((await start(s, id)).status).toBe(400);
+
+    const ok = await unlock(s, id);
+    expect(ok.status).toBe(200);
+    expect(ok.body.application.status).toBe("test_pending");
     expect((await prisma.jobApplication.findUnique({ where: { id } })).adultConfirmedAt).toBeInstanceOf(Date);
   });
 
-  it("asks an application paid before the age check to confirm 18+ when starting the test", async () => {
+  it("asks an application unlocked before the age check to confirm 18+ when starting the test", async () => {
     const s = await student();
-    const { applicationId } = await paidApplication(s, o);
+    const { applicationId } = await unlockedApplication(s, o);
     await prisma.jobApplication.update({ where: { id: applicationId }, data: { adultConfirmedAt: null } });
     const refused = await start(s, applicationId, { consent: true });
     expect(refused.status).toBe(400);
@@ -463,37 +482,40 @@ describe("applying and paying the test fee", () => {
     expect((await prisma.jobApplication.findUnique({ where: { id: applicationId } })).adultConfirmedAt).toBeInstanceOf(Date);
   });
 
-  it("charges the admin's fee, never an amount from the browser", async () => {
+  it("takes no payment: there is no fee order to create, and nothing is charged or credited", async () => {
     const s = await student();
-    const applied = await apply(s, o);
-    razorpay.orders.create.mockClear();
-    const order = await authed(request(app).post(`/api/me/job-applications/${applied.body.application._id}/create-order`), s.token).send({ acceptTerms: true, confirmAdult: true, amount: 100 });
-    expect(order.status).toBe(201);
-    expect(order.body.amount).toBe(28900);
-    expect(razorpay.orders.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 28900, currency: "INR" }));
-
-    // Someone else's application can't be paid for (or even seen).
-    const other = await student();
-    expect((await createOrder(other, applied.body.application._id)).status).toBe(404);
-  });
-
-  it("refuses the fee until the profile has a real name and a phone number", async () => {
-    const s = await student();
-    await prisma.user.update({ where: { id: s.id }, data: { phone: "", profilePending: true } });
     const id = (await apply(s, o)).body.application._id;
     razorpay.orders.create.mockClear();
-    const refused = await createOrder(s, id);
-    expect(refused.status).toBe(400);
-    expect(refused.body.code).toBe("PROFILE_INCOMPLETE");
-    expect(refused.body.missing).toEqual(["full name", "phone number"]);
-    expect(razorpay.orders.create).not.toHaveBeenCalled();
+    // The old "start paying the test fee" endpoint is gone.
+    const order = await authed(request(app).post(`/api/me/job-applications/${id}/create-order`), s.token).send({ acceptTerms: true, confirmAdult: true });
+    expect(order.status).toBe(404);
 
-    await authed(request(app).patch("/api/auth/me"), s.token).send({ name: "Real Name", phone: "9876500001" });
-    expect((await createOrder(s, id)).status).toBe(201);
+    // Someone else's application can't be unlocked (or even seen).
+    const other = await student();
+    expect((await unlock(other, id)).status).toBe(404);
+
+    expect((await unlock(s, id)).status).toBe(200);
+    // A second click changes nothing.
+    expect((await unlock(s, id)).body.application.status).toBe("test_pending");
+    expect(razorpay.orders.create).not.toHaveBeenCalled();
+    expect(await prisma.payment.count({ where: { jobApplicationId: id } })).toBe(0);
+    expect((await walletOf(s)).balance).toBe(0);
+    const mine = (await authed(request(app).get("/api/me/job-applications"), s.token)).body.applications.find((a) => a._id === id);
+    expect(mine.paidAt).toBeNull();
+    expect((await start(s, id)).status).toBe(200);
   });
 
-  it("makes a candidate wait before re-applying to a free role, but not to a paid one", async () => {
-    const free = await opening({ feeRequired: false });
+  it("unlocks a role an admin once marked as having a fee, like any other", async () => {
+    // feeRequired / waiveFee are no longer settings; old values in the database are ignored.
+    const old = await opening({ feeRequired: true, waiveFee: false });
+    await prisma.jobOpening.update({ where: { id: old._id }, data: { feeRequired: true } });
+    const s = await student();
+    const id = (await apply(s, old)).body.application._id;
+    expect((await unlock(s, id)).status).toBe(200);
+  });
+
+  it("makes a candidate wait before re-applying to a role", async () => {
+    const free = await opening();
     const s = await student();
     const first = (await apply(s, free)).body.application._id;
     // The application ends without an offer, just now.
@@ -515,47 +537,14 @@ describe("applying and paying the test fee", () => {
     expect((await apply(t, free)).status).toBe(201);
     await setSettings({ reapplyCooldownDays: 30 });
 
-    // Paid roles: no wait (each try needs a new fee).
-    const u = await student();
-    const paidFirst = (await apply(u, o)).body.application._id;
-    await prisma.jobApplication.update({ where: { id: paidFirst }, data: { status: "not_shortlisted", closedAt: new Date() } });
-    expect((await apply(u, o)).status).toBe(201);
     expect((await setSettings({ reapplyCooldownDays: 400 })).status).toBe(400);
   });
 
-  it("unlocks a free role's test without payment, once the terms and 18+ box are accepted", async () => {
-    const free = await opening({ feeRequired: false });
-    expect(free.feeRequired).toBe(false);
-    const listed = (await request(app).get("/api/careers/openings")).body.openings.find((x) => x.slug === free.slug);
-    expect(listed.feeRequired).toBe(false);
-
-    const s = await student();
-    const id = (await apply(s, free)).body.application._id;
-    const unlock = (body) => authed(request(app).post(`/api/me/job-applications/${id}/unlock-free`), s.token).send(body);
-    expect((await unlock({ confirmAdult: true })).status).toBe(400); // no terms
-    expect((await unlock({ acceptTerms: true })).body.code).toBe("ADULT_REQUIRED");
-    // A free role never opens the gateway.
-    razorpay.orders.create.mockClear();
-    expect((await createOrder(s, id)).status).toBe(400);
-    expect(razorpay.orders.create).not.toHaveBeenCalled();
-
-    const ok = await unlock({ acceptTerms: true, confirmAdult: true });
-    expect(ok.status).toBe(200);
-    expect(ok.body.application.status).toBe("test_pending");
-    expect((await walletOf(s)).balance).toBe(0); // nothing paid, nothing credited
-    expect((await start(s, id)).status).toBe(200);
-
-    // A paid role can't be unlocked this way.
-    const t = await student();
-    const paidId = (await apply(t, o)).body.application._id;
-    const refused = await authed(request(app).post(`/api/me/job-applications/${paidId}/unlock-free`), t.token).send({ acceptTerms: true, confirmAdult: true });
-    expect(refused.status).toBe(400);
-  });
-
+  // ----- a fee order left from when tests had a fee -----
   it("doesn't unlock anything on a bad signature", async () => {
     const s = await student();
     const applied = await apply(s, o);
-    const order = await createOrder(s, applied.body.application._id);
+    const order = await legacyOrder(s, applied.body.application._id);
     expect((await verify(order.body.orderId, "pay_fake", "0".repeat(64))).status).toBe(400);
     expect((await verify(order.body.orderId, "pay_fake", "nonsense")).status).toBe(400);
     expect((await request(app).post("/api/careers/verify").send({})).status).toBe(400);
@@ -567,7 +556,7 @@ describe("applying and paying the test fee", () => {
     expect((await start(s, row.id)).status).toBe(400);
   });
 
-  it("on payment: unlocks the test, credits the fee once, and mints one receipt", async () => {
+  it("still settles an old fee payment: unlocks the test, credits the fee once, and mints one receipt", async () => {
     const s = await student();
     mailer.sendTestPaymentEmail.mockClear();
     const { applicationId, orderId, paymentId } = await paidApplication(s, o);
@@ -605,15 +594,12 @@ describe("applying and paying the test fee", () => {
     const receipt = await authed(request(app).get(`/api/receipts/${payment.id}`), s.token);
     expect(receipt.status).toBe(200);
     expect(receipt.body.receipt.itemType).toBe("aptitude_test");
-
-    // Paying again for an application that is already paid is refused.
-    expect((await createOrder(s, applicationId)).status).toBe(400);
   });
 
   it("credits once when the browser's confirmation and the webhook race", async () => {
     const s = await student();
     const applied = await apply(s, o);
-    const order = await createOrder(s, applied.body.application._id);
+    const order = await legacyOrder(s, applied.body.application._id);
     const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: order.body.orderId } });
     mailer.sendTestPaymentEmail.mockClear();
 
@@ -628,7 +614,7 @@ describe("applying and paying the test fee", () => {
   it("the course checkout's verify endpoint doesn't accept a test-fee payment", async () => {
     const s = await student();
     const applied = await apply(s, o);
-    const order = await createOrder(s, applied.body.application._id);
+    const order = await legacyOrder(s, applied.body.application._id);
     const res = await request(app).post("/api/payments/verify").send({
       razorpay_order_id: order.body.orderId, razorpay_payment_id: "pay_x", razorpay_signature: signature(order.body.orderId, "pay_x"),
     });
@@ -643,7 +629,7 @@ describe("the test engine", () => {
 
   it("needs consent, then hands out a paper with no answers in it", async () => {
     const s = await student();
-    const { applicationId } = await paidApplication(s, o);
+    const { applicationId } = await unlockedApplication(s, o);
 
     const info = await authed(request(app).get(`/api/me/job-applications/${applicationId}/test`), s.token);
     expect(info.body).toMatchObject({ state: "ready", rules: { durationMinutes: 30, questions: 10, violationLimit: 3 } });
@@ -805,7 +791,7 @@ describe("the test engine", () => {
     const still = await authed(request(app).get("/api/me/job-applications"), s.token);
     expect(JSON.stringify(still.body)).not.toMatch(/score|correctCount/i);
 
-    // One attempt per payment: it can't be started, answered or submitted again.
+    // One attempt per application: it can't be started, answered or submitted again.
     expect((await start(s, applicationId)).status).toBe(409);
     expect((await answer(s, t, t.questions[0].id, 1)).status).toBe(409);
     expect((await submit(s, t)).body.submitted).toBe(true);
@@ -815,7 +801,7 @@ describe("the test engine", () => {
 
   it("starting twice at once still makes one attempt", async () => {
     const s = await student();
-    const { applicationId } = await paidApplication(s, o);
+    const { applicationId } = await unlockedApplication(s, o);
     const results = await Promise.all([start(s, applicationId), start(s, applicationId), start(s, applicationId)]);
     expect(await prisma.testAttempt.count({ where: { applicationId } })).toBe(1);
     expect(results.filter((r) => r.status === 200).length).toBeGreaterThanOrEqual(1);
@@ -896,7 +882,7 @@ describe("the test engine", () => {
 
   it("only runs in the desktop app when the admin requires it", async () => {
     const s = await student();
-    const { applicationId } = await paidApplication(s, o);
+    const { applicationId } = await unlockedApplication(s, o);
     await setSettings({ requireDesktopApp: true });
     process.env.LOCKDOWN_APP_SECRET = "lockdown-test-secret";
     try {
@@ -1072,13 +1058,13 @@ describe("applicants (admin)", () => {
     expect(res.status).toBe(200);
     expect(res.body.applications).toHaveLength(1);
     expect(res.body.applications[0]).toMatchObject({
-      status: "submitted", paymentStatus: "paid",
+      status: "submitted", paymentStatus: "free",
       user: { name: "Test Candidate", email: s.email },
       opening: { title: "Review Role" },
       attempt: { score: 1, maxScore: 10, violationCount: 1, passed: false },
     });
     expect(res.body.summary.totalApplicants).toBeGreaterThanOrEqual(1);
-    expect(res.body.summary.paymentsReceived).toBeGreaterThanOrEqual(1);
+    expect(res.body.summary.paymentsReceived).toEqual(expect.any(Number));
     expect(res.body.summary.averageScore).toEqual(expect.any(Number));
 
     const searched = await asAdmin(request(app).get(`/api/admin/job-applications?q=${encodeURIComponent(s.email)}&status=submitted`));
@@ -1090,7 +1076,7 @@ describe("applicants (admin)", () => {
     const res = await asAdmin(request(app).get(`/api/admin/job-applications/${applicationId}`));
     expect(res.status).toBe(200);
     const { review, payment } = res.body;
-    expect(payment).toMatchObject({ amount: 289 });
+    expect(payment).toBeNull(); // the test is free: nothing was paid
     expect(review.questions).toHaveLength(10);
     expect(review.consentAt).toBe(review.startedAt);
     expect(review.adultConfirmedAt).toEqual(expect.any(String));
@@ -1154,7 +1140,11 @@ describe("applicants (admin)", () => {
     await submit(s2, t2);
     expect((await apply(s2, o)).body.application._id).toBe(first); // still open: same one
     await asAdmin(request(app).post(`/api/admin/job-applications/${first}/status`)).send({ action: "not_shortlist" });
+    // Straight away is too soon (the re-apply wait); with the wait off it goes through.
+    expect((await apply(s2, o)).body.code).toBe("REAPPLY_COOLDOWN");
+    await setSettings({ reapplyCooldownDays: 0 });
     const again = await apply(s2, o);
+    await setSettings({ reapplyCooldownDays: 30 });
     expect(again.status).toBe(201);
     expect(again.body.application._id).not.toBe(first);
     expect(again.body.application.status).toBe("payment_pending");
@@ -1191,6 +1181,7 @@ describe("applicants (admin)", () => {
 
   it("lists wallet balances", async () => {
     expect((await authed(request(app).get("/api/admin/wallets"), s.token)).status).toBe(403);
+    await prisma.creditEntry.create({ data: { userId: s.id, amount: 28900, kind: "test_fee_credit", note: "Aptitude test fee (paid before tests were free)" } });
     const res = await asAdmin(request(app).get(`/api/admin/wallets?q=${encodeURIComponent(s.email)}`));
     expect(res.status).toBe(200);
     expect(res.body.wallets).toEqual([expect.objectContaining({ email: s.email, balance: 289 })]);

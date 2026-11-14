@@ -170,8 +170,8 @@ function jobPostingLd(o) {
   // 1. The static pages from seo.json.
   let written = 0;
   const openings = await liveOpenings();
-  // Only free roles get JobPosting markup — must match the Careers page.
-  const freeOpenings = openings.filter((o) => o.feeRequired === false);
+  // Every role is free to apply for, so each gets JobPosting markup — must match the Careers page.
+  const freeOpenings = openings;
   for (const [p, r] of Object.entries(seo.routes)) {
     if (p === "/") continue; // build/index.html already carries the home page's tags
     writePage({

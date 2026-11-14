@@ -1,4 +1,4 @@
-// Shared logic for the careers flow: job openings, the aptitude-test fee, the
+// Shared logic for the careers flow: job openings, the
 // test paper and its scoring. Routes: routes/careers.js (public + candidate),
 // routes/aptitudeTest.js (the test itself) and routes/adminCareers.js.
 const crypto = require("crypto");
@@ -53,7 +53,8 @@ function normalizeCounts(raw) {
 }
 
 const STATUS_LABELS = {
-  payment_pending: "Payment pending",
+  // The database name is from when a test had a fee; it now means "applied, terms not accepted yet".
+  payment_pending: "Application incomplete",
   test_pending: "Test pending",
   submitted: "Submitted",
   shortlisted: "Shortlisted",
@@ -98,8 +99,6 @@ function shapeOpening(o, { admin = false } = {}) {
     positions: positionsOf(o),
     status: o.status,
     order: o.order,
-    feeRequired: o.feeRequired !== false,
-    waiveFee: !!o.waiveFee,
     audience: o.audience || "general",
     createdAt: o.createdAt,
     test: {
@@ -111,16 +110,11 @@ function shapeOpening(o, { admin = false } = {}) {
   };
 }
 
-// ---------- paying the test fee ----------
-// What one role's test costs, in rupees (0 = it unlocks without payment): a
-// free-internship role takes the processing fee, any other role the test fee
-// when it has one. Both come back in full as wallet credit.
-function testFeeFor(opening, settings) {
-  if (!opening) return 0;
-  // A free internship charges the processing fee unless the admin waived it for this role.
-  if (opening.audience === "free") return opening.waiveFee ? 0 : settings.processingFeeRupees || 0;
-  return opening.feeRequired === false ? 0 : settings.testFeeRupees;
-}
+// ---------- test fees (no longer charged) ----------
+// Every role's test is free now: it unlocks at /me/job-applications/:id/unlock-free
+// and no new fee order can be created. What follows only settles a fee payment
+// started before the fees were removed (the Razorpay webhook or /careers/verify
+// may still confirm one) and keeps old receipts and wallet credit as they were.
 const feeName = (opening) => (opening && opening.audience === "free" ? "Test processing fee" : "Aptitude test fee");
 
 // Marks a test-fee payment paid and does everything that follows from it:
@@ -458,7 +452,6 @@ function verifyDesktopAppToken(token, userId) {
 }
 
 module.exports = {
-  testFeeFor,
   CATEGORIES,
   GENERAL_CATEGORIES,
   TECH_CATEGORIES,

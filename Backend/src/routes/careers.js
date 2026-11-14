@@ -1,27 +1,23 @@
 // Careers: the public list of job openings, and a candidate's own applications
-// — apply for a role, pay the aptitude-test fee, see where the application stands.
+// — apply for a role, unlock its aptitude test, see where the application stands.
 //
-// Paying the fee is deliberately separate from the normal checkout in
-// routes/payments.js (same reasons as routes/paymentRequests.js): no plan
-// pricing, no offer codes, no referral discount, and wallet credit can't pay
-// for it — the fee itself comes back as credit. The two share only the Payment
-// table (so the fee gets a normal receipt) and the Razorpay webhook, which
-// hands payments carrying a jobApplicationId to utils/careers.js.
+// Applying and the test are free: no payment is taken anywhere in this flow.
+// (Tests used to carry a fee; /careers/verify below only settles a payment that
+// was already under way when the fees were removed.)
 //
 // The test itself is in routes/aptitudeTest.js; the admin side in routes/adminCareers.js.
 const express = require("express");
 const crypto = require("crypto");
 const { prisma } = require("../db");
 const { safeEqual } = require("../utils/safeCompare");
-const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { requireAuth } = require("../middleware/requireAuth");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 const { rejectWithoutTerms } = require("../utils/terms");
-const { rejectIfProfileIncomplete, profileMissing, educationMissing } = require("../utils/accounts");
+const { profileMissing, educationMissing } = require("../utils/accounts");
 const { lockUser } = require("../utils/wallet");
 const { getCareerSettings } = require("../utils/careerSettings");
 const { saveCv, deleteSnapshot, describeStorageError } = require("../utils/proctorStorage");
-const { STATUS_LABELS, shapeOpening, positionsOf, OPENING_COUNTS, grantTestForPayment, finalizeExpiredAttempts, testFeeFor } = require("../utils/careers");
+const { STATUS_LABELS, shapeOpening, positionsOf, OPENING_COUNTS, grantTestForPayment, finalizeExpiredAttempts } = require("../utils/careers");
 
 const router = express.Router();
 
@@ -61,10 +57,9 @@ const profileIncompleteBody = (missing) => ({ ok: false, code: "PROFILE_INCOMPLE
 // Statuses at which the candidate is shown their interview slot.
 const INTERVIEW_VISIBLE = ["interview_scheduled", "selected"];
 
-// The numbers the public page and the dashboard quote (fee, bonus, credit rules).
+// The numbers the public page and the dashboard quote (bonus, credit rules).
 function publicTerms(settings) {
   return {
-    testFee: settings.testFeeRupees,
     signupBonus: settings.signupBonusCredits,
     creditExpiryMonths: settings.creditExpiryMonths,
     creditUsagePercent: settings.creditUsagePercent,
@@ -80,7 +75,7 @@ function shapeApplication(a) {
     _id: a.id,
     status: a.status,
     statusLabel: STATUS_LABELS[a.status] || a.status,
-    opening: a.opening ? { _id: a.opening.id, slug: a.opening.slug, title: a.opening.title, status: a.opening.status, feeRequired: a.opening.feeRequired !== false, audience: a.opening.audience || "general", test: shapeOpening(a.opening).test } : undefined,
+    opening: a.opening ? { _id: a.opening.id, slug: a.opening.slug, title: a.opening.title, status: a.opening.status, audience: a.opening.audience || "general", test: shapeOpening(a.opening).test } : undefined,
     cv: a.cvKey ? { fileName: a.cvFileName, uploadedAt: a.cvUploadedAt } : null,
     createdAt: a.createdAt,
     paidAt: a.paidAt,
@@ -101,19 +96,6 @@ function shapeApplication(a) {
 }
 
 const WITH_DETAIL = { opening: true, attempt: true };
-
-// Same answers the normal checkout gives for Razorpay SDK failures.
-function respondToRazorpayError(e, res) {
-  if (!e || !e.statusCode) return false;
-  console.error("Razorpay order create failed (aptitude test):", e.statusCode, e.error && e.error.description);
-  res.status(502).json({
-    ok: false,
-    error: e.statusCode === 401
-      ? "Payments aren't set up correctly yet. Please contact us on WhatsApp to complete your payment."
-      : (e.error && e.error.description) || "Payment gateway error",
-  });
-  return true;
-}
 
 // ---------- public: open roles (the /careers page) ----------
 // Free-internship roles are left out: they are listed only on the /free-internships page.
@@ -142,7 +124,7 @@ router.get("/careers/free/openings", async (req, res, next) => {
     res.json({
       ok: true,
       openings: openings.map((o) => shapeOpening(o)),
-      terms: { processingFee: settings.processingFeeRupees, creditExpiryMonths: settings.creditExpiryMonths, creditUsagePercent: settings.creditUsagePercent },
+      terms: { creditExpiryMonths: settings.creditExpiryMonths, creditUsagePercent: settings.creditUsagePercent },
     });
   } catch (e) {
     next(e);
@@ -195,8 +177,8 @@ router.post("/me/job-applications/clear", requireAuth, async (req, res, next) =>
 });
 
 // ---------- candidate: apply for a role ----------
-// Body: { opening: <slug or id> }. Creates the application (waiting for the test
-// fee), or hands back the one already open for that role — applying twice never
+// Body: { opening: <slug or id> }. Creates the application (its test unlocks at
+// /unlock-free once the terms are accepted), or hands back the one already open for that role — applying twice never
 // makes a second one.
 router.post("/me/job-applications", publicWriteLimiter, requireAuth, async (req, res, next) => {
   try {
@@ -219,9 +201,9 @@ router.post("/me/job-applications", publicWriteLimiter, requireAuth, async (req,
       // Every position taken: no new applications (one already started, above, carries on).
       const seats = positionsOf(opening);
       if (seats && seats.left === 0) return { error: "All positions for this role have been filled.", code: "POSITIONS_FILLED" };
-      // A free role can't be retaken back-to-back: after an application there ends
+      // A role can't be retaken back-to-back: after an application there ends
       // without an offer, the candidate waits the admin's cooldown before trying again.
-      if (opening.feeRequired === false) {
+      {
         const { reapplyCooldownDays } = await getCareerSettings(tx);
         if (reapplyCooldownDays > 0) {
           const last = await tx.jobApplication.findFirst({
@@ -291,87 +273,9 @@ router.put(
   }
 );
 
-// ---------- candidate: start paying the test fee ----------
-// The amount is the admin's test fee, read here — never anything the browser sent.
-router.post("/me/job-applications/:id/create-order", publicWriteLimiter, requireAuth, async (req, res, next) => {
-  try {
-    if (isLiveBlocked) {
-      return res.status(503).json({
-        ok: false,
-        error: "Live payments are disabled by a safety guard. Set ALLOW_LIVE_PAYMENTS=true in Backend/.env to enable real charges.",
-      });
-    }
-    if (rejectWithoutTerms(req, res)) return;
-    if (await rejectIfProfileIncomplete(req, res)) return;
-    // The aptitude test (with webcam monitoring) is for adults only.
-    if (!req.body || req.body.confirmAdult !== true) {
-      return res.status(400).json({ ok: false, code: "ADULT_REQUIRED", error: "The aptitude test is only for candidates aged 18 or older. Please confirm your age to continue." });
-    }
-    const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, include: { opening: true } });
-    // Same answer for "missing" and "not yours".
-    if (!application || application.userId !== req.user.sub) {
-      return res.status(404).json({ ok: false, error: "Application not found" });
-    }
-    if (application.status !== "payment_pending") {
-      return res.status(400).json({ ok: false, error: "The test fee for this application has already been paid." });
-    }
-    if (application.opening.status !== "open") {
-      return res.status(400).json({ ok: false, error: "This role is closed for applications right now." });
-    }
-    const settings = await getCareerSettings();
-    const fee = testFeeFor(application.opening, settings);
-    if (!fee) {
-      return res.status(400).json({ ok: false, error: "This role has no fee — unlock the test for free instead." });
-    }
-    // A free internship: the CV and the student's education come first, and the
-    // education is copied onto the application as it is now.
-    let education;
-    if (needsCv(application.opening)) {
-      if (!application.cvKey) return res.status(400).json({ ok: false, code: "CV_REQUIRED", error: "Upload your CV (PDF) to apply for this role." });
-      const profile = await freeInternshipProfile(req.user.sub);
-      if (profile.missing.length) return res.status(400).json(profileIncompleteBody(profile.missing));
-      education = profile.education;
-    }
-
-    await prisma.jobApplication.update({ where: { id: application.id }, data: { adultConfirmedAt: new Date(), ...(education ? { education } : {}) } });
-
-    const amountPaise = fee * 100;
-    const order = await razorpay.orders.create({
-      amount: amountPaise,
-      currency: "INR",
-      receipt: `job_${application.id}`,
-      notes: { jobApplicationId: String(application.id), role: application.opening.slug },
-    });
-
-    await prisma.payment.create({
-      data: {
-        termsAcceptedAt: new Date(),
-        razorpayOrderId: order.id,
-        amount: amountPaise,
-        status: "created",
-        userId: application.userId,
-        jobApplicationId: application.id,
-        orderSnapshotBasePrice: fee,
-        orderSnapshotDiscountPercent: 0,
-      },
-    });
-
-    res.status(201).json({
-      ok: true,
-      orderId: order.id,
-      amount: amountPaise,
-      currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID, // public key id — safe to send to the frontend checkout widget
-    });
-  } catch (e) {
-    if (respondToRazorpayError(e, res)) return;
-    next(e);
-  }
-});
-
-// ---------- candidate: unlock the test of a free role ----------
-// A role the admin marked free has no registration fee: once the terms and the
-// 18+ box are accepted, the test unlocks straight away — no payment, no credit.
+// ---------- candidate: unlock the test ----------
+// No role has a fee: once the terms and the 18+ box are accepted, the test
+// unlocks straight away — no payment, no credit.
 router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireAuth, async (req, res, next) => {
   try {
     if (rejectWithoutTerms(req, res)) return;
@@ -381,9 +285,6 @@ router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireA
     const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, include: { opening: true } });
     if (!application || application.userId !== req.user.sub) {
       return res.status(404).json({ ok: false, error: "Application not found" });
-    }
-    if (testFeeFor(application.opening, await getCareerSettings()) > 0) {
-      return res.status(400).json({ ok: false, code: "FEE_REQUIRED", error: "This role needs its fee paid to unlock the test." });
     }
     if (application.opening.status !== "open") {
       return res.status(400).json({ ok: false, error: "This role is closed for applications right now." });
@@ -411,8 +312,9 @@ router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireA
   }
 });
 
-// ---------- candidate: confirm the payment from Razorpay Checkout ----------
-// Same signature check as /payments/verify; only accepts test-fee payments. What
+// ---------- confirm a test-fee payment from Razorpay Checkout ----------
+// Kept only for a payment begun before test fees were removed (no new order can
+// be created). Same signature check as /payments/verify; only accepts test-fee payments. What
 // the browser says is never trusted — only a signature made with our key secret
 // (here) or Razorpay's own webhook (routes/payments.js) unlocks the test.
 router.post("/careers/verify", publicWriteLimiter, async (req, res, next) => {

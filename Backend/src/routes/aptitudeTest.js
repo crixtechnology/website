@@ -135,10 +135,10 @@ router.post("/me/job-applications/:id/test/start", requireAuth, testApiLimiter, 
     let attempt = application.attempt;
     let sessionId = null;
     if (!attempt) {
-      if (application.status === "payment_pending") return res.status(400).json({ ok: false, error: "Unlock this test from My Dashboard first — accept the terms, and pay the registration fee if the role has one." });
+      if (application.status === "payment_pending") return res.status(400).json({ ok: false, error: "Unlock this test from My Dashboard first — accept the terms to unlock it (there is no fee)." });
       if (application.status !== "test_pending") return res.status(400).json({ ok: false, error: "This test has already been taken." });
       if (consent !== true) return res.status(400).json({ ok: false, error: "Please accept the test rules and webcam monitoring to start." });
-      // Adults only. Confirmed when the fee was paid; an application paid before
+      // Adults only. Confirmed when the test was unlocked; an application from before
       // that existed confirms it here, with the same box as the rules.
       if (!application.adultConfirmedAt) {
         if (adult !== true) return res.status(400).json({ ok: false, code: "ADULT_REQUIRED", error: "The aptitude test is only for candidates aged 18 or older. Please confirm your age to start." });

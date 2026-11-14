@@ -131,7 +131,7 @@ function ApplicantReview({ id, onBack, onChanged }) {
   const canRetest = !!t && t.status === "submitted" && RETEST_FROM.includes(a.status);
   const retest = async () => {
     if (busy) return;
-    if (!window.confirm(`Allow ${a.user?.name || "this candidate"} to retake the test? Their current score, answers and webcam photos are deleted, and they get a fresh paper with no new fee.`)) return;
+    if (!window.confirm(`Allow ${a.user?.name || "this candidate"} to retake the test? Their current score, answers and webcam photos are deleted, and they get a fresh paper.`)) return;
     setBusy(true);
     setMsg({ kind: "", text: "" });
     const res = await adminAllowRetest(id);
@@ -160,7 +160,7 @@ function ApplicantReview({ id, onBack, onChanged }) {
         <p className="form-note" style={{ margin: 0 }}>
           Applied {ist(a.createdAt)} · {a.paidAt
             ? `paid ${data.payment ? money(data.payment.amount) : ""} on ${ist(a.paidAt)}${data.payment?.receiptNumber ? ` (receipt ${data.payment.receiptNumber})` : ""}`
-            : a.opening?.feeRequired === false ? "free role — no fee" : "test fee not paid"}
+            : "free — no fee"}
         </p>
         {a.cv ? (
           <p className="form-note" style={{ margin: "4px 0 0" }}>
@@ -203,7 +203,7 @@ function ApplicantReview({ id, onBack, onChanged }) {
       </div>
 
       {!t ? (
-        <p style={{ color: "var(--muted)", marginTop: 24 }}>{a.paidAt || a.status === "test_pending" ? "The candidate hasn't started the test yet." : a.opening?.feeRequired === false ? "No test yet — the candidate hasn't accepted the terms to unlock it." : "No test yet — the test fee hasn't been paid."}</p>
+        <p style={{ color: "var(--muted)", marginTop: 24 }}>{a.paidAt || a.status === "test_pending" ? "The candidate hasn't started the test yet." : "No test yet — the candidate hasn't accepted the terms to unlock it."}</p>
       ) : (
         <>
           <div className="ref-stats ref-stats--admin" style={{ marginTop: 28 }}>
@@ -355,8 +355,8 @@ export default function AdminApplicants() {
             {summary && (
               <div className="ref-stats ref-stats--admin">
                 <div className="ref-stat"><b>{summary.totalApplicants}</b><span>Total applicants</span></div>
-                <div className="ref-stat"><b>{summary.paymentsReceived}</b><span>Payments received</span></div>
-                <div className="ref-stat"><b>{money(summary.amountReceived)}</b><span>Test fees collected</span></div>
+                <div className="ref-stat"><b>{summary.paymentsReceived}</b><span>Payments received (past)</span></div>
+                <div className="ref-stat"><b>{money(summary.amountReceived)}</b><span>Test fees collected (past)</span></div>
                 <div className="ref-stat"><b>{summary.averageScore ?? "—"}</b><span>Average score</span></div>
                 <div className="ref-stat"><b>{summary.shortlisted}</b><span>Shortlisted</span></div>
                 <div className="ref-stat ref-stat--accent"><b>{summary.selected}</b><span>Selected</span></div>
@@ -393,7 +393,7 @@ export default function AdminApplicants() {
                       <b>{a.user?.name || "—"} <span className={`admin-pill ${STATUS_PILL[a.status] || "read"}`}>{a.statusLabel}</span></b>
                       <span className="admin-row-meta">{a.opening?.title} · {a.user?.email}{a.user?.phone ? ` · ${a.user.phone}` : ""}</span>
                       <span className="admin-row-meta">
-                        Payment: {a.paymentStatus === "paid" ? `paid ${ist(a.paidAt)}` : a.paymentStatus === "free" ? "free role" : "pending"}
+                        Payment: {a.paymentStatus === "paid" ? `paid ${ist(a.paidAt)}` : "free"}
                         {a.interviewAt ? ` · interview ${ist(a.interviewAt)}` : ""}
                       </span>
                     </div>

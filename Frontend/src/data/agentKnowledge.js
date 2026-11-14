@@ -105,18 +105,17 @@ export function programAnswer(p, n) {
 export function roleAnswer(o, n) {
   const facts = [];
   const test = o.test || {};
-  const free = o.feeRequired === false;
   if (asked(n, "stipend") && o.stipend) facts.push(`Stipend: ${o.stipend}.`);
   if (asked(n, "duration") && o.duration) facts.push(`Duration: ${o.duration}.`);
   if (asked(n, "mode") && o.mode) facts.push(`Mode: ${o.mode}.`);
   if (asked(n, "start") && o.startsOn) facts.push(`Expected to start: ${o.startsOn}.`);
   if (asked(n, "eligibility")) facts.push(`Eligibility: ${[o.experience, ...(o.eligibility || [])].filter(Boolean).join("; ") || "freshers are welcome"}.`);
   if (asked(n, "test")) facts.push(`Aptitude test: ${test.questions ? `${test.questions} questions` : "multiple-choice questions"}${test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}, with no negative marking.`);
-  if (asked(n, "price")) facts.push(free ? "This role is free to apply for — no registration fee." : "This role has an aptitude-test registration fee, shown on its card; the whole fee comes back to your wallet as credit.");
+  if (asked(n, "price")) facts.push("This role is free to apply for — there's no registration or test fee.");
   if (!facts.length) {
     facts.push([
       `${o.title}${o.summary ? ` — ${o.summary}` : ""}`,
-      [o.stipend && `• Stipend: ${o.stipend}`, o.duration && `• Duration: ${o.duration}`, o.mode && `• Mode: ${o.mode}`, o.experience && `• Experience: ${o.experience}`, `• ${free ? "Free to apply" : "Registration fee applies"}`].filter(Boolean).join("\n"),
+      [o.stipend && `• Stipend: ${o.stipend}`, o.duration && `• Duration: ${o.duration}`, o.mode && `• Mode: ${o.mode}`, o.experience && `• Experience: ${o.experience}`, "• Free to apply"].filter(Boolean).join("\n"),
     ].join("\n"));
   }
   return {

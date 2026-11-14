@@ -10,7 +10,7 @@ const PREVIEW = 6; // history rows shown before "Show all"
 const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 
 // The student's wallet ("My Wallet" in My Dashboard): credit they've
-// been given (signup bonus, the aptitude-test fee coming back, referrals, or by Crix),
+// been given (signup bonus, referrals, or by Crix),
 // what it's been spent on, and how it's used. Credit is
 // applied at checkout, and when it covers the whole price the buy popup offers
 // "Pay with wallet" — see BuyModal in components/ui.jsx.

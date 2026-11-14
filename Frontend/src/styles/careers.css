@@ -26,7 +26,7 @@
 .detail-modal-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-right:36px}
 .detail-modal-box .careers-rules-download{margin-top:12px}
 
-/* Per-role registration badge: amber for the fee, teal for a free role. */
+/* Per-role badge: teal "free" on roles (every role is free to apply); amber for paid training. */
 .fee-pill{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:4px 11px;border-radius:20px;line-height:1;white-space:nowrap;color:var(--amber);background:rgba(var(--amber-rgb),.12);border:1px solid rgba(var(--amber-rgb),.35)}
 .fee-pill--free{color:var(--teal);background:rgba(var(--teal-rgb),.12);border-color:rgba(var(--teal-rgb),.4)}
 

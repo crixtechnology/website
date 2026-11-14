@@ -7,8 +7,8 @@
 import { site } from "./content.js";
 
 // What the page quotes until the live numbers arrive from the backend
-// (Admin → Careers settings): the test fee, the signup bonus and the credit rules.
-export const defaultTerms = { testFee: 289, signupBonus: 300, creditExpiryMonths: 12, creditUsagePercent: 100 };
+// (Admin → Careers settings): the signup bonus and the credit rules.
+export const defaultTerms = { signupBonus: 300, creditExpiryMonths: 12, creditUsagePercent: 100 };
 
 // A role's positions (utils/positions.js): selected applicants fill them.
 export { isFull as isRoleFull, positionsLabel, positionsTag } from "../utils/positions.js";
@@ -38,10 +38,10 @@ export const values = [
   { icon: "star", title: "Growth", desc: "Clear feedback, growing responsibility, and a path to a full-time role for those who earn it." },
 ];
 
-// The hiring timeline. `fee`, `bonus` come from the live terms.
-export const hiringSteps = ({ testFee, signupBonus }) => [
+// The hiring timeline. The signup bonus comes from the live terms.
+export const hiringSteps = ({ signupBonus }) => [
   { title: "Log in", desc: `Log in with your email and a password — a new email gets a free account straight away. Verify your email to get ${signupBonus} bonus credits.` },
-  { title: "Register for the aptitude test", desc: `Accept the Terms & Conditions. Free roles unlock straight away; a role with a registration fee (₹${testFee}) unlocks once it's paid, and the full amount comes back as ${testFee} credits in your Crix wallet.` },
+  { title: "Register for the aptitude test", desc: "Accept the Terms & Conditions and confirm you're 18 or older. Applying and the test are free, and your test unlocks straight away." },
   { title: "Take the aptitude test", desc: "Start it right away from My Dashboard — no waiting for a slot." },
   { title: "Get your result", desc: "You'll hear from us within 7 days of submitting the test." },
   { title: "Online interview", desc: "Shortlisted candidates are invited to an online interview." },
@@ -52,13 +52,12 @@ export const hiringSteps = ({ testFee, signupBonus }) => [
 const usageText = (percent) =>
   percent >= 100 ? "They can pay for up to the full value of a purchase." : `They can pay for up to ${percent}% of a purchase.`;
 
-export const feeBoxPoints = ({ testFee, signupBonus, creditExpiryMonths, creditUsagePercent }) => [
-  `The full ₹${testFee} comes back as ${testFee} Crix credits in your wallet, instantly.`,
-  `Plus ${signupBonus} signup bonus credits when you create your account and verify your email.`,
+// What the signup bonus credit is worth and how long it lasts.
+export const creditPoints = ({ signupBonus, creditExpiryMonths, creditUsagePercent }) => [
+  `${signupBonus} signup bonus credits when you create your account and verify your email.`,
   "1 credit = ₹1, usable only for purchases on crixtechnology.com.",
   `${creditExpiryMonths > 0 ? `Credits are valid for ${creditExpiryMonths} months. ` : "Credits don't expire. "}${usageText(creditUsagePercent)}`,
   "Credits cannot be withdrawn as cash or transferred.",
-  "Paying for the test does not guarantee selection.",
 ];
 
 // Where the role someone chose on the Careers page is remembered while they
@@ -103,7 +102,7 @@ export const testRuleLines = (rules = {}) => [
 ];
 
 // The careers rules as one downloadable document (utils/documentPdf.js):
-// hiring steps, the fee and credit rules, and the test rules. `rules` adds the
+// hiring steps, the wallet-credit rules, and the test rules. `rules` adds the
 // facts of one role's test when known (the test page passes its own).
 export const careersRulesDocument = (terms, { role = "", rules = null } = {}) => {
   const bullets = (items) => items.map((x) => `• ${x}`).join("\n");
@@ -119,15 +118,14 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
     intro:
       "These rules apply to every application made through the Crix Technology Careers page. They are part of our Terms of Service (section 8, \"Careers, Aptitude Test & Selection\"), which you accept before your aptitude test unlocks.",
     sections: [
-      // Fee and hiring steps only when the live terms are known (the Careers page).
+      // Hiring steps and credit rules only when the live terms are known (the Careers page).
       ...(terms ? [
         { title: "How hiring works", content: bullets(hiringSteps(terms).map((s) => `${s.title} — ${s.desc}`)) },
         {
-          title: "Registration fee & wallet credits",
+          title: "No fee to apply",
           content:
-            `Some roles are free to apply for; others have an aptitude-test registration fee of ₹${terms.testFee}. Each role on the Careers page shows which. A free role's test is unlocked as soon as you accept the Terms & Conditions. For a role with a fee, you pay it through Razorpay after accepting the Terms & Conditions; your test is unlocked as soon as the payment is confirmed, and a receipt is issued.\n\n` +
-            bullets(feeBoxPoints(terms)) +
-            "\n\nA fee is not refunded in cash for any reason — including if you don't take or finish the test, are disqualified, are not shortlisted or selected, or the role closes after you pay. It always comes back to your wallet as credit instead.",
+            "Applying for a role and taking its aptitude test are free. Crix Technology never asks an applicant for a registration, test or processing fee — if anyone does, don't pay and tell us. Your test is unlocked as soon as you accept the Terms & Conditions and confirm you're 18 or older.\n\n" +
+            bullets(creditPoints(terms)),
         },
       ] : []),
       { title: "The aptitude test", content: bullets([...facts, ...testRuleLines(rules || {})]) },
@@ -136,7 +134,7 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
         content: bullets([
           "Take the test yourself, alone, without help from any other person, website, tool or AI service.",
           "Don't copy, record, share or publish any question.",
-          "Breaking these rules, tampering with the test or having someone else take it leads to disqualification, may lead to your account being suspended, and may stop you applying again. Your fee still comes back as wallet credit.",
+          "Breaking these rules, tampering with the test or having someone else take it leads to disqualification, may lead to your account being suspended, and may stop you applying again.",
         ]),
       },
       {
@@ -144,7 +142,7 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
         content: bullets([
           "Your score and answers are used by Crix Technology to decide shortlisting and are not shared with you.",
           "You'll hear whether you're shortlisted within 7 days of submitting the test. Shortlisted candidates are invited to an online interview; selected candidates receive an offer letter.",
-          "Paying the fee or passing the test does not guarantee an interview, selection, an offer, a stipend or employment. Selection decisions are final.",
+          "Passing the test does not guarantee an interview, selection, an offer, a stipend or employment. Selection decisions are final.",
         ]),
       },
       {
