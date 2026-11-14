@@ -1,38 +1,28 @@
-import { useContext, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useContext, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, Alert, DownloadPdfButton, DurationSwitch,
-  useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
+  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, DownloadPdfButton, DurationSwitch,
+  useBodyScrollLock, useModalEscape, useModalFocus, REDUCED,
 } from "../components/ui.jsx";
-import {
-  openApplicationFor, StatusPill, AdultCheckbox,
-  useMyJobApplications, RoleApplyButton, isInReview, MY_APPLICATIONS,
-} from "../components/CareersDashboard.jsx";
+import { openApplicationFor, StatusPill, useMyJobApplications, MY_APPLICATIONS } from "../components/CareersDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta, routeMeta } from "../hooks/usePageMeta.js";
-import { getFreeOpenings, getMyJobApplications, applyForRole, uploadApplicationCv, unlockFreeTest, hasBackend } from "../services/api.js";
-import PhoneInput from "../components/PhoneInput.jsx";
-import { phoneError, phoneFieldError } from "../utils/phone.js";
-import { FieldError } from "../components/FormFields.jsx";
-import { useTouched } from "../hooks/useTouched.js";
-import { EducationFields, educationForm, educationPayload, educationMissing, emptyEducation } from "../utils/education.js";
-import { careersContact, isRoleFull, positionsLabel, positionsTag } from "../data/careers.js";
+import { getFreeOpenings, hasBackend } from "../services/api.js";
+import { careersContact, isRoleFull, positionsTag } from "../data/careers.js";
 import { programFacts } from "../utils/positions.js";
 import { groupVariants } from "../utils/variants.js";
 import { legal } from "../data/content.js";
 import {
-  FREE_PATH, FREE_APPLY_FORM_URL, freeHero, freeSteps, freeEligibility, freeRules, CV_MAX_MB, RESULT_DAYS,
+  FREE_PATH, FREE_APPLY_FORM_URL, freeHero, freeSteps, freeEligibility, freeRules,
 } from "../data/freeInternships.js";
 
 // The free internships page, open to students of every field (the menu's
-// Internships → Free Internship). Roles are free. A new applicant applies through
-// our Google Form (FreeApplyButton); the on-site CV form and test below remain
-// only for candidates who had already applied on the site.
+// Internships → Free Internship). Roles are free, and are applied for through
+// our Google Form (FreeApplyButton) — there is no apply form on the site.
 
 // After this long still loading, a note says the list is on its way (the
 // backend may be waking up — getFreeOpenings keeps trying for about a minute).
 const SLOW_NOTE_MS = 4000;
-const CV_MAX_BYTES = CV_MAX_MB * 1024 * 1024;
 
 const INDEX = [
   { id: "openings", label: "Openings" },
@@ -48,34 +38,24 @@ const scrollToId = (id) => (e) => {
 // The facts every program card shows, the same list for all three (utils/positions.js).
 const openingFacts = programFacts;
 
-// Checks a chosen file before it is sent: a PDF of up to 2 MB.
-function cvProblem(file) {
-  if (!file) return "Choose your CV (PDF).";
-  const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
-  if (!isPdf) return "Your CV must be a PDF file. Save it as PDF from Word or Google Docs and try again.";
-  if (file.size > CV_MAX_BYTES) return `That file is too large — the CV can be up to ${CV_MAX_MB} MB.`;
-  if (file.size === 0) return "That file is empty.";
-  return "";
-}
-
 // The badge on a role: applying, the test and the internship are all free.
 const FreeBadge = () => <span className="fee-pill fee-pill--free">Free</span>;
 
 /* ---------- a role's Apply button ----------
-   A new application goes to our Google Form (formUrl: the link from Admin →
-   Careers settings), in a new tab. Someone who already applied on this site keeps their own button
-   (Continue application / View my application), and a full role stays off. */
-function FreeApplyButton({ opening, mine, onApply, formUrl, label, fullLabel, className = "btn btn-solid", style }) {
-  if (mine || isRoleFull(opening)) {
-    return <RoleApplyButton opening={opening} mine={mine} onApply={onApply} className={className} style={style} label={label} fullLabel={fullLabel} />;
-  }
+   Opens our Google Form (formUrl: the link from Admin → Training + Internship
+   → Free internships) in a new tab. A full role stays off. Someone whose test
+   on this site was already unlocked or taken, before the form replaced the
+   on-site application, is sent to My Applications to follow or finish it. */
+function FreeApplyButton({ opening, mine, formUrl, label, fullLabel, className = "btn btn-solid", style }) {
+  if (mine && mine.status !== "payment_pending") return <Link className={className} style={style} to={MY_APPLICATIONS}>View my application →</Link>;
+  if (isRoleFull(opening)) return <button className={className} style={style} disabled>{fullLabel}</button>;
   return <a className={className} style={style} href={formUrl} target="_blank" rel="noopener noreferrer">{label}</a>;
 }
 
 /* ---------- one opening's card ---------- */
 // switcher: the duration switch when this role is offered in several durations
 // (FreeOpeningGroupCard) — the same switch Training + Internship cards have.
-function FreeOpeningCard({ opening, i, mine, onOpen, onApply, formUrl, switcher = null }) {
+function FreeOpeningCard({ opening, i, mine, onOpen, formUrl, switcher = null }) {
   return (
     <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
       <TiltCard className="card-type-internship job-card">
@@ -96,7 +76,7 @@ function FreeOpeningCard({ opening, i, mine, onOpen, onApply, formUrl, switcher 
           </dl>
         </div>
         <div className="card-btn-row">
-          <FreeApplyButton opening={opening} mine={mine} onApply={onApply} formUrl={formUrl} className="btn btn-solid buy-btn" label="Apply Now" fullLabel="Positions filled" />
+          <FreeApplyButton opening={opening} mine={mine} formUrl={formUrl} className="btn btn-solid buy-btn" label="Apply Now" fullLabel="Positions filled" />
           <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
         </div>
       </TiltCard>
@@ -117,12 +97,11 @@ function FreeOpeningGroupCard({ variants, mineOf, ...cardProps }) {
 }
 
 /* ---------- full details of one opening ---------- */
-function FreeOpeningModal({ opening, mine, onClose, onApply, formUrl }) {
+function FreeOpeningModal({ opening, mine, onClose, formUrl }) {
   useBodyScrollLock(!!opening);
   useModalFocus(!!opening);
   useModalEscape(!!opening, onClose);
   if (!opening) return null;
-  const test = opening.test || {};
   const lists = [
     ["Responsibilities", opening.responsibilities],
     ["Eligibility", opening.eligibility],
@@ -152,222 +131,14 @@ function FreeOpeningModal({ opening, mine, onClose, onApply, formUrl }) {
             <div className="deliverable-row">{opening.skills.map((s) => <span key={s} className="deliverable-chip">{s}</span>)}</div>
           </>
         )}
-        <h4 className="job-modal-heading">Aptitude test</h4>
+        <h4 className="job-modal-heading">How to apply</h4>
         <p className="form-note" style={{ marginTop: 0 }}>
-          {test.questions ? `${test.questions} multiple-choice questions` : "A multiple-choice test"}
-          {test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}
-          : quantitative, logical reasoning and
-          verbal questions pitched for students of any field, and technical questions for this role. After you apply through the form,
-          we email you how and when to take it. Candidates who do well are invited to an interview.
+          Press Apply Now and fill in our application form with your CV. Our team then emails you how and when to take the aptitude
+          test, and candidates who do well are invited to an interview.
         </p>
         {mine && <p className="form-note" style={{ margin: "16px 0 0" }}>You've applied for this internship. Status: <StatusPill application={mine} /></p>}
-        <FreeApplyButton opening={opening} mine={mine} onApply={onApply} formUrl={formUrl} style={{ width: "100%", marginTop: 16 }}
+        <FreeApplyButton opening={opening} mine={mine} formUrl={formUrl} style={{ width: "100%", marginTop: 16 }}
           label="Apply Now — Free" fullLabel="All positions filled" />
-      </div>
-    </div>
-  );
-}
-
-/* ---------- apply: details, CV upload, then the test unlocks ----------
-   Opened by "Apply with CV" for a logged-in student. The student's details and
-   education come prefilled from Profile; whatever they confirm is saved back to
-   Profile (and the server keeps a copy on the application). Then it applies for
-   the role (or reuses the open application), uploads the CV, and unlocks the
-   test straight away — no payment is taken. A role already applied for shows
-   where that application stands. */
-function FreeApplyModal({ opening, onClose }) {
-  const { user, updateProfile } = useContext(UserContext);
-  const [details, setDetails] = useState({ name: "", phone: "" });
-  const [education, setEducation] = useState(emptyEducation);
-  const [application, setApplication] = useState(undefined); // undefined = checking
-  const [file, setFile] = useState(null);
-  const [agreed, setAgreed] = useState(false);
-  const [adult, setAdult] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState({ kind: "", text: "" });
-  const [doneId, setDoneId] = useState("");
-  const fields = useTouched();
-  const submitBtn = useRef(null);
-  const alive = useRef(true);
-  useBodyScrollLock(!!opening);
-  useModalFocus(!!opening);
-  const close = () => { if (!busy) onClose(); };
-  useModalEscape(!!opening, close);
-
-  useEffect(() => {
-    alive.current = true;
-    if (!opening) return undefined;
-    setApplication(undefined);
-    setFile(null);
-    setAgreed(false);
-    setAdult(false);
-    setBusy(false);
-    setMsg({ kind: "", text: "" });
-    setDoneId("");
-    getMyJobApplications().then((res) => {
-      if (alive.current) setApplication(res && res.ok ? openApplicationFor(res.applications || [], opening) || null : null);
-    });
-    return () => { alive.current = false; };
-  }, [opening]);
-
-  // Prefilled from Profile each time the form opens (a login-form account's placeholder name starts empty).
-  useEffect(() => {
-    if (!opening || !user) return;
-    setDetails({ name: user.profilePending ? "" : user.name || "", phone: user.phone || "" });
-    setEducation(educationForm(user));
-  }, [opening]); // only when it opens, not on every profile save
-
-  if (!opening) return null;
-  const test = opening.test || {};
-  // Live errors under the two detail fields (hooks/useTouched.js).
-  const detailErrors = {
-    "free-name": details.name.trim() ? "" : "Enter your full name.",
-    "free-phone": phoneFieldError(details.phone),
-  };
-  const showDetailErr = (id) => (fields.show(id) && detailErrors[id]) || "";
-  const status = application ? application.status : "none";
-  const existingCv = application && application.cv;
-
-  const pickFile = (e) => {
-    const chosen = e.target.files && e.target.files[0];
-    setFile(chosen || null);
-    const problem = chosen ? cvProblem(chosen) : "";
-    setMsg(problem ? { kind: "error", text: problem } : { kind: "", text: "" });
-  };
-
-  const submit = async () => {
-    if (busy || !agreed || !adult) return;
-    fields.markSubmitted();
-    const missing = [
-      ...(details.name.trim() ? [] : ["full name"]),
-      ...(details.phone.trim() ? [] : ["phone number"]),
-      ...educationMissing(education),
-    ];
-    if (missing.length) { setMsg({ kind: "error", text: `Please add your ${missing.join(", ")}.` }); return; }
-    const phoneProblem = phoneError(details.phone);
-    if (phoneProblem) { setMsg({ kind: "error", text: `Please add ${phoneProblem}.` }); return; }
-    const problem = file ? cvProblem(file) : existingCv ? "" : cvProblem(null);
-    if (problem) { setMsg({ kind: "error", text: problem }); return; }
-    setBusy(true);
-    setMsg({ kind: "info", text: "Sending your application…" });
-
-    const saved = await updateProfile({ name: details.name.trim(), phone: details.phone.trim(), confirmName: true, ...educationPayload(education) });
-    if (!alive.current) return;
-    if (!saved.ok) { setBusy(false); setMsg({ kind: "error", text: saved.error }); return; }
-
-    let id = application && application._id;
-    if (!id) {
-      const applied = await applyForRole(opening.slug);
-      if (!alive.current) return;
-      if (!applied.ok) { setBusy(false); setMsg({ kind: "error", text: applied.error }); return; }
-      id = applied.application._id;
-      setApplication(applied.application);
-    }
-    if (file) {
-      const up = await uploadApplicationCv(id, file);
-      if (!alive.current) return;
-      if (!up.ok) { setBusy(false); setMsg({ kind: "error", text: up.error }); return; }
-    }
-    const unlocked = await unlockFreeTest(id);
-    if (!alive.current) return;
-    setBusy(false);
-    if (!unlocked.ok) { setMsg({ kind: "error", text: unlocked.error }); return; }
-    setMsg({ kind: "", text: "" });
-    setDoneId(id);
-    burstConfetti(submitBtn.current);
-  };
-
-  let body;
-  if (doneId) {
-    body = (
-      <>
-        <Alert inline kind="success">
-          Application sent — your CV is in and you're eligible for the aptitude test.
-        </Alert>
-        <p className="form-note">
-          You have {test.durationMinutes || "the set"} minutes for {test.questions || "the"} questions, and one attempt. Use a laptop or
-          desktop with a webcam, somewhere quiet. You'll get your result by email within {RESULT_DAYS} days of submitting the test.
-        </p>
-        <Link className="btn btn-solid" style={{ width: "100%" }} to={`/test/${doneId}`}>Start test now →</Link>
-        <Link className="btn btn-ghost" style={{ width: "100%", marginTop: 10 }} to="/dashboard?tab=applications">Take it later from My Dashboard</Link>
-      </>
-    );
-  } else if (application === undefined) {
-    body = <p className="form-note">Checking your applications…</p>;
-  } else if (status === "test_pending") {
-    body = (
-      <>
-        <p className="form-note">You've already applied for this role{existingCv ? ` with ${existingCv.fileName}` : ""} — your test is unlocked. <StatusPill application={application} /></p>
-        <Link className="btn btn-solid" style={{ width: "100%" }} to={`/test/${application._id}`}>
-          {application.attempt ? "Resume test →" : "Start test →"}
-        </Link>
-      </>
-    );
-  } else if (status !== "none" && status !== "payment_pending") {
-    body = (
-      <>
-        <p className="form-note">You've taken the test for this role. Current status: <StatusPill application={application} /></p>
-        <p className="form-note">We email every candidate their result — selected or not selected — within {RESULT_DAYS} days of the test.</p>
-        <Link className="btn btn-ghost" style={{ width: "100%" }} to="/dashboard?tab=applications">See My Applications →</Link>
-      </>
-    );
-  } else {
-    body = (
-      <>
-        <p className="form-note" style={{ marginTop: 0 }}>
-          Check your details and upload your CV to apply.
-          {" Once it's in, your free aptitude test unlocks"}
-          {test.questions ? ` — ${test.questions} questions` : ""}{test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}.
-        </p>
-        <h4 className="job-modal-heading">Your details</h4>
-        <div className="field">
-          <label htmlFor="free-name">Full name</label>
-          <input id="free-name" autoComplete="name" maxLength={80} value={details.name} disabled={busy}
-            onChange={(e) => { setDetails({ ...details, name: e.target.value }); setMsg({ kind: "", text: "" }); }}
-            onBlur={fields.touch("free-name")} aria-invalid={!!showDetailErr("free-name") || undefined} aria-describedby="free-name-err" />
-          <FieldError id="free-name-err">{showDetailErr("free-name")}</FieldError>
-        </div>
-        <div className="field">
-          <label htmlFor="free-phone">Phone</label>
-          <PhoneInput id="free-phone" value={details.phone} disabled={busy}
-            onChange={(phone) => { setDetails((d) => ({ ...d, phone })); setMsg({ kind: "", text: "" }); }}
-            onBlur={fields.touch("free-phone")} invalid={!!showDetailErr("free-phone")} describedBy="free-phone-err" />
-          <FieldError id="free-phone-err">{showDetailErr("free-phone")}</FieldError>
-        </div>
-        <h4 className="job-modal-heading">Education</h4>
-        <EducationFields form={education} disabled={busy} idPrefix="free-edu"
-          onChange={(next) => { setEducation(next); setMsg({ kind: "", text: "" }); }} />
-        <p className="form-note" style={{ marginTop: 0 }}>These are saved to your profile, so next time they're filled in for you.</p>
-        <h4 className="job-modal-heading">CV</h4>
-        <div className="field">
-          <label htmlFor="free-cv">Your CV (PDF, up to {CV_MAX_MB} MB)</label>
-          <input id="free-cv" type="file" accept="application/pdf,.pdf" onChange={pickFile} disabled={busy} />
-          {existingCv && !file && <p className="form-note" style={{ margin: "6px 0 0" }}>Already uploaded: <b>{existingCv.fileName}</b> — choose a file only to replace it.</p>}
-        </div>
-        <AdultCheckbox checked={adult} onChange={(v) => { setAdult(v); setMsg({ kind: "", text: "" }); }} disabled={busy} />
-        <label className="check-row">
-          <input type="checkbox" checked={agreed} disabled={busy} onChange={(e) => { setAgreed(e.target.checked); setMsg({ kind: "", text: "" }); }} />
-          <span>
-            I have read and agree to the <a href="#rules" onClick={(e) => { e.preventDefault(); onClose(); setTimeout(() => document.getElementById("rules")?.scrollIntoView(), 0); }}>internship rules</a>,
-            {" "}and the <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a> and{" "}
-            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
-          </span>
-        </label>
-        <button ref={submitBtn} className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={submit}>
-          {busy ? "Please wait..." : "Send CV & Apply"}
-        </button>
-      </>
-    );
-  }
-
-  return (
-    <div className="modal-backdrop" onClick={close}>
-      <div className="modal-box test-fee-modal" role="dialog" aria-modal="true" aria-labelledby="free-apply-title" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={close} aria-label="Close" disabled={busy}>✕</button>
-        <span className="eyebrow">Apply · Free internship</span>
-        <h3 id="free-apply-title" style={{ margin: "12px 0 12px" }}>{opening.title}</h3>
-        {body}
-        <Alert inline kind={msg.kind || "info"}>{msg.text}</Alert>
       </div>
     </div>
   );
@@ -376,9 +147,9 @@ function FreeApplyModal({ opening, onClose }) {
 /* ================= FREE INTERNSHIPS ================= */
 export default function FreeInternships() {
   usePageMeta(routeMeta(FREE_PATH));
-  const { isLoggedIn, isAdmin, openAuthModal } = useContext(UserContext);
-  const navigate = useNavigate();
-  const { applications, reload: reloadApplications } = useMyJobApplications(isLoggedIn && !isAdmin);
+  const { isLoggedIn, isAdmin } = useContext(UserContext);
+  // Only to show where an application made on the site earlier stands.
+  const { applications } = useMyJobApplications(isLoggedIn && !isAdmin);
   const [openings, setOpenings] = useState([]);
   const [live, setLive] = useState(false);
   // The application form "Apply Now" opens: the admin's link once it arrives.
@@ -386,8 +157,6 @@ export default function FreeInternships() {
   const [loading, setLoading] = useState(hasBackend);
   const [slow, setSlow] = useState(false);
   const [detail, setDetail] = useState(null);
-  const [applying, setApplying] = useState(null);
-  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -420,21 +189,6 @@ export default function FreeInternships() {
     };
   }, []);
 
-  // Sign up (or log in) first; the CV form opens right after — unless they've
-  // already applied and taken the test, when My Applications is where to follow it.
-  const apply = (opening) => {
-    setDetail(null);
-    setNotice("");
-    if (isAdmin) { setNotice("You're signed in as an admin. Log in with a student account to apply."); return; }
-    const go = async () => {
-      const res = await getMyJobApplications();
-      const mine = res && res.ok ? openApplicationFor(res.applications || [], opening) : null;
-      if (isInReview(mine)) navigate(MY_APPLICATIONS); else setApplying(opening);
-    };
-    if (!isLoggedIn) { openAuthModal("login", go); return; }
-    go();
-  };
-
   const hero = freeHero;
   const tel = `tel:${careersContact.phone.replace(/[^\d+]/g, "")}`;
 
@@ -453,7 +207,6 @@ export default function FreeInternships() {
         </Reveal>
       </header>
       <SectionIndex items={INDEX} />
-      <Alert kind="info">{notice}</Alert>
 
       {/* Openings */}
       <section id="openings" className="section section--internships anchor-section" style={{ paddingTop: 20 }}>
@@ -476,7 +229,7 @@ export default function FreeInternships() {
               {/* One card per role: roles sharing a group are its durations, picked with the switch. */}
               {groupVariants(openings).map((g, i) => (
                 <FreeOpeningGroupCard key={g.key} variants={g.variants} i={i} formUrl={formUrl}
-                  mineOf={(o) => openApplicationFor(applications, o)} onOpen={setDetail} onApply={apply} />
+                  mineOf={(o) => openApplicationFor(applications, o)} onOpen={setDetail} />
               ))}
             </div>
           ) : (
@@ -505,8 +258,7 @@ export default function FreeInternships() {
           </div>
         </div>
       </section>
-      <FreeOpeningModal opening={detail} formUrl={formUrl} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} onApply={apply} />
-      <FreeApplyModal opening={applying} onClose={() => { setApplying(null); reloadApplications(); }} />
+      <FreeOpeningModal opening={detail} formUrl={formUrl} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} />
 
       {/* How it works */}
       <section id="how" className="section anchor-section" style={{ paddingTop: 20 }}>

@@ -50,6 +50,7 @@ describe("admin course form", () => {
     api.adminCreateCourse.mockResolvedValue({ ok: true, course: { ...base, _id: "new" } });
     api.adminUpdateCourse.mockResolvedValue({ ok: true, course: base });
     api.adminGetJobOpenings.mockResolvedValue({ ok: true, openings, bank: {} });
+    api.adminGetCareerSettings.mockResolvedValue({ ok: true, settings: { freeApplyFormUrl: "https://forms.gle/eaX7kab7zPG7w6SX6" } });
     await act(async () => {
       root.render(
         <UserContext.Provider value={ctx({ isLoggedIn: true, isAdmin: true, logout: jest.fn() })}>
@@ -206,7 +207,7 @@ describe("admin course form", () => {
       expect(headings).not.toContain("Courses");
       expect(qa(".kind-option b").map((b) => b.textContent)).toEqual(["Training + Internship", "Free Internship"]);
       expect(container.textContent).toContain("Free Web Intern");
-      expect(container.textContent).toContain("1 of 4 positions filled");
+      expect(container.textContent).toContain("4 positions"); // applications are in the Google Form, so none are counted here
       expect(container.textContent).not.toContain("Careers Web Intern");
     });
 
@@ -240,6 +241,47 @@ describe("admin course form", () => {
       expect(sent).toMatchObject({ audience: "free" });
       expect(sent).not.toHaveProperty("waiveFee");
       expect(sent).not.toHaveProperty("feeRequired");
+    });
+
+    it("has no aptitude-test fields on a free internship: it is applied for through the Google Form", async () => {
+      await renderAdmin([], [freeRole]);
+      // The list row doesn't quote a test either.
+      expect(container.textContent).toContain("applies through the Google Form");
+      expect(container.textContent).not.toMatch(/questions in \d+ min|cut-off/);
+      api.adminCreateJobOpening.mockResolvedValue({ ok: true, opening: freeRole });
+      await pick("Free Internship");
+      for (const id of ["jo-tech", "jo-mins", "jo-quantitative", "jo-logical", "jo-verbal", "jo-technical", "jo-marks", "jo-cutoff"]) {
+        expect(q(`#${id}`)).toBeNull();
+      }
+      expect(container.textContent).toContain("No test settings here");
+      await act(async () => { fill(q("#jo-title"), "Form Intern"); });
+      await act(async () => { fill(q("#jo-positions"), "4"); });
+      await submit();
+      const sent = api.adminCreateJobOpening.mock.calls[0][0];
+      expect(sent).toMatchObject({ title: "Form Intern", audience: "free", positions: 4 });
+      for (const key of ["techCategory", "durationMinutes", "questionCounts", "marksPerQuestion", "cutoffScore"]) expect(sent).not.toHaveProperty(key);
+    });
+
+    it("edits the free internships application form link under Free internships, saved on its own", async () => {
+      await renderAdmin([], [freeRole]);
+      const input = q("#free-form-link");
+      expect(input.value).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
+      const saveBtn = () => qa("button").find((b) => b.textContent === "Save link");
+      expect(saveBtn().disabled).toBe(true); // nothing changed yet
+      expect(qa("a").find((a) => a.textContent.startsWith("Open form")).getAttribute("href")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
+
+      // Not a full https link: refused here, nothing sent.
+      await act(async () => { fill(input, "forms.gle/abc"); });
+      await act(async () => { saveBtn().click(); });
+      expect(api.adminUpdateCareerSettings).not.toHaveBeenCalled();
+      expect(container.textContent).toContain("starting with https://");
+
+      api.adminUpdateCareerSettings.mockResolvedValue({ ok: true, settings: { freeApplyFormUrl: "https://forms.gle/NewForm123" } });
+      await act(async () => { fill(input, " https://forms.gle/NewForm123 "); });
+      await act(async () => { saveBtn().click(); });
+      expect(api.adminUpdateCareerSettings).toHaveBeenCalledWith({ freeApplyFormUrl: "https://forms.gle/NewForm123" });
+      expect(container.textContent).toContain("Saved — Apply Now on every free internship now opens this form.");
+      expect(api.adminCreateJobOpening).not.toHaveBeenCalled(); // saving the link doesn't submit the role form
     });
 
     it("saves a Training + Internship track as an internship entry", async () => {

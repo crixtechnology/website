@@ -10,15 +10,12 @@ Each section below lists the fields **in the same order as the admin form**. Cop
 
 ## Before you start
 
-1. **The new question banks need the code PR merged and deployed first.** The "Technical questions from" choices *Frontend (React & JavaScript)*, *Python Programming*, *Web Fundamentals (HTML, CSS, JS, HTTP)* and *AI / Machine Learning* show up in the dropdown only after that. When the server starts on the new code it adds the questions by itself, once. You don't need to do anything else.
-   If you add the roles **before** the deploy, use the fallback given for each role, then use **Edit** to change it after the deploy.
-2. **The Stipend box starts filled in** with "Up to ₹6,000/month (performance based)". That's the default for the paid careers roles. For a free internship you will probably want to **clear it**: an empty stipend is simply not shown on the page. ✏️
-3. **How people apply:** **Apply Now** on every role opens the Google Form, in a new tab. Its link is in **Admin → Careers settings → Free internships → Application form link**; change it there at any time. People who apply through the form are in the form's responses (Google Forms / its Sheet), **not** in Admin → Applicants. Your team contacts them from there about the aptitude test and then the interview. Make sure the form asks which role and duration they want.
-3a. **Fee:** there is none. Applying and the aptitude test are free for every role, so the form has no fee box and nothing is charged.
+1. **The Stipend box starts filled in** with "Up to ₹6,000/month (performance based)". That's the default for the paid careers roles. For a free internship you will probably want to **clear it**: an empty stipend is simply not shown on the page. ✏️
+2. **How people apply:** **Apply Now** on every role opens the Google Form, in a new tab. Its link is on this same page, **Admin → Training + Internship**, under the **Free internships** heading: **Application form link**. Paste a new link and press **Save link** to change it at any time; **Open form** shows you where it goes. People who apply through the form are in the form's responses (Google Forms / its Sheet), **not** in Admin → Applicants. Your team contacts them from there about the aptitude test and then the interview. Make sure the form asks which role and duration they want.
+3. **Fee:** there is none. Applying and the aptitude test are free for every role, so the form has no fee box and nothing is charged.
 4. **Status:** a new role is **Open** as soon as you create it, so it appears on `/free-internships` straight away. Use the Open/Closed button in the list to hide one.
-5. **Shared sections:** free-internship roles automatically draw their quantitative, logical and verbal questions from the new, gentler **foundation** banks, which are meant for students of any field. There is nothing to set.
-6. **Each role twice: 3 months and 6 months.** Create every role twice, once with Duration `3 months` and once with `6 months`, and give both **exactly the same Domain group**. The page then shows them as **one card with a 3 months | 6 months switch**, like the Training + Internship page. Everything else (description, skills, test settings) can be the same for both. Once one entry has a group, the Domain group box suggests it when you type.
-7. **Starts on (optional)** is a text box, e.g. `2nd week of January`: an estimate shown on the card. Leave it empty to show nothing. ✏️
+5. **Each role twice: 3 months and 6 months.** Create every role twice, once with Duration `3 months` and once with `6 months`, and give both **exactly the same Domain group**. The page then shows them as **one card with a 3 months | 6 months switch**, like the Training + Internship page. Everything else (description, skills, test settings) can be the same for both. Once one entry has a group, the Domain group box suggests it when you type.
+6. **Starts on (optional)** is a text box, e.g. `2nd week of January`: an estimate shown on the card. Leave it empty to show nothing. ✏️
 
 ### Form limits (checked when you press Create)
 
@@ -28,24 +25,6 @@ Each section below lists the fields **in the same order as the admin form**. Cop
 | Short description | up to 2,000 characters |
 | Skills / Responsibilities / Eligibility | up to 30 items, each up to 300 characters |
 | Stipend, Experience, Duration, Mode | up to 190 characters each |
-| Duration (minutes) | 5 to 300 |
-| Questions per section | whole numbers 0 to 60; at least 1 in total |
-| Marks per question | 0.25 to 100 |
-| Cut-off score | 0 or more |
-
-### Suggested test settings (the same for all five roles) ✏️
-
-| Field | Value | Why |
-|---|---|---|
-| Duration (minutes) | `45` | 40 questions. The form's default of 30 minutes is tight for first-year and non-CS students. |
-| Quantitative questions | `8` | |
-| Logical reasoning questions | `8` | |
-| Verbal ability questions | `8` | |
-| Technical questions | `16` | The technical part carries the most weight. Every new bank has 42 or more questions, plus generated ones, so papers vary. |
-| Marks per question | `1` | Test is out of 40. |
-| Cut-off score | `16` | 40% of 40. Shown only to admins. Raise it if you get too many applicants. |
-
----
 
 ## 1. Frontend Developer (React.js)
 
@@ -54,7 +33,6 @@ Each section below lists the fields **in the same order as the admin form**. Cop
 | Field | Value |
 |---|---|
 | Title | `Frontend Developer Intern (React.js) — 3 Months`, then `Frontend Developer Intern (React.js) — 6 Months` |
-| Technical questions from | **Frontend (React & JavaScript)**. Before the deploy: *Web Development* |
 | Display order | `1` (the same for both durations) |
 | Domain group | `Frontend (React.js)` (the same for both durations) |
 
@@ -96,21 +74,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**
-
-| Field | Value |
-|---|---|
-| Listed on | **Free internships page only (/free-internships; applied for through the Google Form)** |
-| Duration (minutes) | `45` ✏️ |
-| Quantitative questions | `8` |
-| Logical reasoning questions | `8` |
-| Verbal ability questions | `8` |
-| Technical questions | `16` |
-| Marks per question | `1` |
-| Cut-off score | `16` ✏️ |
-
----
-
 ## 2. Python Developer
 
 **Top of the form**
@@ -118,7 +81,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Field | Value |
 |---|---|
 | Title | `Python Developer Intern — 3 Months`, then `Python Developer Intern — 6 Months` |
-| Technical questions from | **Python Programming**. Before the deploy: *Data Science* |
 | Display order | `2` (the same for both durations) |
 | Domain group | `Python Developer` (the same for both durations) |
 
@@ -160,8 +122,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
-
 ---
 
 ## 3. Web Developer
@@ -171,7 +131,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Field | Value |
 |---|---|
 | Title | `Web Developer Intern — 3 Months`, then `Web Developer Intern — 6 Months` |
-| Technical questions from | **Web Fundamentals (HTML, CSS, JS, HTTP)**. Before the deploy: *Web Development* |
 | Display order | `3` (the same for both durations) |
 | Domain group | `Web Developer` (the same for both durations) |
 
@@ -213,8 +172,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
-
 ---
 
 ## 4. AI/ML Developer
@@ -224,7 +181,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Field | Value |
 |---|---|
 | Title | `AI/ML Developer Intern — 3 Months`, then `AI/ML Developer Intern — 6 Months` |
-| Technical questions from | **AI / Machine Learning**. Before the deploy: *Data Science* |
 | Display order | `4` (the same for both durations) |
 | Domain group | `AI/ML Developer` (the same for both durations) |
 
@@ -266,8 +222,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
-
 ---
 
 ## 5. Data Scientist / Data Analyst
@@ -277,7 +231,6 @@ Able to give about 2–3 hours a day for the length of the internship
 | Field | Value |
 |---|---|
 | Title | `Data Scientist / Data Analyst Intern — 3 Months`, then `Data Scientist / Data Analyst Intern — 6 Months` |
-| Technical questions from | **Data Science** (same choice before and after the deploy; after it, the bank has 25 more SQL, statistics and data-cleaning questions) |
 | Display order | `5` (the same for both durations) |
 | Domain group | `Data Science / Analytics` (the same for both durations) |
 
@@ -319,31 +272,17 @@ Able to give about 2–3 hours a day for the length of the internship
 | Duration | `3 months` for the first entry, `6 months` for the second |
 | Mode | `Remote` ✏️ |
 
-**Aptitude test for this role**: same as role 1. *Listed on* is **Free internships page only**, then `45` minutes, `8` / `8` / `8` / `16` questions, `1` mark each, cut-off `16`.
-
 ---
 
-## What each role's test asks
+## The aptitude test
 
-| Role | Technical bank | What's in it |
-|---|---|---|
-| Frontend Developer (React.js) | Frontend (React & JavaScript): 42 questions | JSX, props, state, hooks (useState, useEffect, useRef, useContext), lists and keys, events, React Router, modern JavaScript (destructuring, spread, map/filter, async/await, fetch) |
-| Python Developer | Python Programming: 42 questions | Types, strings, lists, dicts, sets, loops, functions, default arguments, scope, exceptions, files, classes, list comprehensions, pip |
-| Web Developer | Web Fundamentals: 42 questions | HTML tags and forms, CSS selectors, box model, flexbox, media queries, DOM and events, JSON, HTTP methods and status codes, DNS, URLs, Express basics, cookies, passwords, server-side validation, SQL and Git basics |
-| AI/ML Developer | AI / Machine Learning: 42 questions | Supervised and unsupervised learning, regression and classification, overfitting, train/validation/test, common algorithms, neural-network basics, loss and gradient descent, NLP and LLM basics, evaluation metrics, scikit-learn, fairness |
-| Data Scientist / Data Analyst | Data Science: 75 questions (50 + 25 new) | Python, NumPy and Pandas, statistics, SQL (counts, filters, NULLs, joins, GROUP BY), spreadsheets, charts, data cleaning, plus some ML |
+A free internship has **no test settings in Admin**. The form has no question bank, minutes, question counts, marks or cut-off to fill in. People apply through the Google Form, and your team invites them to the aptitude test and then the interview.
 
-All five roles also get **foundation** quantitative, logical and verbal sections, 32 questions each. They cover percentages, ratios, averages, simple interest, number and letter series, directions, simple codes and relations, everyday vocabulary, grammar, idioms and short reading questions. They're kept fair for students of any field. Part of every section is also generated fresh for each candidate (Admin → Careers settings → generated questions share).
-
-You can see, edit or switch off any of these questions in **Admin → Question bank**. The new categories appear in its filter.
-
-In the applicants Excel download (Admin → Applicants), each candidate's scores sit in four columns: Quantitative, Logical Reasoning, Verbal Ability and Technical. Foundation scores go in the same columns as the standard ones. A "Technical questions from" column shows which bank the role used.
-
-The role pop-up on `/free-internships` now tells candidates what the test covers. It has quantitative, logical and verbal questions pitched for students of any field, and technical questions for the role.
+The question banks in **Admin → Question bank** are still there; they are used by the on-site test for Careers roles.
 
 ## After you've added them
 
 - **Check the page:** open `/free-internships`. You should see **5 cards** (one per role), each with a **3 months | 6 months** switch.
 - **Duration switch looks wrong:** if a role shows two separate cards, its two Domain group values aren't identical. Fix the spelling or spacing in Admin.
-- **Check Apply Now:** press it on a card. It should open your Google Form in a new tab. If it opens the wrong form, fix the link in Admin → Careers settings.
+- **Check Apply Now:** press it on a card. It should open your Google Form in a new tab. If it opens the wrong form, fix the **Application form link** under Free internships in Admin → Training + Internship.
 - **Applications are in the form:** new applications arrive in the Google Form's responses, so check there (the form should record the role and the 3-month or 6-month choice). Admin → Applicants only lists people who applied on the website before the form was introduced.

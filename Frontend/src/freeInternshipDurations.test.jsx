@@ -85,6 +85,42 @@ describe("the Free Internship page", () => {
     expect(inDetails.getAttribute("href")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
   });
 
+  it("has no apply form on the site: a logged-in student gets the form link too, or their earlier application", async () => {
+    const py = role("Python Intern", "py", "3 months");
+    const web = role("Web Intern", "web", "3 months");
+    const data = role("Data Intern", "data", "3 months");
+    api.getFreeOpenings.mockResolvedValue({ ok: true, openings: [py, web, data] });
+    // Applied on the site before the form: one test already unlocked, one never finished.
+    api.getMyJobApplications.mockResolvedValue({ ok: true, applications: [
+      { _id: "a1", status: "test_pending", statusLabel: "Test pending", opening: { _id: web._id } },
+      { _id: "a2", status: "payment_pending", statusLabel: "Application incomplete", opening: { _id: data._id } },
+    ] });
+    const openAuthModal = jest.fn();
+    await act(async () => {
+      root.render(
+        <UserContext.Provider value={{ user: { name: "Asha" }, isLoggedIn: true, isAdmin: false, openAuthModal }}>
+          <MemoryRouter><FreeInternships /></MemoryRouter>
+        </UserContext.Provider>
+      );
+    });
+    const [pyCard, webCard, dataCard] = [...container.querySelectorAll("#openings .job-card")];
+    const main = (card) => card.querySelector(".buy-btn");
+    expect(main(pyCard).getAttribute("href")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
+    expect(main(webCard).textContent).toContain("View my application");
+    expect(main(webCard).getAttribute("href")).toBe("/dashboard?tab=applications");
+    expect(main(dataCard).textContent).toBe("Apply Now"); // unfinished: apply through the form
+    expect(main(dataCard).getAttribute("href")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
+
+    // Nothing on the page collects details or a CV, asks for a login, or quotes an on-site test.
+    await act(async () => { pyCard.querySelector(".see-more-btn").click(); });
+    expect(document.querySelector("input[type='file']")).toBeNull();
+    expect(document.querySelector("#free-name")).toBeNull();
+    expect(openAuthModal).not.toHaveBeenCalled();
+    const details = document.querySelector("[role='dialog']").textContent;
+    expect(details).toContain("How to apply");
+    expect(details).not.toMatch(/multiple-choice questions|minutes/);
+  });
+
   it("uses the application form link set in Admin, and ignores one that isn't https", async () => {
     const render = async (applyFormUrl) => {
       api.getFreeOpenings.mockResolvedValue({ ok: true, terms: { applyFormUrl }, openings: [role("Python Intern", "py", "3 months")] });

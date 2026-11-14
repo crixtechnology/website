@@ -15,7 +15,8 @@ const { prisma } = require("../db");
 //                          (0 = straight away).
 // Applying and the test are free, so there is no fee setting.
 //   freeApplyFormUrl       the Google Form "Apply Now" opens on the Free Internships
-//                          page (an https link)
+//                          page (an https link); edited in Admin → Training +
+//                          Internship, under "Free internships"
 //   requireWebcam          refuse to start a test without a working webcam
 //   requireDesktopApp      only allow the test inside the desktop lockdown app
 const SETTINGS_KEY = "careers";
