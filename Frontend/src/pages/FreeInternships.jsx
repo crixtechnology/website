@@ -21,12 +21,13 @@ import { programFacts } from "../utils/positions.js";
 import { groupVariants } from "../utils/variants.js";
 import { legal } from "../data/content.js";
 import {
-  FREE_PATH, freeHero, freeSteps, freeEligibility, freeRules, CV_MAX_MB, RESULT_DAYS,
+  FREE_PATH, FREE_APPLY_FORM_URL, freeHero, freeSteps, freeEligibility, freeRules, CV_MAX_MB, RESULT_DAYS,
 } from "../data/freeInternships.js";
 
 // The free internships page, open to students of every field (the menu's
-// Internships → Free Internship). Roles are free; applying needs an account and a CV (PDF), which makes
-// the candidate eligible for the aptitude test (pages/student/AptitudeTest.jsx).
+// Internships → Free Internship). Roles are free. A new applicant applies through
+// our Google Form (FreeApplyButton); the on-site CV form and test below remain
+// only for candidates who had already applied on the site.
 
 // After this long still loading, a note says the list is on its way (the
 // backend may be waking up — getFreeOpenings keeps trying for about a minute).
@@ -60,6 +61,17 @@ function cvProblem(file) {
 // The badge on a role: applying, the test and the internship are all free.
 const FreeBadge = () => <span className="fee-pill fee-pill--free">Free</span>;
 
+/* ---------- a role's Apply button ----------
+   A new application goes to our Google Form (FREE_APPLY_FORM_URL), in a new
+   tab. Someone who already applied on this site keeps their own button
+   (Continue application / View my application), and a full role stays off. */
+function FreeApplyButton({ opening, mine, onApply, label, fullLabel, className = "btn btn-solid", style }) {
+  if (mine || isRoleFull(opening)) {
+    return <RoleApplyButton opening={opening} mine={mine} onApply={onApply} className={className} style={style} label={label} fullLabel={fullLabel} />;
+  }
+  return <a className={className} style={style} href={FREE_APPLY_FORM_URL} target="_blank" rel="noopener noreferrer">{label}</a>;
+}
+
 /* ---------- one opening's card ---------- */
 // switcher: the duration switch when this role is offered in several durations
 // (FreeOpeningGroupCard) — the same switch Training + Internship cards have.
@@ -84,7 +96,7 @@ function FreeOpeningCard({ opening, i, mine, onOpen, onApply, switcher = null })
           </dl>
         </div>
         <div className="card-btn-row">
-          <RoleApplyButton opening={opening} mine={mine} onApply={onApply} className="btn btn-solid buy-btn" label="Apply with CV" fullLabel="Positions filled" />
+          <FreeApplyButton opening={opening} mine={mine} onApply={onApply} className="btn btn-solid buy-btn" label="Apply Now" fullLabel="Positions filled" />
           <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
         </div>
       </TiltCard>
@@ -145,12 +157,12 @@ function FreeOpeningModal({ opening, mine, onClose, onApply }) {
           {test.questions ? `${test.questions} multiple-choice questions` : "A multiple-choice test"}
           {test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}
           : quantitative, logical reasoning and
-          verbal questions pitched for students of any field, and technical questions for this role. It unlocks once your CV is uploaded.
-          You'll get your result by email within {RESULT_DAYS} days of submitting it.
+          verbal questions pitched for students of any field, and technical questions for this role. After you apply through the form,
+          we email you how and when to take it. Candidates who do well are invited to an interview.
         </p>
         {mine && <p className="form-note" style={{ margin: "16px 0 0" }}>You've applied for this internship. Status: <StatusPill application={mine} /></p>}
-        <RoleApplyButton opening={opening} mine={mine} onApply={onApply} style={{ width: "100%", marginTop: 16 }}
-          label="Apply with CV — Free" fullLabel="All positions filled" />
+        <FreeApplyButton opening={opening} mine={mine} onApply={onApply} style={{ width: "100%", marginTop: 16 }}
+          label="Apply Now — Free" fullLabel="All positions filled" />
       </div>
     </div>
   );
@@ -446,7 +458,7 @@ export default function FreeInternships() {
           <Reveal as="h2" variant="reveal-l">Pick your role.</Reveal>
           {(loading || openings.length > 0) && (
             <Reveal as="p" variant="reveal-l" className="section-lede">
-              Every role below is free. Sign up, send your CV for the role you want, and take the aptitude test.
+              Every role below is free. Press Apply Now on the role you want and fill in the form with your CV — we'll contact you for the aptitude test and interview.
             </Reveal>
           )}
           {loading ? (
@@ -479,11 +491,10 @@ export default function FreeInternships() {
               <ul className="check-list">{freeEligibility.map((x) => <li key={x}>{x}</li>)}</ul>
             </Reveal>
             <Reveal variant="reveal-r" className="vm-card">
-              <span className="vm-label">After the test</span>
+              <span className="vm-label">After you apply</span>
               <p>
-                Every candidate gets an email within <b>{RESULT_DAYS} days</b> of submitting the test — whether you're <b>selected</b> or
-                {" "}<b>not selected</b>. Selected candidates also get their offer letter and joining details. Your result is shown in
-                My Dashboard → My Applications too.
+                Our team reviews your form and CV, then emails you about the <b>aptitude test</b>. Candidates who do well are invited to
+                an <b>interview</b>, and selected candidates get their offer letter and joining details.
               </p>
             </Reveal>
           </div>
@@ -513,7 +524,7 @@ export default function FreeInternships() {
       <section id="rules" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap" style={{ maxWidth: 900 }}>
           <Reveal as="span" variant="reveal-l" className="eyebrow">Rules</Reveal>
-          <Reveal as="h2" variant="reveal-l">Application &amp; test rules.</Reveal>
+          <Reveal as="h2" variant="reveal-l">Application rules.</Reveal>
           <Reveal variant="reveal" className="vm-card" style={{ marginTop: 26 }}>
             <ul className="dash-list">{freeRules.map((x) => <li key={x}>{x}</li>)}</ul>
           </Reveal>

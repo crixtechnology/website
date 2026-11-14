@@ -2380,7 +2380,7 @@ function ThemeToggle() {
 // panel in the mobile menu.
 const PROGRAM_MENU = [
   { to: "/training-internship", label: "Training + Internship", desc: "Get trained · top performers earn a stipend" },
-  { to: "/free-internships", label: "Free Internship", desc: "Free to apply · free aptitude test" },
+  { to: "/free-internships", label: "Free Internship", desc: "Free to apply · aptitude test · interview" },
 ];
 const isProgramPath = (pathname) => PROGRAM_MENU.some((m) => m.to === pathname);
 const NAV_MOBILE = "(max-width:1100px)";

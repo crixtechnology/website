@@ -16,6 +16,16 @@ describe("no test or processing fee", () => {
     expect(freeRules[0]).toMatch(/never asks applicants for a fee/);
   });
 
+  it("describes applying through the form, then the test and the interview, with no reply time promised", () => {
+    const text = pageText();
+    expect(text).toMatch(/Google Form/);
+    expect(text).toMatch(/upload your CV as a PDF/i);
+    expect(freeSteps.map((s) => s.title)).toEqual(["Pick a role", "Fill in the form", "Take the aptitude test", "Interview"]);
+    // The old on-site steps and the 7-day promise are gone.
+    expect(text).not.toMatch(/within \d+ days|Sign up|My Dashboard|unlocks/i);
+    expect(JSON.stringify(legal.terms)).toMatch(/which is a Google Form/);
+  });
+
   it("quotes no fee in the careers terms, hiring steps or rules document", () => {
     expect(defaultTerms.testFee).toBeUndefined();
     const steps = hiringSteps(defaultTerms).map((s) => s.desc).join("\n");

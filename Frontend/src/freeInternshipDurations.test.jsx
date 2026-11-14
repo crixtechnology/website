@@ -41,7 +41,6 @@ describe("the Free Internship page", () => {
   it("shows one card per role and switches between 3 and 6 months in place", async () => {
     api.getFreeOpenings.mockResolvedValue({
       ok: true,
-      terms: { processingFee: 94 },
       openings: [
         role("Frontend Intern — 6 Months", "fe-6", "6 months", { group: "Frontend (React.js)", startsOn: "February" }),
         role("Frontend Intern — 3 Months", "fe-3", "3 months", { group: "Frontend (React.js)", startsOn: "2nd week of January" }),
@@ -73,5 +72,16 @@ describe("the Free Internship page", () => {
     expect(document.querySelector("[role='dialog']")).toBeNull();
 
     expect(cards[1].querySelector(".duration-switch")).toBeNull();
+
+    // Apply Now on a card, and in its details, opens our Google Form in a new tab.
+    const applyLinks = cards.map((c) => c.querySelector("a.buy-btn"));
+    for (const a of applyLinks) {
+      expect(a.textContent).toBe("Apply Now");
+      expect(a.getAttribute("href")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
+      expect(a.getAttribute("target")).toBe("_blank");
+    }
+    await act(async () => { cards[1].querySelector(".see-more-btn").click(); });
+    const inDetails = [...document.querySelectorAll("[role='dialog'] a")].find((a) => a.textContent === "Apply Now — Free");
+    expect(inDetails.getAttribute("href")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
   });
 });
