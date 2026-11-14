@@ -4,74 +4,55 @@
 // The roles come from the backend (/careers/free/openings): Admin → Training + Internship,
 // "Free Internship".
 //
-// The internship itself is free. The aptitude test has a processing fee (Admin
-// → Careers settings; 0 = none) that comes back in full as wallet credit, so the
-// text that mentions it is built from the live terms. The amount changes from
-// time to time, so the page itself never quotes it: only the payment step
-// (FreeApplyModal) shows the exact figure, just before the applicant pays.
+// Everything here is free: applying, the aptitude test and the internship. No
+// payment is taken at any step.
+//
+// New applicants apply through our Google Form (FREE_APPLY_FORM_URL), not on
+// the site: they sign in to Google, fill it in and upload their CV there. Our
+// team then contacts them by email for the aptitude test and, after it, an
+// interview. No reply time is promised.
 // ============================================================
-import { testRuleLines } from "./careers.js";
-
 export const FREE_PATH = "/free-internships";
 export const CV_MAX_MB = 2;
 export const RESULT_DAYS = 7;
+// Where "Apply Now" on a free internship sends a new applicant: our Google Form.
+// The live link comes from the backend (Admin → Careers settings); this one is
+// used until it arrives, or if the backend can't be reached.
+export const FREE_APPLY_FORM_URL = "https://forms.gle/eaX7kab7zPG7w6SX6";
 
-// What the page quotes until the live terms arrive from the backend.
-export const defaultFreeTerms = { processingFee: 94, creditExpiryMonths: 12, creditUsagePercent: 100 };
-
-const FEE_LINE = "a small test processing fee, which comes back in full to your Crix wallet as credits";
-
-export const freeHero = (fee) => ({
+export const freeHero = {
   eyebrow: "Free Internships",
   title: "Free internships for students of every field.",
-  text: fee > 0
-    ? `Work on real projects with mentors from Crix Technology. The internship is free: create your account, send your CV for a role, pay ${FEE_LINE}, take the online aptitude test, and get your result by email within ${RESULT_DAYS} days.`
-    : `Work on real projects with mentors from Crix Technology. Applying is free: create your account, send your CV for a role, take the online aptitude test, and get your result by email within ${RESULT_DAYS} days.`,
-});
+  text: "Work on real projects with mentors from Crix Technology. Applying is free: pick a role, fill in our application form with your CV, and we'll contact you by email for the aptitude test and then an interview.",
+};
 
-export const freeSteps = (fee) => [
-  { n: "01", title: "Sign up", desc: "Create your free Crix account with your email (or log in if you already have one)." },
+export const freeSteps = [
+  { n: "01", title: "Pick a role", desc: "Choose the role and duration you want from the openings on this page, and press Apply Now." },
   {
     n: "02",
-    title: "Apply with your CV",
-    desc: `Pick a role, fill in your college, course, branch and semester, and upload your CV as a PDF (up to ${CV_MAX_MB} MB).` +
-      (fee > 0 ? " Then pay the test processing fee — the amount is shown before you pay, and it all comes back as credits in your wallet." : " There is no fee."),
+    title: "Fill in the form",
+    desc: "Apply Now opens our Google Form. Sign in with a Google account, fill in your details and upload your CV as a PDF. There is no fee.",
   },
-  { n: "03", title: "Take the aptitude test", desc: "Once you've applied, your online aptitude test unlocks. Take it straight away or later from My Dashboard." },
-  { n: "04", title: "Get your result", desc: `Within ${RESULT_DAYS} days of submitting the test you'll get an email telling you whether you're selected or not selected.` },
+  { n: "03", title: "Take the aptitude test", desc: "Our team reviews your application and emails you how and when to take the aptitude test." },
+  { n: "04", title: "Interview", desc: "Candidates who do well in the test are invited to an interview. Selected candidates then get their offer letter and joining details." },
 ];
 
 export const freeEligibility = [
   "Students of any field or stream, in any year, at a recognised school, college or university in India — or recent graduates.",
   "18 years of age or older on the day you take the test.",
   "A laptop or desktop computer with a working webcam and a stable internet connection.",
-  "One account per person, in your own name, with an email address you check.",
-];
-
-// The wallet-credit rules for the processing fee (same rules as every other credit).
-export const processingFeePoints = ({ processingFee, creditExpiryMonths, creditUsagePercent }) => [
-  `The full ₹${processingFee} comes back as ${processingFee} Crix credits in your wallet as soon as the payment is confirmed.`,
-  "1 credit = ₹1, usable only for purchases on crixtechnology.com.",
-  `${creditExpiryMonths > 0 ? `Credits are valid for ${creditExpiryMonths} months. ` : "Credits don't expire. "}` +
-    (creditUsagePercent >= 100 ? "They can pay for up to the full value of a purchase." : `They can pay for up to ${creditUsagePercent}% of a purchase.`),
-  "Credits cannot be withdrawn as cash or transferred. The fee is not refunded in cash for any reason.",
-  "Paying the fee does not guarantee selection.",
+  "A Google account to open the application form, and an email address you check.",
 ];
 
 // ---------- the rules shown on the page ----------
-export const freeRules = (terms) => [
-  terms.processingFee > 0
-    ? `The internship is free. The only charge is ${FEE_LINE} (1 credit = ₹1); the amount is shown before you pay. Crix Technology never asks for any other payment — if anyone does, don't pay and tell us.`
-    : "Applying, the aptitude test and the internship are free. Crix Technology never asks applicants for a fee — if anyone does, don't pay and tell us.",
-  "You need your own Crix account to apply. Sign up (or log in) before sending your CV.",
-  `Your CV must be a PDF of up to ${CV_MAX_MB} MB, in your own name, and true. You can replace it until you start the test.`,
-  "You can hold one open application per role. You may apply for more than one role, but each has its own test.",
-  terms.processingFee > 0
-    ? `Your test unlocks once your CV is uploaded, you accept these rules and the Terms & Conditions, and the processing fee is paid. The fee is not refunded in cash for any reason — including if you don't take the test or aren't selected — but it stays in your wallet as credit.`
-    : "Your test unlocks only after your CV is uploaded and you accept these rules and the Terms & Conditions.",
-  "You get one attempt per application. It can be taken straight away or later from My Dashboard, while the role is open.",
-  ...testRuleLines(),
-  `Results — selected or not selected — are emailed to the address on your account within ${RESULT_DAYS} days of submitting the test, and shown in My Dashboard → My Applications.`,
-  "Selection is based on your test, your CV and the number of places. Decisions are final; paying the fee or passing the test does not guarantee selection.",
-  "If you are not selected, you may apply again after the waiting period shown when you try.",
+export const freeRules = [
+  "Applying, the aptitude test and the internship are free. Crix Technology never asks applicants for a fee — if anyone does, don't pay and tell us.",
+  "You apply through our Google Form, opened by Apply Now on a role. It asks you to sign in with a Google account; your answers and CV reach us through Google Forms.",
+  "Upload your CV as a PDF, in your own name, and make sure everything in it and in the form is true.",
+  "Apply once for each role you want. You may apply for more than one role.",
+  "After reviewing your application, we contact you by email about the aptitude test. Its date, format and rules are sent with that invitation.",
+  "Take the test yourself, alone, without help from any other person, website, tool or AI service.",
+  "Candidates who do well in the test are invited to an interview before the final selection.",
+  "We contact you at the email address you give in the form, so check it (and its spam folder) regularly.",
+  "Selection is based on your application, your test, your interview and the number of places. Decisions are final; applying or passing the test does not guarantee selection.",
 ];

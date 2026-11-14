@@ -142,7 +142,7 @@ export default function MyCourses() {
           </div>
         )}
         {!isAdmin && view === "apply" && (
-          <ApplyTab user={user} initialRole={applyRole} onGoToApplications={() => goToTab("applications")} />
+          <ApplyTab initialRole={applyRole} onGoToApplications={() => goToTab("applications")} />
         )}
         {!isAdmin && view === "applications" && <ApplicationsTab onGoToApply={() => goToTab("apply")} />}
         {!isAdmin && tab === "wallet" && <WalletCard />}

@@ -73,13 +73,15 @@
     },
     "/free-internships": {
       "title": "Free Internships for Students | Crix Technology",
-      "description": "Free internships for students of every field in India. Apply with your CV, take an online aptitude test and get your result within 7 days.",
+      "description": "Free internships for students of every field in India. Apply free with your CV through our form, then take an aptitude test and an interview.",
       "priority": "0.8",
       "changefreq": "weekly",
       "crumb": "Free Internship",
       "keywords": [
         "free internship India",
         "free internship for students",
+        "free internship application form",
+        "internship with no registration fee",
         "virtual internship",
         "Crix Technology"
       ]

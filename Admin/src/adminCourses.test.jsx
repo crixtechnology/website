@@ -50,8 +50,6 @@ describe("admin course form", () => {
     api.adminCreateCourse.mockResolvedValue({ ok: true, course: { ...base, _id: "new" } });
     api.adminUpdateCourse.mockResolvedValue({ ok: true, course: base });
     api.adminGetJobOpenings.mockResolvedValue({ ok: true, openings, bank: {} });
-    api.adminGetCareerSettings.mockResolvedValue({ ok: true, settings: { processingFeeRupees: 94 } });
-    api.adminUpdateCareerSettings.mockResolvedValue({ ok: true, settings: {} });
     await act(async () => {
       root.render(
         <UserContext.Provider value={ctx({ isLoggedIn: true, isAdmin: true, logout: jest.fn() })}>
@@ -194,7 +192,7 @@ describe("admin course form", () => {
 
   describe("one form for Training + Internship tracks and free internships", () => {
     const freeRole = {
-      _id: "o9", slug: "free-web", title: "Free Web Intern", audience: "free", status: "open", feeRequired: true, applicants: 0,
+      _id: "o9", slug: "free-web", title: "Free Web Intern", audience: "free", status: "open", applicants: 0,
       summary: "", techCategory: "web", skills: [], responsibilities: [], eligibility: [], stipend: "", experience: "", duration: "", mode: "",
       positions: { total: 4, filled: 1, left: 3 }, order: 1,
       test: { durationMinutes: 30, questions: 40, marksPerQuestion: 1, cutoffScore: 0, questionCounts: { quantitative: 10, logical: 10, verbal: 10, technical: 10 } },
@@ -223,39 +221,25 @@ describe("admin course form", () => {
       await act(async () => { fill(q("#jo-group"), " Data Science / Analytics "); });
       await submit();
       expect(api.adminCreateJobOpening).toHaveBeenCalledTimes(1);
-      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6, waiveFee: false, startsOn: "2nd week of January", group: "Data Science / Analytics" });
+      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6, startsOn: "2nd week of January", group: "Data Science / Analytics" });
       expect(api.adminCreateCourse).not.toHaveBeenCalled();
     });
 
-    it("sets the free internships' fee amount right in the form, the same setting as Careers settings", async () => {
-      await renderAdmin();
-      await pick("Free Internship");
-      const input = q("#jo-fee-amount");
-      expect(input.value).toBe("94");
-      await act(async () => { fill(input, "120"); });
-      await act(async () => { qa("button").find((b) => b.textContent === "Save fee").click(); });
-      expect(api.adminUpdateCareerSettings).toHaveBeenCalledWith({ processingFeeRupees: 120 });
-      expect(container.textContent).toContain("Saved — free internships now charge ₹120.");
-      expect(api.adminCreateJobOpening).not.toHaveBeenCalled(); // saving the fee doesn't submit the form
-      await act(async () => { fill(input, "-5"); });
-      await act(async () => { qa("button").find((b) => b.textContent === "Save fee").click(); });
-      expect(api.adminUpdateCareerSettings).toHaveBeenCalledTimes(1);
-    });
-
-    it("can waive the test processing fee on one free internship", async () => {
-      await renderAdmin();
+    it("has no fee to set on a free internship: applying and the test are free", async () => {
+      await renderAdmin([], [freeRole]);
+      expect(container.textContent).toContain("free to apply");
       api.adminCreateJobOpening.mockResolvedValue({ ok: true, opening: freeRole });
       await pick("Free Internship");
-      const select = q("#jo-fee");
-      expect([...select.options].map((o) => o.textContent)).toEqual(["Required (the amount set below)", "No fee for this internship"]);
-      await act(async () => {
-        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(select, "yes");
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      });
+      expect(q("#jo-fee")).toBeNull();
+      expect(q("#jo-fee-amount")).toBeNull();
+      expect(qa("button").some((b) => b.textContent === "Save fee")).toBe(false);
       await act(async () => { fill(q("#jo-title"), "No-fee Intern"); });
       await act(async () => { fill(q("#jo-positions"), "3"); });
       await submit();
-      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ audience: "free", waiveFee: true });
+      const sent = api.adminCreateJobOpening.mock.calls[0][0];
+      expect(sent).toMatchObject({ audience: "free" });
+      expect(sent).not.toHaveProperty("waiveFee");
+      expect(sent).not.toHaveProperty("feeRequired");
     });
 
     it("saves a Training + Internship track as an internship entry", async () => {

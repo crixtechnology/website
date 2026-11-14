@@ -4,11 +4,11 @@ import { getAdminToken, adminGetCareerSettings, adminUpdateCareerSettings, admin
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 
-const NUMBERS = ["testFeeRupees", "processingFeeRupees", "signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent", "reapplyCooldownDays"];
+const NUMBERS = ["signupBonusCredits", "creditExpiryMonths", "creditUsagePercent", "violationLimit", "snapshotIntervalSeconds", "generatedQuestionsPercent", "reapplyCooldownDays"];
 const TOGGLES = ["requireWebcam", "requireDesktopApp"];
 
-// The rules of the careers flow: what the aptitude test costs, the credit new
-// accounts and test-takers get and how it can be used, and how strict the test is.
+// The rules of the careers flow: the credit new accounts get and how it can be
+// used, and how strict the test is. (The test itself is free: there is no fee to set.)
 export default function AdminCareerSettings() {
   usePageMeta({ title: "Careers settings | Crix Technology" });
   const navigate = useNavigate();
@@ -45,12 +45,13 @@ export default function AdminCareerSettings() {
     setSaving(true);
     setMsg({ kind: "", text: "" });
     const res = await adminUpdateCareerSettings({
+      freeApplyFormUrl: String(settings.freeApplyFormUrl || "").trim(),
       ...Object.fromEntries(NUMBERS.map((k) => [k, Number(settings[k])])),
       ...Object.fromEntries(TOGGLES.map((k) => [k, !!settings[k]])),
     });
     setSaving(false);
     setMsg(res.ok
-      ? { kind: "ok", text: "Saved. New payments, new accounts and tests started from now on use these rules." }
+      ? { kind: "ok", text: "Saved. New accounts and tests started from now on use these rules." }
       : { kind: "error", text: res.error || "Could not save." });
   };
 
@@ -68,13 +69,8 @@ export default function AdminCareerSettings() {
         <form className="admin-form" onSubmit={save}>
           {settings ? (
             <>
-              <h3 style={{ margin: "0 0 16px" }}>Fee and credits</h3>
+              <h3 style={{ margin: "0 0 16px" }}>Wallet credits</h3>
               <div className="admin-form-grid admin-form-grid--2">
-                <div className="field"><label htmlFor="cs-fee">Aptitude test registration fee (₹)</label>
-                  <input id="cs-fee" type="number" min="1" step="1" value={settings.testFeeRupees} onChange={setField("testFeeRupees")} /></div>
-                <div className="field"><label htmlFor="cs-processing">Free internships test processing fee (₹, 0 = none)</label>
-                  <input id="cs-processing" type="number" min="0" step="1" value={settings.processingFeeRupees} onChange={setField("processingFeeRupees")} />
-                  <p className="form-note" style={{ margin: "6px 0 0" }}>Change it here at any time. The free internships page never quotes the amount; applicants see it at the payment step.</p></div>
                 <div className="field"><label htmlFor="cs-bonus">Signup bonus (credits, 0 = none)</label>
                   <input id="cs-bonus" type="number" min="0" step="1" value={settings.signupBonusCredits} onChange={setField("signupBonusCredits")} /></div>
                 <div className="field"><label htmlFor="cs-expiry">Credit expiry (months, 0 = never)</label>
@@ -83,10 +79,18 @@ export default function AdminCareerSettings() {
                   <input id="cs-usage" type="number" min="0" max="100" step="1" value={settings.creditUsagePercent} onChange={setField("creditUsagePercent")} /></div>
               </div>
               <p className="form-note" style={{ margin: "-4px 0 20px" }}>
-                Charged only for roles whose Registration fee is set to “Required” in Job openings — free roles skip it.
-                The whole test fee comes back to the candidate as wallet credit (1 credit = ₹1). The expiry applies to the signup bonus and the
-                test-fee credit added from now on — credit already in a wallet keeps the expiry it was given, and referral or admin credit doesn't expire.
+                Applying and the aptitude test are free for every role, so there is no fee to set here.
+                The expiry applies to signup bonus credit added from now on (1 credit = ₹1) — credit already in a wallet keeps the expiry it was given, and referral or admin credit doesn't expire.
                 The usage limit applies to every purchase: at 100% credit can pay for a whole course.
+              </p>
+
+              <h3 style={{ margin: "0 0 16px" }}>Free internships</h3>
+              <div className="field"><label htmlFor="cs-form">Application form link (Google Form)</label>
+                <input id="cs-form" type="url" inputMode="url" maxLength={500} placeholder="https://forms.gle/..." value={settings.freeApplyFormUrl || ""} onChange={setField("freeApplyFormUrl")} /></div>
+              <p className="form-note" style={{ margin: "-4px 0 20px" }}>
+                “Apply Now” on every role of the Free Internships page opens this link in a new tab. People who apply through the form are in
+                the form's own responses (Google Forms / its Sheet), not under Applicants here — contact them from there about the aptitude test and interview.
+                The form should ask which role and duration they are applying for.
               </p>
 
               <h3 style={{ margin: "0 0 16px" }}>The test</h3>
@@ -97,12 +101,12 @@ export default function AdminCareerSettings() {
                   <input id="cs-snap" type="number" min="20" max="600" step="1" value={settings.snapshotIntervalSeconds} onChange={setField("snapshotIntervalSeconds")} /></div>
                 <div className="field"><label htmlFor="cs-generated">Generated questions (% of each test)</label>
                   <input id="cs-generated" type="number" min="0" max="100" step="1" value={settings.generatedQuestionsPercent} onChange={setField("generatedQuestionsPercent")} /></div>
-                <div className="field"><label htmlFor="cs-cooldown">Re-apply wait for free roles (days, 0 = none)</label>
+                <div className="field"><label htmlFor="cs-cooldown">Re-apply wait (days, 0 = none)</label>
                   <input id="cs-cooldown" type="number" min="0" max="365" step="1" value={settings.reapplyCooldownDays ?? 30} onChange={setField("reapplyCooldownDays")} /></div>
               </div>
               <p className="form-note" style={{ margin: "-4px 0 16px" }}>
-                After an application to a free role ends without an offer, the same candidate can apply to that role again only after the
-                re-apply wait, so a free test can't be retaken over and over. Paid roles need a new registration fee for each try instead.
+                After an application ends without an offer, the same candidate can apply to that role again only after the
+                re-apply wait, so the test can't be retaken over and over.
                 Generated questions are written at the moment a test starts, with fresh numbers, words or code each time, so no two candidates
                 get the same ones. The rest of each test comes from the question bank. Set this to 0 to use the bank only.
               </p>

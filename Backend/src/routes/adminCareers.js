@@ -79,14 +79,6 @@ function openingData(body) {
     if (b.status !== "open" && b.status !== "closed") return { error: "status must be open or closed" };
     data.status = b.status;
   }
-  if (b.feeRequired !== undefined) {
-    if (typeof b.feeRequired !== "boolean") return { error: "feeRequired must be true or false" };
-    data.feeRequired = b.feeRequired;
-  }
-  if (b.waiveFee !== undefined) {
-    if (typeof b.waiveFee !== "boolean") return { error: "waiveFee must be true or false" };
-    data.waiveFee = b.waiveFee;
-  }
   if (b.audience !== undefined) {
     if (b.audience !== "general" && b.audience !== "free") return { error: "audience must be general or free" };
     data.audience = b.audience;
@@ -440,7 +432,7 @@ const ATTEMPT_SUMMARY = {
   id: true, status: true, startedAt: true, endsAt: true, submittedAt: true, submitReason: true,
   score: true, maxScore: true, passed: true, correctCount: true, wrongCount: true, categoryScores: true, violationCount: true,
 };
-const OPENING_SUMMARY = { id: true, title: true, slug: true, feeRequired: true, audience: true, techCategory: true, positions: true, ...OPENING_COUNTS };
+const OPENING_SUMMARY = { id: true, title: true, slug: true, audience: true, techCategory: true, positions: true, ...OPENING_COUNTS };
 const LIST_INCLUDE = { user: { select: USER_SUMMARY }, opening: { select: OPENING_SUMMARY }, attempt: { select: ATTEMPT_SUMMARY } };
 
 function shapeApplicant(a) {
@@ -452,13 +444,14 @@ function shapeApplicant(a) {
           education: { college: a.user.college, course: a.user.course, department: a.user.department, semester: a.user.semester, passingYear: a.user.passingYear },
         }
       : null,
-    opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug, feeRequired: a.opening.feeRequired !== false, audience: a.opening.audience || "general", positions: positionsOf(a.opening) } : null,
+    opening: a.opening ? { _id: a.opening.id, title: a.opening.title, slug: a.opening.slug, audience: a.opening.audience || "general", positions: positionsOf(a.opening) } : null,
     cv: a.cvKey ? { fileName: a.cvFileName, uploadedAt: a.cvUploadedAt } : null,
     // As it was when they applied (free internships); null for other roles.
     education: a.education || null,
     status: a.status,
     statusLabel: STATUS_LABELS[a.status] || a.status,
-    paymentStatus: a.paidAt ? "paid" : a.opening && a.opening.feeRequired === false ? "free" : "pending",
+    // "paid" only on an application from when the test had a fee.
+    paymentStatus: a.paidAt ? "paid" : "free",
     paidAt: a.paidAt,
     interviewAt: a.interviewAt,
     interviewLink: a.interviewLink,
@@ -585,7 +578,7 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
         passingYear: edu.passingYear || "",
         role: safe(a.opening ? a.opening.title : ""),
         status: STATUS_LABELS[a.status] || a.status,
-        payment: a.paidAt ? "Paid" : a.opening && a.opening.feeRequired === false ? "Free role" : "Pending",
+        payment: a.paidAt ? "Paid" : "Free",
         paidAt: ist(a.paidAt),
         score: t && t.score !== null ? t.score : "",
         maxScore: t && t.maxScore !== null ? t.maxScore : "",
@@ -797,7 +790,8 @@ router.post("/admin/job-applications/:id/status", requireAdmin, async (req, res,
         status: application.status,
         interviewAt: application.interviewAt,
         interviewLink: application.interviewLink,
-        free: !!application.opening && application.opening.feeRequired === false,
+        // No wallet credit to mention unless this application paid a (now removed) test fee.
+        free: !application.paidAt,
       });
     }
     res.json({ ok: true, application: shapeApplicant(application) });

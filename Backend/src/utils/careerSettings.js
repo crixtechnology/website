@@ -3,25 +3,23 @@ const { prisma } = require("../db");
 // Admin-editable rules for the careers flow and the credit it hands out, kept
 // in the same key/value Setting table as the referral rules.
 //
-//   testFeeRupees          what the aptitude test costs (it comes back as credit)
-//   processingFeeRupees    the test processing fee for a free-internship role
-//                          (/free-internships); it also comes back as credit (0 = none)
 //   signupBonusCredits     credit a new student account starts with (0 = none)
-//   creditExpiryMonths     how long that credit and the test-fee credit last (0 = forever)
+//   creditExpiryMonths     how long that credit lasts (0 = forever)
 //   creditUsagePercent     the most of one purchase that wallet credit may pay for
 //   violationLimit         violations after which a test is submitted automatically
 //   snapshotIntervalSeconds how often the test page takes a webcam photo
 //   generatedQuestionsPercent share of each test made of questions written on the
 //                          spot with fresh values (utils/questionGenerators.js); 0 = bank only
-//   reapplyCooldownDays    days before someone can apply again to the same FREE
-//                          role after an application there ended without an offer
-//                          (0 = straight away). Paid roles need a new fee anyway.
+//   reapplyCooldownDays    days before someone can apply again to the same role
+//                          after an application there ended without an offer
+//                          (0 = straight away).
+// Applying and the test are free, so there is no fee setting.
+//   freeApplyFormUrl       the Google Form "Apply Now" opens on the Free Internships
+//                          page (an https link)
 //   requireWebcam          refuse to start a test without a working webcam
 //   requireDesktopApp      only allow the test inside the desktop lockdown app
 const SETTINGS_KEY = "careers";
 const DEFAULT_SETTINGS = {
-  testFeeRupees: 289,
-  processingFeeRupees: 94,
   signupBonusCredits: 300,
   creditExpiryMonths: 12,
   creditUsagePercent: 100,
@@ -29,14 +27,13 @@ const DEFAULT_SETTINGS = {
   snapshotIntervalSeconds: 60,
   generatedQuestionsPercent: 30,
   reapplyCooldownDays: 30,
+  freeApplyFormUrl: "https://forms.gle/eaX7kab7zPG7w6SX6",
   requireWebcam: true,
   requireDesktopApp: false,
 };
 
 // [min, max] for each whole-number setting.
 const INT_RANGES = {
-  testFeeRupees: [1, 100000, "The test fee must be a whole number of rupees from 1 to 100000"],
-  processingFeeRupees: [0, 100000, "The processing fee must be a whole number of rupees from 0 (none) to 100000"],
   signupBonusCredits: [0, 100000, "The signup bonus must be a whole number from 0 to 100000"],
   creditExpiryMonths: [0, 120, "Credit expiry must be a whole number of months from 0 (never) to 120"],
   creditUsagePercent: [0, 100, "The credit usage limit must be a whole number from 0 to 100 percent"],
@@ -46,11 +43,27 @@ const INT_RANGES = {
   reapplyCooldownDays: [0, 365, "The re-apply wait must be a whole number of days from 0 to 365"],
 };
 const BOOLEANS = ["requireWebcam", "requireDesktopApp"];
+const MAX_URL_LENGTH = 500;
+
+// A link the public page can safely send people to: https only, nothing else.
+function httpsUrl(value) {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  if (!text || text.length > MAX_URL_LENGTH || /\s/.test(text)) return "";
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" && url.hostname.includes(".") ? url.href : "";
+  } catch (e) {
+    return "";
+  }
+}
 
 // `db` lets a caller already inside a transaction read through it.
 async function getCareerSettings(db = prisma) {
   const row = await db.setting.findUnique({ where: { key: SETTINGS_KEY } });
-  return { ...DEFAULT_SETTINGS, ...((row && row.value) || {}) };
+  // A value stored while tests had a fee still carries the two fee settings: left out.
+  const { testFeeRupees, processingFeeRupees, ...stored } = (row && row.value) || {};
+  return { ...DEFAULT_SETTINGS, ...stored };
 }
 
 // Validates and stores the admin's edits. Returns { ok, settings } or { ok:false, error }.
@@ -68,6 +81,11 @@ async function saveCareerSettings(input) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") return { ok: false, error: `${key} must be true or false` };
     next[key] = body[key];
+  }
+  if (body.freeApplyFormUrl !== undefined) {
+    const url = httpsUrl(body.freeApplyFormUrl);
+    if (!url) return { ok: false, error: "The free internships form link must be a full https:// link (for example a Google Form link)." };
+    next.freeApplyFormUrl = url;
   }
   await prisma.setting.upsert({
     where: { key: SETTINGS_KEY },

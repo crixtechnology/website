@@ -800,7 +800,7 @@ export function ProfileGate({ children, onLeave }) {
 
 /* ---------- TermsCheckbox: "I agree to the Terms & Conditions" ----------
    Shown above every Pay button on the site (courses, internships, plan
-   upgrades, payment requests, the careers test fee). The Pay button stays
+   upgrades, payment requests). The Pay button stays
    disabled until it's ticked, and the server refuses to start a payment
    without it too (Backend/src/utils/terms.js). The links open in a new tab so
    reading the terms doesn't lose the checkout. `what` names the purchase in
@@ -2380,7 +2380,7 @@ function ThemeToggle() {
 // panel in the mobile menu.
 const PROGRAM_MENU = [
   { to: "/training-internship", label: "Training + Internship", desc: "Get trained · top performers earn a stipend" },
-  { to: "/free-internships", label: "Free Internship", desc: "Free internship · small aptitude test fee" },
+  { to: "/free-internships", label: "Free Internship", desc: "Free to apply · aptitude test · interview" },
 ];
 const isProgramPath = (pathname) => PROGRAM_MENU.some((m) => m.to === pathname);
 const NAV_MOBILE = "(max-width:1100px)";

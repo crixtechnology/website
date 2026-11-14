@@ -510,7 +510,7 @@ async function sendWelcomeEmail({ to, name, profileIncomplete = true, bonusCredi
     profileIncomplete && ["Complete your profile", "Add your full name and phone number — you'll need them before buying anything."],
     bonusCredits > 0 && ["Claim your signup bonus", `Verify your email from My Dashboard → Wallet to add ${bonusCredits} bonus credits.`],
     ["Explore Training + Internship", "Paid, mentored training — top performers are selected for a stipend-based internship."],
-    ["See open roles", "Our Careers page lists every role we're hiring for — some are free to apply."],
+    ["See open roles", "Our Careers page lists every role we're hiring for — all free to apply."],
   ].filter(Boolean);
   const html = layout({
     preheader: "Your Crix Technology account is ready.",
@@ -777,7 +777,7 @@ async function sendTestSubmittedEmail({ to, name, roleTitle, reason }) {
 }
 
 // ---------- application status changed (shortlisted / interview / offer / rejection) ----------
-// `free`: the role had no registration fee, so there are no wallet credits to mention.
+// `free`: no test fee was paid for this application, so there are no wallet credits to mention.
 async function sendApplicationStatusEmail({ to, name, roleTitle, status, interviewAt, interviewLink, free = false }) {
   if (!to) return { sent: false, reason: "No email" };
   const link = `${siteOrigin()}/dashboard?tab=applications`;

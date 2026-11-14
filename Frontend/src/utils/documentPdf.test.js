@@ -27,15 +27,16 @@ describe("document PDFs", () => {
 });
 
 describe("careers rules document", () => {
-  it("covers hiring, the fee and the test, numbered in order", () => {
+  it("covers hiring, the no-fee rule and the test, numbered in order", () => {
     const d = careersRulesDocument(defaultTerms);
     expect(d.sections.map((s) => s.title)).toEqual([
-      "1. How hiring works", "2. Registration fee & wallet credits", "3. The aptitude test", "4. Fair play", "5. Results & selection", "6. Questions",
+      "1. How hiring works", "2. No fee to apply", "3. The aptitude test", "4. Fair play", "5. Results & selection", "6. Questions",
     ]);
-    expect(d.sections[1].content).toContain("₹289");
+    expect(d.sections[1].content).toContain("are free");
+    expect(d.sections[1].content).not.toContain("₹289");
   });
 
-  it("on the test page, leaves out the fee and states that role's own test", () => {
+  it("on the test page, leaves out the hiring steps and states that role's own test", () => {
     const rules = { questions: 40, durationMinutes: 30, marksPerQuestion: 1, violationLimit: 3, snapshotIntervalSeconds: 60 };
     const d = careersRulesDocument(null, { role: "Web Development Intern", rules });
     expect(d.title).toBe("Aptitude Test Rules — Web Development Intern");

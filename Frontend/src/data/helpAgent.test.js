@@ -12,8 +12,8 @@ const ctx = {
     { slug: "ai-agents", title: "Building AI Agents & RAG Systems", type: "course", points: ["LLM", "RAG"] },
   ],
   openings: [
-    { title: "Web Development Intern", feeRequired: true, stipend: "Up to ₹6,000/month" },
-    { title: "Data Science Intern", feeRequired: false },
+    { title: "Web Development Intern", stipend: "Up to ₹6,000/month" },
+    { title: "Data Science Intern" },
   ],
   services: [
     { title: "Static Website", desc: "A fast business website" },
@@ -60,15 +60,16 @@ describe("help agent", () => {
 
   it("answers “how much?” for whatever was being discussed", () => {
     expect(chat("I want an internship in react", "how much?").last.text).toMatch(/price is on its own page/i);
-    expect(chat("open jobs", "how much?").last.text).toMatch(/Free to apply/);
+    expect(chat("open jobs", "how much?").last.text).toMatch(/are free/);
     expect(chat("I need a website for my shop", "how much?").last.text).toMatch(/quoted individually/i);
     // No context yet: it asks which one.
     expect(chipSays(chat("how much?").last).length).toBe(3);
   });
 
-  it("lists the open roles, saying which are free", () => {
+  it("lists the open roles, all free to apply", () => {
     const { last } = chat("are you hiring?");
-    expect(last.text).toContain("Web Development Intern — registration fee applies");
+    expect(last.text).toContain("Web Development Intern — free to apply");
+    expect(last.text).not.toMatch(/fee applies/);
     expect(last.text).toContain("Data Science Intern — free to apply");
     expect(last.links[0].to).toBe("/careers");
   });

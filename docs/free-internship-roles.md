@@ -13,7 +13,8 @@ Each section below lists the fields **in the same order as the admin form**. Cop
 1. **The new question banks need the code PR merged and deployed first.** The "Technical questions from" choices *Frontend (React & JavaScript)*, *Python Programming*, *Web Fundamentals (HTML, CSS, JS, HTTP)* and *AI / Machine Learning* show up in the dropdown only after that. When the server starts on the new code it adds the questions by itself, once. You don't need to do anything else.
    If you add the roles **before** the deploy, use the fallback given for each role, then use **Edit** to change it after the deploy.
 2. **The Stipend box starts filled in** with "Up to ₹6,000/month (performance based)". That's the default for the paid careers roles. For a free internship you will probably want to **clear it**: an empty stipend is simply not shown on the page. ✏️
-3. **Fee:** once you pick *Listed on → Free internships page only*, the form shows no fee box. These roles always charge the **test processing fee** from Admin → Careers settings (₹94 now), which comes back in full as wallet credit. You don't type a fee per role.
+3. **How people apply:** **Apply Now** on every role opens the Google Form, in a new tab. Its link is in **Admin → Careers settings → Free internships → Application form link**; change it there at any time. People who apply through the form are in the form's responses (Google Forms / its Sheet), **not** in Admin → Applicants. Your team contacts them from there about the aptitude test and then the interview. Make sure the form asks which role and duration they want.
+3a. **Fee:** there is none. Applying and the aptitude test are free for every role, so the form has no fee box and nothing is charged.
 4. **Status:** a new role is **Open** as soon as you create it, so it appears on `/free-internships` straight away. Use the Open/Closed button in the list to hide one.
 5. **Shared sections:** free-internship roles automatically draw their quantitative, logical and verbal questions from the new, gentler **foundation** banks, which are meant for students of any field. There is nothing to set.
 6. **Each role twice: 3 months and 6 months.** Create every role twice, once with Duration `3 months` and once with `6 months`, and give both **exactly the same Domain group**. The page then shows them as **one card with a 3 months | 6 months switch**, like the Training + Internship page. Everything else (description, skills, test settings) can be the same for both. Once one entry has a group, the Domain group box suggests it when you type.
@@ -99,7 +100,7 @@ Able to give about 2–3 hours a day for the length of the internship
 
 | Field | Value |
 |---|---|
-| Listed on | **Free internships page only (/free-internships, CV required)** |
+| Listed on | **Free internships page only (/free-internships; applied for through the Google Form)** |
 | Duration (minutes) | `45` ✏️ |
 | Quantitative questions | `8` |
 | Logical reasoning questions | `8` |
@@ -344,4 +345,5 @@ The role pop-up on `/free-internships` now tells candidates what the test covers
 
 - **Check the page:** open `/free-internships`. You should see **5 cards** (one per role), each with a **3 months | 6 months** switch.
 - **Duration switch looks wrong:** if a role shows two separate cards, its two Domain group values aren't identical. Fix the spelling or spacing in Admin.
-- **Applications are per duration:** a student applies, takes the test and is selected for the 3-month or the 6-month entry they picked, so check both in Admin → Applicants.
+- **Check Apply Now:** press it on a card. It should open your Google Form in a new tab. If it opens the wrong form, fix the link in Admin → Careers settings.
+- **Applications are in the form:** new applications arrive in the Google Form's responses, so check there (the form should record the role and the 3-month or 6-month choice). Admin → Applicants only lists people who applied on the website before the form was introduced.
