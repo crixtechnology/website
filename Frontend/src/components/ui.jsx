@@ -1171,7 +1171,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
               </fieldset>
               {plan && <CheckoutExtras key={item.slug} item={item} tier={plan.tier} onPayable={setPayable} onWalletCovers={setWalletPays} />}
               <TermsCheckbox checked={agreed} onChange={(v) => { setAgreed(v); clearStatus(); }} disabled={loading}
-                what={item.type === "internship" ? "this internship" : "this course"} />
+                what="this training program" />
               <button className="btn btn-solid" type="submit" disabled={loading || !agreed} style={{ width: "100%" }}>
                 {loading ? "Please wait..."
                   : walletPays != null ? `Pay ${formatINR(walletPays)} with wallet`
@@ -1478,7 +1478,7 @@ export function InquiryModal({ item, kind, onClose }) {
             </Alert>
             {kind === "internship" && (
               <p className="form-note" style={{ marginTop: 12 }}>
-                Next: once we confirm your seat, we send a payment request for the training fee to your Crix account,
+                Next: once we confirm your place, we send a payment request for the training fee to your Crix account,
                 and you pay it in My Dashboard → Payment requests. Questions? Call or WhatsApp {site.phoneAlt}.
               </p>
             )}
@@ -1488,7 +1488,7 @@ export function InquiryModal({ item, kind, onClose }) {
           <>
             <p style={{ color: "var(--muted)", fontSize: ".9rem", lineHeight: 1.6, marginBottom: 20 }}>
               Log in or create your free account to apply. That's where we send the payment request for the training fee
-              once your seat is confirmed — training is paid, not free.
+              once your place is confirmed.
             </p>
             <button type="button" className="btn btn-solid" style={{ width: "100%" }} onClick={() => openAuthModal("login")}>
               Log in or sign up to apply
@@ -1501,7 +1501,7 @@ export function InquiryModal({ item, kind, onClose }) {
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
               {kind === "internship"
-                ? `Share your details and our team will call you to confirm your seat on "${item.title}", then send a payment request for the training fee (training is paid, not free). Prefer to talk now? Call or WhatsApp ${site.phoneAlt}.`
+                ? `Share your details and our team will call you to confirm your place on "${item.title}", then send a payment request for the training fee. Prefer to talk now? Call or WhatsApp ${site.phoneAlt}.`
                 : user
                   ? `Check your details and we'll help you ${verb} "${item.title}".`
                   : `Share your details and we'll help you ${verb} "${item.title}" — no account needed.`}
@@ -1562,7 +1562,7 @@ export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
 
   const closed = item.status === "closed";
   const deliverables = kind ? programDeliverables[kind] : null;
-  const kindLabel = kind === "internship" ? "Training + Internship" : kind === "course" ? "Course" : null;
+  const kindLabel = kind === "internship" ? "Training + Internship" : null;
 
   const act = (fn) => () => { onClose(); fn && fn(item); };
 

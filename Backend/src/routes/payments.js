@@ -227,9 +227,9 @@ async function attachReceipt(payment, application) {
 // can never disagree. Returns { course, plan } or { error: { status, message } }.
 async function loadPurchasablePlan(courseSlug, tierName, userId) {
   const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_SEATS });
-  if (!isProgram(course)) return { error: { status: 404, message: "Course not found" } };
+  if (!isProgram(course)) return { error: { status: 404, message: "Program not found" } };
   if (course.status === "closed") {
-    return { error: { status: 400, message: "This course is currently closed for enrollment" } };
+    return { error: { status: 400, message: "This program is closed for enrollment right now." } };
   }
   // Server-side mirror of the frontend's own "Buy now only shows when
   // openForBuy" gating (at least one plan priced AND status open) — the
@@ -238,7 +238,7 @@ async function loadPurchasablePlan(courseSlug, tierName, userId) {
   // only ever show "Request to apply"/"Request to enroll") would have no
   // price to charge, so it's rejected clearly instead.
   if (course.tiers.length === 0) {
-    return { error: { status: 400, message: "This course is not available for online purchase." } };
+    return { error: { status: 400, message: "This program can't be bought online — use Request to apply on its page." } };
   }
   // The buyer picks a plan; its price — never a client-sent amount — is
   // what gets charged.
@@ -246,7 +246,7 @@ async function loadPurchasablePlan(courseSlug, tierName, userId) {
     return { error: { status: 400, message: "Choose a plan (Basic, Plus or Pro) to continue." } };
   }
   const plan = course.tiers.find((t) => t.tier === tierName);
-  if (!plan) return { error: { status: 400, message: "That plan isn't available for this course." } };
+  if (!plan) return { error: { status: 400, message: "That plan isn't available for this program." } };
 
   // Don't let an already-enrolled, still-valid student pay again for the
   // same course — a double "Buy now" click, two open tabs, or someone
@@ -260,15 +260,15 @@ async function loadPurchasablePlan(courseSlug, tierName, userId) {
       error: {
         status: 400,
         message: existingEnrollment.tier
-          ? "You already have access to this course. To move to a higher plan, use \"Upgrade plan\" in My Dashboard."
-          : "You already have access to this course.",
+          ? "You already have access to this program. To move to a higher plan, use \"Upgrade plan\" in My Dashboard."
+          : "You already have access to this program.",
       },
     };
   }
   // Every place taken. Someone renewing their own lapsed access already holds one.
   const seats = seatsOf(course);
   if (seats && seats.left === 0 && !existingEnrollment) {
-    return { error: { status: 400, message: `All ${course.type === "internship" ? "positions" : "seats"} for this ${course.type === "internship" ? "internship" : "course"} are filled.` } };
+    return { error: { status: 400, message: "All positions for this program are filled." } };
   }
   return { course, plan };
 }
@@ -423,7 +423,7 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
       await lockUser(tx, userId);
 
       const enrollment = await tx.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: course.id } } });
-      if (hasValidAccess(enrollment)) return { error: { status: 400, message: "You already have access to this course." } };
+      if (hasValidAccess(enrollment)) return { error: { status: 400, message: "You already have access to this program." } };
 
       const pricing = await priceOrder(userId, tierTotal(plan), tx);
       if (!pricing.walletCoversAll) {
@@ -493,7 +493,7 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
 router.get("/upgrade-options/:courseSlug", requireAuth, async (req, res, next) => {
   try {
     const course = await prisma.course.findUnique({ where: { slug: req.params.courseSlug }, include: WITH_TIERS });
-    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     const result = await getUpgradeOptions(req.user.sub, course);
     if (!result.ok) return res.json({ ok: true, currentTier: null, options: [], reason: result.reason });
@@ -530,7 +530,7 @@ router.post("/create-upgrade-order", publicWriteLimiter, requireAuth, async (req
     if (!isTier(tierName)) return res.status(400).json({ ok: false, error: "Choose a plan to upgrade to." });
 
     const course = await prisma.course.findUnique({ where: { slug: courseSlug }, include: WITH_TIERS });
-    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     const result = await getUpgradeOptions(req.user.sub, course);
     if (!result.ok) return res.status(400).json({ ok: false, error: result.reason });

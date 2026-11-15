@@ -79,7 +79,7 @@ describe("POST /api/payments/create-order — server-side guards", () => {
       applicationId: appRes.body.application._id, courseSlug: course.slug, tier: "basic",
     });
     expect(order.status).toBe(400);
-    expect(order.body.error).toMatch(/not available/i);
+    expect(order.body.error).toMatch(/can.t be bought online/i);
   });
 
   it("rejects a purchase attempt from a user who already has valid access", async () => {

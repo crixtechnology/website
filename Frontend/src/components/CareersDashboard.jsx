@@ -340,7 +340,7 @@ export function ApplicationsTab({ onGoToApply }) {
   if (applications.length === 0) {
     return (
       <p style={{ color: "var(--muted)" }}>
-        No applications to show. <button type="button" className="link-btn" onClick={onGoToApply}>Apply and take the aptitude test →</button>
+        No applications to show. <button type="button" className="link-btn" onClick={onGoToApply}>Apply for a role →</button>
       </p>
     );
   }

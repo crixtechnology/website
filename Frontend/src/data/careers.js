@@ -14,7 +14,7 @@ export const defaultTerms = { signupBonus: 300, creditExpiryMonths: 12, creditUs
 export { isFull as isRoleFull, positionsLabel, positionsTag } from "../utils/positions.js";
 
 export const careersContact = {
-  email: "support@crixtechnology.com",
+  email: site.email,
   phone: site.phoneAlt,
   whatsapp: site.whatsappAlt || site.whatsapp,
 };

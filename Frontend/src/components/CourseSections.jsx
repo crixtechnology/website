@@ -13,7 +13,7 @@ import { useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/use
 // optional: a section with nothing in it is simply not rendered, so a course nobody has
 // filled in yet looks exactly as it did before.
 
-const kindLabel = (c) => (c.type === "internship" ? "Training + Internship" : "Course");
+const kindLabel = () => "Training + Internship"; // every program is a training track
 const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
 
 /* ---------- key facts ---------- */
@@ -142,7 +142,7 @@ export function RelatedPrograms({ course }) {
       <div className="related-grid">
         {items.map((c) => (
           <Link className="related-card" to={`/programs/${c.slug}`} key={c.slug}>
-            <span className={`type-pill type-pill--${c.type === "internship" ? "internship" : "course"}`}>{kindLabel(c)}</span>
+            <span className="type-pill type-pill--internship">{kindLabel(c)}</span>
             <h3>{c.title}</h3>
             <p>{c.desc}</p>
             <span className="related-more">See more →</span>

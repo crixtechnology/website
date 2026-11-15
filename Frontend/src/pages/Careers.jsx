@@ -395,7 +395,7 @@ export default function Careers() {
           <Reveal as="h2" variant="reveal-l">Find your role.</Reveal>
           {(loading || openings.length > 0) && (
             <Reveal as="p" variant="reveal-l" className="section-lede">
-              Freshers are welcome for every role below. Pick one, take the aptitude test, and we'll take it from there.
+              Freshers are welcome for every role below. Pick one and apply — we'll give you access to the aptitude test and take it from there.
             </Reveal>
           )}
           {loading ? (
@@ -428,7 +428,7 @@ export default function Careers() {
           <Reveal variant="reveal-zoom" className="band">
             <div>
               <h2>Ready to start your journey?</h2>
-              <p>Pick a role, take the test, and show us what you can do.</p>
+              <p>Pick a role, apply, and show us what you can do in the aptitude test.</p>
               <div className="careers-contact">
                 <div className="contact-line">
                   <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>

@@ -159,7 +159,7 @@ export default function PaymentRequests({ onPaid }) {
                 <>
                   {startsInFuture(r.course)
                     ? <span style={{ color: "var(--muted)", fontSize: ".85rem" }}>Starts on {formatStartDate(r.course.startsAt)}</span>
-                    : r.course?.slug && <Link className="btn btn-ghost" to={`/learn/${r.course.slug}`}>{r.course.type === "internship" ? "Go to training →" : "Go to course →"}</Link>}
+                    : r.course?.slug && <Link className="btn btn-ghost" to={`/learn/${r.course.slug}`}>Go to training →</Link>}
                   {r.paidPaymentId && (
                     <button className="btn btn-ghost" disabled={!!busy} onClick={() => receipt(r)}>
                       {busy === `rc-${r._id}` ? "Preparing…" : "Download Receipt"}

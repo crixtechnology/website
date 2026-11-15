@@ -163,7 +163,7 @@ describe("internship-style details and positions", () => {
     expect(pub.positions).toEqual({ total: 1, filled: 1, left: 0 });
     const refused = await quote(second, made.slug);
     expect(refused.status).toBe(400);
-    expect(refused.body.error).toMatch(/All positions for this internship are filled/);
+    expect(refused.body.error).toMatch(/All positions for this program are filled/);
 
     // One more place opens it again; clearing the number removes the limit.
     expect((await update(made._id, { positions: 2 })).body.course.positions).toEqual({ total: 2, filled: 1, left: 1 });

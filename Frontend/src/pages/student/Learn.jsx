@@ -50,7 +50,7 @@ export default function Learn() {
     getLearnData(slug).then((res) => {
       if (!alive) return;
       if (res.ok) setData(res);
-      else { setData(null); setNotStarted(res.code === "NOT_STARTED"); setError(res.error || "Could not load this course."); }
+      else { setData(null); setNotStarted(res.code === "NOT_STARTED"); setError(res.error || "Could not load this training."); }
     });
     return () => { alive = false; };
   }, [slug, isLoggedIn]);
@@ -78,8 +78,8 @@ export default function Learn() {
     return (
       <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 480 }}>
-          <span className="eyebrow">Course access</span>
-          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to view this course</h1>
+          <span className="eyebrow">Training access</span>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>Log in to open your training</h1>
           <button className="btn btn-solid" onClick={() => openAuthModal("login")}>Log in</button>
         </div>
       </section>
