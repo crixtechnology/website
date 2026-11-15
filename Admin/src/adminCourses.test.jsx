@@ -228,6 +228,25 @@ describe("admin course form", () => {
     };
     const careersRole = { ...freeRole, _id: "o8", slug: "careers-web", title: "Careers Web Intern", audience: "general" };
 
+    it("copies a free internship into the form as a new one", async () => {
+      api.adminCreateJobOpening.mockResolvedValue({ ok: true });
+      const role = { ...freeRole, summary: "Build pages.", skills: ["HTML"], duration: "3 months", group: "Web", stipend: "Unpaid", order: 4 };
+      await renderAdmin([], [role]);
+      await act(async () => { qa(".admin-row button").find((b) => b.textContent === "Copy").click(); });
+      expect(q("form h3").textContent).toBe("Add a copy of a free internship");
+      expect(q(".copy-note").textContent).toContain("Free Web Intern");
+      expect(q("#jo-title").value).toBe("Free Web Intern");
+      expect(q("#jo-order").value).toBe(""); // goes last, not on top of the original
+      await act(async () => { fill(q("#jo-duration"), "6 months"); });
+      await submit();
+      expect(api.adminUpdateJobOpening).not.toHaveBeenCalled();
+      expect(api.adminCreateJobOpening).toHaveBeenCalledTimes(1);
+      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({
+        title: "Free Web Intern", summary: "Build pages.", skills: ["HTML"], duration: "6 months", group: "Web", positions: 4, audience: "free",
+      });
+      expect(api.adminCreateJobOpening.mock.calls[0][0].order).toBeUndefined();
+    });
+
     it("lists the two kinds apart, offers no Course, and leaves Careers roles out", async () => {
       await renderAdmin([base, { ...base, _id: "i1", type: "internship", title: "Paid Android Internship" }], [freeRole, careersRole]);
       const headings = qa("h3").map((h) => h.textContent);

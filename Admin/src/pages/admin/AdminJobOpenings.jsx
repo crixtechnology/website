@@ -127,13 +127,19 @@ export function FreeApplyFormLink() {
 // (the Free Internships page). `editing` is the opening being edited, or null.
 // `head` is shown above the fields (e.g. a type picker); `title` is the heading.
 // groupNames: the free internships' groups already in use, suggested in the Group box.
-export function OpeningForm({ audience, editing, onSaved, onCancel, head = null, title, groupNames = [] }) {
+// copyFrom: an opening whose details fill the form as a NEW one (the list's
+// Copy button) — the same role in another duration or batch then only needs
+// what differs changed before Create. Its display order is left to "last".
+export function OpeningForm({ audience, editing, copyFrom = null, onSaved, onCancel, head = null, title, groupNames = [] }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const free = audience === "free";
   const editingId = editing ? editing._id : null;
-  useEffect(() => { setForm(editing ? openingToForm(editing) : EMPTY_FORM); setError(""); }, [editing]);
+  useEffect(() => {
+    setForm(editing ? openingToForm(editing) : copyFrom ? { ...openingToForm(copyFrom), order: "" } : EMPTY_FORM);
+    setError("");
+  }, [editing, copyFrom]);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const what = free ? "free internship" : "role";
@@ -179,6 +185,12 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
     <form onSubmit={onSubmit} className="admin-form">
       <h3 style={{ margin: "0 0 16px" }}>{title || (editingId ? "Edit opening" : "Add a new opening")}</h3>
       {head}
+      {!editingId && copyFrom && (
+        <p className="form-note copy-note" style={{ margin: "0 0 16px" }}>
+          Filled in from <b>{copyFrom.title}</b>. Change what differs — usually the title, duration and start — then press Create.
+          This adds a new {what}; the original stays as it is.
+        </p>
+      )}
       <div className="admin-form-grid">
         <div className="field"><label htmlFor="jo-title">Title</label>
           <input id="jo-title" value={form.title} onChange={set("title")} placeholder={free ? "Web Development Intern (Free)" : "Web Development Intern"} /></div>
@@ -253,14 +265,15 @@ export function OpeningForm({ audience, editing, onSaved, onCancel, head = null,
       {error && <p className="form-error">{error}</p>}
       <div className="admin-actions">
         <button className="btn btn-solid" type="submit" disabled={saving}>{saving ? "Saving..." : editingId ? "Save changes" : "Create"}</button>
-        {editingId && <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>}
+        {(editingId || copyFrom) && <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>}
       </div>
     </form>
   );
 }
 
-// The list of openings, each with its status toggle, Edit and Delete.
-export function OpeningList({ openings, bank, onEdit, onChanged, empty }) {
+// The list of openings, each with its status toggle, Edit, Copy and Delete.
+// onCopy(opening) starts a new opening from that one's details (see OpeningForm).
+export function OpeningList({ openings, bank, onEdit, onCopy, onChanged, empty }) {
   const [error, setError] = useState("");
 
   const toggleStatus = async (o) => {
@@ -326,6 +339,7 @@ export function OpeningList({ openings, bank, onEdit, onChanged, empty }) {
                   {o.status === "open" ? "Open" : "Closed"}
                 </button>
                 <button className="btn btn-ghost" onClick={() => onEdit(o)}>Edit</button>
+                {onCopy && <button className="btn btn-ghost" onClick={() => onCopy(o)} title="Start a new one with these details — for another duration or batch">Copy</button>}
                 <button className="btn btn-ghost admin-danger" onClick={() => remove(o)}>Delete</button>
               </div>
             </div>
@@ -344,9 +358,12 @@ export default function AdminJobOpenings() {
   const navigate = useNavigate();
   const { openings, bank, loading, error, load } = useJobOpenings();
   const [editing, setEditing] = useState(null);
+  const [copying, setCopying] = useState(null); // the role the form was filled from by Copy
   const roles = openings.filter((o) => o.audience !== "free");
 
-  const startEdit = (o) => { setEditing(o); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const startEdit = (o) => { setCopying(null); setEditing(o); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const startCopy = (o) => { setEditing(null); setCopying(o); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const clearForm = () => { setEditing(null); setCopying(null); };
 
   return (
     <section className="section" style={{ paddingTop: 140 }}>
@@ -363,14 +380,14 @@ export default function AdminJobOpenings() {
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
         </div>
 
-        <OpeningForm audience="general" editing={editing} onSaved={() => { setEditing(null); load(); }} onCancel={() => setEditing(null)}
-          title={editing ? "Edit role" : "Add a new Careers role"} />
+        <OpeningForm audience="general" editing={editing} copyFrom={copying} onSaved={() => { clearForm(); load(); }} onCancel={clearForm}
+          title={editing ? "Edit role" : copying ? "Add a copy of a Careers role" : "Add a new Careers role"} />
 
         {error && <p className="form-error" style={{ marginTop: 24 }}>{error}</p>}
         <div style={{ marginTop: 32 }}>
           {loading
             ? <p style={{ color: "var(--muted)" }}>Loading...</p>
-            : <OpeningList openings={roles} bank={bank} onEdit={startEdit} onChanged={load} empty="No Careers roles yet — add one above." />}
+            : <OpeningList openings={roles} bank={bank} onEdit={startEdit} onCopy={startCopy} onChanged={load} empty="No Careers roles yet — add one above." />}
         </div>
       </div>
     </section>
