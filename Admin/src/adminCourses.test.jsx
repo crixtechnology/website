@@ -75,6 +75,34 @@ describe("admin course form", () => {
     expect(api.adminUpdateCourse).toHaveBeenCalledWith("c1", { status: "closed" });
   });
 
+  it("copies a card into the form as a new one, so only what differs needs changing", async () => {
+    const card = { ...base, durationDays: 30, group: "Web", skills: ["HTML", "CSS"], stipend: "Up to ₹3,000/month", mode: "Remote",
+      tiers: [{ tier: "basic", price: 1999, discountPercent: 10, features: ["Live classes"] }] };
+    await renderAdmin([card]);
+    await act(async () => { qa(".admin-row button").find((b) => b.textContent === "Copy").click(); });
+    expect(q("form h3").textContent).toBe("Add a copy of a program card");
+    expect(q(".copy-note").textContent).toContain("Web Development");
+    expect(q("#courses-title").value).toBe("Web Development");
+    expect(q("#ac-duration").value).toBe("30");
+    expect(q("#plan-basic-price").value).toBe("1999");
+    // Change the length and the price, then Create: a new card, the original untouched.
+    await act(async () => {
+      const select = q("#ac-duration");
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(select, "90");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      fill(q("#plan-basic-price"), "4999");
+    });
+    await submit();
+    expect(api.adminUpdateCourse).not.toHaveBeenCalled();
+    expect(api.adminCreateCourse).toHaveBeenCalledTimes(1);
+    const sent = api.adminCreateCourse.mock.calls[0][0];
+    expect(sent).toMatchObject({ title: "Web Development", durationDays: 90, group: "Web", skills: ["HTML", "CSS"], stipend: "Up to ₹3,000/month", mode: "Remote" });
+    expect(sent.tiers.find((t) => t.tier === "basic")).toMatchObject({ price: 4999, discountPercent: 10, features: ["Live classes"] });
+    // Back to a blank form afterwards.
+    expect(q("form h3").textContent).toBe("Add a Training + Internship program card");
+    expect(q("#courses-title").value).toBe("");
+  });
+
   it("sends the new lists, one item per line, with blank lines dropped", async () => {
     await renderAdmin();
     await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Cloud Basics"); });

@@ -72,6 +72,8 @@ export default function AdminCourses() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null); // null = create mode
+  // Title of the card the form was filled from by "Copy" (still create mode), else null.
+  const [copyOf, setCopyOf] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
@@ -118,10 +120,23 @@ export default function AdminCourses() {
   const startEdit = (c) => {
     setEditingOpening(null);
     setKind("internship");
+    setCopyOf(null);
     setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const cancelEdit = () => { setEditingId(null); setForm({ ...EMPTY_FORM, type: "internship", plans: emptyPlans() }); };
+  // Copy: the form is filled with an existing card's details but stays in create
+  // mode, so the same program in another duration (or batch) only needs its
+  // duration, price and start changed before Create. The original is untouched.
+  const startCopy = (c) => {
+    setEditingOpening(null);
+    setKind("internship");
+    setEditingId(null);
+    setCopyOf(c.title);
+    setError("");
+    setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const cancelEdit = () => { setEditingId(null); setCopyOf(null); setForm({ ...EMPTY_FORM, type: "internship", plans: emptyPlans() }); };
   const startEditOpening = (o) => {
+    setCopyOf(null);
     setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() });
     setKind("free"); setEditingOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -292,6 +307,7 @@ export default function AdminCourses() {
             {c.status === "closed" ? "Closed" : "Open"}
           </button>
           <button className="btn btn-ghost" onClick={() => startEdit(c)}>Edit</button>
+          <button className="btn btn-ghost" onClick={() => startCopy(c)} title="Start a new card with these details — for another duration or batch">Copy</button>
           <button className="btn btn-ghost admin-danger" onClick={() => remove(c)}>Delete</button>
         </div>
       </div>
@@ -320,7 +336,13 @@ export default function AdminCourses() {
           {/* Laid out like the Free Internship / Careers form (AdminJobOpenings.jsx
               OpeningForm): the same fields in the same order. Where those have
               their aptitude test, training has its fee — it has no test. */}
-          <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit this Training + Internship program card" : "Add a Training + Internship program card"}</h3>
+          <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit this Training + Internship program card" : copyOf ? "Add a copy of a program card" : "Add a Training + Internship program card"}</h3>
+          {copyOf && (
+            <p className="form-note copy-note" style={{ margin: "0 0 16px" }}>
+              Filled in from <b>{copyOf}</b>. Change what differs — usually the title, duration, price and start — then press Create.
+              This adds a new card; the original stays as it is.
+            </p>
+          )}
           {kindPicker}
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="courses-title">Title</label>
@@ -419,7 +441,7 @@ export default function AdminCourses() {
             <button className="btn btn-solid" type="submit" disabled={saving}>
               {saving ? "Saving..." : editingId ? "Save changes" : "Create"}
             </button>
-            {editingId && <button type="button" className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>}
+            {(editingId || copyOf) && <button type="button" className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>}
           </div>
         </form>
         )}
