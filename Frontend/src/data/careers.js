@@ -41,8 +41,8 @@ export const values = [
 // The hiring timeline. The signup bonus comes from the live terms.
 export const hiringSteps = ({ signupBonus }) => [
   { title: "Log in", desc: `Log in with your email and a password — a new email gets a free account straight away. Verify your email to get ${signupBonus} bonus credits.` },
-  { title: "Register for the aptitude test", desc: "Accept the Terms & Conditions and confirm you're 18 or older. Applying and the test are free, and your test unlocks straight away." },
-  { title: "Take the aptitude test", desc: "Start it right away from My Dashboard — no waiting for a slot." },
+  { title: "Apply for a role", desc: "Pick a role, accept the Terms & Conditions and confirm you're 18 or older. Applying and the test are free." },
+  { title: "Take the aptitude test", desc: "Our team gives you access to the test and emails you when it's ready — then take it from My Dashboard." },
   { title: "Get your result", desc: "You'll hear from us within 7 days of submitting the test." },
   { title: "Online interview", desc: "Shortlisted candidates are invited to an online interview." },
   { title: "Final selection", desc: "Selected candidates receive their offer letter." },
@@ -116,7 +116,7 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
     title: role ? `Aptitude Test Rules — ${role}` : "Careers & Aptitude Test Rules",
     subtitle: `Crix Technology Careers · ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`,
     intro:
-      "These rules apply to every application made through the Crix Technology Careers page. They are part of our Terms of Service (section 8, \"Careers, Aptitude Test & Selection\"), which you accept before your aptitude test unlocks.",
+      "These rules apply to every application made through the Crix Technology Careers page. They are part of our Terms of Service (section 8, \"Careers, Aptitude Test & Selection\"), which you accept when you apply.",
     sections: [
       // Hiring steps and credit rules only when the live terms are known (the Careers page).
       ...(terms ? [
@@ -124,7 +124,7 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
         {
           title: "No fee to apply",
           content:
-            "Applying for a role and taking its aptitude test are free. Crix Technology never asks an applicant for a registration, test or processing fee — if anyone does, don't pay and tell us. Your test is unlocked as soon as you accept the Terms & Conditions and confirm you're 18 or older.\n\n" +
+            "Applying for a role and taking its aptitude test are free. Crix Technology never asks an applicant for a registration, test or processing fee — if anyone does, don't pay and tell us. After you apply, our team gives you access to the test and emails you when it's ready.\n\n" +
             bullets(creditPoints(terms)),
         },
       ] : []),

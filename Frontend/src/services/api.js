@@ -6,7 +6,6 @@
 // gracefully "backend not configured" bolte hain.
 // ============================================================
 import { site } from "../data/content.js";
-import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 
 const API = process.env.REACT_APP_API_URL || "";
 // Lets pages show a loading state only when there is actually a backend to wait for.
@@ -243,12 +242,12 @@ export async function submitApplication(payload) {
 // Every call that starts a payment sends acceptTerms: true. They are only made
 // once the buyer has ticked the Terms & Conditions box (<TermsCheckbox> in
 // components/ui.jsx), and the server refuses to start a payment without it.
-export async function createRazorpayOrder(applicationId, courseSlug, tier, couponCode) {
+export async function createRazorpayOrder(applicationId, courseSlug, tier) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
     const res = await authFetch("/payments/create-order", {
       method: "POST",
-      body: JSON.stringify({ applicationId, courseSlug, tier, acceptTerms: true, ...(couponCode ? { couponCode } : {}) }),
+      body: JSON.stringify({ applicationId, courseSlug, tier, acceptTerms: true }),
     });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
@@ -282,7 +281,7 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
 // ---------- Auth (unified — students and admins both use these) ----------
 // One login for everyone. For an email with no account the server answers
 // code NEW_ACCOUNT; sending again with { createAccount: true, ageConfirmed: true }
-// creates it with this password (and the friend's code from a shared ?ref= link).
+// creates it with this password.
 export async function login(email, password, { createAccount = false, ageConfirmed = false } = {}) {
   if (!API) return { ok: false, error: "Backend not configured yet." };
   try {
@@ -290,11 +289,10 @@ export async function login(email, password, { createAccount = false, ageConfirm
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(createAccount
-        ? { email, password, createAccount: true, ageConfirmed: ageConfirmed === true, referralCode: getStoredReferral() || undefined }
+        ? { email, password, createAccount: true, ageConfirmed: ageConfirmed === true }
         : { email, password }),
     });
     const data = await res.json();
-    if (data.ok && data.created) clearStoredReferral();
     if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); }
     return data;
   } catch (e) {
@@ -311,10 +309,10 @@ export async function googleAuth(credential, { ageConfirmed = false } = {}) {
     const res = await fetch(`${API}/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ credential, ageConfirmed: ageConfirmed === true, referralCode: getStoredReferral() || undefined }),
+      body: JSON.stringify({ credential, ageConfirmed: ageConfirmed === true }),
     });
     const data = await res.json();
-    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); clearStoredReferral(); }
+    if (data.ok && data.token) { setAdminToken(data.token); setStoredUser(data.user); }
     return data;
   } catch (e) {
     return { ok: false, error: "Could not sign in with Google right now." };
@@ -531,49 +529,11 @@ export async function createUpgradeOrder(courseSlug, tier) {
   }
 }
 
-// ---------- Referrals ----------
-// Is this a usable code? (live feedback in the code box; says nothing about whose it is)
-export async function checkReferralCode(code) {
+// What checkout will charge for a plan, itemised (plan price, wallet credit,
+// total) — the same pricing the order itself uses.
+export async function getPriceQuote(courseSlug, tier) {
   try {
-    const res = await fetch(`${API}/referrals/check?code=${encodeURIComponent(code)}`);
-    return await res.json();
-  } catch (e) {
-    return { ok: false, valid: false, error: "Could not check that code right now." };
-  }
-}
-
-// My code, the friends I've referred, my credit, and whether I can still use a friend's code.
-export async function getMyReferral() {
-  try {
-    const res = await authFetch("/me/referral");
-    if (res.status === 401) adminLogout();
-    const data = await res.json();
-    if (!res.ok) return { ok: false, error: data.error || "Could not load your referrals" };
-    return data;
-  } catch (e) {
-    return { ok: false, error: "Could not load your referrals" };
-  }
-}
-
-export async function applyReferral(code) {
-  try {
-    const res = await authFetch("/referrals/apply", { method: "POST", body: JSON.stringify({ code }) });
-    if (res.status === 401) adminLogout();
-    const data = await res.json();
-    if (!res.ok) return { ok: false, error: data.error || "Could not apply that code" };
-    return data;
-  } catch (e) {
-    return { ok: false, error: "Could not apply that code right now." };
-  }
-}
-
-// What checkout will charge for a plan, itemised (plan price, referral discount,
-// referral credit, total) — the same pricing the order itself uses.
-// `couponCode` is an admin offer code the buyer typed; a code that can't be used
-// doesn't fail the quote — the response carries `couponError` instead.
-export async function getPriceQuote(courseSlug, tier, couponCode) {
-  try {
-    const res = await authFetch("/payments/quote", { method: "POST", body: JSON.stringify({ courseSlug, tier, ...(couponCode ? { couponCode } : {}) }) });
+    const res = await authFetch("/payments/quote", { method: "POST", body: JSON.stringify({ courseSlug, tier }) });
     if (res.status === 401) adminLogout();
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not price this" };
@@ -619,11 +579,11 @@ export async function getMyWallet() {
 // Buys the course/internship with wallet credit alone — no Razorpay. Only
 // allowed when the price quote says walletCoversAll. On success the course is
 // already unlocked: { ok, courseSlug, enrolled }.
-export async function payWithWallet(applicationId, courseSlug, tier, couponCode) {
+export async function payWithWallet(applicationId, courseSlug, tier) {
   try {
     const res = await authFetch("/payments/pay-with-wallet", {
       method: "POST",
-      body: JSON.stringify({ applicationId, courseSlug, tier, acceptTerms: true, ...(couponCode ? { couponCode } : {}) }),
+      body: JSON.stringify({ applicationId, courseSlug, tier, acceptTerms: true }),
     });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
@@ -663,11 +623,11 @@ export async function getMyPaymentRequests() {
 }
 
 // Same response shape as createRazorpayOrder.
-// What paying a request costs, itemised (same shape as getPriceQuote): offer
-// code, referral discount and wallet credit come off the requested amount.
-export async function getPaymentRequestQuote(id, couponCode) {
+// What paying a request costs, itemised (same shape as getPriceQuote): wallet
+// credit comes off the requested amount.
+export async function getPaymentRequestQuote(id) {
   try {
-    const res = await authFetch(`/me/payment-requests/${id}/quote`, { method: "POST", body: JSON.stringify(couponCode ? { couponCode } : {}) });
+    const res = await authFetch(`/me/payment-requests/${id}/quote`, { method: "POST", body: "{}" });
     if (res.status === 401) adminLogout();
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not price this" };
@@ -677,9 +637,9 @@ export async function getPaymentRequestQuote(id, couponCode) {
   }
 }
 
-export async function createPaymentRequestOrder(id, couponCode) {
+export async function createPaymentRequestOrder(id) {
   try {
-    const res = await authFetch(`/me/payment-requests/${id}/create-order`, { method: "POST", body: JSON.stringify({ acceptTerms: true, ...(couponCode ? { couponCode } : {}) }) });
+    const res = await authFetch(`/me/payment-requests/${id}/create-order`, { method: "POST", body: JSON.stringify({ acceptTerms: true }) });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not start payment" };
@@ -690,9 +650,9 @@ export async function createPaymentRequestOrder(id, couponCode) {
 }
 
 // Pays a request entirely from wallet credit (only when the quote says walletCoversAll).
-export async function payPaymentRequestWithWallet(id, couponCode) {
+export async function payPaymentRequestWithWallet(id) {
   try {
-    const res = await authFetch(`/me/payment-requests/${id}/pay-with-wallet`, { method: "POST", body: JSON.stringify({ acceptTerms: true, ...(couponCode ? { couponCode } : {}) }) });
+    const res = await authFetch(`/me/payment-requests/${id}/pay-with-wallet`, { method: "POST", body: JSON.stringify({ acceptTerms: true }) });
     if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again to pay." }; }
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.error || "Could not pay from your wallet" };
@@ -749,25 +709,17 @@ export async function getMyJobApplications() {
   }
 }
 
-// Applies for a role (by slug). Applying again for a role returns the same application.
+// Applies for a role (by slug), with the Terms & Conditions and 18+ boxes ticked.
+// The application then waits for Crix to give test access. Applying again for a
+// role returns the same application.
 export async function applyForRole(opening) {
   try {
-    return await jsonOr(await authFetch("/me/job-applications", { method: "POST", body: JSON.stringify({ opening }) }), "Could not apply right now");
+    return await jsonOr(await authFetch("/me/job-applications", {
+      method: "POST",
+      body: JSON.stringify({ opening, acceptTerms: true, confirmAdult: true }),
+    }), "Could not apply right now");
   } catch (e) {
     return { ok: false, error: "Could not apply right now." };
-  }
-}
-
-// Unlocks an application's test (free for every role) once terms and 18+ are accepted.
-export async function unlockFreeTest(applicationId) {
-  try {
-    const res = await authFetch(`/me/job-applications/${applicationId}/unlock-free`, { method: "POST", body: JSON.stringify({ acceptTerms: true, confirmAdult: true }) });
-    if (res.status === 401) { adminLogout(); return { ok: false, error: "Your session expired. Please log in again." }; }
-    const data = await res.json();
-    if (!res.ok) return { ok: false, error: data.error || "Could not unlock the test" };
-    return data;
-  } catch (e) {
-    return { ok: false, error: "Could not unlock the test right now." };
   }
 }
 

@@ -62,7 +62,7 @@ function priceLine(p) {
     const was = listPrice(t);
     return `• ${plans.length > 1 ? `${tierLabel(t.tier)}: ` : ""}${formatINR(now)}${was ? ` (was ${formatINR(was)}, ${offPercent(t)}% off)` : ""}`;
   });
-  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\n${p.type === "internship" ? howToJoin : "Wallet credit and offer codes are taken off at checkout."}`;
+  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\n${p.type === "internship" ? howToJoin : "Wallet credit is taken off at checkout."}`;
 }
 
 // A program named in the message: answers the aspect asked about, or a short overview.

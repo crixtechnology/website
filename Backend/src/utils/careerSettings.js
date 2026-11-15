@@ -1,7 +1,7 @@
 const { prisma } = require("../db");
 
 // Admin-editable rules for the careers flow and the credit it hands out, kept
-// in the same key/value Setting table as the referral rules.
+// in the key/value Setting table.
 //
 //   signupBonusCredits     credit a new student account starts with (0 = none)
 //   creditExpiryMonths     how long that credit lasts (0 = forever)

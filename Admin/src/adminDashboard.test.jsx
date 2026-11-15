@@ -28,7 +28,7 @@ it("shows training tracks on the Training + Internship tile, with no free intern
     { _id: "i1", type: "internship", status: "open", tiers: priced },
     { _id: "i2", type: "internship", status: "closed", tiers: [] },
   ] });
-  for (const fn of ["adminGetEnrollments", "adminGetUsers", "adminGetContacts", "adminGetApplications", "adminGetReferrals", "adminGetBotQuestions", "adminGetJobApplications"]) {
+  for (const fn of ["adminGetEnrollments", "adminGetUsers", "adminGetContacts", "adminGetApplications", "adminGetBotQuestions", "adminGetJobApplications"]) {
     api[fn].mockResolvedValue({ ok: false });
   }
   await act(async () => {

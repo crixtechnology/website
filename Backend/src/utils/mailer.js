@@ -610,7 +610,7 @@ async function sendAccountDeletedEmail({ to, name, paymentsKept }) {
   const kept = paymentsKept > 0
     ? `We have kept the records of your ${paymentsKept} payment${paymentsKept === 1 ? "" : "s"} and ${paymentsKept === 1 ? "its receipt" : "their receipts"}, with no link to an account, because Indian tax and accounting law requires us to.`
     : "We held no payment records for your account, so nothing was kept.";
-  const erased = "Your profile, training access, wallet credit, referrals, careers applications and CVs, aptitude tests and webcam photos, notifications and contact-form messages have been erased.";
+  const erased = "Your profile, training access, wallet credit, careers applications and CVs, aptitude tests and webcam photos, notifications and contact-form messages have been erased.";
   const grievance = "If you have a question or a complaint about how your data was handled, write to our Grievance Officer at crixtechnology@gmail.com.";
   const html = layout({
     preheader: "Your Crix Technology account and personal data have been deleted.",
@@ -647,24 +647,22 @@ async function sendPaymentRequestEmail({ to, name, itemTitle, itemType, tier, am
         ["Amount", fmtRupees(amount), true],
       ]) +
       button("Pay now", link) +
-      paragraph("Log in and open My Dashboard to pay. Any wallet credit, offer code or referral discount you have comes off when you pay. You get access as soon as the payment goes through, and your receipt is emailed to you.", `font-size:13px;color:${BRAND.muted}`),
+      paragraph("Log in and open My Dashboard to pay. Any wallet credit you have comes off when you pay. You get access as soon as the payment goes through, and your receipt is emailed to you.", `font-size:13px;color:${BRAND.muted}`),
   });
   const text =
     `Hi ${name || "there"},\n\nCrix Technology has sent you a payment request.\n\n` +
     `${kindLabel}: ${itemTitle || ""}\n${planLabel ? `Plan: ${planLabel}\n` : ""}${note ? `Note: ${note}\n` : ""}Amount: ${fmtRupees(amount)}\n\n` +
-    `Log in and open My Dashboard to pay — any wallet credit, offer code or referral discount comes off when you pay, and you'll get access as soon as the payment goes through: ${link}` + TEXT_SIGNOFF;
+    `Log in and open My Dashboard to pay — any wallet credit you have comes off when you pay, and you'll get access as soon as the payment goes through: ${link}` + TEXT_SIGNOFF;
   return deliver({ to, subject: `Payment request — ${itemTitle || "Crix Technology"}`, text, html });
 }
 
 // ---------- wallet credit added ----------
-// Sent when credit lands in a student's wallet — added by an admin, or earned
-// through a referral (utils/walletNotices.js). Best-effort: the credit and its
+// Sent when credit lands in a student's wallet — added by an admin
+// (utils/walletNotices.js). Best-effort: the credit and its
 // history are in the wallet on their Profile page whether or not this arrives.
 async function sendWalletCreditEmail({ to, name, amount, balance, reason, note }) {
   if (!to) return { sent: false, reason: "No email" };
-  const why = reason === "referral"
-    ? "A friend you referred made their first purchase"
-    : (note || "Credit from Crix");
+  const why = note || "Credit from Crix";
   const link = `${siteOrigin()}/profile`;
   const html = layout({
     preheader: `${fmtRupees(amount)} was added to your Crix wallet — balance ${fmtRupees(balance)}.`,
@@ -720,38 +718,24 @@ async function sendSignupBonusEmail({ to, name, credits, expiryMonths }) {
   return deliver({ to, subject: `Welcome to Crix Technology — ${credits} bonus credits added`, text, html });
 }
 
-// ---------- test fee paid: receipt attached, credits added, test unlocked ----------
-async function sendTestPaymentEmail({ to, name, roleTitle, amount, credits, balance, expiryMonths, receiptNumber, pdfBuffer }) {
+// ---------- test access given by an admin ----------
+// The candidate can now take the aptitude test (utils/careers.js grantTestAccess).
+async function sendTestAccessEmail({ to, name, roleTitle, durationMinutes }) {
   if (!to) return { sent: false, reason: "No email" };
-  const link = `${siteOrigin()}/dashboard?tab=apply`;
+  const link = `${siteOrigin()}/dashboard?tab=applications`;
+  const length = durationMinutes ? ` It takes ${durationMinutes} minutes and can be taken once.` : " It can be taken once.";
   const html = layout({
-    preheader: `Payment confirmed — your ${roleTitle} aptitude test is unlocked and ${credits} credits are in your wallet.`,
-    title: "Payment confirmed — your test is unlocked",
+    preheader: `Your ${roleTitle} aptitude test is ready to take.`,
+    title: "Your aptitude test is ready",
     content:
-      paragraph(`Hi ${escapeHtml(name || "there")}, we've received your payment for the <strong>${escapeHtml(roleTitle)}</strong> aptitude test. You can take the test right away from My Dashboard.`) +
-      detailsBox([
-        ["Role", escapeHtml(roleTitle)],
-        ["Receipt no.", escapeHtml(receiptNumber)],
-        ["Amount paid", fmtRupees(amount)],
-        ["Credits added", `${credits} credits`],
-        ["Wallet balance", `${Math.round(balance)} credits`, true],
-      ]) +
-      paragraph("Your receipt is attached to this email as a PDF.") +
+      paragraph(`Hi ${escapeHtml(name || "there")}, you've been given access to the aptitude test for <strong>${escapeHtml(roleTitle)}</strong>.${escapeHtml(length)} There is no fee.`) +
       button("Take the test", link) +
-      noteBox("Find a quiet place with a steady internet connection and a working webcam before you start — the test runs in full screen, and it can be taken only once.") +
-      paragraph(`The full fee has come back to you as wallet credit. ${escapeHtml(creditRules(expiryMonths))} Paying for the test doesn't guarantee selection.`, `font-size:13px;color:${BRAND.muted}`),
+      noteBox("Find a quiet place with a steady internet connection and a working webcam before you start — the test runs in full screen."),
   });
   const text =
-    `Hi ${name || "there"},\n\nWe've received your payment for the ${roleTitle} aptitude test. You can take it right away from My Dashboard: ${link}\n\n` +
-    `Receipt no.: ${receiptNumber}\nAmount paid: ${fmtRupees(amount)}\nCredits added: ${credits}\nWallet balance: ${Math.round(balance)} credits\n\n` +
-    `Your receipt is attached as a PDF. ${creditRules(expiryMonths)} Paying for the test doesn't guarantee selection.` + TEXT_SIGNOFF;
-  return deliver({
-    to,
-    subject: `Payment confirmed — ${roleTitle} aptitude test (${receiptNumber})`,
-    text,
-    html,
-    attachments: pdfBuffer ? [{ filename: `Receipt-${receiptNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }] : undefined,
-  });
+    `Hi ${name || "there"},\n\nYou've been given access to the aptitude test for ${roleTitle}.${length} There is no fee.\n\n` +
+    `Take it from My Applications: ${link}\n\nFind a quiet place with a steady internet connection and a working webcam before you start.` + TEXT_SIGNOFF;
+  return deliver({ to, subject: `Your aptitude test is ready — ${roleTitle}`, text, html });
 }
 
 // ---------- test submitted ----------
@@ -778,8 +762,7 @@ async function sendTestSubmittedEmail({ to, name, roleTitle, reason }) {
 }
 
 // ---------- application status changed (shortlisted / interview / offer / rejection) ----------
-// `free`: no test fee was paid for this application, so there are no wallet credits to mention.
-async function sendApplicationStatusEmail({ to, name, roleTitle, status, interviewAt, interviewLink, free = false }) {
+async function sendApplicationStatusEmail({ to, name, roleTitle, status, interviewAt, interviewLink }) {
   if (!to) return { sent: false, reason: "No email" };
   const link = `${siteOrigin()}/dashboard?tab=applications`;
   const hi = `Hi ${name || "there"},`;
@@ -801,9 +784,7 @@ async function sendApplicationStatusEmail({ to, name, roleTitle, status, intervi
     not_shortlisted: {
       subject: `Your aptitude test result — ${roleTitle}`,
       title: "Your aptitude test result",
-      lines: [`Thank you for taking the aptitude test for ${roleTitle}. After reviewing the results, we're not able to shortlist you for this role this time.`, free
-        ? "This isn't the end of the road — keep building your skills, and you're welcome to apply again."
-        : "This isn't the end of the road — keep building your skills, and you're welcome to apply again. Your wallet credits are still yours to use on any Crix training program."],
+      lines: [`Thank you for taking the aptitude test for ${roleTitle}. After reviewing the results, we're not able to shortlist you for this role this time.`, "This isn't the end of the road — keep building your skills, and you're welcome to apply again."],
     },
     selected: {
       subject: `Congratulations — you're selected for ${roleTitle}`,
@@ -847,7 +828,7 @@ module.exports = {
   sendPaymentRequestEmail,
   sendWalletCreditEmail,
   sendSignupBonusEmail,
-  sendTestPaymentEmail,
+  sendTestAccessEmail,
   sendTestSubmittedEmail,
   sendApplicationStatusEmail,
 };

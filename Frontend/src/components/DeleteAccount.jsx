@@ -91,7 +91,7 @@ export default function DeleteAccount() {
           <p style={{ margin: "0 0 8px" }}><b>What is deleted, straight away</b></p>
           <ul className="check-list" style={{ margin: "0 0 12px" }}>
             <li>Your profile: name, email, phone, education and password</li>
-            <li>Your training access, wallet credit and referrals</li>
+            <li>Your training access and wallet credit</li>
             <li>Careers applications, uploaded CVs, aptitude tests and their webcam photos</li>
             <li>Notifications, and messages you sent us through the contact form</li>
           </ul>

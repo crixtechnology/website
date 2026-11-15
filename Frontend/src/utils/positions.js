@@ -1,14 +1,13 @@
 import { formatDuration } from "./duration.js";
 
-// How many places a role, internship or course has, from the backend:
+// How many places a role or training track has, from the backend:
 // { total, filled, left }, or null when it doesn't state a number. Careers
-// roles and free internships are filled by selected applicants; paid
-// internships and courses by purchases. `word` is "position" or "seat".
+// roles are filled by selected applicants; training tracks by purchases.
 
 export const isFull = (item) => !!(item && item.positions && item.positions.left === 0);
 
-// What a course calls a place ("seat"); everything else says "position".
-export const placeWord = (item) => (item && item.type === "course" ? "seat" : "position");
+// Every program is a Training + Internship track, so a place is always a "position".
+export const placeWord = () => "position";
 
 export function positionsLabel(p, word = "position") {
   if (!p) return "";
@@ -20,7 +19,7 @@ export function positionsLabel(p, word = "position") {
 // The small tag on a card: urgency when few are left, "filled" when none.
 export function positionsTag(p, fallback, word = "position") {
   if (!p) return fallback;
-  if (p.left === 0) return `${word === "seat" ? "Seats" : "Positions"} filled`;
+  if (p.left === 0) return "Positions filled";
   if (p.left <= 2 && p.total > 2) return `Only ${p.left} left`;
   return fallback;
 }
@@ -30,7 +29,7 @@ export function positionsTag(p, fallback, word = "position") {
 // Duration is a role's own text, or a track's length; Starts on is the admin's
 // rough estimate (a role's startsOn, a track's startingFrom). Empty ones are left out.
 export const programFacts = (item) => [
-  [placeWord(item) === "seat" ? "Seats" : "Positions", positionsLabel(item.positions, placeWord(item))],
+  ["Positions", positionsLabel(item.positions, placeWord(item))],
   ["Stipend", item.stipend],
   ["Experience", item.experience],
   ["Duration", item.duration || formatDuration(item.durationDays)],

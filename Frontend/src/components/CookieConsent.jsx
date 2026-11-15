@@ -4,7 +4,7 @@ import {
   analyticsAvailable, getAnalyticsConsent, setAnalyticsConsent, OPEN_COOKIE_SETTINGS_EVENT,
 } from "../utils/analytics.js";
 
-// The cookie banner. Our own storage (login, theme, a referral code) is needed
+// The cookie banner. Our own storage (login, theme) is needed
 // for the site to work and isn't asked about; Google Analytics is optional and
 // only loads after "Accept" (utils/analytics.js). Shown until the visitor
 // chooses, and again from "Cookie settings" in the footer. Both answers are

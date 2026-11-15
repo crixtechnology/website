@@ -15,7 +15,7 @@ function setMetaTag(attrName, attrValue, content) {
 
 // The one address search engines should credit for the current page: the
 // canonical domain (seo.json siteUrl) + the path, never the query string
-// (?ref=CODE referral links, ?buy=...) or #anchor, so those variants all
+// (?ref=..., ?buy=...) or #anchor, so those variants all
 // consolidate onto a single URL instead of competing as duplicates.
 export function canonicalUrl(pathname = window.location.pathname) {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : "/";

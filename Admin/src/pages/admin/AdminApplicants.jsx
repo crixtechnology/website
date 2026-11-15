@@ -3,18 +3,19 @@ import { useNavigate } from "react-router-dom";
 import {
   getAdminToken, adminGetJobApplications, adminGetJobApplication, adminSetJobApplicationStatus, adminAllowRetest,
   adminExportJobApplications, adminGetJobOpenings, adminGetTestSnapshot, adminGetApplicationCv,
+  adminGrantTestAccess, adminGiveTestAccess, adminGetUsers,
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { useDebouncedLoad } from "../../hooks/useDebouncedLoad.js";
+import UserPicker from "../../components/UserPicker.jsx";
 
-const money = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
 // Times are stored in UTC and always shown in Indian time.
 const ist = (d) => (d ? `${new Date(d).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} IST` : "—");
 const istTime = (d) => new Date(d).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
 
 const STATUS_PILL = {
-  payment_pending: "read", test_pending: "new", submitted: "new", shortlisted: "lifetime",
+  awaiting_access: "read", test_pending: "new", submitted: "new", shortlisted: "lifetime",
   interview_scheduled: "lifetime", selected: "lifetime", not_shortlisted: "expired", rejected: "expired",
 };
 const ENDED = { manual: "Submitted by the candidate", time_up: "Time ran out", violations: "Auto-submitted: too many violations" };
@@ -128,6 +129,17 @@ function ApplicantReview({ id, onBack, onChanged }) {
     else setMsg({ kind: "error", text: res.error || "Could not update the application." });
   };
 
+  const giveAccess = async () => {
+    if (busy) return;
+    if (!window.confirm(`Give ${a.user?.name || "this candidate"} access to the ${a.opening?.title || ""} aptitude test? They will be emailed and notified on their dashboard.`)) return;
+    setBusy(true);
+    setMsg({ kind: "", text: "" });
+    const res = await adminGrantTestAccess(id);
+    setBusy(false);
+    if (res.ok) { setMsg({ kind: "ok", text: "Done — the candidate can take the test now and has been notified." }); await load(); onChanged && onChanged(); }
+    else setMsg({ kind: "error", text: res.error || "Could not give test access." });
+  };
+
   const canRetest = !!t && t.status === "submitted" && RETEST_FROM.includes(a.status);
   const retest = async () => {
     if (busy) return;
@@ -158,9 +170,7 @@ function ApplicantReview({ id, onBack, onChanged }) {
           {a.opening?.title} · {a.user?.email}{a.user?.phone ? ` · ${a.user.phone}` : ""}
         </p>
         <p className="form-note" style={{ margin: 0 }}>
-          Applied {ist(a.createdAt)} · {a.paidAt
-            ? `paid ${data.payment ? money(data.payment.amount) : ""} on ${ist(a.paidAt)}${data.payment?.receiptNumber ? ` (receipt ${data.payment.receiptNumber})` : ""}`
-            : "free — no fee"}
+          Applied {ist(a.createdAt)}{a.testAccessAt ? ` · test access given ${ist(a.testAccessAt)}` : ""}
         </p>
         {a.cv ? (
           <p className="form-note" style={{ margin: "4px 0 0" }}>
@@ -171,6 +181,16 @@ function ApplicantReview({ id, onBack, onChanged }) {
           <p className="form-note" style={{ margin: "4px 0 0" }}>
             {educationLine(education)}{a.education ? "" : " (from their profile now)"}
           </p>
+        )}
+
+        {a.status === "awaiting_access" && (
+          <>
+            <h3 style={{ margin: "22px 0 12px" }}>Test access</h3>
+            <p className="form-note" style={{ margin: "0 0 12px" }}>This candidate has applied and is waiting. The test is free; giving access lets them take it once.</p>
+            <div className="admin-actions">
+              <button className="btn btn-solid" disabled={busy} onClick={giveAccess}>Give test access</button>
+            </div>
+          </>
         )}
 
         <h3 style={{ margin: "22px 0 12px" }}>Decision</h3>
@@ -203,7 +223,7 @@ function ApplicantReview({ id, onBack, onChanged }) {
       </div>
 
       {!t ? (
-        <p style={{ color: "var(--muted)", marginTop: 24 }}>{a.paidAt || a.status === "test_pending" ? "The candidate hasn't started the test yet." : "No test yet — the candidate hasn't accepted the terms to unlock it."}</p>
+        <p style={{ color: "var(--muted)", marginTop: 24 }}>{a.status === "test_pending" ? "The candidate hasn't started the test yet." : "No test yet — give this candidate test access above when you're ready."}</p>
       ) : (
         <>
           <div className="ref-stats ref-stats--admin" style={{ marginTop: 28 }}>
@@ -292,6 +312,64 @@ function ApplicantReview({ id, onBack, onChanged }) {
 }
 
 /* ---------- the applicants list ---------- */
+/* ---------- give a specific student test access, directly ----------
+   For a student who hasn't applied (or whose application is waiting): pick the
+   student and the role, and they can take that role's test straight away. They
+   are emailed and notified, and confirm they're 18+ when they start. */
+function GiveTestAccess({ openings, onGiven }) {
+  const [students, setStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [openingId, setOpeningId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    adminGetUsers().then((res) => {
+      setStudentsLoading(false);
+      if (res.ok) setStudents((res.users || []).filter((u) => u.role !== "admin"));
+    });
+  }, []);
+
+  const give = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    if (!user) { setError("Choose the student."); return; }
+    if (!openingId) { setError("Choose the role."); return; }
+    const role = openings.find((o) => o._id === openingId);
+    if (!window.confirm(`Give ${user.name || user.email} access to the ${role ? role.title : ""} aptitude test? They will be emailed and notified.`)) return;
+    setBusy(true);
+    setError("");
+    const res = await adminGiveTestAccess({ userId: user._id, openingId });
+    setBusy(false);
+    if (res.ok) {
+      setUser(null);
+      setOpeningId("");
+      onGiven(`${user.name || user.email} can take the ${role ? role.title : ""} test now and has been notified.`);
+    } else setError(res.error || "Could not give test access.");
+  };
+
+  return (
+    <form className="admin-form" onSubmit={give} style={{ marginTop: 28 }}>
+      <h3 style={{ margin: "0 0 6px" }}>Give a student test access</h3>
+      <p className="form-note" style={{ margin: "0 0 14px" }}>
+        The test is free. Pick a student (they need an account) and a role — they can take that role's test once, from My Dashboard.
+      </p>
+      <div className="admin-form-grid admin-form-grid--2">
+        <div className="field"><label htmlFor="ta-student">Student</label>
+          <UserPicker id="ta-student" users={students} loading={studentsLoading} value={user} onChange={(u) => { setUser(u); setError(""); }} /></div>
+        <div className="field"><label htmlFor="ta-role">Role</label>
+          <select id="ta-role" value={openingId} onChange={(e) => { setOpeningId(e.target.value); setError(""); }}>
+            <option value="">Choose a role...</option>
+            {openings.map((o) => <option key={o._id} value={o._id}>{o.title}{o.status === "closed" ? " (closed)" : ""}</option>)}
+          </select></div>
+      </div>
+      {error && <p className="form-error">{error}</p>}
+      <button className="btn btn-solid" type="submit" disabled={busy}>{busy ? "Giving access..." : "Give test access"}</button>
+    </form>
+  );
+}
+
 export default function AdminApplicants() {
   usePageMeta({ title: "Applicants | Crix Technology" });
   const navigate = useNavigate();
@@ -307,6 +385,8 @@ export default function AdminApplicants() {
   const [openingId, setOpeningId] = useState("");
   const [openId, setOpenId] = useState(null); // the applicant being reviewed
   const [exporting, setExporting] = useState(false);
+  const [rowBusy, setRowBusy] = useState("");
+  const [notice, setNotice] = useState({ kind: "", text: "" });
 
   const filters = { q, status, openingId };
   const load = async (f) => {
@@ -321,6 +401,17 @@ export default function AdminApplicants() {
   };
   useDebouncedLoad((key) => load(JSON.parse(key)), JSON.stringify(filters));
   useEffect(() => { adminGetJobOpenings().then((res) => { if (res.ok) setOpenings(res.openings || []); }); }, []);
+
+  const giveAccess = async (a) => {
+    if (rowBusy) return;
+    if (!window.confirm(`Give ${a.user?.name || "this candidate"} access to the ${a.opening?.title || ""} aptitude test? They will be emailed and notified.`)) return;
+    setRowBusy(a._id);
+    setNotice({ kind: "", text: "" });
+    const res = await adminGrantTestAccess(a._id);
+    setRowBusy("");
+    if (res.ok) { setNotice({ kind: "ok", text: `${a.user?.name || "The candidate"} can take the test now and has been notified.` }); load(filters); }
+    else setNotice({ kind: "error", text: res.error || "Could not give test access." });
+  };
 
   const exportExcel = async () => {
     if (exporting) return;
@@ -343,7 +434,7 @@ export default function AdminApplicants() {
           <div>
             <span className="eyebrow">Admin</span>
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Applicants</h1>
-            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Everyone who applied for a role on the website: test result, violations and where their application stands.
+            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Everyone who applied for a role on the website. The test is free and only opens once you give a candidate test access — on their application, or directly below.
               Free-internship applications made through the Google Form are in that form's responses, not here.</p>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
@@ -356,13 +447,16 @@ export default function AdminApplicants() {
             {summary && (
               <div className="ref-stats ref-stats--admin">
                 <div className="ref-stat"><b>{summary.totalApplicants}</b><span>Total applicants</span></div>
-                <div className="ref-stat"><b>{summary.paymentsReceived}</b><span>Payments received (past)</span></div>
-                <div className="ref-stat"><b>{money(summary.amountReceived)}</b><span>Test fees collected (past)</span></div>
+                <div className="ref-stat"><b>{summary.awaitingAccess}</b><span>Waiting for test access</span></div>
+                <div className="ref-stat"><b>{summary.testsSubmitted}</b><span>Tests submitted</span></div>
                 <div className="ref-stat"><b>{summary.averageScore ?? "—"}</b><span>Average score</span></div>
                 <div className="ref-stat"><b>{summary.shortlisted}</b><span>Shortlisted</span></div>
                 <div className="ref-stat ref-stat--accent"><b>{summary.selected}</b><span>Selected</span></div>
               </div>
             )}
+
+            <GiveTestAccess openings={openings} onGiven={(text) => { setNotice({ kind: "ok", text }); load(filters); }} />
+            {notice.text && <p className={notice.kind === "ok" ? "ref-ok" : "form-error"} role="status" style={{ marginTop: 14 }}>{notice.text}</p>}
 
             <div className="admin-filters" style={{ marginTop: 28 }}>
               <input className="admin-search" type="search" style={{ margin: 0 }} placeholder="Search by name, email or phone..."
@@ -394,7 +488,7 @@ export default function AdminApplicants() {
                       <b>{a.user?.name || "—"} <span className={`admin-pill ${STATUS_PILL[a.status] || "read"}`}>{a.statusLabel}</span></b>
                       <span className="admin-row-meta">{a.opening?.title} · {a.user?.email}{a.user?.phone ? ` · ${a.user.phone}` : ""}</span>
                       <span className="admin-row-meta">
-                        Payment: {a.paymentStatus === "paid" ? `paid ${ist(a.paidAt)}` : "free"}
+                        Applied {ist(a.createdAt)}
                         {a.interviewAt ? ` · interview ${ist(a.interviewAt)}` : ""}
                       </span>
                     </div>
@@ -404,7 +498,12 @@ export default function AdminApplicants() {
                         {a.attempt ? `${a.attempt.violationCount} violation${a.attempt.violationCount === 1 ? "" : "s"}${a.attempt.status === "in_progress" ? " · test in progress" : ""}` : "Test not taken"}
                       </span>
                     </div>
-                    <div className="admin-row-actions">
+                    <div className="admin-row-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {a.status === "awaiting_access" && (
+                        <button className="btn btn-solid" disabled={!!rowBusy} onClick={() => giveAccess(a)}>
+                          {rowBusy === a._id ? "Giving…" : "Give test access"}
+                        </button>
+                      )}
                       <button className="btn btn-ghost" onClick={() => { setOpenId(a._id); window.scrollTo(0, 0); }}>Review</button>
                     </div>
                   </div>

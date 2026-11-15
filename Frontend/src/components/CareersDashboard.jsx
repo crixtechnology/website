@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  getOpenings, getMyJobApplications, applyForRole, unlockFreeTest, getReceipt,
+  getOpenings, getMyJobApplications, applyForRole,
   getNotifications, markNotificationsRead, clearNotifications, clearJobApplications,
 } from "../services/api.js";
 import { Alert, burstConfetti, TermsCheckbox } from "./ui.jsx";
-import { downloadReceiptPdf } from "../utils/receiptPdfLazy.js";
 import { formatIST, isRoleFull, positionsLabel } from "../data/careers.js";
 
 // The careers sections of My Dashboard (pages/student/MyCourses.jsx):
-//   <ApplyTab>         pick a role, accept the terms, start the aptitude test (free)
-//   <ApplicationsTab>  where each application stands, interview details, receipt
+//   <ApplyTab>         pick a role and apply (free); Crix then gives test access
+//   <ApplicationsTab>  where each application stands, the test, interview details
 //                      (both under the dashboard's "My Applications" tab)
 //   <NotificationsTab> updates for the student (status changes, credit added)
 // "My Wallet" is the existing <WalletCard>.
@@ -53,7 +52,7 @@ export function RoleApplyButton({ opening, mine, label, fullLabel, onApply, clas
 
 // The pill beside a role or an application.
 const PILL_CLASS = {
-  payment_pending: "read", test_pending: "new", submitted: "new", shortlisted: "lifetime",
+  awaiting_access: "read", test_pending: "new", submitted: "new", shortlisted: "lifetime",
   interview_scheduled: "lifetime", selected: "lifetime", not_shortlisted: "expired", rejected: "expired",
 };
 export function StatusPill({ application }) {
@@ -132,27 +131,20 @@ export function AdultCheckbox({ checked, onChange, disabled = false }) {
   );
 }
 
-/* ---------- unlocking the aptitude test ----------
-   There is no fee for any role: this applies for the role (or reuses the open
-   application for it) and unlocks its test on the spot. Only call it once the
-   Terms & Conditions and 18+ boxes are ticked. Resolves with
-     { ok: true, applicationId }  or  { ok: false, error, applicationId? }. */
-export async function unlockFreeRole({ opening }) {
+/* ---------- applying for a role ----------
+   There is no fee for any role. Applying (once the Terms & Conditions and 18+
+   boxes are ticked) creates the application, or reuses the open one for that
+   role; Crix then gives test access, and the student is told by email and in
+   their notifications. Resolves with { ok: true, application } or { ok: false, error }. */
+export async function applyToRole({ opening }) {
   const applied = await applyForRole(opening.slug);
   if (!applied.ok) return { ok: false, error: applied.error || "Could not apply right now." };
-  const applicationId = applied.application._id;
-  // Already unlocked: fine. Already taken (or closed): say so, don't claim it's unlocked.
-  if (applied.application.status === "test_pending") return { ok: true, applicationId };
-  if (applied.application.status !== "payment_pending") {
-    return { ok: false, applicationId, error: "You've already taken the test for this role — see My Applications for where it stands." };
-  }
-  const r = await unlockFreeTest(applicationId);
-  return r.ok ? { ok: true, applicationId } : { ok: false, applicationId, error: r.error };
+  return { ok: true, application: applied.application };
 }
 
 /* ---------- Apply / Aptitude Test ---------- */
 // `initialRole` is the slug of the role chosen on the Careers page, if any.
-// `onChange` lets the dashboard refresh after a test is unlocked.
+// `onChange` lets the dashboard refresh after applying.
 export function ApplyTab({ initialRole, onGoToApplications, onChange }) {
   const [openings, setOpenings] = useState(null); // null = loading
   const [applications, setApplications] = useState([]);
@@ -162,7 +154,7 @@ export function ApplyTab({ initialRole, onGoToApplications, onChange }) {
   const [agreed, setAgreed] = useState(false);
   const [adult, setAdult] = useState(false);
   const mounted = useRef(true);
-  const payBtn = useRef(null);
+  const applyBtn = useRef(null);
 
   const load = async () => {
     const [o, a] = await Promise.all([getOpenings(), getMyJobApplications()]);
@@ -197,21 +189,22 @@ export function ApplyTab({ initialRole, onGoToApplications, onChange }) {
   const status = application ? application.status : "none";
   const attempt = application ? application.attempt : null;
 
-  const pay = async () => {
+  const apply = async () => {
     if (busy || !agreed || !adult) return;
     setBusy(true);
     setMsg({ kind: "", text: "" });
-    const r = await unlockFreeRole({ opening: selected });
+    const r = await applyToRole({ opening: selected });
     if (!mounted.current) return;
     setBusy(false);
     if (r.ok) {
-      setMsg({ kind: "success", text: "Your test is unlocked." });
-      burstConfetti(payBtn.current);
+      setMsg({ kind: "success", text: r.application.status === "awaiting_access"
+        ? "You've applied. We'll email you as soon as your aptitude test is ready."
+        : "You've already applied for this role — see where it stands below." });
+      burstConfetti(applyBtn.current);
       await load();
       onChange && onChange();
     } else {
       setMsg({ kind: "error", text: r.error });
-      if (r.applicationId) load();
     }
   };
 
@@ -252,25 +245,32 @@ export function ApplyTab({ initialRole, onGoToApplications, onChange }) {
             All {selected.positions.total} position{selected.positions.total === 1 ? " for this role has" : "s for this role have"} been filled, so it isn't
             taking new applications. Pick another role, or check the <Link to="/careers">Careers page</Link> for new openings.
           </p>
-        ) : status === "none" || status === "payment_pending" ? (
+        ) : status === "none" ? (
           <>
             <p className="form-note" style={{ marginTop: 0 }}>
-              Applying and the aptitude test are free. Accept the terms to unlock your test — you can take it straight away.
+              Applying and the aptitude test are free. Once you've applied, our team gives you access to the test — we'll email you when it's ready.
             </p>
             <AdultCheckbox checked={adult} onChange={setAdult} disabled={busy} />
             <TermsCheckbox checked={agreed} onChange={setAgreed} disabled={busy} what="the aptitude test" />
-            <button ref={payBtn} className="btn btn-solid" disabled={busy || !agreed || !adult} onClick={pay}>
-              {busy ? "Please wait..." : "Unlock Free Test"}
+            <button ref={applyBtn} className="btn btn-solid" disabled={busy || !agreed || !adult} onClick={apply}>
+              {busy ? "Please wait..." : "Apply"}
             </button>
+          </>
+        ) : status === "awaiting_access" ? (
+          <>
+            <p className="form-note" style={{ marginTop: 0 }}>
+              You've applied for this role. Our team will give you access to the aptitude test — we'll email you and let you know here when it's ready.
+            </p>
+            <button className="btn btn-ghost" onClick={onGoToApplications}>See My Applications →</button>
           </>
         ) : status === "test_pending" ? (
           <>
             <p className="form-note" style={{ marginTop: 0 }}>
               {attempt
                 ? "Your test is in progress. The timer keeps running while you're away — go back to it now."
-                : `Your test is unlocked. You have ${selected.test.durationMinutes} minutes for ${selected.test.questions} questions, and one attempt. Find a quiet place with a steady connection and a working webcam before you start.`}
+                : `Your test is ready. You have ${selected.test.durationMinutes} minutes for ${selected.test.questions} questions, and one attempt. Find a quiet place with a steady connection and a working webcam before you start.`}
             </p>
-            <Link ref={payBtn} className="btn btn-solid" to={`/test/${application._id}`}>{attempt ? "Resume test →" : "Start test →"}</Link>
+            <Link ref={applyBtn} className="btn btn-solid" to={`/test/${application._id}`}>{attempt ? "Resume test →" : "Start test →"}</Link>
           </>
         ) : (
           <>
@@ -289,8 +289,8 @@ export function ApplyTab({ initialRole, onGoToApplications, onChange }) {
 
 /* ---------- My Applications ---------- */
 // The path every application follows, and how far along a given status is.
-const TRACK = ["Test pending", "Submitted", "Shortlisted", "Interview scheduled", "Selected"];
-const TRACK_INDEX = { payment_pending: -1, test_pending: 0, submitted: 1, shortlisted: 2, not_shortlisted: 2, interview_scheduled: 3, selected: 4, rejected: 4 };
+const TRACK = ["Applied", "Test ready", "Submitted", "Shortlisted", "Interview scheduled", "Selected"];
+const TRACK_INDEX = { awaiting_access: 0, test_pending: 1, submitted: 2, shortlisted: 3, not_shortlisted: 3, interview_scheduled: 4, selected: 5, rejected: 5 };
 const TRACK_STOP = { not_shortlisted: "Not shortlisted", rejected: "Rejected" };
 
 function StatusTrack({ status }) {
@@ -323,20 +323,6 @@ export function ApplicationsTab({ onGoToApply }) {
     getMyJobApplications().then((res) => { if (alive) setApplications(res.ok ? res.applications || [] : []); });
     return () => { alive = false; };
   }, []);
-
-  const receipt = async (a) => {
-    if (busy) return;
-    setBusy(a._id);
-    setError("");
-    try {
-      const res = await getReceipt(a.paidPaymentId);
-      if (!res.ok) throw new Error(res.error);
-      await downloadReceiptPdf(res.receipt);
-    } catch (e) {
-      setError("Could not load the receipt.");
-    }
-    setBusy("");
-  };
 
   // Clear one ended application (by id) or every ended one from this list.
   const clear = async (id) => {
@@ -378,22 +364,12 @@ export function ApplicationsTab({ onGoToApply }) {
                   <b>{a.opening?.title || "Role"} <StatusPill application={a} /></b>
                   <span className="admin-row-meta">
                     Applied {formatIST(a.createdAt, false)}
-                    {/* Only on an application from when the test had a fee. */}
-                    {a.paidAt ? ` · test fee paid ${formatIST(a.paidAt, false)}` : ""}
+                    {a.testAccessAt ? ` · test ready ${formatIST(a.testAccessAt, false)}` : ""}
                     {t && t.submittedAt ? ` · test submitted ${formatIST(t.submittedAt)}` : ""}
                   </span>
                 </div>
                 <div className="admin-row-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  {a.status === "payment_pending" && (a.opening && a.opening.audience === "free"
-                    // Free internships are applied for through the form on their own page now.
-                    ? <Link className="btn btn-solid" to="/free-internships">Apply through the form</Link>
-                    : <button className="btn btn-solid" onClick={onGoToApply}>Unlock test</button>)}
                   {a.status === "test_pending" && <Link className="btn btn-solid" to={`/test/${a._id}`}>{t ? "Resume test →" : "Start test →"}</Link>}
-                  {a.paidPaymentId && (
-                    <button className="btn btn-ghost" disabled={!!busy} onClick={() => receipt(a)}>
-                      {busy === a._id ? "Preparing…" : "Download Receipt"}
-                    </button>
-                  )}
                   {CLOSED.includes(a.status) && (
                     <button className="btn btn-ghost" disabled={!!busy} onClick={() => clear(a._id)}>
                       {busy === `clear-${a._id}` ? "Clearing…" : "Clear"}
@@ -402,7 +378,10 @@ export function ApplicationsTab({ onGoToApply }) {
                 </div>
               </div>
 
-              {a.status !== "payment_pending" && <StatusTrack status={a.status} />}
+              <StatusTrack status={a.status} />
+              {a.status === "awaiting_access" && (
+                <p className="form-note" style={{ marginBottom: 0 }}>Our team will give you access to the aptitude test — we'll email you when it's ready.</p>
+              )}
 
               {a.status === "submitted" && (
                 <p className="form-note" style={{ marginBottom: 0 }}>

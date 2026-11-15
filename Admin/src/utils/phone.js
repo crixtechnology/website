@@ -122,10 +122,3 @@ export function phoneError(value) {
     ? `a valid ${c.min}-digit number for ${c.dial}`
     : `a valid number for ${c.dial} (${c.min}–${c.max} digits)`;
 }
-
-// A phone number as Razorpay/tel: links want it: "+919876543210". Numbers
-// saved without a country code are Indian.
-export function compactPhone(value) {
-  const { iso, national } = parsePhone(value);
-  return national ? `${countryByIso(iso).dial}${national}` : "";
-}

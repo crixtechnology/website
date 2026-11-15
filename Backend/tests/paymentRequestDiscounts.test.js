@@ -5,9 +5,8 @@ const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
 // Training + Internship is paid through payment requests, so a request is
-// priced like a checkout: offer code, referral welcome discount and wallet
-// credit come off it, the wallet can pay it in full, and the first real-money
-// payment rewards the referrer.
+// priced like a checkout: wallet credit comes off it, and the wallet can pay it
+// in full. Offer codes and referral discounts no longer exist.
 
 jest.mock("../src/utils/receiptPdf", () => ({
   buildReceiptPdfBuffer: jest.fn(() => Buffer.from("fake-pdf")),
@@ -70,44 +69,34 @@ function signedConfirmation(orderId) {
 }
 
 describe("paying a payment request with discounts and credit", () => {
-  it("takes wallet credit and an offer code off the requested amount, and spends the credit once paid", async () => {
+  it("takes wallet credit off the requested amount, and spends the credit once paid", async () => {
     const course = await createTrack();
     const student = await createStudent("credit");
     await giveCredit(student.user, 300);
     const before = await balanceOf(student.user);
-    await prisma.coupon.create({ data: { code: `TRAIN${n}`, discountType: "percent", discountValue: 10, appliesTo: "internship" } });
     const id = await requestPayment(student, course, 2000);
 
-    const quote = await authed(request(app).post(`/api/me/payment-requests/${id}/quote`), student.token).send({ couponCode: `train${n}` });
-    expect(quote.body).toMatchObject({ ok: true, planPrice: 2000, couponApplied: true, couponDiscount: 200, creditApplied: 300, payable: 1500 });
+    // A code sent by an old page is simply ignored.
+    const quote = await authed(request(app).post(`/api/me/payment-requests/${id}/quote`), student.token).send({ couponCode: "TRAIN10" });
+    expect(quote.body).toMatchObject({ ok: true, planPrice: 2000, creditApplied: 300, payable: 1700 });
+    expect(quote.body).not.toHaveProperty("couponDiscount");
+    expect(quote.body).not.toHaveProperty("referralDiscount");
 
     const order = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), student.token)
-      .send({ acceptTerms: true, couponCode: `TRAIN${n}` });
+      .send({ acceptTerms: true, couponCode: "TRAIN10" });
     expect(order.status).toBe(201);
-    expect(order.body.amount).toBe(150000);
-    expect(razorpay.orders.create).toHaveBeenLastCalledWith(expect.objectContaining({ amount: 150000 }));
+    expect(order.body.amount).toBe(170000);
+    expect(razorpay.orders.create).toHaveBeenLastCalledWith(expect.objectContaining({ amount: 170000 }));
 
     const verified = await request(app).post("/api/payment-requests/verify").send(signedConfirmation(order.body.orderId));
     expect(verified.body).toMatchObject({ ok: true, enrolled: true });
     expect(await balanceOf(student.user)).toBe(before - 300);
 
     const receipts = await authed(request(app).get("/api/me/receipts"), student.token);
-    expect(receipts.body.receipts[0]).toMatchObject({ totalPaid: 1500, basePrice: 2000, discountAmount: 500 });
+    expect(receipts.body.receipts[0]).toMatchObject({ totalPaid: 1700, basePrice: 2000, discountAmount: 300 });
   });
 
-  it("refuses an order with an offer code that doesn't work, rather than charging a different price", async () => {
-    const course = await createTrack();
-    const student = await createStudent("badcode");
-    const id = await requestPayment(student, course, 1000);
-    const quote = await authed(request(app).post(`/api/me/payment-requests/${id}/quote`), student.token).send({ couponCode: "NOSUCHCODE" });
-    expect(quote.body).toMatchObject({ ok: true, couponApplied: false, payable: 1000 });
-    expect(quote.body.couponError).toBeTruthy();
-    const order = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), student.token)
-      .send({ acceptTerms: true, couponCode: "NOSUCHCODE" });
-    expect(order.status).toBe(400);
-  });
-
-  it("gives a referred student their welcome discount and rewards the referrer when they pay", async () => {
+  it("gives an old pending referral no discount and the referrer no reward", async () => {
     const course = await createTrack();
     const referrer = await createStudent("referrer");
     const friend = await createStudent("friend");
@@ -118,15 +107,15 @@ describe("paying a payment request with discounts and credit", () => {
     const id = await requestPayment(friend, course, 1000);
 
     const quote = await authed(request(app).post(`/api/me/payment-requests/${id}/quote`), friend.token).send({});
-    expect(quote.body).toMatchObject({ referralPercent: 10, referralDiscount: 100, payable: 900 });
+    expect(quote.body).toMatchObject({ payable: 1000 });
 
     const order = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), friend.token).send({ acceptTerms: true });
-    expect(order.body.amount).toBe(90000);
+    expect(order.body.amount).toBe(100000);
     await request(app).post("/api/payment-requests/verify").send(signedConfirmation(order.body.orderId));
 
     const referral = await prisma.referral.findUnique({ where: { refereeId: idOf(friend.user) } });
-    expect(referral.status).toBe("rewarded");
-    expect(await balanceOf(referrer.user)).toBe(referrerBefore + 200);
+    expect(referral.status).toBe("pending");
+    expect(await balanceOf(referrer.user)).toBe(referrerBefore);
   });
 
   it("lets the wallet pay a request in full, once", async () => {
@@ -166,23 +155,17 @@ describe("paying a payment request with discounts and credit", () => {
     expect(paid.status).toBe(400);
   });
 
-  it("charges exactly the amount when the admin switched discounts off", async () => {
+  it("charges exactly the amount when the admin switched wallet credit off", async () => {
     const course = await createTrack();
     const student = await createStudent("nodisc");
     await giveCredit(student.user, 5000);
-    await prisma.coupon.create({ data: { code: `NODISC${n}`, discountType: "percent", discountValue: 50 } });
     const created = await authed(request(app).post("/api/admin/payment-requests"), adminToken)
       .send({ email: student.email, courseId: course.id, amount: 1200, allowDiscounts: false });
     expect(created.body.request.allowDiscounts).toBe(false);
     const id = created.body.request._id;
 
-    const quote = await authed(request(app).post(`/api/me/payment-requests/${id}/quote`), student.token).send({ couponCode: `NODISC${n}` });
-    expect(quote.body).toMatchObject({ discountsAllowed: false, couponApplied: false, creditApplied: 0, payable: 1200, walletCoversAll: false });
-    expect(quote.body.couponError).toMatch(/can't be used/);
-
-    const withCode = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), student.token)
-      .send({ acceptTerms: true, couponCode: `NODISC${n}` });
-    expect(withCode.status).toBe(400);
+    const quote = await authed(request(app).post(`/api/me/payment-requests/${id}/quote`), student.token).send({});
+    expect(quote.body).toMatchObject({ discountsAllowed: false, creditApplied: 0, payable: 1200, walletCoversAll: false });
     const wallet = await authed(request(app).post(`/api/me/payment-requests/${id}/pay-with-wallet`), student.token).send({ acceptTerms: true });
     expect(wallet.status).toBe(400);
     const order = await authed(request(app).post(`/api/me/payment-requests/${id}/create-order`), student.token).send({ acceptTerms: true });

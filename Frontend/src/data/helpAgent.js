@@ -77,7 +77,7 @@ const WORDS = {
   services: ["it service", "it services", "website", "web site", "app ", "application", "ecommerce", "e commerce", "online store", "shop", "seo", "marketing", "chatbot", "software", "crm", "erp", "redesign", "business", "client", "project", "quote", "develop", "build my", "make my"],
   payments: ["payment", "pay ", "paid", "refund", "money", "deducted", "debited", "upi", "card", "razorpay", "receipt", "invoice", "gst", "transaction", "failed"],
   account: ["account", "login", "log in", "signin", "sign in", "password", "otp", "profile", "logout", "logged out", "email change", "delete my"],
-  wallet: ["wallet", "credit", "referral", "refer", "coupon", "offer code", "discount", "bonus"],
+  wallet: ["wallet", "credit", "bonus"],
   price: ["price", "fee", "fees", "cost", "how much", "charges", "charge", "kitna", "rupees", "₹", "free"],
   apply: ["apply", "how do i join", "how to join", "register", "enrol", "enroll", "buy", "purchase", "sign up", "signup"],
   want: ["want", "looking for", "interested", "suggest", "recommend", "need", "help with", "show me", "which", "chahiye"],
@@ -119,7 +119,7 @@ const firstName = (user) => {
 // ---------- what the agent knows ----------
 const programText = (p) => `${p.title} ${(p.points || []).join(" ")} ${p.desc || ""}`.toLowerCase();
 const programLink = (p) => (p.slug ? { to: `/programs/${p.slug}`, label: p.title } : { to: "/training-internship", label: p.title });
-const kindOf = (p) => (p.type === "internship" ? "Training + Internship" : p.type === "course" ? "Course" : p.kind === "internship" ? "Training + Internship" : "Course");
+const kindOf = () => "Training + Internship"; // courses were dropped: every program is a track
 
 // Whole-word match, so "web" doesn't find "website" or "ai" find "maintain".
 // (Track words are plain letters and spaces, so they need no regex escaping.)
@@ -219,7 +219,7 @@ function priceReply(state, ctx) {
     return { text: "IT projects are quoted individually — the price depends on what you need (pages, features, integrations). Send your requirements through the Services page and we'll send a quote.", links: [{ to: "/services", label: "Request a quote" }] };
   }
   if (state.topic === "programs") {
-    return { text: "Each program's price is on its card on the Training + Internship page — filter by 1, 2, 3 or 6 months, then tap Enroll now to pay online. Any discount running is shown there too, and wallet credit and offer codes are taken off at checkout.", links: [{ to: "/training-internship", label: "See tracks & prices" }] };
+    return { text: "Each program's price is on its card on the Training + Internship page — filter by 1, 2, 3 or 6 months, then tap Enroll now to pay online. Any discount running is shown there too, and wallet credit is taken off at checkout.", links: [{ to: "/training-internship", label: "See tracks & prices" }] };
   }
   return {
     text: "Happy to help with pricing — which one is it about?",
@@ -231,13 +231,13 @@ function applyReply(state, ctx) {
   const missing = ctx.user && (ctx.user.profilePending || !String(ctx.user.phone || "").trim());
   const profileNote = missing ? "\nBefore paying, add your full name and phone number in your Profile — checkout asks for them." : "";
   if (state.topic === "careers") {
-    return { text: `• Log in (a new email gets an account straight away)\n• Pick a role on the Careers page and press Apply Now\n• Accept the terms (applying and the test are free)\n• Take the online aptitude test`, links: [{ to: "/careers", label: "Careers page" }] };
+    return { text: `• Log in (a new email gets an account straight away)\n• Pick a role on the Careers page and press Apply Now\n• Accept the terms and apply (applying and the test are free)\n• We give you access to the online aptitude test and email you\n• Take it from My Dashboard`, links: [{ to: "/careers", label: "Careers page" }] };
   }
   if (state.topic === "services") {
     return { text: "Send us your requirements from the Services page (or the contact form). Our IT team replies, sets up a quick call, and shares a plan and quote.", links: [{ to: "/services", label: "Services page" }] };
   }
   return {
-    text: `• On the Training + Internship page, pick a duration (1, 2, 3 or 6 months) and choose a program\n• Tap “Enroll now” and log in (a new email gets an account)\n• Pay the training fee securely with Razorpay (training is paid, not free) — your wallet credit, offer code and referral discount come off\n• Your training opens in My Dashboard once the payment is confirmed. Want to talk first? Call / WhatsApp our Training + Internship team${profileNote}`,
+    text: `• On the Training + Internship page, pick a duration (1, 2, 3 or 6 months) and choose a program\n• Tap “Enroll now” and log in (a new email gets an account)\n• Pay the training fee securely with Razorpay (training is paid, not free) — your wallet credit comes off\n• Your training opens in My Dashboard once the payment is confirmed. Want to talk first? Call / WhatsApp our Training + Internship team${profileNote}`,
     links: [{ to: "/training-internship", label: "Training + Internship" }, { to: "/dashboard", label: "My Dashboard" }, ...(missing ? [{ to: "/profile", label: "Complete your profile" }] : [])],
     dept: "programs",
   };

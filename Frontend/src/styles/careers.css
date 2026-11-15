@@ -60,7 +60,6 @@
 .section.dash-page{padding-top:140px}
 .profile-section{margin-top:48px;padding-top:28px;border-top:1px solid var(--line)}
 .dash-panel>.profile-section:first-child{margin-top:0;padding-top:0;border-top:0}
-.dash-panel>.ref-card:first-child{margin-top:0}
 @media(max-width:640px){
   .section.dash-page{padding-top:96px}
   .dash-page .admin-head{padding:16px;margin-bottom:16px;border-radius:16px;gap:12px}
@@ -79,8 +78,6 @@
 .apply-panel h3{font-size:1.05rem;margin:10px 0 6px}
 .apply-panel .order-summary{margin:16px 0}
 .apply-panel .btn{width:100%;text-align:center}
-.apply-rules{margin-top:18px}
-.apply-rules li{font-size:.84rem}
 .role-status{margin-left:8px}
 
 /* Where an application stands: Test pending -> Submitted -> Shortlisted -> Interview -> Selected. */

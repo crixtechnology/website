@@ -16,6 +16,10 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   jest.resetAllMocks();
+  api.getMyWallet.mockResolvedValue({ ok: false });
+  api.getOpenings.mockResolvedValue({ ok: false, openings: [] });
+  // The page shuffles its cards; this value keeps them in the order given.
+  jest.spyOn(Math, "random").mockReturnValue(0.9999);
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -175,4 +179,39 @@ it("shows the original price crossed out beside the final price", async () => {
   expect(price("Web Internship").querySelector(".price-now").textContent).toBe("₹2,999");
   expect(price("Data Internship").querySelector(".price-old").textContent).toContain("₹5,000");
   expect(price("Data Internship").querySelector(".price-now").textContent).toContain("₹4,000");
+});
+
+const renderTI = async (ctx) => {
+  await act(async () => {
+    root.render(
+      <UserContext.Provider value={ctx}>
+        <MemoryRouter initialEntries={["/training-internship"]}><TrainingInternship /></MemoryRouter>
+      </UserContext.Provider>
+    );
+  });
+};
+const titles = () => [...container.querySelectorAll("#programs h3")].map((h) => h.textContent);
+
+it("shows the cards in a random order", async () => {
+  api.getCourses.mockResolvedValue({ ok: true, courses: [program("A Track", 999), program("B Track", 999), program("C Track", 999)] });
+  Math.random.mockReturnValue(0); // each swap picks the first card
+  await renderTI({ user: null, isLoggedIn: false });
+  expect(titles()).toEqual(["B Track", "C Track", "A Track"]);
+});
+
+it("logged in, shows the fee less the student's wallet credit as payable", async () => {
+  api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 999)] });
+  api.getMyWallet.mockResolvedValue({ ok: true, wallet: { available: 50, usagePercent: 100 } });
+  api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [] });
+  await renderTI({ user: { id: "u1", name: "Asha" }, isLoggedIn: true });
+  const price = container.querySelector(".card-price");
+  expect(price.textContent).toContain("999");
+  expect(price.querySelector(".card-price-wallet").textContent).toMatch(/Payable\s*₹\s?949/);
+});
+
+it("logged out, shows only the admin's price — no wallet line", async () => {
+  api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 999)] });
+  await renderTI({ user: null, isLoggedIn: false });
+  expect(api.getMyWallet).not.toHaveBeenCalled();
+  expect(container.querySelector(".card-price-wallet")).toBeNull();
 });

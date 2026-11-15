@@ -1,6 +1,5 @@
 import { offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "./tiers.js";
 import { isValidName, isValidEmail, isDisposableEmail, emailFormatError } from "./validators.js";
-import { captureReferralFromUrl, getStoredReferral, clearStoredReferral, referralLink } from "./referral.js";
 
 describe("plans", () => {
   const item = {
@@ -50,25 +49,5 @@ describe("validators", () => {
     expect(emailFormatError("nope")).toMatch(/valid email/);
     expect(emailFormatError("x@mailinator.com")).toMatch(/permanent/);
     expect(emailFormatError("real@gmail.com")).toBe("");
-  });
-});
-
-describe("referral link capture", () => {
-  beforeEach(() => window.localStorage.clear());
-  it("remembers a well-formed code from ?ref= in upper case", () => {
-    captureReferralFromUrl("?ref=crix-k7p3qz");
-    expect(getStoredReferral()).toBe("CRIX-K7P3QZ");
-    clearStoredReferral();
-    expect(getStoredReferral()).toBe("");
-  });
-  it("ignores missing or malformed codes", () => {
-    captureReferralFromUrl("");
-    captureReferralFromUrl("?ref=");
-    captureReferralFromUrl("?ref=<script>");
-    captureReferralFromUrl("?ref=" + "A".repeat(40));
-    expect(getStoredReferral()).toBe("");
-  });
-  it("builds the share link", () => {
-    expect(referralLink("CRIX-ABC123")).toBe(`${window.location.origin}/?ref=CRIX-ABC123`);
   });
 });

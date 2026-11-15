@@ -1,8 +1,8 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
-  DownloadPdfButton, TrainingContact, ProgramGroupCard, TrainingCard, DurationSwitch,
+  DownloadPdfButton, TrainingContact, ProgramGroupCard, TrainingCard, DurationSwitch, SignupBonusPopup,
 } from "../components/ui.jsx";
 import { groupVariants, siblingsOf } from "../utils/variants.js";
 import { formatDuration, PROGRAM_DURATIONS } from "../utils/duration.js";
@@ -10,7 +10,19 @@ import {
   site, hero, internships, services, process, benefits, trainingStages, selectionCriteria, stats, about, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables, fallbackPrograms,
 } from "../data/content.js";
-import { submitContact, getCourses, getCourse, getServices, hasBackend } from "../services/api.js";
+import { submitContact, getCourses, getCourse, getServices, getOpenings, hasBackend } from "../services/api.js";
+import { useWalletCredit } from "../hooks/useWalletCredit.js";
+import { defaultTerms } from "../data/careers.js";
+
+// A copy of the list in random order (Fisher-Yates).
+function shuffled(list) {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 
 // Skeleton cards show while live lists load from the backend — but never for
 // longer than this; after it the static fallback list shows instead.
@@ -223,6 +235,20 @@ export function TrainingInternship() {
   const { hasAccess } = useMyPlans();
   const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
   usePageMeta(routeMeta("/training-internship"));
+  // Logged in: each card also shows the fee less their wallet credit.
+  const wallet = useWalletCredit();
+  // The admin-set signup bonus, for the welcome popup (logged-out visitors only).
+  const [signupBonus, setSignupBonus] = useState(hasBackend ? 0 : defaultTerms.signupBonus);
+  useEffect(() => {
+    if (!hasBackend || isLoggedIn) return undefined;
+    let alive = true;
+    getOpenings().then((res) => {
+      if (!alive) return;
+      const n = res && res.ok && res.terms ? Number(res.terms.signupBonus) : defaultTerms.signupBonus;
+      setSignupBonus(Number.isFinite(n) ? n : defaultTerms.signupBonus);
+    });
+    return () => { alive = false; };
+  }, [isLoggedIn]);
 
   const handleBuy = (item, tier) => {
     const open = () => { setBuyItem(item); setBuyTier(tier || null); };
@@ -260,7 +286,9 @@ export function TrainingInternship() {
   }, [params, liveInternships, setParams]);
 
   // Paid programs only. Anything priced at ₹0 on every plan is a free opportunity, which belongs on Careers.
-  const programs = liveInternships.filter((item) => !isFreeProgram(item));
+  // Shuffled once per list (each visit sees a fresh order), so every filter shows
+  // its cards in a random order but switching filters doesn't reshuffle.
+  const programs = useMemo(() => shuffled(liveInternships.filter((item) => !isFreeProgram(item))), [liveInternships]);
   const shown = duration === "all" ? programs : programs.filter((item) => Number(item.durationDays) === duration);
   // "3 months" -> "3-month", for "No 3-month programs right now."
   const durationWord = duration === "all" ? "" : formatDuration(duration).replace(" ", "-").replace(/s$/, "");
@@ -298,7 +326,7 @@ export function TrainingInternship() {
           <div className="grid3" style={{ marginTop: 24 }}>
             {/* One card per program; a domain offered in several durations is a card for each. */}
             {loading ? <SkeletonCards count={3} /> : shown.map((item, i) => (
-              <TrainingCard key={item.slug || item._id || item.title} item={item} i={i} owned={hasAccess(item)}
+              <TrainingCard key={item.slug || item._id || item.title} item={item} i={i} owned={hasAccess(item)} wallet={wallet}
                 onBuy={handleBuy} onInquire={setInquireItem} onDetail={setDetailData} />
             ))}
           </div>
@@ -318,6 +346,7 @@ export function TrainingInternship() {
       <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
       <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
       <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} />
+      <SignupBonusPopup bonus={signupBonus} />
 
       <section id="how-it-works" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
@@ -564,9 +593,7 @@ export function CourseDetail() {
                   All {course.positions.total} {placeWord(course)}{course.positions.total === 1 ? " is" : "s are"} filled right now.
                   Send a request and we'll tell you when the next batch opens.
                 </p>
-                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)}>
-                  {course.type === "internship" ? "Request to apply" : "Request to enroll"}
-                </button>
+                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)}>Request to apply</button>
               </div>
             ) : openForBuy ? (
               <div className="plans-block" id="plans">
@@ -575,15 +602,9 @@ export function CourseDetail() {
               </div>
             ) : (
               <div style={{ maxWidth: 280, marginTop: 24 }}>
-                {course.type === "internship" ? (
-                  <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to apply for this internship — no account needed">
-                    Request to apply
-                  </button>
-                ) : (
-                  <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to enroll in this course — no account needed">
-                    Request to enroll
-                  </button>
-                )}
+                <button className="btn btn-solid buy-btn" onClick={() => setInquireOpen(true)} title="Request to apply for this training — no account needed">
+                  Request to apply
+                </button>
               </div>
             )}
             </div>

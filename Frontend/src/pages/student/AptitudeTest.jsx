@@ -743,11 +743,11 @@ export default function AptitudeTest() {
       <section className="section" style={{ paddingTop: 140, minHeight: "60vh" }}>
         <div className="wrap" style={{ maxWidth: 560 }}>
           <span className="eyebrow">Aptitude test</span>
-          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>{info === null ? "We couldn't open this test" : "This test is locked"}</h1>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>{info === null ? "We couldn't open this test" : "This test isn't open yet"}</h1>
           <p style={{ color: "var(--muted)", marginBottom: 24, lineHeight: 1.7 }}>
-            {info === null ? loadError : "Unlock it from My Dashboard → Apply / Aptitude Test — accept the terms; there is no fee. You can take the test straight away."}
+            {info === null ? loadError : "You've applied — our team will give you access to this test and email you when it's ready. There is no fee."}
           </p>
-          <Link className="btn btn-solid" to="/dashboard?tab=apply">Go to My Dashboard</Link>
+          <Link className="btn btn-solid" to="/dashboard?tab=applications">Go to My Applications</Link>
         </div>
       </section>
     );

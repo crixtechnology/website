@@ -105,10 +105,9 @@ describe("BuyModal with a wallet", () => {
   const item = { slug: "react-basics", title: "React Basics", type: "course", status: "open", tiers: [{ tier: "basic", price: 1000, discountPercent: 0, features: [] }] };
   const user = { name: "Asha", email: "asha@example.com", phone: "+919876543210" };
   const ctx = { openAuthModal: jest.fn() };
-  const quote = (o) => ({ ok: true, planPrice: 1000, couponApplied: false, couponDiscount: 0, referralPercent: 0, referralDiscount: 0, creditApplied: 0, creditAvailable: 0, payable: 1000, walletCoversAll: false, walletPayable: 1000, ...o });
+  const quote = (o) => ({ ok: true, planPrice: 1000, creditApplied: 0, creditAvailable: 0, payable: 1000, walletCoversAll: false, walletPayable: 1000, ...o });
 
   const open = async () => {
-    api.getMyReferral.mockResolvedValue({ ok: true, canApplyCode: false });
     await render(<UserContext.Provider value={ctx}><BuyModal item={item} user={user} initialTier="basic" onClose={jest.fn()} /></UserContext.Provider>);
   };
   const submit = async () => { await act(async () => { q(".modal-box form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); }); };
@@ -144,7 +143,7 @@ describe("BuyModal with a wallet", () => {
 
     await agree();
     await submit();
-    expect(api.payWithWallet).toHaveBeenCalledWith("app1", "react-basics", "basic", "");
+    expect(api.payWithWallet).toHaveBeenCalledWith("app1", "react-basics", "basic");
     expect(api.createRazorpayOrder).not.toHaveBeenCalled();
     expect(q(".modal-box .alert-inline").textContent).toContain("Paid from your wallet");
   });

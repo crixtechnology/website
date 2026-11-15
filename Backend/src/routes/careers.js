@@ -1,23 +1,20 @@
 // Careers: the public list of job openings, and a candidate's own applications
-// — apply for a role, unlock its aptitude test, see where the application stands.
+// — apply for a role, see where the application stands, take the test once an
+// admin has given access.
 //
 // Applying and the test are free: no payment is taken anywhere in this flow.
-// (Tests used to carry a fee; /careers/verify below only settles a payment that
-// was already under way when the fees were removed.)
+// A candidate can't unlock a test themselves — an admin gives test access to a
+// specific student (routes/adminCareers.js, utils/careers.js grantTestAccess).
 //
 // The test itself is in routes/aptitudeTest.js; the admin side in routes/adminCareers.js.
 const express = require("express");
-const crypto = require("crypto");
 const { prisma } = require("../db");
-const { safeEqual } = require("../utils/safeCompare");
 const { requireAuth } = require("../middleware/requireAuth");
 const { publicWriteLimiter } = require("../utils/rateLimit");
 const { rejectWithoutTerms } = require("../utils/terms");
-const { profileMissing, educationMissing } = require("../utils/accounts");
 const { lockUser } = require("../utils/wallet");
 const { getCareerSettings } = require("../utils/careerSettings");
-const { saveCv, deleteSnapshot, describeStorageError } = require("../utils/proctorStorage");
-const { STATUS_LABELS, shapeOpening, positionsOf, OPENING_COUNTS, grantTestForPayment, finalizeExpiredAttempts } = require("../utils/careers");
+const { STATUS_LABELS, shapeOpening, positionsOf, OPENING_COUNTS, finalizeExpiredAttempts } = require("../utils/careers");
 
 const router = express.Router();
 
@@ -38,22 +35,6 @@ const visibleApplications = (userId) => ({
     OR: [{ closedAt: { lt: keepCutoff() } }, { closedAt: null, updatedAt: { lt: keepCutoff() } }],
   },
 });
-// A CV may be up to this size, and only before the test is taken.
-const MAX_CV_BYTES = 2 * 1024 * 1024;
-const CV_EDITABLE = ["payment_pending", "test_pending"];
-// A "free" (free-internships page) role's test only unlocks once a CV is on the application.
-const needsCv = (opening) => !!opening && opening.audience === "free";
-// A free internship needs the student's details and education from Profile.
-// Returns { missing } (names of what's still empty) and the education to copy
-// onto the application once it goes ahead.
-async function freeInternshipProfile(userId) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  return {
-    missing: [...profileMissing(user), ...educationMissing(user)],
-    education: { college: user.college, course: user.course, department: user.department, semester: user.semester, passingYear: user.passingYear },
-  };
-}
-const profileIncompleteBody = (missing) => ({ ok: false, code: "PROFILE_INCOMPLETE", missing, error: `Please add your ${missing.join(", ")} to apply.` });
 // Statuses at which the candidate is shown their interview slot.
 const INTERVIEW_VISIBLE = ["interview_scheduled", "selected"];
 
@@ -78,8 +59,7 @@ function shapeApplication(a) {
     opening: a.opening ? { _id: a.opening.id, slug: a.opening.slug, title: a.opening.title, status: a.opening.status, audience: a.opening.audience || "general", test: shapeOpening(a.opening).test } : undefined,
     cv: a.cvKey ? { fileName: a.cvFileName, uploadedAt: a.cvUploadedAt } : null,
     createdAt: a.createdAt,
-    paidAt: a.paidAt,
-    paidPaymentId: a.paymentId,
+    testAccessAt: a.testAccessAt,
     interview: INTERVIEW_VISIBLE.includes(a.status) && a.interviewAt ? { at: a.interviewAt, link: a.interviewLink } : null,
     attempt: attempt
       ? {
@@ -118,17 +98,6 @@ router.get("/careers/openings", async (req, res, next) => {
 // public endpoint for them. Openings with audience "free" stored from before
 // stay only so earlier on-site applications keep working.
 
-router.get("/careers/openings/:slug", async (req, res, next) => {
-  try {
-    const opening = await prisma.jobOpening.findUnique({ where: { slug: String(req.params.slug) }, include: OPENING_COUNTS });
-    // A closed role isn't public any more — same answer as one that never existed.
-    if (!opening || opening.status !== "open") return res.status(404).json({ ok: false, error: "Opening not found" });
-    res.json({ ok: true, opening: shapeOpening(opening), terms: publicTerms(await getCareerSettings()) });
-  } catch (e) {
-    next(e);
-  }
-});
-
 // ---------- candidate: my applications ----------
 router.get("/me/job-applications", requireAuth, async (req, res, next) => {
   try {
@@ -164,14 +133,19 @@ router.post("/me/job-applications/clear", requireAuth, async (req, res, next) =>
 });
 
 // ---------- candidate: apply for a role ----------
-// Body: { opening: <slug or id> }. Creates the application (its test unlocks at
-// /unlock-free once the terms are accepted), or hands back the one already open for that role — applying twice never
-// makes a second one.
+// Body: { opening: <slug or id>, acceptTerms: true, confirmAdult: true }.
+// Creates the application — it then waits for an admin to give test access —
+// or hands back the one already open for that role: applying twice never makes
+// a second one.
 router.post("/me/job-applications", publicWriteLimiter, requireAuth, async (req, res, next) => {
   try {
     const ref = req.body && req.body.opening;
     if (typeof ref !== "string" || !ref.trim()) return res.status(400).json({ ok: false, error: "Choose a role to apply for." });
     if (req.user.role === "admin") return res.status(400).json({ ok: false, error: "Admin accounts can't apply for a role." });
+    if (rejectWithoutTerms(req, res)) return;
+    if (req.body.confirmAdult !== true) {
+      return res.status(400).json({ ok: false, code: "ADULT_REQUIRED", error: "The aptitude test is only for candidates aged 18 or older. Please confirm your age to apply." });
+    }
 
     const opening = await prisma.jobOpening.findFirst({ where: { OR: [{ slug: ref.trim() }, { id: ref.trim() }] }, include: OPENING_COUNTS });
     if (!opening) return res.status(404).json({ ok: false, error: "Opening not found" });
@@ -206,122 +180,13 @@ router.post("/me/job-applications", publicWriteLimiter, requireAuth, async (req,
         }
       }
       const created = await tx.jobApplication.create({
-        data: { userId: req.user.sub, openingId: opening.id },
+        data: { userId: req.user.sub, openingId: opening.id, adultConfirmedAt: new Date() },
         include: WITH_DETAIL,
       });
       return { application: created, created: true };
     });
     if (result.error) return res.status(400).json({ ok: false, error: result.error, ...(result.code ? { code: result.code } : {}) });
     res.status(result.created ? 201 : 200).json({ ok: true, application: shapeApplication(result.application) });
-  } catch (e) {
-    next(e);
-  }
-});
-
-// ---------- candidate: upload a CV for an application ----------
-// The request body IS the PDF (Content-Type: application/pdf); the file name
-// comes in X-File-Name. Replaces any earlier CV, until the test is taken.
-router.put(
-  "/me/job-applications/:id/cv",
-  publicWriteLimiter,
-  requireAuth,
-  express.raw({ type: "application/pdf", limit: MAX_CV_BYTES }),
-  async (req, res, next) => {
-    try {
-      const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true, status: true, cvKey: true } });
-      if (!application || application.userId !== req.user.sub) return res.status(404).json({ ok: false, error: "Application not found" });
-      if (!CV_EDITABLE.includes(application.status)) return res.status(400).json({ ok: false, error: "Your CV can't be changed after the test has been taken." });
-      const body = req.body;
-      // Every PDF starts with "%PDF-".
-      const isPdf = Buffer.isBuffer(body) && body.length > 5 && body.subarray(0, 5).toString("latin1") === "%PDF-";
-      if (!isPdf) return res.status(400).json({ ok: false, error: "Upload your CV as a PDF file (up to 2 MB)." });
-
-      let fileName = "";
-      try { fileName = decodeURIComponent(String(req.get("x-file-name") || "")); } catch (err) { fileName = ""; }
-      fileName = fileName.replace(/[^\w .()-]/g, "").trim().slice(0, 150) || "cv.pdf";
-      if (!/\.pdf$/i.test(fileName)) fileName += ".pdf";
-
-      // A storage failure is ours, not the student's: say so plainly, and log
-      // the real reason (Admin → Careers settings → Check storage shows it too).
-      let cvKey;
-      try {
-        cvKey = await saveCv(application.id, body);
-      } catch (err) {
-        console.error(`[careers] CV upload failed for application ${application.id}: ${describeStorageError(err)}`);
-        return res.status(503).json({ ok: false, code: "CV_STORAGE", error: "We couldn't save your CV just now. Please try again in a few minutes — if it keeps happening, email us and we'll sort it out." });
-      }
-      await prisma.jobApplication.update({ where: { id: application.id }, data: { cvKey, cvFileName: fileName, cvUploadedAt: new Date() } });
-      // The replaced file goes after the new one is safely recorded.
-      if (application.cvKey) await deleteSnapshot(application.cvKey).catch((err) => console.error("[careers] old CV not deleted:", err.message));
-      res.json({ ok: true, cv: { fileName } });
-    } catch (e) {
-      next(e);
-    }
-  }
-);
-
-// ---------- candidate: unlock the test ----------
-// No role has a fee: once the terms and the 18+ box are accepted, the test
-// unlocks straight away — no payment, no credit.
-router.post("/me/job-applications/:id/unlock-free", publicWriteLimiter, requireAuth, async (req, res, next) => {
-  try {
-    if (rejectWithoutTerms(req, res)) return;
-    if (!req.body || req.body.confirmAdult !== true) {
-      return res.status(400).json({ ok: false, code: "ADULT_REQUIRED", error: "The aptitude test is only for candidates aged 18 or older. Please confirm your age to continue." });
-    }
-    const application = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, include: { opening: true } });
-    if (!application || application.userId !== req.user.sub) {
-      return res.status(404).json({ ok: false, error: "Application not found" });
-    }
-    if (application.opening.status !== "open") {
-      return res.status(400).json({ ok: false, error: "This role is closed for applications right now." });
-    }
-    if (needsCv(application.opening) && !application.cvKey) {
-      return res.status(400).json({ ok: false, code: "CV_REQUIRED", error: "Upload your CV (PDF) to apply for this role." });
-    }
-    // A free internship also needs the student's details and education from
-    // Profile; a copy of the education is kept on the application.
-    let education;
-    if (needsCv(application.opening)) {
-      const profile = await freeInternshipProfile(req.user.sub);
-      if (profile.missing.length) return res.status(400).json(profileIncompleteBody(profile.missing));
-      education = profile.education;
-    }
-    // Only an application still locked moves; a second click changes nothing.
-    await prisma.jobApplication.updateMany({
-      where: { id: application.id, status: "payment_pending" },
-      data: { status: "test_pending", adultConfirmedAt: new Date(), ...(education ? { education } : {}) },
-    });
-    const updated = await prisma.jobApplication.findUnique({ where: { id: application.id }, include: WITH_DETAIL });
-    res.json({ ok: true, application: shapeApplication(updated) });
-  } catch (e) {
-    next(e);
-  }
-});
-
-// ---------- confirm a test-fee payment from Razorpay Checkout ----------
-// Kept only for a payment begun before test fees were removed (no new order can
-// be created). Same signature check as /payments/verify; only accepts test-fee payments. What
-// the browser says is never trusted — only a signature made with our key secret
-// (here) or Razorpay's own webhook (routes/payments.js) unlocks the test.
-router.post("/careers/verify", publicWriteLimiter, async (req, res, next) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ ok: false, error: "Missing payment confirmation fields" });
-    }
-    const expected = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest("hex");
-    const valid = safeEqual(expected, String(razorpay_signature));
-    if (!valid) return res.status(400).json({ ok: false, error: "Payment could not be verified." });
-
-    const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: String(razorpay_order_id) } });
-    if (!payment || !payment.jobApplicationId) return res.status(404).json({ ok: false, error: "Payment record not found" });
-
-    const application = await grantTestForPayment(payment, String(razorpay_payment_id));
-    res.json({ ok: true, applicationId: application ? application.id : null, unlocked: !!application });
   } catch (e) {
     next(e);
   }

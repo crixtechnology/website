@@ -102,34 +102,33 @@ describe("Careers page", () => {
     expect(button("Apply Now — Free", modal)).toBeTruthy();
   });
 
-  it("unlocks a role's test without payment, once the terms are accepted", async () => {
+  it("applies for a role without payment once the terms are accepted, then waits for Crix to give test access", async () => {
     api.getMyJobApplications.mockResolvedValue({ ok: true, applications: [], terms });
     await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
     await click(button("Apply Now", all(".job-card")[1]));
-    const modal = feeModal();
+    const modal = applyModal();
     expect(modal.textContent).not.toContain("₹289");
     expect(modal.querySelector(".order-summary")).toBeNull();
-    const unlock = button("Unlock Free Test", modal);
-    expect(unlock.disabled).toBe(true);
-    await click(unlock);
+    const apply = button("Apply — Free", modal);
+    expect(apply.disabled).toBe(true);
+    await click(apply);
     expect(api.applyForRole).not.toHaveBeenCalled();
 
-    api.applyForRole.mockResolvedValue({ ok: true, application: { _id: "a5", status: "payment_pending" } });
-    api.unlockFreeTest.mockResolvedValue({ ok: true, application: { _id: "a5", status: "test_pending" } });
+    api.applyForRole.mockResolvedValue({ ok: true, application: { _id: "a5", status: "awaiting_access", statusLabel: "Waiting for test access" } });
     await click(modal.querySelector(".terms-check input"));
-    expect(unlock.disabled).toBe(true); // the 18+ box too
+    expect(apply.disabled).toBe(true); // the 18+ box too
     await click(modal.querySelector(".adult-check input"));
-    expect(unlock.disabled).toBe(false);
-    await click(unlock);
+    expect(apply.disabled).toBe(false);
+    await click(apply);
     expect(api.applyForRole).toHaveBeenCalledWith("data-science-intern");
-    expect(api.unlockFreeTest).toHaveBeenCalledWith("a5");
-    // There is no payment call left to make.
-    expect(api.createTestFeeOrder).toBeUndefined();
-    expect(api.verifyTestFee).toBeUndefined();
-    expect(button("Start test now", modal).getAttribute("href")).toBe("/test/a5");
+    // No way to unlock the test from here: Crix gives access.
+    expect(api.unlockFreeTest).toBeUndefined();
+    expect(modal.textContent).toContain("You've applied for this role");
+    expect(modal.textContent).toContain("give you access to the aptitude test");
+    expect(modal.querySelector('a[href^="/test/"]')).toBeNull();
   });
 
-  const feeModal = () => q(".test-fee-modal");
+  const applyModal = () => q(".apply-modal");
   const student = { name: "Asha", email: "asha@example.com", phone: "+919876543210" };
 
   it("sends a visitor to log in first, remembering the role, then opens the apply popup for it", async () => {
@@ -140,28 +139,37 @@ describe("Careers page", () => {
 
     expect(openAuthModal).toHaveBeenCalledWith("login", expect.any(Function));
     expect(window.sessionStorage.getItem("crix_apply_role")).toBe("data-science-intern");
-    expect(feeModal()).toBeNull();
+    expect(applyModal()).toBeNull();
     // What the sign-up popup does once the account exists:
     await act(async () => { openAuthModal.mock.calls[0][1](); });
-    expect(feeModal().querySelector("h3").textContent).toBe("Data Science Intern");
+    expect(applyModal().querySelector("h3").textContent).toBe("Data Science Intern");
   });
 
-  it("shows the server's reason when the test can't be unlocked", async () => {
+  it("shows the server's reason when applying fails", async () => {
     const openAuthModal = jest.fn();
     api.getMyJobApplications.mockResolvedValue({ ok: true, applications: [], terms });
     await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal });
     await click(button("Apply Now", all(".job-card")[0]));
     expect(openAuthModal).not.toHaveBeenCalled();
 
-    const modal = feeModal();
+    const modal = applyModal();
     expect(modal.querySelector("h3").textContent).toBe("Web Development Intern");
-    api.applyForRole.mockResolvedValue({ ok: true, application: { _id: "a9", status: "payment_pending" } });
-    api.unlockFreeTest.mockResolvedValue({ ok: false, error: "This role is closed for applications right now." });
+    api.applyForRole.mockResolvedValue({ ok: false, error: "This role is closed for applications right now." });
     await click(modal.querySelector(".terms-check input"));
     await click(modal.querySelector(".adult-check input"));
-    await click(button("Unlock Free Test", modal));
-    expect(api.unlockFreeTest).toHaveBeenCalledWith("a9");
+    await click(button("Apply — Free", modal));
     expect(modal.querySelector(".alert-error").textContent).toContain("closed for applications");
+  });
+
+  it("tells someone already waiting that Crix will give them test access", async () => {
+    api.getMyJobApplications.mockResolvedValue({
+      ok: true, terms,
+      applications: [{ _id: "a2", status: "awaiting_access", statusLabel: "Waiting for test access", opening: { _id: "o1" }, attempt: null }],
+    });
+    await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
+    await click(button("Continue application", all(".job-card")[0]));
+    expect(applyModal().textContent).toContain("already applied");
+    expect(applyModal().querySelector('a[href^="/test/"]')).toBeNull();
   });
 
   it("doesn't hold a student with an unfinished profile back from a free test", async () => {
@@ -169,21 +177,21 @@ describe("Careers page", () => {
     const fresh = { name: "Asha", email: "asha@example.com", phone: "", profilePending: true };
     await renderCareers({ user: fresh, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
     await click(button("Apply Now", all(".job-card")[0]));
-    const modal = feeModal();
+    const modal = applyModal();
     expect(modal.querySelector(".profile-gate")).toBeNull();
-    expect(button("Unlock Free Test", modal)).toBeTruthy();
+    expect(button("Apply — Free", modal)).toBeTruthy();
   });
 
-  it("offers to start the test when the role is already unlocked", async () => {
+  it("offers to start the test once Crix has given access", async () => {
     api.getMyJobApplications.mockResolvedValue({
       ok: true, terms,
       applications: [{ _id: "a1", status: "test_pending", statusLabel: "Test pending", opening: { _id: "o1" }, attempt: null }],
     });
     await renderCareers({ user: student, isLoggedIn: true, isAdmin: false, openAuthModal: jest.fn() });
-    // Unlocked but not taken yet: the card says so, and continuing opens the test.
+    // Access given but not taken yet: continuing opens the test.
     await click(button("Continue application", all(".job-card")[0]));
-    expect(button("Start test", feeModal()).getAttribute("href")).toBe("/test/a1");
-    expect(feeModal().textContent).not.toMatch(/Pay ₹|paid/);
+    expect(button("Start test", applyModal()).getAttribute("href")).toBe("/test/a1");
+    expect(applyModal().textContent).not.toMatch(/Pay ₹|paid/);
   });
 
   it("sends someone whose test is being reviewed to My Applications instead of applying again", async () => {
@@ -262,8 +270,8 @@ describe("Careers page", () => {
 
 describe("My Dashboard: Apply / Aptitude Test", () => {
   const application = (overrides = {}) => ({
-    _id: "a1", status: "payment_pending", statusLabel: "Application incomplete", opening: { _id: "o1", slug: "web-development-intern", title: "Web Development Intern" },
-    createdAt: "2026-10-10T07:00:00.000Z", paidAt: null, paidPaymentId: null, interview: null, attempt: null, ...overrides,
+    _id: "a1", status: "awaiting_access", statusLabel: "Waiting for test access", opening: { _id: "o1", slug: "web-development-intern", title: "Web Development Intern" },
+    createdAt: "2026-10-10T07:00:00.000Z", testAccessAt: null, interview: null, attempt: null, ...overrides,
   });
   const renderApply = async (applications, props = {}) => {
     api.getOpenings.mockResolvedValue({ ok: true, openings: [opening(), opening({ _id: "o2", slug: "data-science-intern", title: "Data Science Intern" })], terms });
@@ -277,30 +285,32 @@ describe("My Dashboard: Apply / Aptitude Test", () => {
     await renderApply([], { initialRole: "data-science-intern" });
     expect(q(".plan-option.is-selected b").textContent).toBe("Data Science Intern");
     expect(q(".apply-panel h3").textContent).toBe("Data Science Intern");
-    expect(button("Unlock Free Test", q(".apply-panel"))).toBeTruthy();
+    expect(button("Apply", q(".apply-panel"))).toBeTruthy();
     expect(q(".order-summary")).toBeNull();
     expect(container.textContent).not.toMatch(/₹289|Pay ₹|test fee|wallet credit/i);
     expect(all(".plan-option").every((o) => o.textContent.includes("· Free ·"))).toBe(true);
   });
 
-  it("unlocks the test once the terms and 18+ boxes are ticked, and shows the server's reason when it can't", async () => {
+  it("applies once the terms and 18+ boxes are ticked, and shows the server's reason when it can't", async () => {
     await renderApply([]);
-    api.applyForRole.mockResolvedValue({ ok: true, application: application() });
-    api.unlockFreeTest.mockResolvedValue({ ok: false, error: "This role is closed for applications right now." });
-    expect(button("Unlock Free Test", q(".apply-panel")).disabled).toBe(true);
+    const applyBtn = () => [...q(".apply-panel").querySelectorAll("button")].find((b) => b.textContent === "Apply");
+    api.applyForRole.mockResolvedValue({ ok: false, error: "This role is closed for applications right now." });
+    expect(applyBtn().disabled).toBe(true);
     await click(q(".apply-panel .terms-check input"));
     await click(q(".apply-panel .adult-check input"));
-    await click(button("Unlock Free Test", q(".apply-panel")));
+    await click(applyBtn());
     expect(api.applyForRole).toHaveBeenCalledWith("web-development-intern");
-    expect(api.unlockFreeTest).toHaveBeenCalledWith("a1");
     expect(q(".apply-panel .alert-error").textContent).toContain("closed for applications");
 
-    api.unlockFreeTest.mockResolvedValue({ ok: true, application: application({ status: "test_pending" }) });
-    await click(button("Unlock Free Test", q(".apply-panel")));
-    expect(q(".apply-panel .alert-success").textContent).toContain("Your test is unlocked.");
+    api.applyForRole.mockResolvedValue({ ok: true, application: application() });
+    api.getMyJobApplications.mockResolvedValue({ ok: true, applications: [application()], terms });
+    await click(applyBtn());
+    expect(q(".apply-panel .alert-success").textContent).toContain("We'll email you as soon as your aptitude test is ready");
+    expect(q(".apply-panel").textContent).toContain("Our team will give you access");
+    expect(q('.apply-panel a[href^="/test/"]')).toBeNull();
   });
 
-  it("offers the test once it is unlocked, and to resume one that is under way", async () => {
+  it("offers the test once access is given, and to resume one that is under way", async () => {
     await renderApply([application({ status: "test_pending", statusLabel: "Test pending" })]);
     expect(button("Start test", q(".apply-panel")).getAttribute("href")).toBe("/test/a1");
     expect(q(".apply-panel").textContent).not.toMatch(/Pay ₹|Payment received/);
@@ -317,7 +327,7 @@ describe("My Dashboard: My Applications", () => {
     api.getMyJobApplications.mockResolvedValue({ ok: true, applications, terms });
     await act(async () => { root.render(<MemoryRouter><ApplicationsTab onGoToApply={jest.fn()} /></MemoryRouter>); });
   };
-  const base = { _id: "a1", opening: { _id: "o1", title: "Web Development Intern" }, createdAt: "2026-10-10T07:00:00.000Z", paidAt: "2026-10-10T07:05:00.000Z", paidPaymentId: "p1", interview: null };
+  const base = { _id: "a1", opening: { _id: "o1", title: "Web Development Intern" }, createdAt: "2026-10-10T07:00:00.000Z", testAccessAt: "2026-10-10T07:05:00.000Z", interview: null };
 
   it("shows a submitted test waiting for its result, and never a score", async () => {
     await render([{ ...base, status: "submitted", statusLabel: "Submitted", attempt: { _id: "t1", status: "submitted", submittedAt: "2026-10-10T08:00:00.000Z", submitReason: "time_up", result: { score: 31, maxScore: 40, correctCount: 32, wrongCount: 4 } } }]);
@@ -326,8 +336,9 @@ describe("My Dashboard: My Applications", () => {
     expect(container.textContent).toContain("Time ran out");
     // Even if a score were somehow in the data, the page has nowhere to show it.
     expect(container.textContent).not.toMatch(/score|31|correct/i);
-    expect(all(".status-track li").map((li) => li.className)).toEqual(["done", "now", "", "", ""]);
-    expect(button("Download Receipt")).toBeTruthy();
+    expect(all(".status-track li").map((li) => li.className)).toEqual(["done", "done", "now", "", "", ""]);
+    // No test fee, so no receipt for one.
+    expect(button("Download Receipt")).toBeFalsy();
   });
 
   it("shows the interview date in Indian time with the meeting link", async () => {

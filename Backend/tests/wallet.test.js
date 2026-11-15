@@ -3,7 +3,7 @@ const { setupTestDb, teardownTestDb } = require("./testDb");
 const { newStudent } = require("./helpers/newStudent");
 const { signToken } = require("../src/utils/jwt");
 
-// Same stand-ins the referral/payment suites use: no PDF work, no real mail, no
+// Same stand-ins the payment suites use: no PDF work, no real mail, no
 // live Razorpay call, and no rate limiting on the dozens of requests made here.
 jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/mailer", () => ({
@@ -210,57 +210,6 @@ describe("paying for a course from the wallet", () => {
     const again = await payWallet(thief, course, await application(thief, course));
     expect(again.status).toBe(400);
     expect((await walletOf(thief)).balance).toBe(4500);
-  });
-
-  it("applies an offer code before the wallet, so the wallet pays the reduced price", async () => {
-    const course = await openCourse([["basic", 1000]]);
-    const coupon = await authed(request(app).post("/api/admin/coupons"), adminToken).send({
-      code: "WALLET20", discountType: "percent", discountValue: 20, appliesTo: "all",
-    });
-    expect(coupon.status).toBeLessThan(300);
-    const student = await signup("coupon");
-    await grant(student, 800);
-    expect((await quote(student, course, { couponCode: "WALLET20" })).body).toMatchObject({ walletCoversAll: true, walletPayable: 800 });
-
-    const res = await payWallet(student, course, await application(student, course), { couponCode: "WALLET20" });
-    expect(res.status).toBe(201);
-    expect((await walletOf(student)).balance).toBe(0);
-    const receipt = (await authed(request(app).get("/api/me/receipts"), student.token)).body.receipts[0];
-    expect(receipt).toMatchObject({ basePrice: 1000, totalPaid: 800, discountAmount: 200, paymentMode: "Wallet credit" });
-  });
-
-  it("never oversells a code's last use: the loser gets no access and keeps their credit", async () => {
-    const course = await openCourse([["basic", 1000]]);
-    const coupon = await authed(request(app).post("/api/admin/coupons"), adminToken).send({
-      code: "LASTONE", discountType: "percent", discountValue: 20, appliesTo: "all", maxUses: 1,
-    });
-    expect(coupon.status).toBeLessThan(300);
-    const a = await signup("racea");
-    const b = await signup("raceb");
-    await grant(a, 800);
-    await grant(b, 800);
-    const appA = await application(a, course);
-    const appB = await application(b, course);
-
-    const [ra, rb] = await Promise.all([
-      payWallet(a, course, appA, { couponCode: "LASTONE" }),
-      payWallet(b, course, appB, { couponCode: "LASTONE" }),
-    ]);
-
-    const results = [[a, ra], [b, rb]];
-    const winners = results.filter(([, r]) => r.status === 201);
-    const losers = results.filter(([, r]) => r.status !== 201);
-    expect(winners).toHaveLength(1);
-    expect(losers).toHaveLength(1);
-    expect([400, 409]).toContain(losers[0][1].status);
-
-    const [winner] = winners[0];
-    const [loser] = losers[0];
-    expect((await walletOf(winner)).balance).toBe(0);
-    expect(await prisma.enrollment.count({ where: { userId: winner.id } })).toBe(1);
-    // The student who lost the race: still holds their credit and got no course.
-    expect((await walletOf(loser)).balance).toBe(800);
-    expect(await prisma.enrollment.count({ where: { userId: loser.id } })).toBe(0);
   });
 
   it("counts a wallet purchase as paid when pricing a later plan upgrade", async () => {
