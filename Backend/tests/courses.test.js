@@ -277,3 +277,41 @@ describe("program durations: 1, 2, 3 or 6 months", () => {
     expect((await authed(request(app).put(`/api/admin/courses/${legacy.id}`)).send({ durationDays: 90 })).status).toBe(200);
   });
 });
+
+// Admin sets an original price (shown crossed out) and a final price (charged).
+describe("a plan's original price and final price", () => {
+  const { tierTotal, listPriceOf } = require("../src/utils/tiers");
+  const card = (tier) => ({ type: "internship", title: uniqueTitle(), tiers: [{ tier: "basic", ...tier }] });
+
+  it("saves both, sends both to the site, and charges the final price", async () => {
+    const res = await authed(request(app).post("/api/admin/courses")).send(card({ price: 1499, originalPrice: 1999 }));
+    expect(res.status).toBe(201);
+    expect(res.body.course.tiers[0]).toMatchObject({ price: 1499, originalPrice: 1999, discountPercent: 0 });
+    const shown = await request(app).get(`/api/courses/${res.body.course.slug}`);
+    expect(shown.body.course.tiers[0]).toMatchObject({ price: 1499, originalPrice: 1999 });
+    expect(tierTotal(shown.body.course.tiers[0])).toBe(1499);
+  });
+
+  it("is optional, and can be changed or cleared later", async () => {
+    const made = await authed(request(app).post("/api/admin/courses")).send(card({ price: 2999 }));
+    expect(made.body.course.tiers[0].originalPrice).toBeNull();
+    const id = made.body.course._id;
+    const added = await authed(request(app).put(`/api/admin/courses/${id}`)).send({ tiers: [{ tier: "basic", price: 2499, originalPrice: 2999 }] });
+    expect(added.body.course.tiers[0]).toMatchObject({ price: 2499, originalPrice: 2999 });
+    const cleared = await authed(request(app).put(`/api/admin/courses/${id}`)).send({ tiers: [{ tier: "basic", price: 2499, originalPrice: "" }] });
+    expect(cleared.body.course.tiers[0].originalPrice).toBeNull();
+  });
+
+  it.each([[1499, 1499], [1499, 999], [1499, "abc"]])("refuses a final price of %p with an original price of %p", async (price, originalPrice) => {
+    const res = await authed(request(app).post("/api/admin/courses")).send(card({ price, originalPrice }));
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/original price must be higher than its final price/);
+  });
+
+  it("puts the original price and the saving on the receipt", () => {
+    expect(listPriceOf({ price: 1499, originalPrice: 1999, discountPercent: 0 })).toEqual({ basePrice: 1999, discountPercent: 25.01 });
+    // No original price: the plan's own price (and its older % discount, if any).
+    expect(listPriceOf({ price: 1499, originalPrice: null, discountPercent: 0 })).toEqual({ basePrice: 1499, discountPercent: 0 });
+    expect(listPriceOf({ price: 5000, originalPrice: null, discountPercent: 20 })).toEqual({ basePrice: 5000, discountPercent: 20 });
+  });
+});

@@ -130,7 +130,9 @@ export function FreeApplyFormLink() {
 // copyFrom: an opening whose details fill the form as a NEW one (the list's
 // Copy button) — the same role in another duration or batch then only needs
 // what differs changed before Create. Its display order is left to "last".
-export function OpeningForm({ audience, editing, copyFrom = null, onSaved, onCancel, head = null, title, groupNames = [] }) {
+// cancelable: always offer Cancel (the form is opened from an Add button and
+// closes again), not only while editing or copying.
+export function OpeningForm({ audience, editing, copyFrom = null, onSaved, onCancel, head = null, title, groupNames = [], cancelable = false }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -169,6 +171,7 @@ export function OpeningForm({ audience, editing, copyFrom = null, onSaved, onCan
       // Only free internships are grouped into one card with a duration switch.
       ...(free ? { group: form.group.trim() } : {}),
       positions,
+      // No Display order box any more: an edited role keeps the place it had, a new one goes last.
       ...(form.order.trim() ? { order: Number(form.order) } : {}),
       audience,
       ...testSettings,
@@ -200,8 +203,6 @@ export function OpeningForm({ audience, editing, copyFrom = null, onSaved, onCan
               {TECH.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
             </select></div>
         )}
-        <div className="field"><label htmlFor="jo-order">Display order</label>
-          <input id="jo-order" type="number" min="0" value={form.order} onChange={set("order")} placeholder="Auto (last)" /></div>
         {free && (
           <div className="field"><label htmlFor="jo-group">Domain group (optional)</label>
             <input id="jo-group" list="jo-group-list" maxLength={60} value={form.group} onChange={set("group")} placeholder="e.g. Frontend (React.js)" />
@@ -265,7 +266,7 @@ export function OpeningForm({ audience, editing, copyFrom = null, onSaved, onCan
       {error && <p className="form-error">{error}</p>}
       <div className="admin-actions">
         <button className="btn btn-solid" type="submit" disabled={saving}>{saving ? "Saving..." : editingId ? "Save changes" : "Create"}</button>
-        {(editingId || copyFrom) && <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>}
+        {(editingId || copyFrom || cancelable) && <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>}
       </div>
     </form>
   );
@@ -359,11 +360,20 @@ export default function AdminJobOpenings() {
   const { openings, bank, loading, error, load } = useJobOpenings();
   const [editing, setEditing] = useState(null);
   const [copying, setCopying] = useState(null); // the role the form was filled from by Copy
-  const roles = openings.filter((o) => o.audience !== "free");
+  // The long form stays shut until it's needed (Add, Edit or Copy), so the
+  // roles are the first thing on the page instead of a screen's scroll away.
+  const [formOpen, setFormOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const allRoles = openings.filter((o) => o.audience !== "free");
+  const needle = q.trim().toLowerCase();
+  const roles = needle
+    ? allRoles.filter((o) => [o.title, o.duration, ...(o.skills || [])].some((v) => String(v || "").toLowerCase().includes(needle)))
+    : allRoles;
 
-  const startEdit = (o) => { setCopying(null); setEditing(o); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const startCopy = (o) => { setEditing(null); setCopying(o); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const clearForm = () => { setEditing(null); setCopying(null); };
+  const toTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  const startEdit = (o) => { setCopying(null); setEditing(o); setFormOpen(true); toTop(); };
+  const startCopy = (o) => { setEditing(null); setCopying(o); setFormOpen(true); toTop(); };
+  const clearForm = () => { setEditing(null); setCopying(null); setFormOpen(false); };
 
   return (
     <section className="section" style={{ paddingTop: 140 }}>
@@ -380,14 +390,24 @@ export default function AdminJobOpenings() {
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
         </div>
 
-        <OpeningForm audience="general" editing={editing} copyFrom={copying} onSaved={() => { clearForm(); load(); }} onCancel={clearForm}
-          title={editing ? "Edit role" : copying ? "Add a copy of a Careers role" : "Add a new Careers role"} />
+        {formOpen ? (
+          <OpeningForm audience="general" editing={editing} copyFrom={copying} cancelable onSaved={() => { clearForm(); load(); }} onCancel={clearForm}
+            title={editing ? "Edit role" : copying ? "Add a copy of a Careers role" : "Add a new Careers role"} />
+        ) : (
+          <div className="list-toolbar">
+            <button type="button" className="btn btn-solid" onClick={() => setFormOpen(true)}>+ Add a Careers role</button>
+            <input className="admin-search" type="search" aria-label="Search roles by title, skill or duration"
+              placeholder="Search roles by title, skill or duration..." value={q} onChange={(e) => setQ(e.target.value)} />
+            <span className="list-count">{needle ? `${roles.length} of ${allRoles.length}` : allRoles.length} role{allRoles.length === 1 ? "" : "s"}</span>
+          </div>
+        )}
 
         {error && <p className="form-error" style={{ marginTop: 24 }}>{error}</p>}
-        <div style={{ marginTop: 32 }}>
+        <div style={{ marginTop: formOpen ? 32 : 0 }}>
           {loading
             ? <p style={{ color: "var(--muted)" }}>Loading...</p>
-            : <OpeningList openings={roles} bank={bank} onEdit={startEdit} onCopy={startCopy} onChanged={load} empty="No Careers roles yet — add one above." />}
+            : <OpeningList openings={roles} bank={bank} onEdit={startEdit} onCopy={startCopy} onChanged={load}
+                empty={needle ? "No roles match that search." : "No Careers roles yet — press Add a Careers role."} />}
         </div>
       </div>
     </section>

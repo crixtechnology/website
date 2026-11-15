@@ -231,7 +231,7 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
         ops.push(prisma.courseTier.upsert({
           where: { courseId_tier: { courseId: existing.id, tier: t.tier } },
           create: { courseId: existing.id, ...t },
-          update: { price: t.price, discountPercent: t.discountPercent, features: t.features },
+          update: { price: t.price, originalPrice: t.originalPrice, discountPercent: t.discountPercent, features: t.features },
         }));
       }
     }

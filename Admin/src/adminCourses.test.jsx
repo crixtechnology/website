@@ -32,8 +32,13 @@ const base = {
   durationDays: null, status: "open", outcomes: [], audience: [], prerequisites: [], faqs: [],
 };
 
-// The "what are you adding?" choice above the form.
-const pick = (label) => act(async () => { qa(".kind-option").find((b) => b.querySelector("b").textContent === label).click(); });
+// What to add is chosen by the Add button pressed: shut the open form, then open that kind's.
+const ADD_BUTTON = { "Training + Internship": "+ Add program card", "Free Internship": "+ Add free internship" };
+const pick = async (label) => {
+  const cancel = qa("form button").find((b) => b.textContent === "Cancel");
+  if (cancel) await act(async () => { cancel.click(); });
+  await act(async () => { qa(".list-toolbar button").find((b) => b.textContent === ADD_BUTTON[label]).click(); });
+};
 
 const ctx = (over = {}) => ({ isLoggedIn: false, isAdmin: false, user: null, ...over });
 
@@ -44,7 +49,7 @@ describe("admin course form", () => {
     el.dispatchEvent(new Event("input", { bubbles: true }));
   };
   const submit = () => act(async () => { q("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
-  const renderAdmin = async (entries = [], openings = []) => {
+  const renderAdmin = async (entries = [], openings = [], open = true) => {
     api.getAdminToken.mockReturnValue("token");
     api.adminGetCourses.mockResolvedValue({ ok: true, courses: entries });
     api.adminCreateCourse.mockResolvedValue({ ok: true, course: { ...base, _id: "new" } });
@@ -58,7 +63,48 @@ describe("admin course form", () => {
         </UserContext.Provider>
       );
     });
+    // The form is shut until asked for; most tests here are about the form, so
+    // open a blank one. With only free internships to show, switch to their list.
+    if (open) await act(async () => { qa(".list-toolbar button").find((b) => b.textContent === "+ Add program card").click(); });
+    if (openings.length && !entries.length) await showList("Free internships");
   };
+  const showList = (label) => act(async () => { qa(".list-tab").find((b) => b.textContent.startsWith(label)).click(); });
+
+  it("opens on the lists, with the form behind an Add button, and shuts the form again on Cancel", async () => {
+    await renderAdmin([base], [], false);
+    expect(q("form.admin-form:not(.form-link-editor)")).toBeNull();
+    expect(qa(".admin-row b").map((b) => b.textContent)).toEqual(["Web Development"]);
+    await act(async () => { qa(".list-toolbar button").find((b) => b.textContent === "+ Add program card").click(); });
+    expect(q("#courses-title")).not.toBeNull();
+    await act(async () => { qa("form button").find((b) => b.textContent === "Cancel").click(); });
+    expect(q("#courses-title")).toBeNull();
+    // Edit opens it filled in.
+    await act(async () => { qa(".admin-row button").find((b) => b.textContent === "Edit").click(); });
+    expect(q("#courses-title").value).toBe("Web Development");
+  });
+
+  it("shows one list at a time, and filters program cards by duration and search", async () => {
+    const card = (id, title, days, group = "") => ({ ...base, _id: id, title, durationDays: days, group });
+    const free = { _id: "f1", slug: "free", title: "Free Web Intern", audience: "free", status: "open", applicants: 0, skills: [], duration: "3 months",
+      positions: { total: 4, filled: 0, left: 4 }, test: { durationMinutes: 30, questions: 0, marksPerQuestion: 1, cutoffScore: 0, questionCounts: {} } };
+    await renderAdmin([card("a", "MERN 1M", 30, "MERN"), card("b", "MERN 3M", 90, "MERN"), card("c", "Cyber Security", 90)], [free], false);
+    const titles = () => qa(".admin-row b").map((b) => b.textContent);
+    expect(qa(".list-tab").map((b) => b.textContent)).toEqual(["Program cards 3", "Free internships 1"]);
+    expect(titles()).toEqual(["MERN 1M", "MERN 3M", "Cyber Security"]);
+    const pill = (label) => act(async () => { qa(".filter-pill").find((b) => b.textContent === label).click(); });
+    expect(qa(".filter-pill").map((b) => b.textContent)).toEqual(["All", "1 month", "2 months", "3 months", "6 months"]);
+    await pill("3 months");
+    expect(titles()).toEqual(["MERN 3M", "Cyber Security"]);
+    await act(async () => { fill(q(".admin-search"), "mern"); });
+    expect(titles()).toEqual(["MERN 3M"]);
+    await pill("2 months");
+    expect(titles()).toEqual([]);
+    expect(container.textContent).toContain("No program cards match.");
+    await act(async () => { fill(q(".admin-search"), ""); });
+    await showList("Free internships");
+    expect(titles()).toEqual(["Free Web Intern"]);
+    expect(q(".filter-pills")).toBeNull();
+  });
 
   it("gives every track an Open/Closed switch, apply-only ones too, and tidies the row text", async () => {
     const applyOnly = { ...base, _id: "c2", title: "Python Developer", tag: "", tiers: [], status: "closed" };
@@ -84,12 +130,15 @@ describe("admin course form", () => {
     expect(q(".copy-note").textContent).toContain("Web Development");
     expect(q("#courses-title").value).toBe("Web Development");
     expect(q("#ac-duration").value).toBe("30");
-    expect(q("#plan-basic-price").value).toBe("1999");
+    // The older "price + 10% off" loads as an original and a final price.
+    expect(q("#plan-basic-original").value).toBe("1999");
+    expect(q("#plan-basic-price").value).toBe("1799");
     // Change the length and the price, then Create: a new card, the original untouched.
     await act(async () => {
       const select = q("#ac-duration");
       Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(select, "90");
       select.dispatchEvent(new Event("change", { bubbles: true }));
+      fill(q("#plan-basic-original"), "6999");
       fill(q("#plan-basic-price"), "4999");
     });
     await submit();
@@ -97,83 +146,79 @@ describe("admin course form", () => {
     expect(api.adminCreateCourse).toHaveBeenCalledTimes(1);
     const sent = api.adminCreateCourse.mock.calls[0][0];
     expect(sent).toMatchObject({ title: "Web Development", durationDays: 90, group: "Web", skills: ["HTML", "CSS"], stipend: "Up to ₹3,000/month", mode: "Remote" });
-    expect(sent.tiers.find((t) => t.tier === "basic")).toMatchObject({ price: 4999, discountPercent: 10, features: ["Live classes"] });
-    // Back to a blank form afterwards.
-    expect(q("form h3").textContent).toBe("Add a Training + Internship program card");
-    expect(q("#courses-title").value).toBe("");
+    expect(sent.tiers.find((t) => t.tier === "basic")).toMatchObject({ price: 4999, originalPrice: 6999, discountPercent: 0, features: ["Live classes"] });
+    // Saved: the form shuts, back to the list.
+    expect(q("#courses-title")).toBeNull();
   });
 
-  it("sends the new lists, one item per line, with blank lines dropped", async () => {
+  it("has one price to set — no Plus or Pro boxes, and no extra page-details section", async () => {
     await renderAdmin();
-    await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Cloud Basics"); });
-    await act(async () => { fill(q("#cc-outcomes"), "Build a REST API\n\n  Deploy it  \n"); });
-    await act(async () => { fill(q("#cc-audience"), "Final-year students"); });
-    await act(async () => { fill(q("#cc-prereq"), "Basic JavaScript\nA laptop"); });
+    expect(q("#plan-basic-price")).not.toBeNull();
+    expect(q("#plan-plus-price")).toBeNull();
+    expect(q("#plan-pro-price")).toBeNull();
+    for (const id of ["#cc-outcomes", "#cc-audience", "#cc-prereq", ".faq-editor"]) expect(q(id)).toBeNull();
+    expect(qa("button").map((b) => b.textContent)).not.toContain("+ Add a question");
+    await act(async () => { fill(q("#courses-title"), "Cloud Basics"); });
     await act(async () => { fill(q("#plan-basic-price"), "999"); });
+    await act(async () => { fill(q("#plan-basic-features"), "Live classes\n\n  Mentor support  "); });
     await submit();
     expect(api.adminCreateCourse).toHaveBeenCalledTimes(1);
-    expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({
-      title: "Cloud Basics",
-      outcomes: ["Build a REST API", "Deploy it"],
-      audience: ["Final-year students"],
-      prerequisites: ["Basic JavaScript", "A laptop"],
-      faqs: [],
+    const sent = api.adminCreateCourse.mock.calls[0][0];
+    expect(sent.tiers).toEqual([{ tier: "basic", price: 999, originalPrice: null, discountPercent: 0, features: ["Live classes", "Mentor support"] }]);
+    expect(sent).toMatchObject({ title: "Cloud Basics", outcomes: [], audience: [], prerequisites: [], faqs: [] });
+  });
+
+  it("keeps a card's existing page details when it is edited, though they can't be changed here", async () => {
+    await renderAdmin([{ ...base, _id: "c1", outcomes: ["One", "Two"], audience: ["Students"], prerequisites: ["A laptop"], faqs: [{ q: "Q?", a: "A." }] }]);
+    await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
+    await submit();
+    expect(api.adminUpdateCourse.mock.calls[0][1]).toMatchObject({
+      outcomes: ["One", "Two"], audience: ["Students"], prerequisites: ["A laptop"], faqs: [{ q: "Q?", a: "A." }],
     });
   });
 
-  it("adds, edits and removes questions, and sends the complete ones", async () => {
-    await renderAdmin([{ ...base, _id: "c1", type: "internship", tiers: [] }]);
+  it("warns that saving drops a card's older Plus or Pro plan, and sends only the one price", async () => {
+    const old = { ...base, _id: "c1", tiers: [
+      { tier: "basic", price: 1000, discountPercent: 0, features: [] }, { tier: "pro", price: 3000, discountPercent: 0, features: ["1:1 mentoring"] },
+    ] };
+    await renderAdmin([old]);
+    // The list still says what it has.
+    expect(qa(".admin-row-meta")[0].textContent).toContain("Basic · Pro · from ₹1,000");
     await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
-    const add = () => qa("button").find((b) => b.textContent === "+ Add a question");
-    await act(async () => { add().click(); });
-    await act(async () => { add().click(); });
-    await act(async () => { add().click(); });
-    expect(qa(".faq-editor-row")).toHaveLength(3);
-    await act(async () => { fill(q('[aria-label="Question 1"]'), "  Is there a certificate?  "); });
-    await act(async () => { fill(q('[aria-label="Answer 1"]'), "Yes."); });
-    await act(async () => { fill(q('[aria-label="Question 3"]'), "Will this go away?"); });
-    await act(async () => { fill(q('[aria-label="Answer 3"]'), "Yes."); });
-    // remove the still-empty second row: the third row moves up into its place
-    await act(async () => { q('[aria-label="Remove question 2"]').click(); });
-    expect(qa(".faq-editor-row")).toHaveLength(2);
-    expect(q('[aria-label="Question 2"]').value).toBe("Will this go away?");
+    expect(container.textContent).toContain("Saving keeps only the one price below and removes those plans.");
     await submit();
-    expect(api.adminUpdateCourse).toHaveBeenCalledTimes(1);
-    expect(api.adminUpdateCourse.mock.calls[0][1].faqs).toEqual([
-      { q: "Is there a certificate?", a: "Yes." },
-      { q: "Will this go away?", a: "Yes." },
-    ]);
+    expect(api.adminUpdateCourse.mock.calls[0][1].tiers).toEqual([{ tier: "basic", price: 1000, originalPrice: null, discountPercent: 0, features: [] }]);
   });
 
-  it("won't save a question without an answer, and says which one", async () => {
-    await renderAdmin([{ ...base, _id: "c1", type: "internship", tiers: [] }]);
-    await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
-    await act(async () => { qa("button").find((b) => b.textContent === "+ Add a question").click(); });
-    await act(async () => { fill(q('[aria-label="Question 1"]'), "A question with no answer"); });
-    await submit();
-    expect(api.adminUpdateCourse).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Question 1 needs both a question and an answer");
-  });
-
-  it("stops at 15 questions", async () => {
+  it("takes an original price and a final price, previews the crossed-out price, and checks they make sense", async () => {
     await renderAdmin();
-    for (let i = 0; i < 20; i += 1) {
-      const btn = qa("button").find((b) => b.textContent === "+ Add a question");
-      if (btn.disabled) break;
-      await act(async () => { btn.click(); });
-    }
-    expect(qa(".faq-editor-row")).toHaveLength(15);
-    expect(qa("button").find((b) => b.textContent === "+ Add a question").disabled).toBe(true);
+    expect(q("#plan-basic-discount")).toBeNull(); // no % box: the final price is typed as it is
+    await act(async () => { fill(q("#courses-title"), "Cyber Security"); });
+    await act(async () => { fill(q("#plan-basic-original"), "1999"); });
+    // An original price alone has nothing to sit beside.
+    await submit();
+    expect(container.textContent).toContain("Enter the final price too");
+    // It must be the higher of the two.
+    await act(async () => { fill(q("#plan-basic-price"), "2499"); });
+    expect(q(".price-preview")).toBeNull();
+    await submit();
+    expect(container.textContent).toContain("The original price must be higher than the final price");
+    expect(api.adminCreateCourse).not.toHaveBeenCalled();
+
+    await act(async () => { fill(q("#plan-basic-price"), "1499"); });
+    expect(q(".price-preview .price-old").textContent).toBe("₹1,999");
+    expect(q(".price-preview").textContent).toContain("₹1,499");
+    expect(q(".price-preview .price-off").textContent).toBe("25% off");
+    await submit();
+    expect(api.adminCreateCourse.mock.calls[0][0].tiers).toEqual([{ tier: "basic", price: 1499, originalPrice: 1999, discountPercent: 0, features: [] }]);
   });
 
-  it("loads what is already saved into the form when editing", async () => {
-    await renderAdmin([{ ...base, _id: "c1", outcomes: ["One", "Two"], audience: ["Students"], prerequisites: ["A laptop"], faqs: [{ q: "Q?", a: "A." }] }]);
+  it("shows the crossed-out price in the list and loads both prices back for editing", async () => {
+    await renderAdmin([{ ...base, tiers: [{ tier: "basic", price: 1499, originalPrice: 1999, discountPercent: 0, features: [] }] }]);
+    expect(qa(".admin-row-meta")[0].textContent).toContain("₹1,499 (was ₹1,999)");
     await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
-    expect(q("#cc-outcomes").value).toBe("One\nTwo");
-    expect(q("#cc-audience").value).toBe("Students");
-    expect(q("#cc-prereq").value).toBe("A laptop");
-    expect(q('[aria-label="Question 1"]').value).toBe("Q?");
-    expect(q('[aria-label="Answer 1"]').value).toBe("A.");
+    expect(q("#plan-basic-original").value).toBe("1999");
+    expect(q("#plan-basic-price").value).toBe("1499");
   });
 
   describe("duration", () => {
@@ -236,7 +281,7 @@ describe("admin course form", () => {
       expect(q("form h3").textContent).toBe("Add a copy of a free internship");
       expect(q(".copy-note").textContent).toContain("Free Web Intern");
       expect(q("#jo-title").value).toBe("Free Web Intern");
-      expect(q("#jo-order").value).toBe(""); // goes last, not on top of the original
+      expect(q("#jo-order")).toBeNull(); // no Display order box: a copy goes last
       await act(async () => { fill(q("#jo-duration"), "6 months"); });
       await submit();
       expect(api.adminUpdateJobOpening).not.toHaveBeenCalled();
@@ -249,10 +294,14 @@ describe("admin course form", () => {
 
     it("lists the two kinds apart, offers no Course, and leaves Careers roles out", async () => {
       await renderAdmin([base, { ...base, _id: "i1", type: "internship", title: "Paid Android Internship" }], [freeRole, careersRole]);
-      const headings = qa("h3").map((h) => h.textContent);
-      expect(headings).toEqual(expect.arrayContaining(["Free internships", "Training + Internship program cards"]));
-      expect(headings).not.toContain("Courses");
-      expect(qa(".kind-option b").map((b) => b.textContent)).toEqual(["Training + Internship", "Free Internship"]);
+      // Each kind has its own list, one showing at a time.
+      expect(qa(".list-tab").map((b) => b.textContent)).toEqual(["Program cards 2", "Free internships 1"]);
+      expect(qa("h3").map((h) => h.textContent)).toContain("Training + Internship program cards");
+      expect(qa("h3").map((h) => h.textContent)).not.toContain("Courses");
+      expect(q(".kind-option")).toBeNull(); // the kind is chosen by the Add button, not inside the form
+      expect(container.textContent).not.toContain("Free Web Intern");
+      await showList("Free internships");
+      expect(qa("h3").map((h) => h.textContent)).toContain("Free internships");
       expect(container.textContent).toContain("Free Web Intern");
       expect(container.textContent).toContain("4 positions"); // applications are in the Google Form, so none are counted here
       expect(container.textContent).not.toContain("Careers Web Intern");
@@ -394,7 +443,8 @@ describe("admin course form", () => {
       await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
       expect(q("#jo-title").value).toBe("Free Web Intern");
       expect(q("#jo-positions").value).toBe("4");
-      expect(qa(".kind-option").find((b) => b.textContent.startsWith("Training + Internship")).disabled).toBe(true);
+      expect(q("#jo-title")).not.toBeNull(); // the free-internship form, not the program card one
+      expect(q("#courses-title")).toBeNull();
     });
 
     it("saves a training track's details, and loads them back", async () => {

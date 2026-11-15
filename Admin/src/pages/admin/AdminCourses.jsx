@@ -5,7 +5,7 @@ import {
 } from "../../services/api.js";
 import { UserContext } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
-import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, formatINR } from "../../utils/tiers.js";
+import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, listPrice, formatINR } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate, toStartDateInput } from "../../utils/startDate.js";
 import { formatDuration, INTERNSHIP_DURATIONS } from "../../utils/duration.js";
 import { useJobOpenings, OpeningForm, OpeningList, FreeApplyFormLink } from "./AdminJobOpenings.jsx";
@@ -17,14 +17,16 @@ import { useJobOpenings, OpeningForm, OpeningList, FreeApplyFormLink } from "./A
 // price set here, paid online through Razorpay — after which top performers
 // are selected for a stipend-based internship. Courses were dropped: only
 // Training + Internship tracks and free internships are added here.
-const KINDS = [
-  { id: "internship", label: "Training + Internship", sub: "/training-internship · a program card; students pay your price online (Razorpay)" },
-  { id: "free", label: "Free Internship", sub: "/free-internships · applies through the Google Form" },
-];
-const kindFromParam = (v) => (KINDS.some((k) => k.id === v) ? v : "internship");
+// The two kinds: "internship" (a program card) and "free" (a free internship).
+// Each has its own Add button and its own list tab; ?type=free opens on that tab.
+const kindFromParam = (v) => (v === "free" ? "free" : "internship");
 
-const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", discountPercent: "0", features: "" }]));
-// outcomes / audience / prerequisites are typed one per line; faqs is a list of { q, a } rows.
+// price is the FINAL price (what the student pays); originalPrice is the
+// optional higher price shown struck through beside it.
+const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "", originalPrice: "", features: "" }]));
+// outcomes / audience / prerequisites / faqs are no longer edited here (the
+// "More for the track's own page" section was removed); a card that already has
+// them keeps them, since the form still carries and re-sends what it loaded.
 // skills (comma-separated), responsibilities and eligibility (one per line), stipend, experience,
 // mode and positions: the same details a free internship shows.
 const EMPTY_FORM = {
@@ -36,13 +38,16 @@ const EMPTY_FORM = {
   group: "", startingFrom: "",
   plans: emptyPlans(),
 };
-const MAX_FAQS = 15;
 const lines = (text) => text.split("\n").map((l) => l.trim()).filter(Boolean);
 
 function courseToForm(c) {
   const plans = emptyPlans();
   for (const t of c.tiers || []) {
-    if (plans[t.tier]) plans[t.tier] = { price: String(t.price), discountPercent: String(t.discountPercent ?? 0), features: (t.features || []).join("\n") };
+    // An older plan stored a price and a % discount: show it as original and
+    // final price, which is how it is saved from now on.
+    const final = planPrice(t);
+    const original = t.originalPrice != null && t.originalPrice > final ? t.originalPrice : t.price > final ? t.price : null;
+    if (plans[t.tier]) plans[t.tier] = { price: String(final), originalPrice: original === null ? "" : String(original), features: (t.features || []).join("\n") };
   }
   return {
     type: "internship",
@@ -84,6 +89,13 @@ export default function AdminCourses() {
   const [editingOpening, setEditingOpening] = useState(null);
   // The free internship the form was filled from by Copy (a new one), else null.
   const [copyOpening, setCopyOpening] = useState(null);
+  // The long form stays shut until it's needed (Add, Edit or Copy), so the
+  // lists are the first thing on the page instead of a screen's scroll away.
+  const [formOpen, setFormOpen] = useState(false);
+  // Which list is showing — one at a time, so neither sits below the other.
+  const [listTab, setListTab] = useState(() => kindFromParam(params.get("type")));
+  // Program cards of one length only: "all", or days (30 / 60 / 90 / 180).
+  const [durFilter, setDurFilter] = useState("all");
 
   // AdminGuard (see App.jsx) already keeps this route from mounting unless
   // logged in as admin — this only has to handle the session expiring
@@ -112,17 +124,11 @@ export default function AdminCourses() {
     setForm((f) => ({ ...f, plans: { ...f.plans, [tier]: { ...f.plans[tier], [k]: value } } }));
   };
 
-  const setFaq = (i, k) => (e) => {
-    const value = e.target.value;
-    setForm((f) => ({ ...f, faqs: f.faqs.map((row, j) => (j === i ? { ...row, [k]: value } : row)) }));
-  };
-  const addFaq = () => setForm((f) => (f.faqs.length >= MAX_FAQS ? f : { ...f, faqs: [...f.faqs, { q: "", a: "" }] }));
-  const removeFaq = (i) => setForm((f) => ({ ...f, faqs: f.faqs.filter((_, j) => j !== i) }));
-
   const startEdit = (c) => {
     setEditingOpening(null); setCopyOpening(null);
     setKind("internship");
     setCopyOf(null);
+    setFormOpen(true);
     setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" });
   };
   // Copy: the form is filled with an existing card's details but stays in create
@@ -134,43 +140,31 @@ export default function AdminCourses() {
     setEditingId(null);
     setCopyOf(c.title);
     setError("");
+    setFormOpen(true);
     setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const cancelEdit = () => { setEditingId(null); setCopyOf(null); setForm({ ...EMPTY_FORM, type: "internship", plans: emptyPlans() }); };
+  // Also what a successful save calls: the form empties and shuts, back to the list.
+  const cancelEdit = () => { setEditingId(null); setCopyOf(null); setFormOpen(false); setForm({ ...EMPTY_FORM, type: "internship", plans: emptyPlans() }); };
+  const closeOpeningForm = () => { setEditingOpening(null); setCopyOpening(null); setFormOpen(false); };
+  // "+ Add …": a blank form of that kind.
+  const openAdd = (kindId) => {
+    setEditingId(null); setCopyOf(null); setEditingOpening(null); setCopyOpening(null);
+    setForm({ ...EMPTY_FORM, type: "internship", plans: emptyPlans() });
+    setError(""); setKind(kindId); setFormOpen(true);
+  };
   const startEditOpening = (o) => {
     setCopyOf(null);
     setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() });
+    setFormOpen(true);
     setKind("free"); setCopyOpening(null); setEditingOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
   };
   // Copy a free internship: the same form, filled in, in create mode.
   const startCopyOpening = (o) => {
     setCopyOf(null);
     setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() });
+    setFormOpen(true);
     setKind("free"); setEditingOpening(null); setCopyOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
-  // A free internship is a different kind of record from a training track, so
-  // the picker is locked to its side while one of either is being edited.
-  const pickKind = (next) => {
-    setKind(next);
-    setError("");
-    if (next === "free") return;
-    // A program can only run 1 / 2 / 3 / 6 months: drop any other length so it is re-picked.
-    setForm((f) => ({ ...f, type: next, durationDays: next === "internship" && f.durationDays && !INTERNSHIP_DURATIONS.includes(Number(f.durationDays)) ? "" : f.durationDays }));
-  };
-  const kindPicker = (
-    <div className="kind-picker" role="radiogroup" aria-label="What are you adding?">
-      {KINDS.map((k) => {
-        const locked = (editingOpening && k.id !== "free") || (editingId && k.id === "free");
-        return (
-          <button type="button" key={k.id} role="radio" aria-checked={kind === k.id} disabled={!!locked}
-            className={`kind-option${kind === k.id ? " is-selected" : ""}`} onClick={() => pickKind(k.id)}>
-            <b>{k.label}</b><span>{k.sub}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
 
   // Landed here as ?edit=<id> — from AdminApplications.jsx linking a course
   // application's title straight to its entry here. Same deep-link pattern
@@ -204,22 +198,25 @@ export default function AdminCourses() {
     if (saving) return;
     if (!form.title.trim()) { setError("Title is required."); return; }
 
-    // A plan with a blank price is simply not offered. The server treats the
-    // list as the complete set, so a plan cleared here is removed there too.
-    const tiers = TIER_ORDER.map((tier) => {
-      const p = form.plans[tier];
-      return {
-        tier,
-        price: p.price.trim() ? Number(p.price) : null,
-        discountPercent: Number(p.discountPercent) || 0,
-        features: p.features.split("\n").map((f) => f.trim()).filter(Boolean),
-      };
-    });
-    const bad = tiers.find((t) => t.price !== null && (!Number.isFinite(t.price) || t.price < 0));
-    if (bad) { setError(`The ${TIER_LABEL[bad.tier]} price must be a number, 0 or more.`); return; }
-    // A question needs an answer and the other way round; a row left completely blank is just ignored.
-    const halfFilled = form.faqs.findIndex((f) => (f.q.trim() && !f.a.trim()) || (!f.q.trim() && f.a.trim()));
-    if (halfFilled !== -1) { setError(`Question ${halfFilled + 1} needs both a question and an answer (or remove it).`); return; }
+    // A program has one price, stored as its Basic plan. A blank price means
+    // none (the card shows Request to apply). The server treats the list as the
+    // complete set, so a card's older Plus / Pro plans go when it is saved.
+    const one = form.plans.basic;
+    const tiers = [{
+      tier: "basic",
+      price: one.price.trim() ? Number(one.price) : null,
+      originalPrice: one.originalPrice.trim() ? Number(one.originalPrice) : null,
+      discountPercent: 0, // the final price is typed as it is; nothing more comes off it
+      features: one.features.split("\n").map((f) => f.trim()).filter(Boolean),
+    }];
+    if (tiers[0].price !== null && (!Number.isFinite(tiers[0].price) || tiers[0].price < 0)) { setError("The final price must be a number, 0 or more."); return; }
+    if (tiers[0].originalPrice !== null) {
+      if (tiers[0].price === null) { setError("Enter the final price too — the original price is only shown crossed out beside it."); return; }
+      if (!Number.isFinite(tiers[0].originalPrice) || tiers[0].originalPrice <= tiers[0].price) {
+        setError("The original price must be higher than the final price (or leave it blank for no crossed-out price).");
+        return;
+      }
+    }
     const positions = form.positions.trim() ? Number(form.positions) : null;
     if (positions !== null && (!Number.isInteger(positions) || positions < 1 || positions > 1000)) {
       setError("Positions must be a whole number from 1 to 1000 (or blank for no limit).");
@@ -228,7 +225,7 @@ export default function AdminCourses() {
     // Training is paid, not free — a ₹0 plan would make it a free internship,
     // which belongs under Free Internship instead.
     if (kind === "internship" && tiers.some((t) => t.price === 0)) {
-      setError("Training is paid, not free — set a training fee above ₹0 (or leave the plan blank). Free internships go under Free Internship.");
+      setError("Training is paid, not free — set a price above ₹0 (or leave it blank). Free internships go under Free Internship.");
       return;
     }
 
@@ -252,8 +249,7 @@ export default function AdminCourses() {
       faqs: form.faqs.filter((f) => f.q.trim() && f.a.trim()).map((f) => ({ q: f.q.trim(), a: f.a.trim() })),
       tiers,
       durationDays: form.durationDays ? Number(form.durationDays) : null,
-      // Empty clears it: content opens as soon as it's bought.
-      startsAt: "", // no program has an exact start date: clears any old one
+        startsAt: "", // no program has an exact start date: clears any old one
     };
     const res = editingId ? await adminUpdateCourse(editingId, payload) : await adminCreateCourse(payload);
     setSaving(false);
@@ -277,10 +273,12 @@ export default function AdminCourses() {
   const matches = (c) => {
     const needle = q.trim().toLowerCase();
     if (!needle) return true;
-    return c.title.toLowerCase().includes(needle) || (c.tag || "").toLowerCase().includes(needle);
+    return [c.title, c.tag, c.group, formatDuration(c.durationDays)].some((v) => String(v || "").toLowerCase().includes(needle));
   };
-  const internships = entries.filter((c) => c.type === "internship" && matches(c));
-  const freeInternships = jobs.openings.filter((o) => o.audience === "free" && matches({ title: o.title, tag: (o.skills || []).join(" ") }));
+  const allCards = entries.filter((c) => c.type === "internship");
+  const internships = allCards.filter((c) => matches(c) && (durFilter === "all" || Number(c.durationDays) === durFilter));
+  const allFree = jobs.openings.filter((o) => o.audience === "free");
+  const freeInternships = allFree.filter((o) => matches({ title: o.title, tag: [...(o.skills || []), o.duration || "", o.group || ""].join(" ") }));
 
   const renderRow = (c) => {
     const plans = offeredTiers(c);
@@ -292,7 +290,8 @@ export default function AdminCourses() {
           <b>{c.title}</b>
           <span className="admin-row-meta">
             {hasPlans
-              ? <>{plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from {formatINR(cheapest)}</>
+              ? <>{plans.length > 1 ? `${plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from ` : ""}{formatINR(cheapest)}
+                {plans.length === 1 && listPrice(plans[0]) ? ` (was ${formatINR(listPrice(plans[0]))})` : ""}</>
               : <>No price — apply-only</>}
             {c.tag ? ` · ${c.tag}` : ""}
             {c.durationDays ? ` · ${formatDuration(c.durationDays)}` : ""}
@@ -334,11 +333,16 @@ export default function AdminCourses() {
           <button className="btn btn-ghost" onClick={() => { logout(); navigate("/admin"); }}>Log out</button>
         </div>
 
-        {kind === "free" ? (
-          <OpeningForm audience="free" editing={editingOpening} copyFrom={copyOpening} head={kindPicker}
+        {!formOpen ? (
+          <div className="list-toolbar">
+            <button type="button" className="btn btn-solid" onClick={() => openAdd("internship")}>+ Add program card</button>
+            <button type="button" className="btn btn-ghost" onClick={() => openAdd("free")}>+ Add free internship</button>
+          </div>
+        ) : kind === "free" ? (
+          <OpeningForm audience="free" editing={editingOpening} copyFrom={copyOpening} cancelable
             groupNames={[...new Set(jobs.openings.filter((o) => o.audience === "free").map((o) => (o.group || "").trim()).filter(Boolean))].sort()}
             title={editingOpening ? "Edit free internship" : copyOpening ? "Add a copy of a free internship" : "Add a free internship"}
-            onSaved={() => { setEditingOpening(null); setCopyOpening(null); jobs.load(); }} onCancel={() => { setEditingOpening(null); setCopyOpening(null); }} />
+            onSaved={() => { closeOpeningForm(); jobs.load(); }} onCancel={closeOpeningForm} />
         ) : (
         <form onSubmit={onSubmit} className="admin-form">
           {/* Laid out like the Free Internship / Careers form (AdminJobOpenings.jsx
@@ -351,7 +355,6 @@ export default function AdminCourses() {
               This adds a new card; the original stays as it is.
             </p>
           )}
-          {kindPicker}
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="courses-title">Title</label>
               <input id="courses-title" value={form.title} onChange={set("title")} placeholder="Full Stack (MERN) Development" /></div>
@@ -399,85 +402,89 @@ export default function AdminCourses() {
 
           <h3 style={{ margin: "12px 0 8px" }}>Price for this program</h3>
           <p className="form-note" style={{ margin: "0 0 14px" }}>
-            This is what students pay online (Razorpay) when they tap Enroll now on the card. For one simple price, fill in Basic only.
-            Offer up to three plans; a plan with a blank price isn't offered, and with all three blank the card has no price and shows Request to apply instead.
-            Use the Open/Closed switch in the list below to stop or restart enrollment. What you list under each plan is shown to students; it doesn't restrict access.
+            The final price is what students pay online (Razorpay) when they tap Enroll now. Add an original price to show it crossed out beside the
+            final price — e.g. original ₹1,999, final ₹1,499. With the final price blank, the card shows Request to apply instead.
+            Use the Open/Closed switch in the list to stop or restart enrollment.
           </p>
-          <div className="plan-editors">
-            {TIER_ORDER.map((tier) => (
-              <div className="plan-editor" key={tier}>
-                <h4>{TIER_LABEL[tier]}</h4>
-                <div className="field"><label htmlFor={`plan-${tier}-price`}>Price (₹)</label>
-                  <input id={`plan-${tier}-price`} type="number" min="0" value={form.plans[tier].price} onChange={setPlan(tier, "price")} placeholder="Not offered" /></div>
-                <div className="field"><label htmlFor={`plan-${tier}-discount`}>Discount (%)</label>
-                  <input id={`plan-${tier}-discount`} type="number" min="0" max="100" value={form.plans[tier].discountPercent} onChange={setPlan(tier, "discountPercent")} placeholder="0" /></div>
-                <div className="field"><label htmlFor={`plan-${tier}-features`}>What's included (one per line)</label>
-                  <textarea id={`plan-${tier}-features`} rows="5" value={form.plans[tier].features} onChange={setPlan(tier, "features")}
-                    placeholder={tier === "basic" ? "Live classes\nRecorded lectures" : tier === "plus" ? "Everything in Basic\nLive doubt sessions" : "Everything in Plus\n1:1 mentoring"} /></div>
-              </div>
-            ))}
-          </div>
-
-          <details className="plan-editor-set" style={{ marginTop: 18 }}>
-            <summary style={{ cursor: "pointer", fontWeight: 600 }}>More for the track's own page (optional)</summary>
-            <p className="admin-row-meta" style={{ margin: "10px 0 14px" }}>
-              Shown only on the track's own page, not the card. Anything you leave empty is simply not shown.
+          {editingId && (form.plans.plus.price.trim() || form.plans.pro.price.trim()) && (
+            <p className="form-error" style={{ margin: "0 0 14px" }}>
+              This card also has an older Plus or Pro plan. Saving keeps only the one price below and removes those plans.
             </p>
-            <div className="field"><label htmlFor="cc-outcomes">What you'll learn (one per line)</label>
-              <textarea id="cc-outcomes" rows="5" value={form.outcomes} onChange={set("outcomes")} placeholder={"Build and deploy a REST API\nWork with a real database"} /></div>
-            <div className="admin-form-grid admin-form-grid--2">
-              <div className="field"><label htmlFor="cc-audience">Who it's for (one per line)</label>
-                <textarea id="cc-audience" rows="4" value={form.audience} onChange={set("audience")} placeholder={"Final-year students\nCareer switchers"} /></div>
-              <div className="field"><label htmlFor="cc-prereq">Before you start (one per line)</label>
-                <textarea id="cc-prereq" rows="4" value={form.prerequisites} onChange={set("prerequisites")} placeholder={"A laptop and internet connection\nBasic programming"} /></div>
-            </div>
-            <div className="faq-editor">
-              <span className="admin-row-meta" style={{ display: "block", margin: "4px 0 10px" }}>Questions &amp; answers ({form.faqs.length}/{MAX_FAQS})</span>
-              {form.faqs.map((f, i) => (
-                <div className="faq-editor-row" key={i}>
-                  <input aria-label={`Question ${i + 1}`} value={f.q} onChange={setFaq(i, "q")} placeholder="Question" maxLength={200} />
-                  <textarea aria-label={`Answer ${i + 1}`} rows="3" value={f.a} onChange={setFaq(i, "a")} placeholder="Answer" maxLength={1500} />
-                  <button type="button" className="btn btn-ghost admin-danger" onClick={() => removeFaq(i)} aria-label={`Remove question ${i + 1}`}>Remove</button>
-                </div>
-              ))}
-              <button type="button" className="btn btn-ghost" onClick={addFaq} disabled={form.faqs.length >= MAX_FAQS}>+ Add a question</button>
-            </div>
-          </details>
+          )}
+          <div className="admin-form-grid admin-form-grid--2">
+            <div className="field"><label htmlFor="plan-basic-original">Original price (₹, optional)</label>
+              <input id="plan-basic-original" type="number" min="0" value={form.plans.basic.originalPrice} onChange={setPlan("basic", "originalPrice")} placeholder="e.g. 1999 — shown crossed out" /></div>
+            <div className="field"><label htmlFor="plan-basic-price">Final price (₹)</label>
+              <input id="plan-basic-price" type="number" min="0" value={form.plans.basic.price} onChange={setPlan("basic", "price")} placeholder="e.g. 1499 — what the student pays" /></div>
+          </div>
+          {(() => {
+            const o = Number(form.plans.basic.originalPrice), f = Number(form.plans.basic.price);
+            return form.plans.basic.originalPrice.trim() && form.plans.basic.price.trim() && o > f && f >= 0 ? (
+              <p className="form-note price-preview" style={{ margin: "-4px 0 14px" }}>
+                Shown on the card as: <span className="price-old">{formatINR(o)}</span> <b>{formatINR(f)}</b> <span className="price-off">{Math.round(((o - f) / o) * 100)}% off</span>
+              </p>
+            ) : null;
+          })()}
+          <div className="field"><label htmlFor="plan-basic-features">What's included (one per line)</label>
+            <textarea id="plan-basic-features" rows="4" value={form.plans.basic.features} onChange={setPlan("basic", "features")}
+              placeholder={"Live classes\nMentor support\nTraining certificate"} /></div>
 
           {error && <p className="form-error">{error}</p>}
           <div className="admin-actions">
             <button className="btn btn-solid" type="submit" disabled={saving}>
               {saving ? "Saving..." : editingId ? "Save changes" : "Create"}
             </button>
-            {(editingId || copyOf) && <button type="button" className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>}
+            <button type="button" className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>
           </div>
         </form>
         )}
 
-        <input
-          className="admin-search" aria-label="Search training tracks and free internships by title, tag or skill"
-          type="search"
-          style={{ marginTop: 40 }}
-          placeholder="Search training tracks and free internships by title, tag or skill..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+        {/* The lists: one at a time (tabs), searchable, and program cards by length. */}
+        <div className="list-tabs" role="tablist" aria-label="Which list to show" style={{ marginTop: formOpen ? 40 : 8 }}>
+          {[["internship", "Program cards", allCards.length], ["free", "Free internships", allFree.length]].map(([id, label, n]) => (
+            <button key={id} type="button" role="tab" aria-selected={listTab === id} className={`list-tab${listTab === id ? " on" : ""}`}
+              onClick={() => setListTab(id)}>
+              {label} <span className="list-tab-count">{n}</span>
+            </button>
+          ))}
+        </div>
+        <div className="list-toolbar">
+          <input
+            className="admin-search" aria-label="Search by title, group, skill or duration"
+            type="search"
+            placeholder={listTab === "free" ? "Search free internships by title, group, skill or duration..." : "Search program cards by title, group or duration..."}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {listTab === "internship" && (
+            <div className="filter-pills" role="group" aria-label="Show program cards of one duration">
+              {["all", ...INTERNSHIP_DURATIONS].map((d) => (
+                <button key={d} type="button" className={`filter-pill${durFilter === d ? " on" : ""}`} aria-pressed={durFilter === d} onClick={() => setDurFilter(d)}>
+                  {d === "all" ? "All" : formatDuration(d)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {loading ? (
           <p style={{ color: "var(--muted)", marginTop: 32 }}>Loading...</p>
-        ) : (
+        ) : listTab === "free" ? (
           <>
-            <h3 style={{ margin: "40px 0 16px" }}>Free internships</h3>
+            <h3 className="sr-only">Free internships</h3>
             <FreeApplyFormLink />
             {jobs.error && <p className="form-error">{jobs.error}</p>}
             {jobs.loading ? <p style={{ color: "var(--muted)" }}>Loading...</p> : (
               <OpeningList openings={freeInternships} bank={jobs.bank} onEdit={startEditOpening} onCopy={startCopyOpening} onChanged={jobs.load}
-                empty={q ? "No free internships match that search." : "No free internships yet — pick Free Internship above to add one."} />
+                empty={q ? "No free internships match that search." : "No free internships yet — press Add free internship."} />
             )}
-
-            <h3 style={{ margin: "40px 0 16px" }}>Training + Internship program cards</h3>
+          </>
+        ) : (
+          <>
+            <h3 className="sr-only">Training + Internship program cards</h3>
+            {!formOpen && error && <p className="form-error">{error}</p>}
             {internships.length === 0 ? (
-              <p style={{ color: "var(--muted)" }}>{q ? "No training tracks match that search." : "No training tracks yet — pick Training + Internship above to add one."}</p>
+              <p style={{ color: "var(--muted)" }}>{q || durFilter !== "all" ? "No program cards match." : "No program cards yet — press Add program card."}</p>
             ) : (
               <div className="admin-list">{internships.map(renderRow)}</div>
             )}

@@ -190,6 +190,12 @@ model CourseTier {
   course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   tier            Tier
   price           Float
+  // The price before the offer, shown struck through beside what is charged
+  // (₹1,999 crossed out, ₹1,499 to pay). Set in Admin together with the final
+  // price; always higher than what the plan charges. Null: no struck-through
+  // price. (discountPercent is the older way to take money off `price`; plans
+  // saved from Admin now carry 0 there and the final price in `price`.)
+  originalPrice   Float?
   discountPercent Int      @default(0)
   features        Json     @default("[]")
   createdAt       DateTime @default(now())
