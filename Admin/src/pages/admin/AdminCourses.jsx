@@ -82,6 +82,8 @@ export default function AdminCourses() {
   const [kind, setKind] = useState(() => kindFromParam(params.get("type")));
   const jobs = useJobOpenings();
   const [editingOpening, setEditingOpening] = useState(null);
+  // The free internship the form was filled from by Copy (a new one), else null.
+  const [copyOpening, setCopyOpening] = useState(null);
 
   // AdminGuard (see App.jsx) already keeps this route from mounting unless
   // logged in as admin — this only has to handle the session expiring
@@ -118,7 +120,7 @@ export default function AdminCourses() {
   const removeFaq = (i) => setForm((f) => ({ ...f, faqs: f.faqs.filter((_, j) => j !== i) }));
 
   const startEdit = (c) => {
-    setEditingOpening(null);
+    setEditingOpening(null); setCopyOpening(null);
     setKind("internship");
     setCopyOf(null);
     setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" });
@@ -127,7 +129,7 @@ export default function AdminCourses() {
   // mode, so the same program in another duration (or batch) only needs its
   // duration, price and start changed before Create. The original is untouched.
   const startCopy = (c) => {
-    setEditingOpening(null);
+    setEditingOpening(null); setCopyOpening(null);
     setKind("internship");
     setEditingId(null);
     setCopyOf(c.title);
@@ -138,7 +140,13 @@ export default function AdminCourses() {
   const startEditOpening = (o) => {
     setCopyOf(null);
     setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() });
-    setKind("free"); setEditingOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
+    setKind("free"); setCopyOpening(null); setEditingOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  // Copy a free internship: the same form, filled in, in create mode.
+  const startCopyOpening = (o) => {
+    setCopyOf(null);
+    setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() });
+    setKind("free"); setEditingOpening(null); setCopyOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // A free internship is a different kind of record from a training track, so
@@ -327,10 +335,10 @@ export default function AdminCourses() {
         </div>
 
         {kind === "free" ? (
-          <OpeningForm audience="free" editing={editingOpening} head={kindPicker}
+          <OpeningForm audience="free" editing={editingOpening} copyFrom={copyOpening} head={kindPicker}
             groupNames={[...new Set(jobs.openings.filter((o) => o.audience === "free").map((o) => (o.group || "").trim()).filter(Boolean))].sort()}
-            title={editingOpening ? "Edit free internship" : "Add a free internship"}
-            onSaved={() => { setEditingOpening(null); jobs.load(); }} onCancel={() => setEditingOpening(null)} />
+            title={editingOpening ? "Edit free internship" : copyOpening ? "Add a copy of a free internship" : "Add a free internship"}
+            onSaved={() => { setEditingOpening(null); setCopyOpening(null); jobs.load(); }} onCancel={() => { setEditingOpening(null); setCopyOpening(null); }} />
         ) : (
         <form onSubmit={onSubmit} className="admin-form">
           {/* Laid out like the Free Internship / Careers form (AdminJobOpenings.jsx
@@ -463,7 +471,7 @@ export default function AdminCourses() {
             <FreeApplyFormLink />
             {jobs.error && <p className="form-error">{jobs.error}</p>}
             {jobs.loading ? <p style={{ color: "var(--muted)" }}>Loading...</p> : (
-              <OpeningList openings={freeInternships} bank={jobs.bank} onEdit={startEditOpening} onChanged={jobs.load}
+              <OpeningList openings={freeInternships} bank={jobs.bank} onEdit={startEditOpening} onCopy={startCopyOpening} onChanged={jobs.load}
                 empty={q ? "No free internships match that search." : "No free internships yet — pick Free Internship above to add one."} />
             )}
 
