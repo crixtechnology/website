@@ -72,6 +72,17 @@ describe("help agent", () => {
     expect(last.text).not.toMatch(/fee applies/);
     expect(last.text).toContain("Data Science Intern — free to apply");
     expect(last.links[0].to).toBe("/careers");
+    // The Free Internship page's roles are pointed to as well.
+    expect(last.text).toMatch(/free internships? on the Free Internship page/);
+    expect(last.links.map((l) => l.to)).toContain("/free-internships");
+  });
+
+  it("answers about a free internship role named outright, from the page's own list", () => {
+    const { last } = chat("when does the cyber security intern role start?");
+    expect(last.text).toContain("Expected to start: December-January");
+    expect(last.links[0].to).toBe("/free-internships");
+    expect(chat("stipend for the cyber security intern role").last.text).toContain("Stipend: No Stipend.");
+    expect(chat("aptitude test for the cyber security intern role").last.text).toMatch(/after you apply through our form/);
   });
 
   it("asks what a business needs, then points to a quote", () => {

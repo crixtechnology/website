@@ -6,8 +6,7 @@ import AdminCareerSettings from "./pages/admin/AdminCareerSettings.jsx";
 import * as api from "./services/api.js";
 
 // Careers settings: credits and test rules only. There is no test fee to set,
-// and the free internships' form link is not here (it is edited under
-// Training + Internship → Free internships; see adminCourses.test.jsx).
+// and no free internships form link (that page's link is in the website's code).
 jest.mock("./services/api.js");
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -25,7 +24,6 @@ const q = (sel) => container.querySelector(sel);
 const settings = {
   signupBonusCredits: 300, creditExpiryMonths: 12, creditUsagePercent: 100, violationLimit: 3, snapshotIntervalSeconds: 60,
   generatedQuestionsPercent: 30, reapplyCooldownDays: 30, requireWebcam: true, requireDesktopApp: false,
-  freeApplyFormUrl: "https://forms.gle/eaX7kab7zPG7w6SX6",
 };
 
 describe("admin careers settings", () => {

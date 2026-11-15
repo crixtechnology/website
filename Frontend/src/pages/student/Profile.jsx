@@ -169,7 +169,7 @@ export default function Profile() {
 
           <h2 style={{ fontSize: "1.05rem", margin: "28px 0 4px" }}>Education</h2>
           <p className="form-note" style={{ marginTop: 0, marginBottom: 14 }}>
-            Optional — but needed to apply for a free internship.
+            Optional.
           </p>
           <EducationFields form={education} disabled={saving} idPrefix="pf-edu"
             onChange={(next) => { setEducation(next); setStatus({ text: "", kind: "" }); }} />

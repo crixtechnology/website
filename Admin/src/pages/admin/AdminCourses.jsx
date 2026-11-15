@@ -8,18 +8,14 @@ import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { TIER_ORDER, TIER_LABEL, offeredTiers, planPrice, listPrice, formatINR } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate, toStartDateInput } from "../../utils/startDate.js";
 import { formatDuration, INTERNSHIP_DURATIONS } from "../../utils/duration.js";
-import { useJobOpenings, OpeningForm, OpeningList, FreeApplyFormLink } from "./AdminJobOpenings.jsx";
 
-// What the one form adds. A free internship is a job opening listed on
-// /free-internships (applied for through the Google Form); a Training + Internship
-// track is a courses-table entry (type "internship") sold on
-// /training-internship as a program card — 1, 2, 3 or 6 months long, at the
-// price set here, paid online through Razorpay — after which top performers
-// are selected for a stipend-based internship. Courses were dropped: only
-// Training + Internship tracks and free internships are added here.
-// The two kinds: "internship" (a program card) and "free" (a free internship).
-// Each has its own Add button and its own list tab; ?type=free opens on that tab.
-const kindFromParam = (v) => (v === "free" ? "free" : "internship");
+// What the form adds: a Training + Internship track, a courses-table entry
+// (type "internship") sold on /training-internship as a program card — 1, 2, 3
+// or 6 months long, at the price set here, paid online through Razorpay — after
+// which top performers are selected for a stipend-based internship. Courses
+// were dropped. Free internships are not managed in Admin: the Free Internship
+// page is static, its roles written in the website's code
+// (Frontend/src/data/freeInternships.json).
 
 // price is the FINAL price (what the student pays); originalPrice is the
 // optional higher price shown struck through beside it.
@@ -28,7 +24,7 @@ const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "
 // "More for the track's own page" section was removed); a card that already has
 // them keeps them, since the form still carries and re-sends what it loaded.
 // skills (comma-separated), responsibilities and eligibility (one per line), stipend, experience,
-// mode and positions: the same details a free internship shows.
+// mode and positions: the same details a Careers role shows.
 const EMPTY_FORM = {
   type: "internship", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
   skills: "", responsibilities: "", eligibility: "", stipend: "", experience: "", mode: "", positions: "",
@@ -83,17 +79,9 @@ export default function AdminCourses() {
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
   const [params, setParams] = useSearchParams();
-  // Which of the three the form is for; ?type=free|internship|course picks it on arrival.
-  const [kind, setKind] = useState(() => kindFromParam(params.get("type")));
-  const jobs = useJobOpenings();
-  const [editingOpening, setEditingOpening] = useState(null);
-  // The free internship the form was filled from by Copy (a new one), else null.
-  const [copyOpening, setCopyOpening] = useState(null);
   // The long form stays shut until it's needed (Add, Edit or Copy), so the
-  // lists are the first thing on the page instead of a screen's scroll away.
+  // list is the first thing on the page instead of a screen's scroll away.
   const [formOpen, setFormOpen] = useState(false);
-  // Which list is showing — one at a time, so neither sits below the other.
-  const [listTab, setListTab] = useState(() => kindFromParam(params.get("type")));
   // Program cards of one length only: "all", or days (30 / 60 / 90 / 180).
   const [durFilter, setDurFilter] = useState("all");
 
@@ -125,8 +113,6 @@ export default function AdminCourses() {
   };
 
   const startEdit = (c) => {
-    setEditingOpening(null); setCopyOpening(null);
-    setKind("internship");
     setCopyOf(null);
     setFormOpen(true);
     setEditingId(c._id); setForm(courseToForm(c)); window.scrollTo({ top: 0, behavior: "smooth" });
@@ -135,8 +121,6 @@ export default function AdminCourses() {
   // mode, so the same program in another duration (or batch) only needs its
   // duration, price and start changed before Create. The original is untouched.
   const startCopy = (c) => {
-    setEditingOpening(null); setCopyOpening(null);
-    setKind("internship");
     setEditingId(null);
     setCopyOf(c.title);
     setError("");
@@ -145,25 +129,11 @@ export default function AdminCourses() {
   };
   // Also what a successful save calls: the form empties and shuts, back to the list.
   const cancelEdit = () => { setEditingId(null); setCopyOf(null); setFormOpen(false); setForm({ ...EMPTY_FORM, type: "internship", plans: emptyPlans() }); };
-  const closeOpeningForm = () => { setEditingOpening(null); setCopyOpening(null); setFormOpen(false); };
-  // "+ Add …": a blank form of that kind.
-  const openAdd = (kindId) => {
-    setEditingId(null); setCopyOf(null); setEditingOpening(null); setCopyOpening(null);
+  // "+ Add program card": a blank form.
+  const openAdd = () => {
+    setEditingId(null); setCopyOf(null);
     setForm({ ...EMPTY_FORM, type: "internship", plans: emptyPlans() });
-    setError(""); setKind(kindId); setFormOpen(true);
-  };
-  const startEditOpening = (o) => {
-    setCopyOf(null);
-    setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() });
-    setFormOpen(true);
-    setKind("free"); setCopyOpening(null); setEditingOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  // Copy a free internship: the same form, filled in, in create mode.
-  const startCopyOpening = (o) => {
-    setCopyOf(null);
-    setEditingId(null); setForm({ ...EMPTY_FORM, plans: emptyPlans() });
-    setFormOpen(true);
-    setKind("free"); setEditingOpening(null); setCopyOpening(o); window.scrollTo({ top: 0, behavior: "smooth" });
+    setError(""); setFormOpen(true);
   };
 
   // Landed here as ?edit=<id> — from AdminApplications.jsx linking a course
@@ -222,17 +192,16 @@ export default function AdminCourses() {
       setError("Positions must be a whole number from 1 to 1000 (or blank for no limit).");
       return;
     }
-    // Training is paid, not free — a ₹0 plan would make it a free internship,
-    // which belongs under Free Internship instead.
-    if (kind === "internship" && tiers.some((t) => t.price === 0)) {
-      setError("Training is paid, not free — set a price above ₹0 (or leave it blank). Free internships go under Free Internship.");
+    // Training is paid, not free: a ₹0 plan isn't allowed.
+    if (tiers.some((t) => t.price === 0)) {
+      setError("Training is paid, not free — set a price above ₹0 (or leave it blank).");
       return;
     }
 
     setSaving(true);
     setError("");
     const payload = {
-      type: kind,
+      type: "internship",
       title: form.title.trim(),
       tag: form.tag.trim(),
       desc: form.desc.trim(),
@@ -277,8 +246,6 @@ export default function AdminCourses() {
   };
   const allCards = entries.filter((c) => c.type === "internship");
   const internships = allCards.filter((c) => matches(c) && (durFilter === "all" || Number(c.durationDays) === durFilter));
-  const allFree = jobs.openings.filter((o) => o.audience === "free");
-  const freeInternships = allFree.filter((o) => matches({ title: o.title, tag: [...(o.skills || []), o.duration || "", o.group || ""].join(" ") }));
 
   const renderRow = (c) => {
     const plans = offeredTiers(c);
@@ -328,24 +295,21 @@ export default function AdminCourses() {
           <div>
             <span className="eyebrow">Admin</span>
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Training + Internship</h1>
-            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>Training + Internship tracks and free internships, from one form. Careers roles are on Job openings.</p>
+            <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
+              Training + Internship program cards. Careers roles are on Job openings. The Free Internship page is fixed in the website's code,
+              so its roles and apply link aren't edited here.
+            </p>
           </div>
           <button className="btn btn-ghost" onClick={() => { logout(); navigate("/admin"); }}>Log out</button>
         </div>
 
         {!formOpen ? (
           <div className="list-toolbar">
-            <button type="button" className="btn btn-solid" onClick={() => openAdd("internship")}>+ Add program card</button>
-            <button type="button" className="btn btn-ghost" onClick={() => openAdd("free")}>+ Add free internship</button>
+            <button type="button" className="btn btn-solid" onClick={openAdd}>+ Add program card</button>
           </div>
-        ) : kind === "free" ? (
-          <OpeningForm audience="free" editing={editingOpening} copyFrom={copyOpening} cancelable
-            groupNames={[...new Set(jobs.openings.filter((o) => o.audience === "free").map((o) => (o.group || "").trim()).filter(Boolean))].sort()}
-            title={editingOpening ? "Edit free internship" : copyOpening ? "Add a copy of a free internship" : "Add a free internship"}
-            onSaved={() => { closeOpeningForm(); jobs.load(); }} onCancel={closeOpeningForm} />
         ) : (
         <form onSubmit={onSubmit} className="admin-form">
-          {/* Laid out like the Free Internship / Careers form (AdminJobOpenings.jsx
+          {/* Laid out like the Careers form (AdminJobOpenings.jsx
               OpeningForm): the same fields in the same order. Where those have
               their aptitude test, training has its fee — it has no test. */}
           <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit this Training + Internship program card" : copyOf ? "Add a copy of a program card" : "Add a Training + Internship program card"}</h3>
@@ -439,46 +403,29 @@ export default function AdminCourses() {
         </form>
         )}
 
-        {/* The lists: one at a time (tabs), searchable, and program cards by length. */}
-        <div className="list-tabs" role="tablist" aria-label="Which list to show" style={{ marginTop: formOpen ? 40 : 8 }}>
-          {[["internship", "Program cards", allCards.length], ["free", "Free internships", allFree.length]].map(([id, label, n]) => (
-            <button key={id} type="button" role="tab" aria-selected={listTab === id} className={`list-tab${listTab === id ? " on" : ""}`}
-              onClick={() => setListTab(id)}>
-              {label} <span className="list-tab-count">{n}</span>
-            </button>
-          ))}
-        </div>
+        {/* The list: searchable, and program cards by length. */}
+        <h2 style={{ fontSize: "1.15rem", margin: `${formOpen ? 40 : 8}px 0 0` }}>
+          Program cards <span className="list-tab-count">{allCards.length}</span>
+        </h2>
         <div className="list-toolbar">
           <input
-            className="admin-search" aria-label="Search by title, group, skill or duration"
+            className="admin-search" aria-label="Search by title, group or duration"
             type="search"
-            placeholder={listTab === "free" ? "Search free internships by title, group, skill or duration..." : "Search program cards by title, group or duration..."}
+            placeholder="Search program cards by title, group or duration..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          {listTab === "internship" && (
-            <div className="filter-pills" role="group" aria-label="Show program cards of one duration">
-              {["all", ...INTERNSHIP_DURATIONS].map((d) => (
-                <button key={d} type="button" className={`filter-pill${durFilter === d ? " on" : ""}`} aria-pressed={durFilter === d} onClick={() => setDurFilter(d)}>
-                  {d === "all" ? "All" : formatDuration(d)}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="filter-pills" role="group" aria-label="Show program cards of one duration">
+            {["all", ...INTERNSHIP_DURATIONS].map((d) => (
+              <button key={d} type="button" className={`filter-pill${durFilter === d ? " on" : ""}`} aria-pressed={durFilter === d} onClick={() => setDurFilter(d)}>
+                {d === "all" ? "All" : formatDuration(d)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
           <p style={{ color: "var(--muted)", marginTop: 32 }}>Loading...</p>
-        ) : listTab === "free" ? (
-          <>
-            <h3 className="sr-only">Free internships</h3>
-            <FreeApplyFormLink />
-            {jobs.error && <p className="form-error">{jobs.error}</p>}
-            {jobs.loading ? <p style={{ color: "var(--muted)" }}>Loading...</p> : (
-              <OpeningList openings={freeInternships} bank={jobs.bank} onEdit={startEditOpening} onCopy={startCopyOpening} onChanged={jobs.load}
-                empty={q ? "No free internships match that search." : "No free internships yet — press Add free internship."} />
-            )}
-          </>
         ) : (
           <>
             <h3 className="sr-only">Training + Internship program cards</h3>

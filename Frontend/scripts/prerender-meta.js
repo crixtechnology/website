@@ -20,6 +20,8 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const buildDir = path.join(root, "build");
 const seo = JSON.parse(fs.readFileSync(path.join(root, "src", "data", "seo.json"), "utf8"));
+// The Free Internship page's roles — static, the same file the page reads.
+const freeInternships = JSON.parse(fs.readFileSync(path.join(root, "src", "data", "freeInternships.json"), "utf8"));
 const template = fs.readFileSync(path.join(buildDir, "index.html"), "utf8");
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -166,6 +168,30 @@ function jobPostingLd(o) {
   };
 }
 
+// The same for a Free Internship role — must match freeJobPostingLd in
+// src/pages/FreeInternships.jsx. Unpaid (no baseSalary) and applied for
+// through our Google Form (not directApply).
+function freeJobPostingLd(o) {
+  const lines = (title, items) => (Array.isArray(items) && items.length ? `<p><strong>${title}</strong></p><ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>` : "");
+  return {
+    "@type": "JobPosting",
+    title: o.title,
+    description: `<p>${o.summary}</p>${lines("Responsibilities", o.responsibilities)}${lines("Eligibility", o.eligibility)}${lines("Skills", o.skills)}`
+      + `<p>Free internship: no fee to apply, no stipend. Duration: ${o.duration}. Mode: ${o.mode}. Expected start: ${o.startsOn}.</p>`,
+    datePosted: o.datePosted,
+    employmentType: "INTERN",
+    hiringOrganization: { "@type": "Organization", name: "Crix Technology", sameAs: seo.siteUrl, logo: `${seo.siteUrl}/crix-logo.png` },
+    jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: "Ahmedabad", addressRegion: "Gujarat", addressCountry: "IN" } },
+    jobLocationType: "TELECOMMUTE",
+    applicantLocationRequirements: { "@type": "Country", name: "India" },
+    experienceRequirements: o.experience || undefined,
+    skills: (Array.isArray(o.skills) ? o.skills : []).join(", ") || undefined,
+    directApply: false,
+    url: url("/free-internships"),
+  };
+}
+const openFreeRoles = freeInternships.openings.filter((o) => !(o.positions && o.positions.left === 0));
+
 (async () => {
   // 1. The static pages from seo.json.
   let written = 0;
@@ -182,7 +208,10 @@ function jobPostingLd(o) {
       keywords: r.keywords,
       crumbs: r.crumb ? [{ name: "Home", path: "/" }, { name: r.crumb, path: p }] : null,
       // Same id as the app's useJsonLd("jobs-jsonld") on the Careers page.
-      ld: p === "/careers" && freeOpenings.length ? [{ id: "jobs-jsonld", data: { "@context": "https://schema.org", "@graph": freeOpenings.map(jobPostingLd) } }] : undefined,
+      ld: p === "/careers" && freeOpenings.length ? [{ id: "jobs-jsonld", data: { "@context": "https://schema.org", "@graph": freeOpenings.map(jobPostingLd) } }]
+        // Same id as the app's useJsonLd("free-jobs-jsonld") on the Free Internship page.
+        : p === "/free-internships" && openFreeRoles.length ? [{ id: "free-jobs-jsonld", data: { "@context": "https://schema.org", "@graph": openFreeRoles.map(freeJobPostingLd) } }]
+        : undefined,
     });
     written++;
   }

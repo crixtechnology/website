@@ -102,17 +102,22 @@ export function programAnswer(p, n) {
   };
 }
 
-// A Careers role named in the message.
+// A Careers role, or a Free Internship role (audience "free"), named in the message.
 export function roleAnswer(o, n) {
   const facts = [];
   const test = o.test || {};
+  const free = o.audience === "free";
   if (asked(n, "stipend") && o.stipend) facts.push(`Stipend: ${o.stipend}.`);
   if (asked(n, "duration") && o.duration) facts.push(`Duration: ${o.duration}.`);
   if (asked(n, "mode") && o.mode) facts.push(`Mode: ${o.mode}.`);
-  if (asked(n, "start") && o.startsOn) facts.push(`Expected to start: ${o.startsOn}.`);
+  if (asked(n, "start") && o.startsOn) facts.push(`Expected to start: ${o.startsOn}${free ? " — the exact date comes with your offer letter" : ""}.`);
   if (asked(n, "eligibility")) facts.push(`Eligibility: ${[o.experience, ...(o.eligibility || [])].filter(Boolean).join("; ") || "freshers are welcome"}.`);
-  if (asked(n, "test")) facts.push(`Aptitude test: ${test.questions ? `${test.questions} questions` : "multiple-choice questions"}${test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}, with no negative marking.`);
-  if (asked(n, "price")) facts.push("This role is free to apply for — there's no registration or test fee.");
+  if (asked(n, "test")) {
+    facts.push(free
+      ? "Aptitude test: after you apply through our form, our team emails you how and when to take it. Candidates who do well are invited to an interview."
+      : `Aptitude test: ${test.questions ? `${test.questions} questions` : "multiple-choice questions"}${test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}, with no negative marking.`);
+  }
+  if (asked(n, "price")) facts.push(free ? "This internship is free — no fee to apply, for the test or for the internship." : "This role is free to apply for — there's no registration or test fee.");
   if (!facts.length) {
     facts.push([
       `${o.title}${o.summary ? ` — ${o.summary}` : ""}`,
@@ -121,11 +126,11 @@ export function roleAnswer(o, n) {
   }
   return {
     text: facts.join("\n"),
-    links: [{ to: "/careers", label: "See the role & apply" }],
+    links: [free ? { to: "/free-internships", label: "See the internship & apply" } : { to: "/careers", label: "See the role & apply" }],
     chips: [
       { label: "About the test", say: `aptitude test for ${o.title}` },
       { label: "Am I eligible?", say: `eligibility for ${o.title}` },
-      { label: "How do I apply?", say: "How do I apply for a role?" },
+      { label: "How do I apply?", say: free ? "How do I apply for a free internship?" : "How do I apply for a role?" },
     ],
   };
 }

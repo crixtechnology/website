@@ -3,7 +3,7 @@ import {
   Reveal, TiltCard, Aurora, SectionIndex, CopyButton, DownloadPdfButton, DurationSwitch,
   useBodyScrollLock, useModalEscape, useModalFocus, REDUCED,
 } from "../components/ui.jsx";
-import { usePageMeta, routeMeta } from "../hooks/usePageMeta.js";
+import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL } from "../hooks/usePageMeta.js";
 import { careersContact, isRoleFull, positionsTag } from "../data/careers.js";
 import { programFacts } from "../utils/positions.js";
 import { groupVariants } from "../utils/variants.js";
@@ -19,6 +19,31 @@ import {
 
 // One card per role; roles sharing a group are its durations, picked with the switch.
 const OPENING_GROUPS = groupVariants(freeOpenings);
+
+// schema.org JobPosting for each role, so search engines can list them as
+// internships (scripts/prerender-meta.js builds the same for the prebuilt page).
+// Unpaid, so no baseSalary; applied for through our Google Form, so not directApply.
+function freeJobPostingLd(o) {
+  const lines = (title, items) => (items && items.length ? `<p><strong>${title}</strong></p><ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>` : "");
+  return {
+    "@type": "JobPosting",
+    title: o.title,
+    description: `<p>${o.summary}</p>${lines("Responsibilities", o.responsibilities)}${lines("Eligibility", o.eligibility)}${lines("Skills", o.skills)}`
+      + `<p>Free internship: no fee to apply, no stipend. Duration: ${o.duration}. Mode: ${o.mode}. Expected start: ${o.startsOn}.</p>`,
+    datePosted: o.datePosted,
+    employmentType: "INTERN",
+    hiringOrganization: { "@type": "Organization", name: "Crix Technology", sameAs: SITE_URL, logo: `${SITE_URL}/crix-logo.png` },
+    jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: "Ahmedabad", addressRegion: "Gujarat", addressCountry: "IN" } },
+    jobLocationType: "TELECOMMUTE",
+    applicantLocationRequirements: { "@type": "Country", name: "India" },
+    experienceRequirements: o.experience || undefined,
+    skills: (o.skills || []).join(", ") || undefined,
+    directApply: false,
+    url: canonicalUrl(FREE_PATH),
+  };
+}
+const OPEN_ROLES = freeOpenings.filter((o) => !isRoleFull(o));
+const JOBS_LD = OPEN_ROLES.length ? { "@context": "https://schema.org", "@graph": OPEN_ROLES.map(freeJobPostingLd) } : null;
 
 const INDEX = [
   { id: "openings", label: "Openings" },
@@ -139,6 +164,8 @@ function FreeOpeningModal({ opening, onClose }) {
 /* ================= FREE INTERNSHIPS ================= */
 export default function FreeInternships() {
   usePageMeta(routeMeta(FREE_PATH));
+  // Same id as scripts/prerender-meta.js uses on the prebuilt page, so it's replaced, not doubled.
+  useJsonLd("free-jobs-jsonld", JOBS_LD);
   const [detail, setDetail] = useState(null);
 
   const hero = freeHero;

@@ -41,9 +41,23 @@ describe("the Free Internship page", () => {
   it("shows every static role without calling the backend", async () => {
     const cards = await render();
     expect(cards.map((c) => c.querySelector("h3").textContent)).toEqual(freeOpenings.map((o) => o.title));
-    expect(api.getFreeOpenings).not.toHaveBeenCalled();
+    expect(api.getFreeOpenings).toBeUndefined(); // no backend call exists for this page any more
+    expect(api.getOpenings).not.toHaveBeenCalled();
     expect(api.getMyJobApplications).not.toHaveBeenCalled();
     expect(container.querySelector(".duration-switch")).toBeNull();
+  });
+
+  it("lists each open role for search engines as an unpaid internship applied for through the form", async () => {
+    await render();
+    const ld = JSON.parse(document.getElementById("free-jobs-jsonld").textContent);
+    const open = freeOpenings.filter((o) => !(o.positions && o.positions.left === 0));
+    expect(ld["@graph"].map((j) => j.title)).toEqual(open.map((o) => o.title));
+    for (const j of ld["@graph"]) {
+      expect(j).toMatchObject({ "@type": "JobPosting", employmentType: "INTERN", directApply: false });
+      expect(j.datePosted).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(j).not.toHaveProperty("baseSalary");
+      expect(j.url).toMatch(/\/free-internships$/);
+    }
   });
 
   it("sends Apply Now, on a card and in its details, to our Google Form in a new tab", async () => {

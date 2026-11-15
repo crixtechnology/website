@@ -780,11 +780,6 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 .ref-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 0;border-bottom:1px dashed rgba(147,163,188,.18);font-size:.9rem}
 .ref-list small{color:var(--muted)}
 .ref-pill{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:3px 10px;white-space:nowrap;font-weight:400}
-/* The free internships' application form link, saved on its own (AdminJobOpenings.jsx FreeApplyFormLink). */
-.form-link-editor{margin:0 0 20px}
-.form-link-row{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
-.form-link-row input{flex:1;min-width:220px}
-.form-link-row .btn{white-space:nowrap;padding:10px 16px;display:inline-flex;align-items:center}
 .ref-pill--paid{color:var(--teal);border-color:rgba(var(--teal-rgb),.5);background:rgba(var(--teal-rgb),.1)}
 .ref-note{margin-top:18px;color:var(--muted);font-size:.86rem}
 .ref-ok{color:var(--teal);font-size:.84rem;margin:8px 0 0}

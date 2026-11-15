@@ -1,6 +1,6 @@
 # Training + Internship tracks: what to type in Admin
 
-Five tracks for the Training + Internship page (`/training-internship`), in the **same domains as the five free internship roles** (see `free-internship-roles.md`). Each domain is offered in **two durations, 3 months and 6 months** (you can also add 1 month and 2 months), and **each duration is its own card** on the site. Visitors pick a length with the filter on top of the page: All, 1 month, 2 months, 3 months, 6 months. The free internship roles use the same two durations.
+Five tracks for the Training + Internship page (`/training-internship`), in domains that match the free internship roles (those are not set up in Admin; see `free-internship-roles.md`). Each domain is offered in **two durations, 3 months and 6 months** (you can also add 1 month and 2 months), and **each duration is its own card** on the site. Visitors pick a length with the filter on top of the page: All, 1 month, 2 months, 3 months, 6 months.
 
 Go to **Admin → Training + Internship → Add a Training + Internship track**. Fill in one track, press **Create**, then do the next. That's 10 entries in all (5 domains × 2 durations).
 
@@ -14,7 +14,7 @@ Each section lists the fields **in the same order as the admin form**. Copy the 
 
 1. **Same domain = same Domain group.** Give the 3-month and the 6-month track of a domain exactly the same Domain group (e.g. `Frontend (React.js)`). That's what links the two cards' pages to each other ("Other durations of this track"). Once one entry has a group, the field suggests it when you type.
 2. **There is no aptitude test for training.** The training form has no test section. Students tap **Enroll now** on the card and pay your price online through Razorpay. A card with no price shows **Request to apply** instead; for those you send a payment request from **Admin → Applications → Send payment request**.
-3. **Training is paid.** Set a fee on at least one plan. A ₹0 plan is refused; free internships belong under Free Internship.
+3. **Training is paid.** Set a fee on at least one plan. A ₹0 plan is refused.
 4. **A new track starts Closed.** After you press Create, press **Closed** in the list to open it, so it shows on the site.
 5. **Eligibility differs from Free Internship.** Training has no webcam test, so the webcam line is gone. The age rule follows the Terms: 16 or older, and 16–17 year olds need a parent's or guardian's permission. The free internship test is 18+ only.
 6. **Stipend** is for trainees **selected** for the internship after the training, not for everyone. The form's label says "selected interns only". ✏️
