@@ -1,28 +1,24 @@
-import { useContext, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import {
-  Reveal, TiltCard, Aurora, SkeletonCards, SectionIndex, CopyButton, DownloadPdfButton, DurationSwitch,
+  Reveal, TiltCard, Aurora, SectionIndex, CopyButton, DownloadPdfButton, DurationSwitch,
   useBodyScrollLock, useModalEscape, useModalFocus, REDUCED,
 } from "../components/ui.jsx";
-import { openApplicationFor, StatusPill, useMyJobApplications, MY_APPLICATIONS } from "../components/CareersDashboard.jsx";
-import { UserContext } from "../context/UserContext.jsx";
 import { usePageMeta, routeMeta } from "../hooks/usePageMeta.js";
-import { getFreeOpenings, hasBackend } from "../services/api.js";
 import { careersContact, isRoleFull, positionsTag } from "../data/careers.js";
 import { programFacts } from "../utils/positions.js";
 import { groupVariants } from "../utils/variants.js";
 import { legal } from "../data/content.js";
 import {
-  FREE_PATH, FREE_APPLY_FORM_URL, freeHero, freeSteps, freeEligibility, freeRules,
+  FREE_PATH, FREE_APPLY_FORM_URL, freeHero, freeSteps, freeEligibility, freeRules, freeOpenings,
 } from "../data/freeInternships.js";
 
 // The free internships page, open to students of every field (the menu's
-// Internships → Free Internship). Roles are free, and are applied for through
-// our Google Form (FreeApplyButton) — there is no apply form on the site.
+// Internships → Free Internship). A static page: the roles are written in
+// data/freeInternships.js (freeOpenings) — nothing is loaded from the backend.
+// Roles are free, and are applied for through our Google Form (FreeApplyButton).
 
-// After this long still loading, a note says the list is on its way (the
-// backend may be waking up — getFreeOpenings keeps trying for about a minute).
-const SLOW_NOTE_MS = 4000;
+// One card per role; roles sharing a group are its durations, picked with the switch.
+const OPENING_GROUPS = groupVariants(freeOpenings);
 
 const INDEX = [
   { id: "openings", label: "Openings" },
@@ -42,20 +38,16 @@ const openingFacts = programFacts;
 const FreeBadge = () => <span className="fee-pill fee-pill--free">Free</span>;
 
 /* ---------- a role's Apply button ----------
-   Opens our Google Form (formUrl: the link from Admin → Training + Internship
-   → Free internships) in a new tab. A full role stays off. Someone whose test
-   on this site was already unlocked or taken, before the form replaced the
-   on-site application, is sent to My Applications to follow or finish it. */
-function FreeApplyButton({ opening, mine, formUrl, label, fullLabel, className = "btn btn-solid", style }) {
-  if (mine && mine.status !== "payment_pending") return <Link className={className} style={style} to={MY_APPLICATIONS}>View my application →</Link>;
+   Opens our Google Form (FREE_APPLY_FORM_URL) in a new tab. A full role stays off. */
+function FreeApplyButton({ opening, label, fullLabel, className = "btn btn-solid", style }) {
   if (isRoleFull(opening)) return <button className={className} style={style} disabled>{fullLabel}</button>;
-  return <a className={className} style={style} href={formUrl} target="_blank" rel="noopener noreferrer">{label}</a>;
+  return <a className={className} style={style} href={FREE_APPLY_FORM_URL} target="_blank" rel="noopener noreferrer">{label}</a>;
 }
 
 /* ---------- one opening's card ---------- */
 // switcher: the duration switch when this role is offered in several durations
 // (FreeOpeningGroupCard) — the same switch Training + Internship cards have.
-function FreeOpeningCard({ opening, i, mine, onOpen, formUrl, switcher = null }) {
+function FreeOpeningCard({ opening, i, onOpen, switcher = null }) {
   return (
     <Reveal as="div" variant={i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top"} style={{ "--i": i }}>
       <TiltCard className="card-type-internship job-card">
@@ -65,7 +57,7 @@ function FreeOpeningCard({ opening, i, mine, onOpen, formUrl, switcher = null })
               <span className="type-pill type-pill--internship">Internship</span>
               <span className={`tag${isRoleFull(opening) ? " tag--full" : ""}`}>{positionsTag(opening.positions, "Open")}</span>
             </div>
-            {mine ? <StatusPill application={mine} /> : <FreeBadge />}
+            <FreeBadge />
           </div>
           <h3>{opening.title}</h3>
           {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}
@@ -76,7 +68,7 @@ function FreeOpeningCard({ opening, i, mine, onOpen, formUrl, switcher = null })
           </dl>
         </div>
         <div className="card-btn-row">
-          <FreeApplyButton opening={opening} mine={mine} formUrl={formUrl} className="btn btn-solid buy-btn" label="Apply Now" fullLabel="Positions filled" />
+          <FreeApplyButton opening={opening} className="btn btn-solid buy-btn" label="Apply Now" fullLabel="Positions filled" />
           <button className="btn btn-ghost see-more-btn" onClick={() => onOpen(opening)} aria-haspopup="dialog">View details →</button>
         </div>
       </TiltCard>
@@ -86,18 +78,19 @@ function FreeOpeningCard({ opening, i, mine, onOpen, formUrl, switcher = null })
 
 /* ---------- one role offered in several durations ----------
    Roles the admin put in the same group: one card, the selected duration's
-   role filling it — its details, application and status follow the switch. */
-function FreeOpeningGroupCard({ variants, mineOf, ...cardProps }) {
+   role filling it — its details follow the switch. */
+function FreeOpeningGroupCard({ variants, ...cardProps }) {
   const [active, setActive] = useState(0);
   const opening = variants[Math.min(active, variants.length - 1)];
+  if (variants.length < 2) return <FreeOpeningCard {...cardProps} opening={opening} />;
   return (
-    <FreeOpeningCard {...cardProps} opening={opening} mine={mineOf(opening)}
+    <FreeOpeningCard {...cardProps} opening={opening}
       switcher={<DurationSwitch variants={variants} active={active} onPick={setActive} label={`${opening.title}: choose a duration`} />} />
   );
 }
 
 /* ---------- full details of one opening ---------- */
-function FreeOpeningModal({ opening, mine, onClose, formUrl }) {
+function FreeOpeningModal({ opening, onClose }) {
   useBodyScrollLock(!!opening);
   useModalFocus(!!opening);
   useModalEscape(!!opening, onClose);
@@ -136,8 +129,7 @@ function FreeOpeningModal({ opening, mine, onClose, formUrl }) {
           Press Apply Now and fill in our application form with your CV. Our team then emails you how and when to take the aptitude
           test, and candidates who do well are invited to an interview.
         </p>
-        {mine && <p className="form-note" style={{ margin: "16px 0 0" }}>You've applied for this internship. Status: <StatusPill application={mine} /></p>}
-        <FreeApplyButton opening={opening} mine={mine} formUrl={formUrl} style={{ width: "100%", marginTop: 16 }}
+        <FreeApplyButton opening={opening} style={{ width: "100%", marginTop: 16 }}
           label="Apply Now — Free" fullLabel="All positions filled" />
       </div>
     </div>
@@ -147,47 +139,7 @@ function FreeOpeningModal({ opening, mine, onClose, formUrl }) {
 /* ================= FREE INTERNSHIPS ================= */
 export default function FreeInternships() {
   usePageMeta(routeMeta(FREE_PATH));
-  const { isLoggedIn, isAdmin } = useContext(UserContext);
-  // Only to show where an application made on the site earlier stands.
-  const { applications } = useMyJobApplications(isLoggedIn && !isAdmin);
-  const [openings, setOpenings] = useState([]);
-  const [live, setLive] = useState(false);
-  // The application form "Apply Now" opens: the admin's link once it arrives.
-  const [formUrl, setFormUrl] = useState(FREE_APPLY_FORM_URL);
-  const [loading, setLoading] = useState(hasBackend);
-  const [slow, setSlow] = useState(false);
   const [detail, setDetail] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    // Skeleton cards stay up until the list actually arrives (or every retry
-    // has failed): giving up after a few seconds is what used to show "We
-    // couldn't load the open roles" while the backend was still waking.
-    const cap = setTimeout(() => setSlow(true), SLOW_NOTE_MS);
-    const load = () => getFreeOpenings().then((res) => {
-      if (!alive) return;
-      if (res.ok) { setOpenings((res.openings || []).filter((o) => o && o.status !== "closed")); setLive(true); }
-      // Only ever an https link, whatever the server sends.
-      const link = res.ok && res.terms && res.terms.applyFormUrl;
-      if (typeof link === "string" && /^https:\/\/\S+$/.test(link)) setFormUrl(link);
-      setLoading(false);
-      clearTimeout(cap);
-    });
-    load();
-    // Phones keep tabs in memory and bring them back without reloading, so a page
-    // opened before roles were added kept saying "no open roles". Coming back to
-    // the tab (or returning to it with Back) fetches the list again.
-    const onVisible = () => { if (document.visibilityState === "visible") load(); };
-    const onPageShow = (e) => { if (e.persisted) load(); };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("pageshow", onPageShow);
-    return () => {
-      alive = false;
-      clearTimeout(cap);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("pageshow", onPageShow);
-    };
-  }, []);
 
   const hero = freeHero;
   const tel = `tel:${careersContact.phone.replace(/[^\d+]/g, "")}`;
@@ -214,31 +166,22 @@ export default function FreeInternships() {
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Free Openings</Reveal>
           <Reveal as="h2" variant="reveal-l">Pick your role.</Reveal>
-          {(loading || openings.length > 0) && (
-            <Reveal as="p" variant="reveal-l" className="section-lede">
-              Every role below is free. Press Apply Now on the role you want and fill in the form with your CV — we'll contact you for the aptitude test and interview.
-            </Reveal>
-          )}
-          {loading ? (
+          {OPENING_GROUPS.length ? (
             <>
-              {slow && <p className="form-note" role="status" style={{ marginTop: 16 }}>Loading the open roles — this can take a few seconds the first time.</p>}
-              <div className="grid3 stagger" style={{ marginTop: 24 }}><SkeletonCards count={3} /></div>
+              <Reveal as="p" variant="reveal-l" className="section-lede">
+                Every role below is free. Press Apply Now on the role you want and fill in the form with your CV — we'll contact you for the aptitude test and interview.
+              </Reveal>
+              <div className="grid3 stagger" style={{ marginTop: 24 }}>
+                {OPENING_GROUPS.map((g, i) => (
+                  <FreeOpeningGroupCard key={g.key} variants={g.variants} i={i} onOpen={setDetail} />
+                ))}
+              </div>
             </>
-          ) : openings.length ? (
-            <div className="grid3 stagger" style={{ marginTop: 24 }}>
-              {/* One card per role: roles sharing a group are its durations, picked with the switch. */}
-              {groupVariants(openings).map((g, i) => (
-                <FreeOpeningGroupCard key={g.key} variants={g.variants} i={i} formUrl={formUrl}
-                  mineOf={(o) => openApplicationFor(applications, o)} onOpen={setDetail} />
-              ))}
-            </div>
           ) : (
             <div className="card no-openings" role="status" style={{ marginTop: 24 }}>
-              <h3>{live ? "No open roles right now" : "We couldn't load the open roles"}</h3>
+              <h3>No open roles right now</h3>
               <p>
-                {live
-                  ? <>New free internships are posted here first, so check back soon. Questions? Email <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>.</>
-                  : <>Please refresh the page in a moment. If it keeps happening, email <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>.</>}
+                New free internships are posted here first, so check back soon. Questions? Email <a href={`mailto:${careersContact.email}`}>{careersContact.email}</a>.
               </p>
             </div>
           )}
@@ -258,7 +201,7 @@ export default function FreeInternships() {
           </div>
         </div>
       </section>
-      <FreeOpeningModal opening={detail} formUrl={formUrl} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} />
+      <FreeOpeningModal opening={detail} onClose={() => setDetail(null)} />
 
       {/* How it works */}
       <section id="how" className="section anchor-section" style={{ paddingTop: 20 }}>
