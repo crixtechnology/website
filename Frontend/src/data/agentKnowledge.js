@@ -3,7 +3,7 @@
 // MERN internship?", "how long is Android Development?", "stipend for the data
 // science intern?". Nothing here is invented — a fact the data doesn't have is
 // simply left out, and the program's own page is always linked.
-import { offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
+import { offeredTiers, planPrice, listPrice, offPercent, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
 
 // Title words too common to tell one program from another.
@@ -59,7 +59,8 @@ function priceLine(p) {
   const plans = offeredTiers(p);
   const lines = plans.map((t) => {
     const now = planPrice(t);
-    return `• ${tierLabel(t.tier)}: ${formatINR(now)}${t.discountPercent ? ` (was ${formatINR(t.price)}, ${t.discountPercent}% off)` : ""}`;
+    const was = listPrice(t);
+    return `• ${plans.length > 1 ? `${tierLabel(t.tier)}: ` : ""}${formatINR(now)}${was ? ` (was ${formatINR(was)}, ${offPercent(t)}% off)` : ""}`;
   });
   return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\n${p.type === "internship" ? howToJoin : "Wallet credit and offer codes are taken off at checkout."}`;
 }

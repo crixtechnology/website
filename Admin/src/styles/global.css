@@ -901,3 +901,20 @@ body.no-copy img{-webkit-user-drag:none}
 .kind-option:disabled{opacity:.45;cursor:not-allowed}
 @media (max-width:640px){.kind-picker{grid-template-columns:1fr}}
 
+/* ---------- Admin lists: Add bar, tabs, search and duration filter ----------
+   The add/edit form stays shut until it's needed, so these sit at the top of
+   the page with the list right under them. */
+.list-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:0 0 18px}
+.list-toolbar .admin-search{margin-bottom:0;flex:1 1 260px}
+.list-count{color:var(--muted);font-size:.84rem;white-space:nowrap}
+.list-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 16px;border-bottom:1px solid var(--line)}
+.list-tab{font:inherit;font-weight:600;font-size:.92rem;color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.list-tab:hover{color:var(--text)}
+.list-tab.on{color:var(--teal);border-bottom-color:var(--teal)}
+.list-tab:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.list-tab-count{font-size:.74rem;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(var(--teal-rgb),.12);color:var(--text)}
+.filter-pills{display:flex;flex-wrap:wrap;gap:6px}
+.filter-pill{font:inherit;font-size:.8rem;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;white-space:nowrap}
+.filter-pill:hover{color:var(--text);border-color:var(--teal)}
+.filter-pill.on{background:var(--teal);border-color:var(--teal);color:var(--ink)}
+.filter-pill:focus-visible{outline:2px solid var(--teal);outline-offset:2px}

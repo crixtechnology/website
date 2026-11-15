@@ -16,7 +16,7 @@ const MAX_FEATURE_LENGTH = 200;
 const WITH_TIERS = {
   tiers: {
     orderBy: { tier: "asc" },
-    select: { id: true, tier: true, price: true, discountPercent: true, features: true },
+    select: { id: true, tier: true, price: true, originalPrice: true, discountPercent: true, features: true },
   },
 };
 
@@ -83,6 +83,17 @@ function parseTiers(input) {
       return { ok: false, error: `The ${raw.tier} plan's discount must be a whole number from 0 to 100.` };
     }
 
+    // Optional "original price": what it cost before the offer, shown struck
+    // through. It has to be more than the plan actually charges.
+    let originalPrice = null;
+    if (raw.originalPrice !== undefined && raw.originalPrice !== null && raw.originalPrice !== "") {
+      originalPrice = Number(raw.originalPrice);
+      const charged = Math.round(price * (1 - discountPercent / 100));
+      if (!Number.isFinite(originalPrice) || originalPrice <= charged) {
+        return { ok: false, error: `The ${raw.tier} plan's original price must be higher than its final price (or left blank).` };
+      }
+    }
+
     const features = Array.isArray(raw.features)
       ? raw.features.map((f) => String(f).trim()).filter(Boolean)
       : [];
@@ -93,7 +104,7 @@ function parseTiers(input) {
       };
     }
 
-    tiers.push({ tier: raw.tier, price, discountPercent, features });
+    tiers.push({ tier: raw.tier, price, originalPrice, discountPercent, features });
   }
   return { ok: true, tiers };
 }
@@ -106,4 +117,15 @@ function tierTotal(tier) {
   return Math.round(tier.price * (1 - (tier.discountPercent || 0) / 100));
 }
 
-module.exports = { TIERS, WITH_TIERS, WITH_SEATS, seatsOf, withSeats, isTier, tierRank, tierLabel, parseTiers, tierTotal };
+// What a receipt calls the plan's price before the offer, and the offer as a
+// percentage of it: the original price when one is set, else the plan's own
+// price and discount. Snapshotted on the order (payment.orderSnapshot*).
+function listPriceOf(tier) {
+  const total = tierTotal(tier);
+  if (tier.originalPrice != null && tier.originalPrice > total) {
+    return { basePrice: tier.originalPrice, discountPercent: Math.round(((tier.originalPrice - total) / tier.originalPrice) * 10000) / 100 };
+  }
+  return { basePrice: tier.price, discountPercent: tier.discountPercent || 0 };
+}
+
+module.exports = { TIERS, WITH_TIERS, WITH_SEATS, seatsOf, withSeats, isTier, tierRank, tierLabel, parseTiers, tierTotal, listPriceOf };

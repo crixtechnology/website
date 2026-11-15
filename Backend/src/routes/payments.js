@@ -8,7 +8,7 @@ const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
 const { issueReceiptNumber } = require("../utils/receiptNumber");
 const { round2 } = require("../utils/money");
-const { WITH_TIERS, WITH_SEATS, seatsOf, isTier, tierRank, tierTotal } = require("../utils/tiers");
+const { WITH_TIERS, WITH_SEATS, seatsOf, isTier, tierRank, tierTotal, listPriceOf } = require("../utils/tiers");
 const { getUpgradeOptions } = require("../utils/upgrades");
 const { requireAuth } = require("../middleware/requireAuth");
 const { priceOrder, rewardReferrerForPurchase, redeemCreditForPurchase } = require("../utils/referrals");
@@ -422,8 +422,8 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
         couponDiscount: pricing.couponDiscount,
         // Snapshotted now, not re-read from the plan at grant time — see the
         // field's own doc comment in prisma/schema.prisma for why.
-        orderSnapshotBasePrice: plan.price,
-        orderSnapshotDiscountPercent: plan.discountPercent || 0,
+        orderSnapshotBasePrice: listPriceOf(plan).basePrice,
+        orderSnapshotDiscountPercent: listPriceOf(plan).discountPercent,
       },
     });
 
@@ -510,8 +510,8 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
           couponId: applied ? applied.coupon.id : null,
           couponCode: applied ? applied.coupon.code : "",
           couponDiscount: pricing.couponDiscount,
-          orderSnapshotBasePrice: plan.price,
-          orderSnapshotDiscountPercent: plan.discountPercent || 0,
+          orderSnapshotBasePrice: listPriceOf(plan).basePrice,
+          orderSnapshotDiscountPercent: listPriceOf(plan).discountPercent,
         },
       });
       // This purchase now counts against the code's limits. If that pushed it over,

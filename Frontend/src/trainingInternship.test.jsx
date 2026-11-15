@@ -147,3 +147,32 @@ it("sends someone who already has a program to My Dashboard instead of offering 
   expect(link.getAttribute("href")).toBe("/dashboard");
   expect([...other.querySelectorAll("button")].map((b) => b.textContent)).toContain("Enroll now");
 });
+
+it("shows the original price crossed out beside the final price", async () => {
+  api.getCourses.mockResolvedValue({
+    ok: true,
+    courses: [
+      { ...program("Cyber Security", 1499), tiers: [{ tier: "basic", price: 1499, originalPrice: 1999, discountPercent: 0, features: [] }] },
+      program("Web Internship", 2999),
+      // An older plan with a % discount still shows its price crossed out.
+      { ...program("Data Internship", 5000), tiers: [{ tier: "basic", price: 5000, discountPercent: 20, features: [] }] },
+    ],
+  });
+  await act(async () => {
+    root.render(
+      <UserContext.Provider value={{ user: null, isLoggedIn: false }}>
+        <MemoryRouter initialEntries={["/training-internship"]}><TrainingInternship /></MemoryRouter>
+      </UserContext.Provider>
+    );
+  });
+  const price = (title) => [...container.querySelectorAll("#programs .card")].find((c) => c.querySelector("h3").textContent === title).querySelector(".card-price");
+  const offer = price("Cyber Security");
+  expect(offer.querySelector(".price-old").textContent).toContain("₹1,999");
+  expect(offer.querySelector(".price-now").textContent).toContain("₹1,499");
+  expect(offer.querySelector(".price-off").textContent).toBe("25% off");
+  // No original price: just the price.
+  expect(price("Web Internship").querySelector(".price-old")).toBeNull();
+  expect(price("Web Internship").querySelector(".price-now").textContent).toBe("₹2,999");
+  expect(price("Data Internship").querySelector(".price-old").textContent).toContain("₹5,000");
+  expect(price("Data Internship").querySelector(".price-now").textContent).toContain("₹4,000");
+});

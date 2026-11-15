@@ -22,7 +22,7 @@ import { useEmailCheck } from "../hooks/useEmailCheck.js";
 import { useTouched, focusFirstError } from "../hooks/useTouched.js";
 import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 import { variantLabel } from "../utils/variants.js";
-import { TIER_ORDER, offeredTiers, planPrice, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
+import { TIER_ORDER, offeredTiers, planPrice, listPrice, offPercent, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
 import { isFull, placeWord, positionsTag, programFacts } from "../utils/positions.js";
@@ -384,15 +384,17 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
 }
 
 /* ---------- Plans (Basic / Plus / Pro) ----------
-   PlanPrice: one plan's price, with the struck-through list price and the
-   discount badge when it has one. */
-function PlanPrice({ plan, className = "" }) {
-  const off = plan.discountPercent > 0;
+   PlanPrice: one plan's price — the final price, with the original price
+   struck through and the "% off" badge when Admin set an original price
+   (utils/tiers.js listPrice / offPercent). */
+export function PlanPrice({ plan, className = "" }) {
+  const was = listPrice(plan);
+  const pct = offPercent(plan);
   return (
     <span className={`plan-price ${className}`}>
-      {off && <span className="price-old">{formatINR(plan.price)}</span>}
-      <span className="price-now">{formatINR(planPrice(plan))}</span>
-      {off && <span className="price-off">{plan.discountPercent}% off</span>}
+      {was && <span className="price-old"><span className="sr-only">Original price </span>{formatINR(was)}</span>}
+      <span className="price-now">{was && <span className="sr-only">Now </span>}{formatINR(planPrice(plan))}</span>
+      {was && pct > 0 && <span className="price-off">{pct}% off</span>}
     </span>
   );
 }
@@ -517,11 +519,7 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
           {cheapest && !closed ? (
             <div className="card-price">
               <span className="card-price-label">{plans.length > 1 ? "Training fee from" : "Training fee"}</span>
-              <span className="plan-price">
-                {cheapest.discountPercent > 0 && <span className="price-old">{formatINR(cheapest.price)}</span>}
-                <span className="price-now">{formatINR(planPrice(cheapest))}</span>
-                {cheapest.discountPercent > 0 && <span className="price-off">{cheapest.discountPercent}% off</span>}
-              </span>
+              <PlanPrice plan={cheapest} />
             </div>
           ) : null}
         </div>
