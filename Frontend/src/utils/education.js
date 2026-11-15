@@ -1,7 +1,8 @@
 // The education details in a student's profile (college, course, branch /
-// department, semester, year of passing). Optional in Profile, but a free
-// internship (pages/FreeInternships.jsx) needs all of them — the server checks
-// the same list (Backend/src/utils/accounts.js educationMissing).
+// department, semester, year of passing). Optional in Profile. A free
+// internship applied for on this site before the Google Form replaced it needed
+// all of them — the server still checks the same list for those older
+// applications (Backend/src/utils/accounts.js educationMissing).
 
 export const SEMESTERS = [
   ...Array.from({ length: 10 }, (_, i) => [String(i + 1), `Semester ${i + 1}`]),
@@ -44,7 +45,7 @@ export function educationMissing(form) {
   return missing;
 }
 
-/* The five inputs, shared by Profile and the free-internship apply form.
+/* The five inputs, used by Profile.
    `idPrefix` keeps the label/input ids unique on a page. */
 export function EducationFields({ form, onChange, disabled = false, idPrefix = "edu" }) {
   const set = (key) => (e) => onChange({ ...form, [key]: e.target.value });

@@ -33,7 +33,7 @@ const base = {
 };
 
 // What to add is chosen by the Add button pressed: shut the open form, then open that kind's.
-const ADD_BUTTON = { "Training + Internship": "+ Add program card", "Free Internship": "+ Add free internship" };
+const ADD_BUTTON = { "Training + Internship": "+ Add program card" };
 const pick = async (label) => {
   const cancel = qa("form button").find((b) => b.textContent === "Cancel");
   if (cancel) await act(async () => { cancel.click(); });
@@ -55,7 +55,6 @@ describe("admin course form", () => {
     api.adminCreateCourse.mockResolvedValue({ ok: true, course: { ...base, _id: "new" } });
     api.adminUpdateCourse.mockResolvedValue({ ok: true, course: base });
     api.adminGetJobOpenings.mockResolvedValue({ ok: true, openings, bank: {} });
-    api.adminGetCareerSettings.mockResolvedValue({ ok: true, settings: { freeApplyFormUrl: "https://forms.gle/eaX7kab7zPG7w6SX6" } });
     await act(async () => {
       root.render(
         <UserContext.Provider value={ctx({ isLoggedIn: true, isAdmin: true, logout: jest.fn() })}>
@@ -64,15 +63,13 @@ describe("admin course form", () => {
       );
     });
     // The form is shut until asked for; most tests here are about the form, so
-    // open a blank one. With only free internships to show, switch to their list.
+    // open a blank one.
     if (open) await act(async () => { qa(".list-toolbar button").find((b) => b.textContent === "+ Add program card").click(); });
-    if (openings.length && !entries.length) await showList("Free internships");
   };
-  const showList = (label) => act(async () => { qa(".list-tab").find((b) => b.textContent.startsWith(label)).click(); });
 
   it("opens on the lists, with the form behind an Add button, and shuts the form again on Cancel", async () => {
     await renderAdmin([base], [], false);
-    expect(q("form.admin-form:not(.form-link-editor)")).toBeNull();
+    expect(q("form.admin-form")).toBeNull();
     expect(qa(".admin-row b").map((b) => b.textContent)).toEqual(["Web Development"]);
     await act(async () => { qa(".list-toolbar button").find((b) => b.textContent === "+ Add program card").click(); });
     expect(q("#courses-title")).not.toBeNull();
@@ -83,13 +80,10 @@ describe("admin course form", () => {
     expect(q("#courses-title").value).toBe("Web Development");
   });
 
-  it("shows one list at a time, and filters program cards by duration and search", async () => {
+  it("filters program cards by duration and search", async () => {
     const card = (id, title, days, group = "") => ({ ...base, _id: id, title, durationDays: days, group });
-    const free = { _id: "f1", slug: "free", title: "Free Web Intern", audience: "free", status: "open", applicants: 0, skills: [], duration: "3 months",
-      positions: { total: 4, filled: 0, left: 4 }, test: { durationMinutes: 30, questions: 0, marksPerQuestion: 1, cutoffScore: 0, questionCounts: {} } };
-    await renderAdmin([card("a", "MERN 1M", 30, "MERN"), card("b", "MERN 3M", 90, "MERN"), card("c", "Cyber Security", 90)], [free], false);
+    await renderAdmin([card("a", "MERN 1M", 30, "MERN"), card("b", "MERN 3M", 90, "MERN"), card("c", "Cyber Security", 90)], [], false);
     const titles = () => qa(".admin-row b").map((b) => b.textContent);
-    expect(qa(".list-tab").map((b) => b.textContent)).toEqual(["Program cards 3", "Free internships 1"]);
     expect(titles()).toEqual(["MERN 1M", "MERN 3M", "Cyber Security"]);
     const pill = (label) => act(async () => { qa(".filter-pill").find((b) => b.textContent === label).click(); });
     expect(qa(".filter-pill").map((b) => b.textContent)).toEqual(["All", "1 month", "2 months", "3 months", "6 months"]);
@@ -100,10 +94,6 @@ describe("admin course form", () => {
     await pill("2 months");
     expect(titles()).toEqual([]);
     expect(container.textContent).toContain("No program cards match.");
-    await act(async () => { fill(q(".admin-search"), ""); });
-    await showList("Free internships");
-    expect(titles()).toEqual(["Free Web Intern"]);
-    expect(q(".filter-pills")).toBeNull();
   });
 
   it("gives every track an Open/Closed switch, apply-only ones too, and tidies the row text", async () => {
@@ -264,120 +254,16 @@ describe("admin course form", () => {
     });
   });
 
-  describe("one form for Training + Internship tracks and free internships", () => {
-    const freeRole = {
-      _id: "o9", slug: "free-web", title: "Free Web Intern", audience: "free", status: "open", applicants: 0,
-      summary: "", techCategory: "web", skills: [], responsibilities: [], eligibility: [], stipend: "", experience: "", duration: "", mode: "",
-      positions: { total: 4, filled: 1, left: 3 }, order: 1,
-      test: { durationMinutes: 30, questions: 40, marksPerQuestion: 1, cutoffScore: 0, questionCounts: { quantitative: 10, logical: 10, verbal: 10, technical: 10 } },
-    };
-    const careersRole = { ...freeRole, _id: "o8", slug: "careers-web", title: "Careers Web Intern", audience: "general" };
-
-    it("copies a free internship into the form as a new one", async () => {
-      api.adminCreateJobOpening.mockResolvedValue({ ok: true });
-      const role = { ...freeRole, summary: "Build pages.", skills: ["HTML"], duration: "3 months", group: "Web", stipend: "Unpaid", order: 4 };
-      await renderAdmin([], [role]);
-      await act(async () => { qa(".admin-row button").find((b) => b.textContent === "Copy").click(); });
-      expect(q("form h3").textContent).toBe("Add a copy of a free internship");
-      expect(q(".copy-note").textContent).toContain("Free Web Intern");
-      expect(q("#jo-title").value).toBe("Free Web Intern");
-      expect(q("#jo-order")).toBeNull(); // no Display order box: a copy goes last
-      await act(async () => { fill(q("#jo-duration"), "6 months"); });
-      await submit();
-      expect(api.adminUpdateJobOpening).not.toHaveBeenCalled();
-      expect(api.adminCreateJobOpening).toHaveBeenCalledTimes(1);
-      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({
-        title: "Free Web Intern", summary: "Build pages.", skills: ["HTML"], duration: "6 months", group: "Web", positions: 4, audience: "free",
-      });
-      expect(api.adminCreateJobOpening.mock.calls[0][0].order).toBeUndefined();
-    });
-
-    it("lists the two kinds apart, offers no Course, and leaves Careers roles out", async () => {
-      await renderAdmin([base, { ...base, _id: "i1", type: "internship", title: "Paid Android Internship" }], [freeRole, careersRole]);
-      // Each kind has its own list, one showing at a time.
-      expect(qa(".list-tab").map((b) => b.textContent)).toEqual(["Program cards 2", "Free internships 1"]);
-      expect(qa("h3").map((h) => h.textContent)).toContain("Training + Internship program cards");
-      expect(qa("h3").map((h) => h.textContent)).not.toContain("Courses");
-      expect(q(".kind-option")).toBeNull(); // the kind is chosen by the Add button, not inside the form
+  describe("the Training + Internship form", () => {
+    it("has no free internships: that page's roles are in the website's code", async () => {
+      await renderAdmin([base], [{ _id: "o9", title: "Free Web Intern", audience: "free", status: "open" }], false);
+      expect(qa(".list-tab")).toEqual([]);
+      expect(qa(".list-toolbar button").map((b) => b.textContent).filter((t) => t.startsWith("+"))).toEqual(["+ Add program card"]);
       expect(container.textContent).not.toContain("Free Web Intern");
-      await showList("Free internships");
-      expect(qa("h3").map((h) => h.textContent)).toContain("Free internships");
-      expect(container.textContent).toContain("Free Web Intern");
-      expect(container.textContent).toContain("4 positions"); // applications are in the Google Form, so none are counted here
-      expect(container.textContent).not.toContain("Careers Web Intern");
-    });
-
-    it("saves a free internship as a free-internships-page opening", async () => {
-      await renderAdmin();
-      api.adminCreateJobOpening.mockResolvedValue({ ok: true, opening: freeRole });
-      await pick("Free Internship");
-      expect(q("#plan-basic-price")).toBeNull(); // no plans: it isn't sold
-      await act(async () => { fill(q("#jo-title"), "Free Data Intern"); });
-      await act(async () => { fill(q("#jo-positions"), "6"); });
-      await act(async () => { fill(q("#jo-starts-on"), " 2nd week of January "); });
-      await act(async () => { fill(q("#jo-group"), " Data Science / Analytics "); });
-      await submit();
-      expect(api.adminCreateJobOpening).toHaveBeenCalledTimes(1);
-      expect(api.adminCreateJobOpening.mock.calls[0][0]).toMatchObject({ title: "Free Data Intern", audience: "free", positions: 6, startsOn: "2nd week of January", group: "Data Science / Analytics" });
-      expect(api.adminCreateCourse).not.toHaveBeenCalled();
-    });
-
-    it("has no fee to set on a free internship: applying and the test are free", async () => {
-      await renderAdmin([], [freeRole]);
-      expect(container.textContent).toContain("free to apply");
-      api.adminCreateJobOpening.mockResolvedValue({ ok: true, opening: freeRole });
-      await pick("Free Internship");
-      expect(q("#jo-fee")).toBeNull();
-      expect(q("#jo-fee-amount")).toBeNull();
-      expect(qa("button").some((b) => b.textContent === "Save fee")).toBe(false);
-      await act(async () => { fill(q("#jo-title"), "No-fee Intern"); });
-      await act(async () => { fill(q("#jo-positions"), "3"); });
-      await submit();
-      const sent = api.adminCreateJobOpening.mock.calls[0][0];
-      expect(sent).toMatchObject({ audience: "free" });
-      expect(sent).not.toHaveProperty("waiveFee");
-      expect(sent).not.toHaveProperty("feeRequired");
-    });
-
-    it("has no aptitude-test fields on a free internship: it is applied for through the Google Form", async () => {
-      await renderAdmin([], [freeRole]);
-      // The list row doesn't quote a test either.
-      expect(container.textContent).toContain("applies through the Google Form");
-      expect(container.textContent).not.toMatch(/questions in \d+ min|cut-off/);
-      api.adminCreateJobOpening.mockResolvedValue({ ok: true, opening: freeRole });
-      await pick("Free Internship");
-      for (const id of ["jo-tech", "jo-mins", "jo-quantitative", "jo-logical", "jo-verbal", "jo-technical", "jo-marks", "jo-cutoff"]) {
-        expect(q(`#${id}`)).toBeNull();
-      }
-      expect(container.textContent).toContain("No test settings here");
-      await act(async () => { fill(q("#jo-title"), "Form Intern"); });
-      await act(async () => { fill(q("#jo-positions"), "4"); });
-      await submit();
-      const sent = api.adminCreateJobOpening.mock.calls[0][0];
-      expect(sent).toMatchObject({ title: "Form Intern", audience: "free", positions: 4 });
-      for (const key of ["techCategory", "durationMinutes", "questionCounts", "marksPerQuestion", "cutoffScore"]) expect(sent).not.toHaveProperty(key);
-    });
-
-    it("edits the free internships application form link under Free internships, saved on its own", async () => {
-      await renderAdmin([], [freeRole]);
-      const input = q("#free-form-link");
-      expect(input.value).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
-      const saveBtn = () => qa("button").find((b) => b.textContent === "Save link");
-      expect(saveBtn().disabled).toBe(true); // nothing changed yet
-      expect(qa("a").find((a) => a.textContent.startsWith("Open form")).getAttribute("href")).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
-
-      // Not a full https link: refused here, nothing sent.
-      await act(async () => { fill(input, "forms.gle/abc"); });
-      await act(async () => { saveBtn().click(); });
-      expect(api.adminUpdateCareerSettings).not.toHaveBeenCalled();
-      expect(container.textContent).toContain("starting with https://");
-
-      api.adminUpdateCareerSettings.mockResolvedValue({ ok: true, settings: { freeApplyFormUrl: "https://forms.gle/NewForm123" } });
-      await act(async () => { fill(input, " https://forms.gle/NewForm123 "); });
-      await act(async () => { saveBtn().click(); });
-      expect(api.adminUpdateCareerSettings).toHaveBeenCalledWith({ freeApplyFormUrl: "https://forms.gle/NewForm123" });
-      expect(container.textContent).toContain("Saved — Apply Now on every free internship now opens this form.");
-      expect(api.adminCreateJobOpening).not.toHaveBeenCalled(); // saving the link doesn't submit the role form
+      expect(q("#free-form-link")).toBeNull();
+      expect(api.adminGetJobOpenings).not.toHaveBeenCalled();
+      expect(api.adminGetCareerSettings).not.toHaveBeenCalled();
+      expect(container.textContent).toContain("The Free Internship page is fixed in the website's code");
     });
 
     it("saves a Training + Internship track as an internship entry", async () => {
@@ -400,10 +286,10 @@ describe("admin course form", () => {
       expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ group: "MERN Stack", startingFrom: "15 December" });
     });
 
-    it("lays the training form out like the Free Internship one, with no test and Starts on as text", async () => {
+    it("lays the training form out like the Careers one, with no test and Starts on as text", async () => {
       await renderAdmin();
       const labels = qa("form label").map((l) => l.textContent);
-      // Same fields, same order as the Free Internship / Careers form…
+      // Same fields, same order as the Careers form…
       const order = ["Title", "Short description", "Skills (separate with commas)", "Responsibilities (one per line)", "Eligibility (one per line)",
         "Positions available", "Stipend (selected interns only)", "Experience", "Duration", "Mode", "Starts on (optional)"];
       expect(labels.filter((l) => order.includes(l))).toEqual(order);
@@ -436,15 +322,6 @@ describe("admin course form", () => {
       await submit();
       expect(api.adminCreateCourse).not.toHaveBeenCalled();
       expect(container.textContent).toContain("Training is paid, not free");
-    });
-
-    it("opens a free internship's Edit in the free-internship form", async () => {
-      await renderAdmin([], [freeRole]);
-      await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
-      expect(q("#jo-title").value).toBe("Free Web Intern");
-      expect(q("#jo-positions").value).toBe("4");
-      expect(q("#jo-title")).not.toBeNull(); // the free-internship form, not the program card one
-      expect(q("#courses-title")).toBeNull();
     });
 
     it("saves a training track's details, and loads them back", async () => {

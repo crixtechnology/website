@@ -88,7 +88,7 @@ afterAll(async () => {
 });
 
 describe("Free internships", () => {
-  it("lists free-internship roles only on their own endpoint, never on /careers", async () => {
+  it("keeps free-internship roles off /careers, and has no endpoint of their own (the page is static)", async () => {
     const free = await opening();
     const general = await opening({ audience: "general", title: `General ${++seq}` });
 
@@ -96,37 +96,22 @@ describe("Free internships", () => {
     const slugs = careers.body.openings.map((o) => o.slug);
     expect(slugs).toContain(general.slug);
     expect(slugs).not.toContain(free.slug);
-
-    const page = await request(app).get("/api/careers/free/openings");
-    expect(page.status).toBe(200);
-    // Never cached: a phone that kept an old copy showed "no open roles" after roles opened.
-    expect(page.headers["cache-control"]).toBe("no-store");
     expect(careers.headers["cache-control"]).toBe("no-store");
-    expect(page.body.openings.map((o) => o.slug)).toEqual(expect.arrayContaining([free.slug]));
-    expect(page.body.openings.every((o) => o.audience === "free")).toBe(true);
-    // Where Apply Now sends a new applicant: the Google Form.
-    expect(page.body.terms.applyFormUrl).toBe("https://forms.gle/eaX7kab7zPG7w6SX6");
-    // No fee is quoted: not in the terms, not on a role.
-    expect(page.body.terms.processingFee).toBeUndefined();
-    expect(page.body.openings.every((o) => o.feeRequired === undefined && o.waiveFee === undefined)).toBe(true);
+
+    expect((await request(app).get("/api/careers/free/openings")).status).toBe(404);
   });
 
-  it("lets an admin change the application form link, and only to an https link", async () => {
-    const put = (freeApplyFormUrl) => asAdmin(request(app).put("/api/admin/careers/settings")).send({ freeApplyFormUrl });
-    for (const bad of ["", "   ", "forms.gle/abc", "http://forms.gle/abc", "javascript:alert(1)", "https://", "https://forms.gle/a b", 42, null, `https://forms.gle/${"x".repeat(600)}`]) {
-      expect((await put(bad)).status).toBe(400);
-    }
-    const page = () => request(app).get("/api/careers/free/openings").then((r) => r.body.terms.applyFormUrl);
-    expect(await page()).toBe("https://forms.gle/eaX7kab7zPG7w6SX6"); // a refused link changes nothing
-
-    const ok = await put("  https://forms.gle/NewForm123  ");
-    expect(ok.status).toBe(200);
-    expect(ok.body.settings.freeApplyFormUrl).toBe("https://forms.gle/NewForm123");
-    expect(await page()).toBe("https://forms.gle/NewForm123");
-    // Saving other settings leaves the link alone.
-    await asAdmin(request(app).put("/api/admin/careers/settings")).send({ generatedQuestionsPercent: 0 });
-    expect(await page()).toBe("https://forms.gle/NewForm123");
-    await put("https://forms.gle/eaX7kab7zPG7w6SX6");
+  it("has no free internships form link setting any more, and drops one stored before", async () => {
+    await prisma.setting.upsert({
+      where: { key: "careers" },
+      create: { key: "careers", value: { freeApplyFormUrl: "https://forms.gle/old" } },
+      update: { value: { freeApplyFormUrl: "https://forms.gle/old" } },
+    });
+    const res = await asAdmin(request(app).put("/api/admin/careers/settings")).send({ freeApplyFormUrl: "https://forms.gle/NewForm123" });
+    expect(res.status).toBe(200);
+    expect(res.body.settings).not.toHaveProperty("freeApplyFormUrl");
+    const stored = await prisma.setting.findUnique({ where: { key: "careers" } });
+    expect(stored.value).not.toHaveProperty("freeApplyFormUrl");
   });
 
   it("refuses an unknown audience", async () => {
@@ -311,7 +296,6 @@ describe("Free internships", () => {
     it("has no payment step, even with the old fee settings sent again", async () => {
       // Settings from when there was a fee are ignored.
       expect((await asAdmin(request(app).put("/api/admin/careers/settings")).send({ processingFeeRupees: 94, testFeeRupees: 289 })).status).toBe(200);
-      expect((await request(app).get("/api/careers/free/openings")).body.terms.processingFee).toBeUndefined();
 
       // So is a per-role "charge the fee" choice.
       const o = await opening({ waiveFee: false, feeRequired: true });

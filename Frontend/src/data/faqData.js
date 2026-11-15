@@ -9,6 +9,13 @@
 // `k`: extra keywords the free-text search should match on.
 import { site, internships } from "./content.js";
 import { careersContact } from "./careers.js";
+import { freeOpenings } from "./freeInternships.js";
+
+// The open free internships, from the page's own list (freeInternships.json).
+const freeStarts = [...new Set(freeOpenings.map((o) => o.startsOn).filter(Boolean))];
+const freeRolesAnswer = `These free internships are open now:\n${freeOpenings.map((o) => `• ${o.title} — ${o.duration}, ${o.mode}`).join("\n")}\n`
+  + `${freeStarts.length === 1 ? `They're expected to start ${freeStarts[0]}` : "Each role on the page shows when it's expected to start"}`
+  + " — the exact date comes with your offer letter. They're unpaid (no stipend) and free to apply for.";
 
 const list = (items) => items.map((i) => `• ${i.title}`).join("\n");
 
@@ -66,7 +73,11 @@ export const FAQ_TOPICS = [
         a: "• Log in with your email and a password (a new email gets an account)\n• Pick a role on the Careers page, or in My Dashboard → Apply / Aptitude Test\n• Accept the terms — applying and the test are free\n• Take the online aptitude test\n• If you're shortlisted, we schedule an online interview, then share the result",
         links: [{ to: "/careers", label: "Careers page" }, { to: "/dashboard", label: "My Dashboard" }] },
       { id: "k-free-apply", q: "How do I apply for a free internship?", k: "free internship apply application form google form cv resume how steps",
-        a: "• Open the Free Internship page and pick a role and duration\n• Press Apply Now — it opens our application form (a Google Form, so you sign in with a Google account)\n• Fill in your details and upload your CV as a PDF\n• Our team reviews it and emails you about the aptitude test; candidates who do well are invited to an interview\nIt's free at every step.",
+        a: "• Open the Free Internship page and pick a role\n• Press Apply Now — it opens our application form (a Google Form, so you sign in with a Google account)\n• Fill in your details and upload your CV as a PDF\n• Our team reviews it and emails you about the aptitude test; candidates who do well are invited to an interview\nIt's free at every step.",
+        links: [{ to: "/free-internships", label: "Free Internship" }] },
+      { id: "k-free-roles", q: "Which free internships are open, and when do they start?",
+        k: "free internship roles list which open available start date when begin duration mern react python ai ml data analyst cyber security",
+        a: freeRolesAnswer,
         links: [{ to: "/free-internships", label: "Free Internship" }] },
       { id: "k-fee", q: "Do I have to pay to take the aptitude test?", k: "test fee registration fee processing fee cost charge free money aptitude",
         a: "No. Applying for a role and taking its aptitude test are free — on the Careers page and on the Free Internship page. There is no registration, test or processing fee, and we never ask applicants to pay one. If anyone asks you for money in our name, don't pay and tell us.",

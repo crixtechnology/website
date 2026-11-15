@@ -13,10 +13,8 @@ const { prisma } = require("../db");
 //   reapplyCooldownDays    days before someone can apply again to the same role
 //                          after an application there ended without an offer
 //                          (0 = straight away).
-// Applying and the test are free, so there is no fee setting.
-//   freeApplyFormUrl       the Google Form "Apply Now" opens on the Free Internships
-//                          page (an https link); edited in Admin → Training +
-//                          Internship, under "Free internships"
+// Applying and the test are free, so there is no fee setting. The Free
+// Internships page's Google Form link is in the website's code, not here.
 //   requireWebcam          refuse to start a test without a working webcam
 //   requireDesktopApp      only allow the test inside the desktop lockdown app
 const SETTINGS_KEY = "careers";
@@ -28,7 +26,6 @@ const DEFAULT_SETTINGS = {
   snapshotIntervalSeconds: 60,
   generatedQuestionsPercent: 30,
   reapplyCooldownDays: 30,
-  freeApplyFormUrl: "https://forms.gle/eaX7kab7zPG7w6SX6",
   requireWebcam: true,
   requireDesktopApp: false,
 };
@@ -44,26 +41,13 @@ const INT_RANGES = {
   reapplyCooldownDays: [0, 365, "The re-apply wait must be a whole number of days from 0 to 365"],
 };
 const BOOLEANS = ["requireWebcam", "requireDesktopApp"];
-const MAX_URL_LENGTH = 500;
-
-// A link the public page can safely send people to: https only, nothing else.
-function httpsUrl(value) {
-  if (typeof value !== "string") return "";
-  const text = value.trim();
-  if (!text || text.length > MAX_URL_LENGTH || /\s/.test(text)) return "";
-  try {
-    const url = new URL(text);
-    return url.protocol === "https:" && url.hostname.includes(".") ? url.href : "";
-  } catch (e) {
-    return "";
-  }
-}
 
 // `db` lets a caller already inside a transaction read through it.
 async function getCareerSettings(db = prisma) {
   const row = await db.setting.findUnique({ where: { key: SETTINGS_KEY } });
-  // A value stored while tests had a fee still carries the two fee settings: left out.
-  const { testFeeRupees, processingFeeRupees, ...stored } = (row && row.value) || {};
+  // Settings no longer used are left out: the two test fees, and the Free
+  // Internships form link (now in the website's code).
+  const { testFeeRupees, processingFeeRupees, freeApplyFormUrl, ...stored } = (row && row.value) || {};
   return { ...DEFAULT_SETTINGS, ...stored };
 }
 
@@ -82,11 +66,6 @@ async function saveCareerSettings(input) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") return { ok: false, error: `${key} must be true or false` };
     next[key] = body[key];
-  }
-  if (body.freeApplyFormUrl !== undefined) {
-    const url = httpsUrl(body.freeApplyFormUrl);
-    if (!url) return { ok: false, error: "The free internships form link must be a full https:// link (for example a Google Form link)." };
-    next.freeApplyFormUrl = url;
   }
   await prisma.setting.upsert({
     where: { key: SETTINGS_KEY },

@@ -26,6 +26,13 @@ import { site } from "./content.js";
 import { ALL_FAQS, searchFaqs } from "./faqData.js";
 import { understand, buildVocab, similarity } from "./agentLanguage.js";
 import { findNamed, programAnswer, roleAnswer } from "./agentKnowledge.js";
+import { freeOpenings } from "./freeInternships.js";
+
+// The Free Internship page's roles — static, from data/freeInternships.json —
+// so the agent can answer about one named outright ("stipend for the Cyber
+// Security intern?"). Marked "free" so roleAnswer points at that page.
+const FREE_ROLES = freeOpenings.map((o) => ({ ...o, audience: "free" }));
+const allRoles = (ctx) => [...(ctx.openings || []), ...FREE_ROLES];
 
 export const DEPARTMENTS = {
   programs: {
@@ -169,13 +176,16 @@ function careersReply(ctx) {
   const roles = (ctx.openings || []).filter((o) => o && o.status !== "closed");
   if (!roles.length) {
     return {
-      text: "There's no open role right now — new openings are posted on the Careers page first, so do check back.\nMeanwhile, our Training + Internship program is open to join any time.",
-      links: [{ to: "/careers", label: "Careers page" }, { to: "/training-internship", label: "Training + Internship" }],
+      text: "There's no open role right now — new openings are posted on the Careers page first, so do check back.\nMeanwhile, our Training + Internship program is open to join any time"
+        + (FREE_ROLES.length ? ", and the Free Internship page lists free (unpaid) internships you can apply for." : "."),
+      links: [{ to: "/careers", label: "Careers page" }, { to: "/training-internship", label: "Training + Internship" },
+        ...(FREE_ROLES.length ? [{ to: "/free-internships", label: "Free Internship" }] : [])],
     };
   }
   return {
-    text: `We're hiring for:\n${roles.slice(0, 6).map((o) => `• ${o.title} — free to apply${o.stipend ? ` · ${o.stipend}` : ""}`).join("\n")}\nFreshers are welcome. You apply on the Careers page, take an online aptitude test, and shortlisted candidates get an interview.`,
-    links: [{ to: "/careers", label: "See roles & apply" }],
+    text: `We're hiring for:\n${roles.slice(0, 6).map((o) => `• ${o.title} — free to apply${o.stipend ? ` · ${o.stipend}` : ""}`).join("\n")}\nFreshers are welcome. You apply on the Careers page, take an online aptitude test, and shortlisted candidates get an interview.`
+      + (FREE_ROLES.length ? `\nWe also have ${FREE_ROLES.length} unpaid free internship${FREE_ROLES.length === 1 ? "" : "s"} on the Free Internship page.` : ""),
+    links: [{ to: "/careers", label: "See roles & apply" }, ...(FREE_ROLES.length ? [{ to: "/free-internships", label: "Free Internship" }] : [])],
     chips: [{ label: "How does the test work?", say: "What is the aptitude test like?" }, { label: "Is there a fee?", say: "Is there a fee for careers?" }, { label: "When do I get results?", say: "When will I get my result?" }],
   };
 }
@@ -393,7 +403,7 @@ export function respond(state, text, ctx = {}) {
 
   // A program or role named outright ("price of MERN?", "stipend for the data science intern").
   const careerish = topic === "careers" || state.topic === "careers" || has(n, ["stipend", "role", "aptitude", "intern ", "hiring", "job"]);
-  const role = careerish ? findNamed(ctx.openings, n) : null;
+  const role = careerish ? findNamed(allRoles(ctx), n) : null;
   if (role) return out(roleAnswer(role, n), "careers", { kind: "role", title: role.title });
   // Only the kind asked for: "an internship in react" isn't asking about the React.js course.
   const kindAsked = has(n, ["internship", "intern "]) ? "internship" : has(n, ["course"]) ? "course" : null;
@@ -401,7 +411,7 @@ export function respond(state, text, ctx = {}) {
   if (program && (topic === "programs" || !topic || has(n, WORDS.price))) return out(programAnswer(program, n), "programs", { kind: "program", title: program.title });
 
   // Short follow-ups ("how much?", "how long?", "how do I join?") are about what was being discussed.
-  const aboutList = state.about ? (state.about.kind === "program" ? ctx.programs : ctx.openings) || [] : [];
+  const aboutList = state.about ? (state.about.kind === "program" ? ctx.programs : allRoles(ctx)) || [] : [];
   const about = state.about && aboutList.find((x) => x.title === state.about.title);
   if (about && words.length <= 5 && (has(n, WORDS.price) || has(n, ["duration", "how long", "start", "certificate", "syllabus", "cover", "stipend", "test", "eligib", "remote", "mode"]))) {
     return state.about.kind === "program" ? out(programAnswer(about, n), "programs") : out(roleAnswer(about, n), "careers");

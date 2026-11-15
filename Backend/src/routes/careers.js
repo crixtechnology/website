@@ -98,7 +98,7 @@ function shapeApplication(a) {
 const WITH_DETAIL = { opening: true, attempt: true };
 
 // ---------- public: open roles (the /careers page) ----------
-// Free-internship roles are left out: they are listed only on the /free-internships page.
+// Older free-internship openings (audience "free") are left out: that page is static now.
 router.get("/careers/openings", async (req, res, next) => {
   try {
     const [openings, settings] = await Promise.all([
@@ -113,24 +113,10 @@ router.get("/careers/openings", async (req, res, next) => {
   }
 });
 
-// ---------- public: open free-internship roles (the /free-internships page) ----------
-router.get("/careers/free/openings", async (req, res, next) => {
-  try {
-    const [openings, settings] = await Promise.all([
-      prisma.jobOpening.findMany({ where: { status: "open", audience: "free" }, include: OPENING_COUNTS, orderBy: [{ order: "asc" }, { createdAt: "asc" }] }),
-      getCareerSettings(),
-    ]);
-    res.set("Cache-Control", "no-store");
-    res.json({
-      ok: true,
-      openings: openings.map((o) => shapeOpening(o)),
-      // applyFormUrl: where "Apply Now" sends a new applicant (Admin → Training + Internship → Free internships).
-      terms: { applyFormUrl: settings.freeApplyFormUrl, creditExpiryMonths: settings.creditExpiryMonths, creditUsagePercent: settings.creditUsagePercent },
-    });
-  } catch (e) {
-    next(e);
-  }
-});
+// The /free-internships page is static: its roles and apply link are in the
+// website's code (Frontend/src/data/freeInternships.json), so there is no
+// public endpoint for them. Openings with audience "free" stored from before
+// stay only so earlier on-site applications keep working.
 
 router.get("/careers/openings/:slug", async (req, res, next) => {
   try {

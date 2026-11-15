@@ -728,17 +728,6 @@ export async function getOpenings() {
   }
 }
 
-// Open roles for the free internships page (pages/FreeInternships.jsx).
-export async function getFreeOpenings() {
-  if (!API) return { ok: false, openings: [] };
-  try {
-    // no-store: a phone that kept an old copy showed "no open roles" after roles opened.
-    return await getJsonWhileWaking(`${API}/careers/free/openings`, { cache: "no-store" });
-  } catch (e) {
-    return { ok: false, error: "Could not load openings", openings: [] };
-  }
-}
-
 // The logged-in student's applications: { applications, terms }.
 // Clear an ended application from My Applications (by id), or every ended one.
 export async function clearJobApplications(id) {

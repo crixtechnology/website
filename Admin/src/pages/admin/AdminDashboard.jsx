@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetBotQuestions, adminGetJobApplications, adminGetJobOpenings } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetBotQuestions, adminGetJobApplications } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
@@ -31,7 +31,7 @@ export default function AdminDashboard() {
   const { user, logout } = useContext(UserContext);
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    courses: 0, openCourses: 0, internships: 0, openInternships: 0, freeInternships: 0,
+    courses: 0, openCourses: 0, internships: 0, openInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
     referrals: 0, referralsRewarded: 0, botQuestions: 0,
     jobApplicants: 0, jobToReview: 0, jobSelected: 0,
@@ -40,9 +40,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, botRes, jobsRes, openingsRes] = await Promise.all([
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, botRes, jobsRes] = await Promise.all([
         adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(), adminGetBotQuestions(), adminGetJobApplications(),
-        adminGetJobOpenings(),
       ]);
       const jobs = jobsRes && jobsRes.ok ? jobsRes : null;
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
@@ -67,8 +66,6 @@ export default function AdminDashboard() {
         // internship has no meaningful open/closed toggle in the admin
         // list, so it shouldn't count as "open" here either.
         openInternships: internships.filter((c) => c.status === "open" && offeredTiers(c).length > 0).length,
-        // Free internships are job openings listed on /free-internships (Training + Internship → Free Internship).
-        freeInternships: openingsRes && openingsRes.ok ? (openingsRes.openings || []).filter((o) => o.audience === "free").length : 0,
         students: students.size,
         enrollments: enrollments.length,
         users: users.length,
@@ -87,11 +84,11 @@ export default function AdminDashboard() {
   }, []);
 
   const cards = [
-    // One tile: Training + Internship tracks, free internships and courses share one page and form.
+    // Training + Internship tracks. (Free internships are fixed in the website's code, not managed here.)
     {
       label: "Training + Internship",
-      value: stats.internships + stats.freeInternships,
-      sub: `${stats.internships} training track${stats.internships === 1 ? "" : "s"} · ${stats.freeInternships} free internship${stats.freeInternships === 1 ? "" : "s"} · ${stats.openCourses + stats.openInternships} on sale`,
+      value: stats.internships,
+      sub: `${stats.internships} training track${stats.internships === 1 ? "" : "s"} · ${stats.openCourses + stats.openInternships} on sale`,
       to: "/admin/courses",
     },
     { label: "Users", value: stats.users, sub: "all accounts", to: "/admin/users" },

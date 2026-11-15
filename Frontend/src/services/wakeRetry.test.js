@@ -40,15 +40,3 @@ describe("getJsonWhileWaking", () => {
     expect(callsTo(fetchMock, "http://api.test/courses")).toBe(3);
   });
 });
-
-describe("the public lists", () => {
-  // Real timers: the first retry waits 2 seconds.
-  it("getFreeOpenings waits out a sleeping backend instead of reporting no roles", async () => {
-    const fetchMock = jest.fn()
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValueOnce(answer({ ok: true, openings: [{ slug: "web" }] }));
-    const { getFreeOpenings } = loadApi(fetchMock);
-    await expect(getFreeOpenings()).resolves.toEqual({ ok: true, openings: [{ slug: "web" }] });
-    expect(callsTo(fetchMock, "http://api.test/careers/free/openings")).toBeGreaterThanOrEqual(2);
-  }, 10000);
-});

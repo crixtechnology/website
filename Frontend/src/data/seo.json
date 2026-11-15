@@ -78,16 +78,21 @@
     },
     "/free-internships": {
       "title": "Free Internships for Students | Crix Technology",
-      "description": "Free internships for students of every field in India. Apply free with your CV through our form, then take an aptitude test and an interview.",
+      "description": "Free 3-month internships in MERN Stack, React, Python, AI/ML, Data Science and Cyber Security. No fee to apply — for students of every field in India.",
       "priority": "0.8",
       "changefreq": "weekly",
       "crumb": "Free Internship",
       "keywords": [
         "free internship India",
         "free internship for students",
-        "free internship application form",
+        "free MERN stack internship",
+        "free React internship",
+        "free Python internship",
+        "free AI ML internship",
+        "free data analyst internship",
+        "free cyber security internship",
+        "remote internship India",
         "internship with no registration fee",
-        "virtual internship",
         "Crix Technology"
       ]
     },
