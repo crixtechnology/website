@@ -71,7 +71,7 @@ const common = {
   experience: "0–1 year (freshers, college students are also welcome)",
   duration: "3 months",
   mode: "Remote / Ahmedabad",
-  startsOn: "November-December",
+  startsOn: "December-January",
   group: "",
 };
 
