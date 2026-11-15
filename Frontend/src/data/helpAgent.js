@@ -46,7 +46,7 @@ export const DEPARTMENTS = {
 const TOPIC_DEPT = { programs: "programs", careers: "programs", payments: "programs", account: "programs", wallet: "programs", services: "it" };
 
 const MAIN_CHIPS = [
-  { icon: "🎓", label: "Training + Internship", hint: "Find a track to join", say: "Training and internships" },
+  { icon: "🎓", label: "Training + Internship", hint: "1, 2, 3 or 6 month programs", say: "Training and internships" },
   { icon: "💼", label: "Careers & jobs", hint: "Open roles and the test", say: "Careers and open roles" },
   { icon: "💻", label: "IT services", hint: "A website, app or project", say: "IT services for my business" },
   { icon: "💳", label: "Payments & refunds", hint: "Fees, receipts, issues", say: "Payment help" },
@@ -209,7 +209,7 @@ function priceReply(state, ctx) {
     return { text: "IT projects are quoted individually — the price depends on what you need (pages, features, integrations). Send your requirements through the Services page and we'll send a quote.", links: [{ to: "/services", label: "Request a quote" }] };
   }
   if (state.topic === "programs") {
-    return { text: "Each program's price is on its own page — most have Basic, Plus and Pro plans, and any discount running is shown there too. Wallet credit and offer codes are taken off at checkout.", links: [{ to: "/training-internship", label: "See tracks & prices" }] };
+    return { text: "Each program's price is on its card on the Training + Internship page — filter by 1, 2, 3 or 6 months, then tap Enroll now to pay online. Any discount running is shown there too, and wallet credit and offer codes are taken off at checkout.", links: [{ to: "/training-internship", label: "See tracks & prices" }] };
   }
   return {
     text: "Happy to help with pricing — which one is it about?",
@@ -227,7 +227,7 @@ function applyReply(state, ctx) {
     return { text: "Send us your requirements from the Services page (or the contact form). Our IT team replies, sets up a quick call, and shares a plan and quote.", links: [{ to: "/services", label: "Services page" }] };
   }
   return {
-    text: `• Open the track on the Training + Internship page\n• Log in (a new email gets an account), then fill in “Request to apply” — or call / WhatsApp our Training + Internship team\n• We confirm your seat and send a payment request for the training fee (training is paid, not free)\n• Pay it in My Dashboard → Payment requests — your wallet credit, offer code and referral discount come off${profileNote}`,
+    text: `• On the Training + Internship page, pick a duration (1, 2, 3 or 6 months) and choose a program\n• Tap “Enroll now” and log in (a new email gets an account)\n• Pay the training fee securely with Razorpay (training is paid, not free) — your wallet credit, offer code and referral discount come off\n• Your training opens in My Dashboard once the payment is confirmed. Want to talk first? Call / WhatsApp our Training + Internship team${profileNote}`,
     links: [{ to: "/training-internship", label: "Training + Internship" }, { to: "/dashboard", label: "My Dashboard" }, ...(missing ? [{ to: "/profile", label: "Complete your profile" }] : [])],
     dept: "programs",
   };

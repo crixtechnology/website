@@ -52,8 +52,8 @@ const kind = (p) => (p.type === "internship" ? "internship" : "course");
 const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/training-internship", label: `Open ${p.title}` });
 
 function priceLine(p) {
-  // Training + Internship isn't bought online: quote the fee, then how to apply.
-  const howToJoin = "To join, use “Request to apply” on its page or call our Training + Internship team — we'll send a payment request for the fee.";
+  // Training + Internship is bought online: quote the fee, then how to enroll.
+  const howToJoin = "To join, tap “Enroll now” on its card on the Training + Internship page and pay the fee securely online with Razorpay — or call our Training + Internship team first.";
   if (p.type === "internship" && !isOpenForBuy(p)) return `Ask our Training + Internship team about the fee for ${p.title}. ${howToJoin}`;
   if (!isOpenForBuy(p)) return `${p.title} isn't open for online enrolment right now — use “Request to ${p.type === "internship" ? "apply" : "enroll"}” on its page and the team will tell you about the next batch and price.`;
   const plans = offeredTiers(p);
@@ -72,8 +72,8 @@ export function programAnswer(p, n) {
   const starts = String(p.startingFrom || "").trim();
   if (asked(n, "price")) facts.push(priceLine(p));
   if (asked(n, "duration")) facts.push(dur ? `${p.title} runs for ${dur}.` : `The length of ${p.title} is on its page.`);
-  if (asked(n, "start")) facts.push(starts ? `The next batch is expected to start ${starts} — we confirm the exact start when we confirm your seat.` : "We confirm the batch start when we confirm your seat.");
-  if (asked(n, "test")) facts.push("There's no aptitude test for Training + Internship — you apply, and we confirm your seat. Aptitude tests are only for Free Internship and Careers roles.");
+  if (asked(n, "start")) facts.push(starts ? `The next batch is expected to start ${starts} — we confirm the exact start after you enroll.` : "We confirm the batch start after you enroll.");
+  if (asked(n, "test")) facts.push("There's no aptitude test for Training + Internship — you enroll online by paying the training fee, and that confirms your seat. Aptitude tests are only for Free Internship and Careers roles.");
   if (asked(n, "certificate")) {
     facts.push(kind(p) === "internship"
       ? "Yes — you get a training certificate when you complete the training. If you're selected for the stipend-based internship, you also get an offer letter, and an internship certificate and Letter of Recommendation at the end."

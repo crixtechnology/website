@@ -13,11 +13,12 @@ import { useJobOpenings, OpeningForm, OpeningList, FreeApplyFormLink } from "./A
 // What the one form adds. A free internship is a job opening listed on
 // /free-internships (applied for through the Google Form); a Training + Internship
 // track is a courses-table entry (type "internship") sold on
-// /training-internship — paid training, after which top performers are
-// selected for a stipend-based internship. Courses were dropped: only
+// /training-internship as a program card — 1, 2, 3 or 6 months long, at the
+// price set here, paid online through Razorpay — after which top performers
+// are selected for a stipend-based internship. Courses were dropped: only
 // Training + Internship tracks and free internships are added here.
 const KINDS = [
-  { id: "internship", label: "Training + Internship", sub: "/training-internship · students apply or call; send them a payment request" },
+  { id: "internship", label: "Training + Internship", sub: "/training-internship · a program card; students pay your price online (Razorpay)" },
   { id: "free", label: "Free Internship", sub: "/free-internships · applies through the Google Form" },
 ];
 const kindFromParam = (v) => (KINDS.some((k) => k.id === v) ? v : "internship");
@@ -29,8 +30,8 @@ const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "
 const EMPTY_FORM = {
   type: "internship", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
   skills: "", responsibilities: "", eligibility: "", stipend: "", experience: "", mode: "", positions: "",
-  // Training + Internship card: tracks sharing a group show as one card with a
-  // duration switch; startingFrom is the card's optional "Starting from …" tag —
+  // Training + Internship card: one entry per duration (1 / 2 / 3 / 6 months),
+  // each its own card; entries sharing a group link to each other. startingFrom is the card's optional "Starting from …" tag —
   // roughly when the batch is expected to start (not a price, not the exact date).
   group: "", startingFrom: "",
   plans: emptyPlans(),
@@ -131,7 +132,7 @@ export default function AdminCourses() {
     setKind(next);
     setError("");
     if (next === "free") return;
-    // An internship can only run 15 days / 1 / 3 / 6 months: drop any other length so it is re-picked.
+    // A program can only run 1 / 2 / 3 / 6 months: drop any other length so it is re-picked.
     setForm((f) => ({ ...f, type: next, durationDays: next === "internship" && f.durationDays && !INTERNSHIP_DURATIONS.includes(Number(f.durationDays)) ? "" : f.durationDays }));
   };
   const kindPicker = (
@@ -237,8 +238,8 @@ export default function AdminCourses() {
     else setError(res.error || "Could not save.");
   };
 
-  // Open/Closed: whether the track takes applications. A closed track shows
-  // "Currently closed" on the website and refuses new applications.
+  // Open/Closed: whether the program can be joined. A closed one shows
+  // "Currently closed" on the website and refuses new enrollments and applications.
   const toggleStatus = async (c) => {
     const res = await adminUpdateCourse(c._id, { status: c.status === "open" ? "closed" : "open" });
     if (res.ok) load(); else setError(res.error || "Could not update status.");
@@ -269,7 +270,7 @@ export default function AdminCourses() {
           <span className="admin-row-meta">
             {hasPlans
               ? <>{plans.map((p) => TIER_LABEL[p.tier]).join(" · ")} · from {formatINR(cheapest)}</>
-              : <>Apply-only</>}
+              : <>No price — apply-only</>}
             {c.tag ? ` · ${c.tag}` : ""}
             {c.durationDays ? ` · ${formatDuration(c.durationDays)}` : ""}
             {c.group ? ` · group: ${c.group}` : ""}
@@ -286,8 +287,8 @@ export default function AdminCourses() {
         <div className="admin-row-actions">
           <button className={`status-toggle ${c.status === "closed" ? "closed" : "open"}`} onClick={() => toggleStatus(c)}
             title={c.status === "closed"
-              ? "Closed — the website shows Currently closed and takes no applications. Click to open it."
-              : "Open — students can request to apply. Click to close it."}>
+              ? "Closed — the website shows Currently closed and takes no enrollments. Click to open it."
+              : "Open — students can enroll and pay online. Click to close it."}>
             {c.status === "closed" ? "Closed" : "Open"}
           </button>
           <button className="btn btn-ghost" onClick={() => startEdit(c)}>Edit</button>
@@ -319,7 +320,7 @@ export default function AdminCourses() {
           {/* Laid out like the Free Internship / Careers form (AdminJobOpenings.jsx
               OpeningForm): the same fields in the same order. Where those have
               their aptitude test, training has its fee — it has no test. */}
-          <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit this Training + Internship track" : "Add a Training + Internship track"}</h3>
+          <h3 style={{ margin: "0 0 16px" }}>{editingId ? "Edit this Training + Internship program card" : "Add a Training + Internship program card"}</h3>
           {kindPicker}
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="courses-title">Title</label>
@@ -329,7 +330,7 @@ export default function AdminCourses() {
               <datalist id="courses-group-list">
                 {groupNames.map((g) => <option key={g} value={g} />)}
               </datalist>
-              <p className="form-note" style={{ margin: "6px 0 0" }}>Tracks of one domain in several durations share a group: the site shows them as one card with a duration switch.</p></div>
+              <p className="form-note" style={{ margin: "6px 0 0" }}>Add one entry per duration. Entries of one domain share a group, so each one's page links to its other durations.</p></div>
           </div>
           <div className="field"><label htmlFor="courses-description">Short description</label>
             <textarea id="courses-description" rows="2" value={form.desc} onChange={set("desc")} placeholder="Shown on the card" /></div>
@@ -357,7 +358,8 @@ export default function AdminCourses() {
                 {form.durationDays && !INTERNSHIP_DURATIONS.includes(Number(form.durationDays)) && (
                   <option value={form.durationDays}>{formatDuration(form.durationDays)} (current)</option>
                 )}
-              </select></div>
+              </select>
+              <p className="form-note" style={{ margin: "6px 0 0" }}>The website's duration filter (All / 1 / 2 / 3 / 6 months) shows this card under the length you pick. With none set it appears only under All.</p></div>
             <div className="field"><label htmlFor="cd-mode">Mode</label>
               <input id="cd-mode" value={form.mode} onChange={set("mode")} placeholder="Remote / Ahmedabad" /></div>
             <div className="field"><label htmlFor="courses-starting-from">Starts on (optional)</label>
@@ -365,11 +367,11 @@ export default function AdminCourses() {
               <p className="form-note" style={{ margin: "6px 0 0" }}>Roughly when the batch starts — an estimate shown on the card. Leave empty to show nothing.</p></div>
           </div>
 
-          <h3 style={{ margin: "12px 0 8px" }}>Training fee for this track</h3>
+          <h3 style={{ margin: "12px 0 8px" }}>Price for this program</h3>
           <p className="form-note" style={{ margin: "0 0 14px" }}>
-            Training + Internship has no aptitude test — students apply, and you send a payment request for the fee.
-            Offer up to three plans; a plan with a blank price isn't offered, and with all three blank the page shows no fee.
-            Use the Open/Closed switch in the list below to stop or restart applications for a track. What you list under each plan is shown to students; it doesn't restrict access.
+            This is what students pay online (Razorpay) when they tap Enroll now on the card. For one simple price, fill in Basic only.
+            Offer up to three plans; a plan with a blank price isn't offered, and with all three blank the card has no price and shows Request to apply instead.
+            Use the Open/Closed switch in the list below to stop or restart enrollment. What you list under each plan is shown to students; it doesn't restrict access.
           </p>
           <div className="plan-editors">
             {TIER_ORDER.map((tier) => (
@@ -443,7 +445,7 @@ export default function AdminCourses() {
                 empty={q ? "No free internships match that search." : "No free internships yet — pick Free Internship above to add one."} />
             )}
 
-            <h3 style={{ margin: "40px 0 16px" }}>Training + Internship tracks</h3>
+            <h3 style={{ margin: "40px 0 16px" }}>Training + Internship program cards</h3>
             {internships.length === 0 ? (
               <p style={{ color: "var(--muted)" }}>{q ? "No training tracks match that search." : "No training tracks yet — pick Training + Internship above to add one."}</p>
             ) : (

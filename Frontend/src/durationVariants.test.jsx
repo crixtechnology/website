@@ -7,8 +7,9 @@ import { groupVariants } from "./utils/variants.js";
 import * as api from "./services/api.js";
 
 // One domain offered in several durations: tracks the admin gives the same
-// group show as a single card with a duration switch, plus an optional
-// "Starts on" estimate in the card's facts.
+// group are grouped (groupVariants — the home page's card switch and a track
+// page's "other durations" links). The Training + Internship page shows a card
+// per duration under a duration filter: All / 1 / 2 / 3 / 6 months.
 jest.mock("./services/api.js");
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -43,15 +44,8 @@ describe("the Training + Internship page", () => {
   });
   afterEach(() => { act(() => root.unmount()); container.remove(); });
 
-  it("shows one card per domain and switches its duration in place", async () => {
-    api.getCourses.mockResolvedValue({
-      ok: true,
-      courses: [
-        track("MERN — 3 Months", "mern-3", 90, { group: "MERN", startingFrom: "2nd week of January" }),
-        track("MERN — 1 Month", "mern-1", 30, { group: "MERN", startingFrom: "15 December" }),
-        track("Android", "android", 30),
-      ],
-    });
+  const renderPage = async (courses) => {
+    api.getCourses.mockResolvedValue({ ok: true, courses });
     await act(async () => {
       root.render(
         <UserContext.Provider value={{ user: null, isLoggedIn: false }}>
@@ -59,24 +53,49 @@ describe("the Training + Internship page", () => {
         </UserContext.Provider>
       );
     });
+  };
+  const titles = () => [...container.querySelectorAll("#programs .card h3")].map((h) => h.textContent);
+  const pills = () => [...container.querySelectorAll("#programs .filter-pill")];
+  const pick = (label) => act(async () => { pills().find((b) => b.textContent === label).click(); });
+
+  it("shows a card for every duration, each with its own details", async () => {
+    await renderPage([
+      track("MERN — 3 Months", "mern-3", 90, { group: "MERN", startingFrom: "2nd week of January" }),
+      track("MERN — 1 Month", "mern-1", 30, { group: "MERN", startingFrom: "15 December" }),
+      track("Android", "android", 30),
+    ]);
     const cards = [...container.querySelectorAll("#programs .card")];
-    expect(cards).toHaveLength(2); // MERN (two durations) + Android
-    const mern = cards[0];
-    const opts = [...mern.querySelectorAll(".duration-opt")];
-    expect(opts.map((o) => o.textContent)).toEqual(["1 month", "3 months"]);
-    expect(opts[0].getAttribute("aria-pressed")).toBe("true");
-    expect(mern.querySelector("h3").textContent).toBe("MERN — 1 Month");
-    const startsOn = (card) => [...card.querySelectorAll(".job-facts > div")].find((d) => d.querySelector("dt").textContent === "Starts on");
-    expect(startsOn(mern).querySelector("dd").textContent).toBe("15 December");
-    expect(mern.querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-1");
+    expect(cards).toHaveLength(3);
+    expect(container.querySelector("#programs .duration-switch")).toBeNull();
+    const fact = (card, name) => [...card.querySelectorAll(".job-facts > div")].find((d) => d.querySelector("dt").textContent === name);
+    expect(fact(cards[0], "Duration").querySelector("dd").textContent).toBe("3 months");
+    expect(fact(cards[0], "Starts on").querySelector("dd").textContent).toBe("2nd week of January");
+    expect(cards[1].querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-1");
+    expect(fact(cards[2], "Starts on")).toBeUndefined();
+  });
 
-    await act(async () => { opts[1].click(); });
-    expect(mern.querySelector("h3").textContent).toBe("MERN — 3 Months");
-    expect(startsOn(mern).querySelector("dd").textContent).toBe("2nd week of January");
-    expect(mern.querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-3");
+  it("filters the cards by duration with the capsules on top", async () => {
+    await renderPage([
+      track("Web 1M", "web-1", 30), track("Web 2M", "web-2", 60), track("Web 3M", "web-3", 90),
+      track("Data 3M", "data-3", 90), track("Any length", "any", null),
+    ]);
+    expect(pills().map((b) => b.textContent)).toEqual(["All", "1 month", "2 months", "3 months", "6 months"]);
+    expect(pills()[0].getAttribute("aria-pressed")).toBe("true");
+    expect(titles()).toHaveLength(5);
 
-    // A track on its own has no switch and, with no value set, no tag.
-    expect(cards[1].querySelector(".duration-switch")).toBeNull();
-    expect(startsOn(cards[1])).toBeUndefined();
+    await pick("3 months");
+    expect(titles()).toEqual(["Web 3M", "Data 3M"]);
+    expect(pills().map((b) => b.getAttribute("aria-pressed"))).toEqual(["false", "false", "false", "true", "false"]);
+    await pick("2 months");
+    expect(titles()).toEqual(["Web 2M"]);
+
+    // Nothing of that length: says so, and offers the way back.
+    await pick("6 months");
+    expect(titles()).toEqual([]);
+    expect(container.querySelector("#programs .filter-empty").textContent).toContain("No 6-month programs right now.");
+    await act(async () => { container.querySelector("#programs .filter-reset").click(); });
+    expect(titles()).toHaveLength(5);
+    await pick("All");
+    expect(titles()).toHaveLength(5);
   });
 });

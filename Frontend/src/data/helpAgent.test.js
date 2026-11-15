@@ -59,7 +59,7 @@ describe("help agent", () => {
   });
 
   it("answers “how much?” for whatever was being discussed", () => {
-    expect(chat("I want an internship in react", "how much?").last.text).toMatch(/price is on its own page/i);
+    expect(chat("I want an internship in react", "how much?").last.text).toMatch(/price is on its card/i);
     expect(chat("open jobs", "how much?").last.text).toMatch(/are free/);
     expect(chat("I need a website for my shop", "how much?").last.text).toMatch(/quoted individually/i);
     // No context yet: it asks which one.

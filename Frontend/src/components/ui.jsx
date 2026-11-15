@@ -404,8 +404,7 @@ function PlanPrice({ plan, className = "" }) {
 // When the viewer already owns the course, `ownedTier` turns the buttons into
 // upgrade actions: their own plan is marked, lower plans read "included", and
 // each higher plan offers "Upgrade to …" (via onUpgrade) instead of "Choose".
-// readOnly: prices and features only, no buttons — Training + Internship
-// tracks aren't bought online (students apply or call; see TrainingContact).
+// readOnly: prices and features only, no buttons — for a place that only shows the fee.
 export function PlanCards({ plans, onChoose, ownedTier, onUpgrade, readOnly = false }) {
   const ownedRank = ownedTier ? TIER_ORDER.indexOf(ownedTier) : -1;
   return (
@@ -470,16 +469,27 @@ export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Dura
    tag, a badge on the right, title, the shared facts (utils/positions.js
    programFacts), then the two buttons. The description and skills live only
    in View details. Only the
-   content differs: "Paid training" instead of a test fee, Request to apply
-   instead of an application with a test, and View details opens the track's
-   own page. `switcher` is the duration switch of a grouped domain. */
-export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher = null }) {
+   content differs: "Paid training" instead of a test fee, the training fee
+   with Enroll now (pay online through Razorpay) instead of an application with
+   a test, and View details opens the track's own page. A track the admin gave
+   no price, or one that's full, offers Request to apply instead. onBuy(item)
+   opens the checkout; without it the button goes to the Training + Internship
+   page, which opens it. `switcher` is the duration switch of a grouped domain. */
+export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, switcher = null }) {
   const navigate = useNavigate();
   const { isAdmin } = useContext(UserContext);
   const full = isFull(item);
-  // Admin's Open/Closed switch: a closed track takes no applications.
+  // Admin's Open/Closed switch: a closed track takes no enrollments.
   const closed = item.status === "closed";
   const facts = programFacts({ ...item, type: "internship" });
+  // The fee the admin set: the cheapest plan's price ("From" when there are several).
+  const plans = offeredTiers(item);
+  const cheapest = plans.length ? plans.reduce((a, b) => (planPrice(b) < planPrice(a) ? b : a)) : null;
+  const canBuy = isOpenForBuy(item) && !full && !!item.slug;
+  const buy = () => {
+    if (onBuy) onBuy(item);
+    else navigate(`/training-internship?buy=${encodeURIComponent(item.slug)}`);
+  };
   const open = () => {
     if (item.slug) navigate(`/programs/${item.slug}`);
     else if (onDetail) onDetail({ item, kind: "internship", isProgram: true });
@@ -504,6 +514,16 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher
               {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
             </dl>
           ) : null}
+          {cheapest && !closed ? (
+            <div className="card-price">
+              <span className="card-price-label">{plans.length > 1 ? "Training fee from" : "Training fee"}</span>
+              <span className="plan-price">
+                {cheapest.discountPercent > 0 && <span className="price-old">{formatINR(cheapest.price)}</span>}
+                <span className="price-now">{formatINR(planPrice(cheapest))}</span>
+                {cheapest.discountPercent > 0 && <span className="price-off">{cheapest.discountPercent}% off</span>}
+              </span>
+            </div>
+          ) : null}
         </div>
         <div className="card-btn-row">
           {isAdmin && item.slug ? (
@@ -512,6 +532,8 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onDetail, switcher
             <Link className="btn btn-solid buy-btn" to="/dashboard">View in My Dashboard →</Link>
           ) : closed ? (
             <button className="btn btn-solid buy-btn" disabled>Applications closed</button>
+          ) : canBuy ? (
+            <button className="btn btn-solid buy-btn" onClick={buy} title="Pay the training fee securely online with Razorpay">Enroll now</button>
           ) : (
             // Full or not, students apply — a full track's applicants hear about the next batch.
             <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)}>Request to apply</button>
@@ -551,18 +573,18 @@ export function ProgramGroupCard({ variants, ownedOf, isProgram, kind, ...cardPr
 }
 
 /* ---------- TrainingContact: how to join a Training + Internship track ----------
-   There's no online checkout for training: a student sends the Request to
-   apply form or calls / WhatsApps the Training + Internship team, who confirm
-   the seat and send a payment request (paid in My Dashboard). onApply opens
-   the form; leave it out to show only the phone options. */
+   A priced track is bought online (Enroll now -> Razorpay). This is the other
+   route: the Request to apply form or a call / WhatsApp to the Training +
+   Internship team, for a track with no price yet or a student who wants to
+   talk first. onApply opens the form; leave it out to show only the phone options. */
 export function TrainingContact({ onApply, compact = false }) {
   const tel = `tel:${site.phoneAlt.replace(/[^\d+]/g, "")}`;
   return (
     <div className={`training-contact${compact ? " training-contact--compact" : ""}`}>
       {!compact && (
         <p className="training-contact-note">
-          To join, log in (or create a free account) and fill in the <b>Request to apply</b> form, or call our {site.phoneAltLabel} team.
-          We'll confirm your seat and send a secure payment request for the training fee to your account — pay it in My Dashboard.
+          To join, pick a program and tap <b>Enroll now</b> — log in (or create a free account) and pay the training fee securely online with Razorpay.
+          Want to talk first? Call or WhatsApp our {site.phoneAltLabel} team.
         </p>
       )}
       <div className="training-contact-row">
@@ -1193,7 +1215,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
         transaction_id: `wallet_${appRes.application._id}`, currency: "INR", value: walletPays || 0,
         items: [{ item_id: item.slug, item_name: item.title, item_category: item.type, item_variant: plan.tier }],
       });
-      setInfo("Paid from your wallet — opening your course...");
+      setInfo("Paid from your wallet — opening your training...");
       setTimeout(() => {
         onClose();
         navigate(paid.courseSlug ? `/learn/${paid.courseSlug}` : "/dashboard");
@@ -1243,7 +1265,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
           });
         }
         if (v.ok && v.enrolled) {
-          setInfo("Payment confirmed — opening your course...");
+          setInfo("Payment confirmed — opening your training...");
           setTimeout(() => {
             onClose();
             navigate(v.courseSlug ? `/learn/${v.courseSlug}` : "/dashboard");
@@ -1254,7 +1276,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
         } else {
           setError(
             (v.error || "We received your payment") +
-            " — if your course doesn't unlock shortly, contact us and we'll sort it out."
+            " — if your training doesn't unlock shortly, contact us and we'll sort it out."
           );
         }
       },
@@ -1272,21 +1294,21 @@ export function BuyModal({ item, user, initialTier, onClose }) {
         <h3 id="buy-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
         {startsInFuture(item) && (
           <Alert inline kind="info">
-            Starts on {formatStartDate(item.startsAt)}. You can buy now and get your receipt straight away — the course opens on the start date.
+            Starts on {formatStartDate(item.startsAt)}. You can buy now and get your receipt straight away — the training opens on the start date.
           </Alert>
         )}
 
         {plans.length === 0 ? (
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
-              This isn't available to buy online right now. Close this and use "Request to enroll" instead.
+              This isn't available to buy online right now. Close this and use "Request to apply" instead.
             </p>
             <button className="btn btn-ghost" onClick={onClose} style={{ width: "100%" }}>Close</button>
           </>
         ) : !user ? (
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
-              Log in or create an account to continue — your course is unlocked on your account as soon as you've paid.
+              Log in or create an account to continue — your training is unlocked on your account as soon as you've paid.
             </p>
             <button className="btn btn-solid" onClick={() => openAuthModal("login")} style={{ width: "100%" }}>
               Log in to continue
@@ -1517,7 +1539,8 @@ export function UpgradeModal({ data, onClose, onDone }) {
 // `item` doubles as the "is this open" flag, same pattern as BuyModal.
 export function InquiryModal({ item, kind, onClose }) {
   const { user, openAuthModal } = useContext(UserContext);
-  // Training + Internship is paid through a payment request sent to an account,
+  // This form is the route for a program with no online price (or a full one):
+  // it is then paid through a payment request sent to an account,
   // so applying for it needs one (the backend refuses otherwise): a logged-out
   // visitor is asked to log in or sign up first, then sees the form filled in.
   const needsAccount = kind === "internship" && !user;

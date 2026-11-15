@@ -58,36 +58,43 @@ it("lists only paid training tracks, never courses, and explains the stipend sel
   expect(container.querySelector("#courses")).not.toBeNull();
 });
 
-it("shows each program's details on its card, with Request to apply instead of an online checkout", async () => {
+it("shows each program's details and fee on its card, with Enroll now opening the online checkout", async () => {
   api.getCourses.mockImplementation(async (type) => ({
     ok: true,
     courses: type === "internship"
       ? [
         { ...program("Web Internship", 2999), stipend: "Up to ₹3,000/month", mode: "Remote", skills: ["React"], positions: { total: 5, filled: 1, left: 4 } },
         { ...program("Full Internship", 1499), positions: { total: 20, filled: 20, left: 0 } },
+        { ...program("Unpriced Internship", 1), tiers: [] },
       ]
       : [],
   }));
+  const openAuthModal = jest.fn();
   await act(async () => {
     root.render(
-      <UserContext.Provider value={{ user: null, isLoggedIn: false }}>
+      <UserContext.Provider value={{ user: null, isLoggedIn: false, openAuthModal }}>
         <MemoryRouter initialEntries={["/training-internship"]}><TrainingInternship /></MemoryRouter>
       </UserContext.Provider>
     );
   });
-  const [internship, full] = [...container.querySelectorAll("#programs .card")];
+  const [internship, full, unpriced] = [...container.querySelectorAll("#programs .card")];
   expect(internship.textContent).toContain("4 of 5 positions open");
   expect(internship.textContent).toContain("Up to ₹3,000/month");
   expect(internship.textContent).toContain("Remote");
   // The description and skills are only in View details, not on the card.
   expect(internship.textContent).not.toContain("React");
   expect(internship.querySelector(".deliverable-chip")).toBeNull();
-  // Training isn't bought online: every track — full or not — offers the application form.
-  for (const card of [internship, full]) {
-    const labels = [...card.querySelectorAll("button")].map((b) => b.textContent);
-    expect(labels).toContain("Request to apply");
-    expect(labels).not.toContain("Choose a plan");
-  }
+  // The fee the admin set is on the card, and Enroll now starts the checkout —
+  // after logging in, for a visitor.
+  expect(internship.querySelector(".card-price").textContent).toContain("₹2,999");
+  const labelsOf = (card) => [...card.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labelsOf(internship)).toEqual(["Enroll now"]);
+  await act(async () => { internship.querySelector("button").click(); });
+  expect(openAuthModal).toHaveBeenCalledWith("login", expect.any(Function));
+  // A full program, or one with no price, takes a request instead.
+  expect(labelsOf(full)).toEqual(["Request to apply"]);
+  expect(labelsOf(unpriced)).toEqual(["Request to apply"]);
+  expect(unpriced.querySelector(".card-price")).toBeNull();
   // ...and the page gives the phone and WhatsApp options too.
   const contact = container.querySelector("#programs .training-contact");
   expect(contact.querySelector('a[href^="tel:"]')).not.toBeNull();
@@ -138,5 +145,5 @@ it("sends someone who already has a program to My Dashboard instead of offering 
   const [owned, other] = [...container.querySelectorAll("#programs .card")];
   const link = [...owned.querySelectorAll("a")].find((a) => a.textContent.startsWith("View in My Dashboard"));
   expect(link.getAttribute("href")).toBe("/dashboard");
-  expect([...other.querySelectorAll("button")].map((b) => b.textContent)).toContain("Request to apply");
+  expect([...other.querySelectorAll("button")].map((b) => b.textContent)).toContain("Enroll now");
 });

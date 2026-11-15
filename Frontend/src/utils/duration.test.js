@@ -4,6 +4,7 @@ describe("formatDuration", () => {
   it.each([
     [15, "15 days"],
     [30, "1 month"],
+    [60, "2 months"],
     [90, "3 months"],
     [180, "6 months"],
   ])("says %i days as “%s”", (days, text) => {

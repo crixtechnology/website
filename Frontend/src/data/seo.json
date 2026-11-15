@@ -57,13 +57,18 @@
     },
     "/training-internship": {
       "title": "Training + Stipend Internship | Crix Technology",
-      "description": "Mentored virtual training in MERN stack, AI agents and more — top performers are selected for a stipend-based internship with offer letter & LOR.",
+      "description": "Mentored virtual training in MERN stack, AI and more — 1, 2, 3 or 6 month programs. Enroll online; top performers earn a stipend internship + LOR.",
       "priority": "0.9",
       "changefreq": "weekly",
       "crumb": "Training + Internship",
       "keywords": [
         "training and internship India",
         "internship with stipend",
+        "1 month internship",
+        "2 month internship",
+        "3 month internship",
+        "6 month internship",
+        "online internship enrollment",
         "virtual internship with certificate",
         "MERN stack training",
         "AI agent internship",
@@ -124,7 +129,7 @@
     },
     "/terms-of-service": {
       "title": "Terms of Service | Crix Technology",
-      "description": "The terms for using the Crix Technology website and joining our Training + Internship program — paid training, stipend internship selection, payments and certificates.",
+      "description": "The terms for using the Crix Technology website and joining our Training + Internship program — paid training, online enrollment, stipend selection, payments and certificates.",
       "priority": "0.3",
       "changefreq": "yearly",
       "crumb": "Terms of Service"

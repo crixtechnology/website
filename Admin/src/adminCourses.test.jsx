@@ -156,13 +156,13 @@ describe("admin course form", () => {
     const internship = { ...base, _id: "i1", type: "internship", title: "Android Internship", tiers: [], durationDays: null };
     const edit = () => act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
 
-    it("offers an internship exactly 15 days, 1 month, 3 months and 6 months (or not set)", async () => {
+    it("offers a program exactly 1, 2, 3 and 6 months (or not set)", async () => {
       await renderAdmin([internship]);
       await edit();
       const select = q("#ac-duration");
       expect(select.tagName).toBe("SELECT");
       expect([...select.options].map((o) => [o.value, o.textContent])).toEqual([
-        ["", "Not set (access never expires)"], ["15", "15 days"], ["30", "1 month"], ["90", "3 months"], ["180", "6 months"],
+        ["", "Not set (access never expires)"], ["30", "1 month"], ["60", "2 months"], ["90", "3 months"], ["180", "6 months"],
       ]);
     });
 
@@ -203,7 +203,7 @@ describe("admin course form", () => {
     it("lists the two kinds apart, offers no Course, and leaves Careers roles out", async () => {
       await renderAdmin([base, { ...base, _id: "i1", type: "internship", title: "Paid Android Internship" }], [freeRole, careersRole]);
       const headings = qa("h3").map((h) => h.textContent);
-      expect(headings).toEqual(expect.arrayContaining(["Free internships", "Training + Internship tracks"]));
+      expect(headings).toEqual(expect.arrayContaining(["Free internships", "Training + Internship program cards"]));
       expect(headings).not.toContain("Courses");
       expect(qa(".kind-option b").map((b) => b.textContent)).toEqual(["Training + Internship", "Free Internship"]);
       expect(container.textContent).toContain("Free Web Intern");
@@ -317,9 +317,9 @@ describe("admin course form", () => {
       expect(q('input[type="date"]')).toBeNull();
       expect(q("#courses-starting-from").type).toBe("text");
       const headings = qa("form h3").map((h) => h.textContent);
-      expect(headings).toContain("Training fee for this track");
+      expect(headings).toContain("Price for this program");
       expect(headings.join(" ")).not.toMatch(/aptitude test/i);
-      expect(container.textContent).toContain("has no aptitude test");
+      expect(container.textContent).toContain("pay online (Razorpay)");
     });
 
     it("saves Starts on as text and clears any old exact start date", async () => {

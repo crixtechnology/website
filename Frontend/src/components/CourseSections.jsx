@@ -162,8 +162,8 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
   const [footerSeen, setFooterSeen] = useState(false);
   const plans = offeredTiers(course);
   const full = isFull(course);
-  // Training + Internship tracks are joined by applying, never bought online.
-  const openForBuy = course.type !== "internship" && isOpenForBuy(course) && !full;
+  // A priced, open track with a place left is bought online.
+  const openForBuy = isOpenForBuy(course) && !full;
   const show = !ctaSeen && !footerSeen;
 
   useEffect(() => {
