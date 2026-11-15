@@ -36,8 +36,8 @@ export const site = {
 export const company = {
   legalName: "Crix Technology Private Limited",
   entityType: "Private Limited Company",
-  incorporated: "Registrar of Companies, Ahmedabad, Gujarat",
-  authority: "Incorporated under the Companies Act, 2013 (Ministry of Corporate Affairs)",
+  incorporated: "Under the Companies Act, 2013 (Ministry of Corporate Affairs)",
+  authority: "Registrar of Companies, Ahmedabad, Gujarat",
   cin: "U63122GJ2026PTC179737",
   registeredOffice: "G-403, Jalaram Vatika, Nr. Sadguru Bunglows, New Maninagar, Ramol, Daskroi, Ahmedabad – 382449, Gujarat, India",
   jurisdiction: "Ahmedabad, Gujarat, India",
@@ -234,7 +234,7 @@ export const whyCrix = [
 // The Training + Internship journey: train first, then the best performers
 // move on to a stipend-based internship.
 export const process = [
-  { n: "01", title: "Enroll in Paid Training", desc: "Pick a program and duration — 1, 2, 3 or 6 months — tap Enroll now and pay the training fee securely online. Training is paid, not free." },
+  { n: "01", title: "Enroll in Paid Training", desc: "Pick a program and duration — 1, 2, 3 or 6 months — tap Enroll now and pay the training fee securely online." },
   { n: "02", title: "Get Trained", desc: "Live sessions, recorded lectures and hands-on tasks, mentored by working industry professionals." },
   { n: "03", title: "Get Evaluated", desc: "Your assignments, project work, attendance and conduct are assessed throughout the training." },
   { n: "04", title: "Stipend Internship", desc: "Top performers are selected for a stipend-based internship on real projects, with an offer letter and LOR." },
@@ -245,7 +245,7 @@ export const trainingStages = [
   {
     tag: "Stage 1 · Paid · Everyone",
     title: "Paid Training",
-    desc: "A structured, mentored training program on the track you pick — fully virtual. Training is paid, not free: each program's card shows its fee, and you enroll and pay online.",
+    desc: "A structured, mentored training program on the track you pick — fully virtual. Each program's card shows its training fee, and you enroll and pay online.",
     points: ["Live sessions + recorded lectures", "Hands-on tasks and a capstone project", "Mentor support throughout", "Joining kit + training certificate on completion"],
   },
   {

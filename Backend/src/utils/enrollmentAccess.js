@@ -34,12 +34,11 @@ function formatStartDate(date) {
 
 // The 403 a student gets for a course they own that hasn't started yet.
 function notStartedResponse(course) {
-  const kind = course.type === "internship" ? "internship" : "course";
   return {
     ok: false,
     code: "NOT_STARTED",
     startsAt: course.startsAt,
-    error: `This ${kind} starts on ${formatStartDate(course.startsAt)}. You'll get access then.`,
+    error: `This training starts on ${formatStartDate(course.startsAt)}. You'll get access then.`,
   };
 }
 

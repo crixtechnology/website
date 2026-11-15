@@ -61,7 +61,7 @@ router.get("/courses/:slug", async (req, res, next) => {
   try {
     const found = await prisma.course.findUnique({ where: { slug: req.params.slug }, include: WITH_SEATS });
     const course = isProgram(found) ? found : null;
-    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!course) return res.status(404).json({ ok: false, error: "Program not found" });
     res.json({ ok: true, course: serialize(withSeats(course)) });
   } catch (e) {
     next(e);
@@ -154,7 +154,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
       // Same class of race as auth.js's signup, same fix: a clean, specific
       // error instead of a raw 500 leaking the SQL error string.
       if (createErr && createErr.code === "P2002") {
-        return res.status(409).json({ ok: false, error: "A course/internship with that title already exists — try again." });
+        return res.status(409).json({ ok: false, error: "A program with that title already exists — try a different title." });
       }
       throw createErr;
     }
@@ -167,7 +167,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
 router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
   try {
     const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
-    if (!isProgram(existing)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(existing)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     const { type, title, tag, desc, points, tiers, durationDays, status } = req.body || {};
     if (type !== undefined && type !== "internship") return res.status(400).json({ ok: false, error: COURSES_DROPPED });
@@ -263,7 +263,7 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
 router.delete("/admin/courses/:id", requireAdmin, async (req, res, next) => {
   try {
     const course = await prisma.course.findUnique({ where: { id: req.params.id } });
-    if (!course) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!course) return res.status(404).json({ ok: false, error: "Program not found" });
 
     // A purchase is a record of what a student paid for — never wiped as a
     // side effect of tidying up the catalogue. (This used to fall through a

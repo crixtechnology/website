@@ -73,7 +73,7 @@ router.get("/internal/preflight", requireInternalToken, async (req, res, next) =
       return res.status(400).json({ ok: false, error: "courseId is missing or not a valid id" });
     }
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, title: true, type: true } });
-    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Program not found" });
     res.json({ ok: true, course: { _id: course.id, title: course.title } });
   } catch (e) {
     next(e);
@@ -92,7 +92,7 @@ router.post("/internal/videos", requireInternalToken, async (req, res, next) => 
     }
 
     const courseDoc = await prisma.course.findUnique({ where: { id: courseRef } });
-    if (!isProgram(courseDoc)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(courseDoc)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     const existing = await prisma.video.findUnique({ where: { b2Key } });
     if (existing) {
@@ -175,7 +175,7 @@ router.put("/admin/videos/:id", requireAdmin, async (req, res, next) => {
         return res.status(400).json({ ok: false, error: "courseId must be a course or internship id" });
       }
       const target = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, type: true } });
-      if (!isProgram(target)) return res.status(404).json({ ok: false, error: "Course not found" });
+      if (!isProgram(target)) return res.status(404).json({ ok: false, error: "Program not found" });
       data.courseId = courseId;
       // Unless the admin gave a day too, it goes at the end of the target's
       // list — a day number from the old course would just collide there.

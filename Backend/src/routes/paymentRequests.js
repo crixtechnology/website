@@ -237,7 +237,7 @@ router.post("/admin/payment-requests", requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: "Admins already have access to everything." });
     }
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: COURSE_SUMMARY });
-    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     const pending = await prisma.paymentRequest.count({ where: { userId: user.id, courseId: course.id, status: "pending" } });
     if (pending > 0) {

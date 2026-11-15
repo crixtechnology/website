@@ -47,7 +47,7 @@ router.post("/admin/lectures", requireAdmin, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: "End time must be after the start time" });
     }
     const courseDoc = await prisma.course.findUnique({ where: { id: course } });
-    if (!isProgram(courseDoc)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(courseDoc)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     const lecture = await prisma.lecture.create({
       data: {
@@ -115,7 +115,7 @@ router.delete("/admin/lectures/:id", requireAdmin, async (req, res, next) => {
 router.get("/learn/:courseSlug", requireAuth, async (req, res, next) => {
   try {
     const course = await prisma.course.findUnique({ where: { slug: req.params.courseSlug } });
-    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     // Admins can open any track without being enrolled.
     if (!(await isAdminUser(req.user))) {
@@ -123,10 +123,10 @@ router.get("/learn/:courseSlug", requireAuth, async (req, res, next) => {
         where: { userId: req.user.sub, courseId: course.id, status: "active" },
       });
       if (!enrollment) {
-        return res.status(403).json({ ok: false, error: "You haven't purchased this course" });
+        return res.status(403).json({ ok: false, error: "You haven't enrolled in this program" });
       }
       if (!hasValidAccess(enrollment)) {
-        return res.status(403).json({ ok: false, error: "Your access to this course has expired" });
+        return res.status(403).json({ ok: false, error: "Your access to this program has expired" });
       }
       if (!hasStarted(course)) return res.status(403).json(notStartedResponse(course));
     }

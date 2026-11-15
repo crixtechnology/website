@@ -124,7 +124,7 @@ router.post("/admin/enrollments", requireAdmin, async (req, res, next) => {
     }
 
     const course = await prisma.course.findUnique({ where: { id: courseId } });
-    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Course not found" });
+    if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     if (tier !== undefined && tier !== null && tier !== "" && !isTier(tier)) {
       return res.status(400).json({ ok: false, error: "tier must be basic, plus or pro" });

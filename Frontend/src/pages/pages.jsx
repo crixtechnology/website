@@ -306,7 +306,7 @@ export function TrainingInternship() {
   return (
     <>
       <PageHead eyebrow="Training + Internship" title="Get trained. Perform. Earn a stipend."
-        text="Fully virtual — join from anywhere in India. Every student first goes through paid, mentored training on real projects (training is paid, not free); the top performers are then selected for a stipend-based internship with an offer letter and a Letter of Recommendation." />
+        text="Fully virtual — join from anywhere in India. Every student first goes through paid, mentored training on real projects; the top performers are then selected for a stipend-based internship with an offer letter and a Letter of Recommendation." />
       <SectionIndex items={TRAINING_INDEX} />
 
       {/* The old #internships / #courses anchors still land on the programs. */}
@@ -413,7 +413,7 @@ export function TrainingInternship() {
           </div>
         </div>
       </section>
-      <CtaBand />
+      <CtaBand title="Ready to start your training?" text="Pick a program above and enroll online — or ask our Training + Internship team anything. We reply within two working days." btn="Ask a question" />
     </>
   );
 }
@@ -550,7 +550,7 @@ export function CourseDetail() {
             <div id="course-cta" style={{ marginTop: 8 }}>
             {!isAdmin && hasAccess(course) && (
               <p className="form-note owned-note">
-                You're enrolled in this {course.type === "internship" ? "internship" : "course"}.{" "}
+                You're enrolled in this program.{" "}
                 <Link to="/dashboard">View it in My Dashboard →</Link>
               </p>
             )}
@@ -559,7 +559,7 @@ export function CourseDetail() {
               // applying — straight to the content (backend: isAdminUser).
               <div style={{ maxWidth: 280, marginTop: 24 }}>
                 <Link className="btn btn-solid buy-btn" to={`/learn/${course.slug}`}>
-                  {course.type === "internship" ? "Open internship" : "Open course"} →
+                  Open training →
                 </Link>
                 <span style={{ display: "block", marginTop: 8, color: "var(--muted)", fontSize: ".82rem" }}>Admin access — no payment needed</span>
               </div>
@@ -815,7 +815,7 @@ export function About() {
           <Reveal variant="reveal-zoom" className="band">
             <div>
               <span className="eyebrow">Why Crix</span>
-              <h2>Three pillars. One team.</h2>
+              <h2>Two pillars. One team.</h2>
               <p>IT services and our Training + Internship program — everything we teach comes from what we build for real clients, and everything we build sharpens what we teach.</p>
             </div>
             <div className="facts">
@@ -1047,9 +1047,9 @@ function PageHead({ eyebrow, title, text }) {
   );
 }
 
-function CtaBand({ title = "Ready to build your first AI-powered product?",
-  text = "Applications for the next cohort are open — we reply within two working days.",
-  btn = "Apply now" }) {
+function CtaBand({ title = "Ready to work with us?",
+  text = "Businesses: tell us about your project. Students: ask us about Training + Internship. We reply within two working days.",
+  btn = "Contact us" }) {
   return (
     <section className="section" style={{ paddingTop: 40 }}>
       <div className="wrap">
