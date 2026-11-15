@@ -7,7 +7,8 @@ import { tierLabel, formatINR } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { PAYMENT_REQUESTS_EVENT } from "../hooks/usePendingPaymentRequests.js";
 
-// Payment requests the admin sent this student — how Training + Internship is
+// Payment requests the admin sent this student — the second way (after the
+// online checkout on a program's card) Training + Internship is
 // paid for. Pressing Pay on one opens its price breakdown (offer code, referral
 // discount, wallet credit — CheckoutExtras, priced by the request's own quote),
 // then Razorpay Checkout (confirmed at /payment-requests/verify) or, when the

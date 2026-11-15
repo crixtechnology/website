@@ -2,9 +2,10 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
-  DownloadPdfButton, TrainingContact, ProgramGroupCard, DurationSwitch,
+  DownloadPdfButton, TrainingContact, ProgramGroupCard, TrainingCard, DurationSwitch,
 } from "../components/ui.jsx";
 import { groupVariants, siblingsOf } from "../utils/variants.js";
+import { formatDuration, PROGRAM_DURATIONS } from "../utils/duration.js";
 import {
   site, hero, internships, services, process, benefits, trainingStages, selectionCriteria, stats, about, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables, fallbackPrograms,
@@ -192,9 +193,12 @@ export function Home() {
 // Every student is trained first; the best performers are then selected for a
 // stipend-based internship. Only internship-type programs are sold here — the
 // old Courses + Internship page is gone, and free roles live on Careers.
+// The program cards come first, under a duration filter (All / 1 / 2 / 3 / 6
+// months): one card per program, each with the fee the admin set and an
+// Enroll now button that pays online through Razorpay.
 const TRAINING_INDEX = [
+  { id: "programs", label: "Programs" },
   { id: "how-it-works", label: "How it works" },
-  { id: "programs", label: "Training tracks" },
   { id: "selection", label: "Selection" },
   { id: "benefits", label: "Benefits" },
 ];
@@ -205,14 +209,26 @@ export function TrainingInternship() {
   // until then, so the page never shows empty.
   const [liveInternships, setLiveInternships] = useState(fallbackPrograms);
   const [loading, setLoading] = useState(hasBackend);
-  // Training isn't bought online here: every card opens the Request to apply
-  // form (or the student calls), and the team sends a payment request.
+  // A priced program is bought online: Enroll now opens the checkout (BuyModal
+  // -> Razorpay) once the student is logged in. One with no price, or one
+  // that's full, opens the Request to apply form instead.
   const [inquireItem, setInquireItem] = useState(null);
+  const [buyItem, setBuyItem] = useState(null);
+  const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
+  // The duration filter: "all", or a length in days (30 / 60 / 90 / 180).
+  const [duration, setDuration] = useState("all");
   const [params, setParams] = useSearchParams();
   // What they already have: those cards say "View in My Dashboard" instead of offering plans again.
   const { hasAccess } = useMyPlans();
+  const { isLoggedIn, user, openAuthModal } = useContext(UserContext);
   usePageMeta(routeMeta("/training-internship"));
+
+  const handleBuy = (item, tier) => {
+    const open = () => { setBuyItem(item); setBuyTier(tier || null); };
+    if (!isLoggedIn && openAuthModal) { openAuthModal("login", open); return; }
+    open();
+  };
 
   useEffect(() => {
     let alive = true;
@@ -225,15 +241,17 @@ export function TrainingInternship() {
     return () => { alive = false; clearTimeout(cap); };
   }, []);
 
-  // An older ?buy=<slug> link (from when training was bought online) opens
-  // that track's Request to apply form instead, then drops the param so a
+  // ?buy=<slug> (a card's Enroll now on another page, or coming back from
+  // completing the profile) resumes that program's checkout — or its Request
+  // to apply form when it can't be bought online — then drops the param so a
   // refresh doesn't reopen it.
   useEffect(() => {
     const slug = params.get("buy");
     if (!slug) return;
     const match = liveInternships.find((c) => c.slug === slug);
     if (match) {
-      setInquireItem(match);
+      if (isOpenForBuy(match) && !isFull(match)) handleBuy(match, tierFromParams(params));
+      else setInquireItem(match);
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
       nextParams.delete("tier");
@@ -243,6 +261,9 @@ export function TrainingInternship() {
 
   // Paid programs only. Anything priced at ₹0 on every plan is a free opportunity, which belongs on Careers.
   const programs = liveInternships.filter((item) => !isFreeProgram(item));
+  const shown = duration === "all" ? programs : programs.filter((item) => Number(item.durationDays) === duration);
+  // "3 months" -> "3-month", for "No 3-month programs right now."
+  const durationWord = duration === "all" ? "" : formatDuration(duration).replace(" ", "-").replace(/s$/, "");
 
   // Search engines: the programs on this page as an ItemList pointing at each
   // one's own page (only live entries have a slug/page to point at).
@@ -259,6 +280,44 @@ export function TrainingInternship() {
       <PageHead eyebrow="Training + Internship" title="Get trained. Perform. Earn a stipend."
         text="Fully virtual — join from anywhere in India. Every student first goes through paid, mentored training on real projects (training is paid, not free); the top performers are then selected for a stipend-based internship with an offer letter and a Letter of Recommendation." />
       <SectionIndex items={TRAINING_INDEX} />
+
+      {/* The old #internships / #courses anchors still land on the programs. */}
+      <span id="internships" className="anchor-section" aria-hidden="true" />
+      <span id="courses" className="anchor-section" aria-hidden="true" />
+      <section id="programs" className="section anchor-section" style={{ paddingTop: 20 }}>
+        <div className="wrap">
+          {/* Duration filter: All, then one capsule per length a program can run for. */}
+          <div className="filter-pills" role="group" aria-label="Filter programs by duration">
+            {["all", ...PROGRAM_DURATIONS].map((d) => (
+              <button key={d} type="button" className={`filter-pill${duration === d ? " on" : ""}`} aria-pressed={duration === d}
+                onClick={() => setDuration(d)}>
+                {d === "all" ? "All" : formatDuration(d)}
+              </button>
+            ))}
+          </div>
+          <div className="grid3" style={{ marginTop: 24 }}>
+            {/* One card per program; a domain offered in several durations is a card for each. */}
+            {loading ? <SkeletonCards count={3} /> : shown.map((item, i) => (
+              <TrainingCard key={item.slug || item._id || item.title} item={item} i={i} owned={hasAccess(item)}
+                onBuy={handleBuy} onInquire={setInquireItem} onDetail={setDetailData} />
+            ))}
+          </div>
+          {!loading && shown.length === 0 && (
+            <p className="filter-empty" role="status">
+              {duration === "all" ? "No programs are open right now — check back soon." : `No ${durationWord} programs right now.`}
+              {duration !== "all" && <>{" "}<button type="button" className="filter-reset" onClick={() => setDuration("all")}>Show all programs</button></>}
+            </p>
+          )}
+          <p className="section-lede" style={{ marginTop: 28 }}>
+            Training is paid, not free — each program shows its training fee. Your fee covers the training only; the stipend-based internship that follows is
+            offered on performance. Looking for a free one? See <Link to="/free-internships">Free Internships</Link>.
+          </p>
+          <TrainingContact />
+        </div>
+      </section>
+      <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
+      <BuyModal item={buyItem} initialTier={buyTier} user={user} onClose={() => setBuyItem(null)} />
+      <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} />
 
       <section id="how-it-works" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
@@ -285,31 +344,6 @@ export function TrainingInternship() {
           </div>
         </div>
       </section>
-
-      {/* The old #internships / #courses anchors still land on the tracks. */}
-      <span id="internships" className="anchor-section" aria-hidden="true" />
-      <span id="courses" className="anchor-section" aria-hidden="true" />
-      <section id="programs" className="section anchor-section" style={{ paddingTop: 20 }}>
-        <div className="wrap">
-          <Reveal as="span" variant="reveal-l" className="eyebrow">Training Tracks</Reveal>
-          <Reveal as="h2" variant="reveal-l">Choose your track. Build real things.</Reveal>
-          <Reveal as="p" variant="reveal-l" className="section-lede">
-            Training is paid, not free — each track shows its training fee. Your fee covers the training only; the stipend-based internship that follows is
-            offered on performance. Looking for a free one? See <Link to="/free-internships">Free Internships</Link>.
-          </Reveal>
-          <Reveal variant="reveal-l"><TrainingContact /></Reveal>
-          <div className="grid3 stagger" style={{ marginTop: 24 }}>
-            {/* One card per domain: tracks the admin put in the same group are
-                its durations, picked with the switch on the card. */}
-            {loading ? <SkeletonCards count={3} /> : groupVariants(programs).map((g, i) => (
-              <ProgramGroupCard key={g.key} variants={g.variants} i={i} isProgram kind="internship" ownedOf={hasAccess}
-                onInquire={setInquireItem} onDetail={setDetailData} />
-            ))}
-          </div>
-        </div>
-      </section>
-      <InquiryModal item={inquireItem} kind="internship" onClose={() => setInquireItem(null)} />
-      <DetailModal data={detailData} onClose={() => setDetailData(null)} onInquire={setInquireItem} />
 
       <section id="selection" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
@@ -407,11 +441,11 @@ export function CourseDetail() {
     return () => { alive = false; };
   }, [course]);
 
-  // Came back from /profile via ?buy=<slug> — resume the purchase (for a
-  // Training + Internship track, which isn't bought online, open its form).
+  // Came back from /profile via ?buy=<slug> — resume the purchase (or, for a
+  // track that can't be bought online right now, open its form).
   useEffect(() => {
     if (course && params.get("buy")) {
-      if (course.type === "internship") setInquireOpen(true);
+      if (!isOpenForBuy(course) || isFull(course)) setInquireOpen(true);
       else { setBuyItem(course); setBuyTier(tierFromParams(params)); }
       const nextParams = new URLSearchParams(params);
       nextParams.delete("buy");
@@ -442,11 +476,12 @@ export function CourseDetail() {
   }
 
   const plans = offeredTiers(course);
-  // Training + Internship: no online checkout — apply or call, and the team sends a payment request.
-  const byInquiry = course.type === "internship";
-  // Admin's Open/Closed switch: a closed track takes no applications.
+  // Admin's Open/Closed switch: a closed track takes no enrollments.
   const closed = course.status === "closed";
-  const openForBuy = !byInquiry && isOpenForBuy(course);
+  // A priced, open track is bought online (choose a plan -> Razorpay). One with
+  // no price, or a closed one, has no checkout: apply or call instead.
+  const openForBuy = isOpenForBuy(course);
+  const byInquiry = !openForBuy;
 
   return (
     <>

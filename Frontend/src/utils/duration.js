@@ -1,11 +1,15 @@
 // How long a program runs, as people say it. Programs store a number of days; the
 // common lengths read better as months. A "month" is a 30-day block (that is how the
-// access end date is worked out on the server), so 30 / 90 / 180 days are 1 / 3 / 6
+// access end date is worked out on the server), so 30 / 60 / 90 / 180 days are 1 / 2 / 3 / 6
 // months. Any other number stays as days.
-const NAMED = { 15: "15 days", 30: "1 month", 90: "3 months", 180: "6 months" };
+const NAMED = { 15: "15 days", 30: "1 month", 60: "2 months", 90: "3 months", 180: "6 months" };
 
 export function formatDuration(days) {
   const n = Number(days);
   if (!Number.isFinite(n) || n <= 0) return "";
   return NAMED[n] || `${n} ${n === 1 ? "day" : "days"}`;
 }
+
+// The lengths a Training + Internship program is offered in — the duration
+// filter on the Training + Internship page (mirrors Backend/src/utils/internshipDurations.js).
+export const PROGRAM_DURATIONS = [30, 60, 90, 180];

@@ -237,10 +237,10 @@ describe("course field validation", () => {
   });
 });
 
-describe("internship durations: 15 days, 1 month, 3 months or 6 months", () => {
+describe("program durations: 1, 2, 3 or 6 months", () => {
   const internship = (extra = {}) => ({ type: "internship", title: uniqueTitle(), ...extra });
 
-  it.each([15, 30, 90, 180])("accepts %i days for an internship", async (days) => {
+  it.each([30, 60, 90, 180])("accepts %i days for an internship", async (days) => {
     const res = await authed(request(app).post("/api/admin/courses")).send(internship({ durationDays: days }));
     expect(res.status).toBe(201);
     expect(res.body.course.durationDays).toBe(days);
@@ -252,10 +252,10 @@ describe("internship durations: 15 days, 1 month, 3 months or 6 months", () => {
     expect(res.body.course.durationDays).toBeNull();
   });
 
-  it.each([7, 45, 60, 365, "45"])("refuses %p days for a new internship, with a clear message", async (days) => {
+  it.each([7, 15, 45, 365, "45"])("refuses %p days for a new internship, with a clear message", async (days) => {
     const res = await authed(request(app).post("/api/admin/courses")).send(internship({ durationDays: days }));
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("An internship's duration must be 15 days, 1 month, 3 months or 6 months.");
+    expect(res.body.error).toBe("A program's duration must be 1, 2, 3 or 6 months.");
   });
 
   it("applies the same rule when editing", async () => {
@@ -273,7 +273,7 @@ describe("internship durations: 15 days, 1 month, 3 months or 6 months", () => {
     const keep = await authed(request(app).put(`/api/admin/courses/${legacy.id}`)).send({ title: "Legacy internship renamed", durationDays: 45 });
     expect(keep.status).toBe(200);
     expect(keep.body.course.durationDays).toBe(45);
-    expect((await authed(request(app).put(`/api/admin/courses/${legacy.id}`)).send({ durationDays: 60 })).status).toBe(400);
+    expect((await authed(request(app).put(`/api/admin/courses/${legacy.id}`)).send({ durationDays: 50 })).status).toBe(400);
     expect((await authed(request(app).put(`/api/admin/courses/${legacy.id}`)).send({ durationDays: 90 })).status).toBe(200);
   });
 });

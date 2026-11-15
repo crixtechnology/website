@@ -293,16 +293,26 @@ describe("the details a free internship shows", () => {
     expect([...container.querySelectorAll("#course-cta button")].map((b) => b.textContent)).toContain("Request to apply");
   });
 
-  it("shows the training fee but no online checkout — apply, call or WhatsApp instead", async () => {
-    await renderPage(detailed);
+  it("sells a priced track online: its fee with a plan button that asks a visitor to log in first", async () => {
+    const openAuthModal = jest.fn();
+    await renderPage(detailed, { openAuthModal });
     const cta = q("#course-cta");
-    expect(q("#plans")).not.toBeNull(); // the fee is shown...
     expect(q("#plans").textContent).toContain("₹1,000");
     const labels = [...cta.querySelectorAll("button")].map((x) => x.textContent);
-    expect(labels).toEqual(["Request to apply"]); // ...but there's nothing to buy
+    expect(labels).toEqual(["Choose Basic"]);
+    await act(async () => { cta.querySelector("button").click(); });
+    expect(openAuthModal).toHaveBeenCalledWith("login", expect.any(Function));
+  });
+
+  it("offers apply, call or WhatsApp on a track with no price", async () => {
+    await renderPage({ ...detailed, tiers: [] });
+    const cta = q("#course-cta");
+    expect(q("#plans")).toBeNull();
+    const labels = [...cta.querySelectorAll("button")].map((x) => x.textContent);
+    expect(labels).toEqual(["Request to apply"]);
     expect(cta.querySelector('a[href^="tel:"]')).not.toBeNull();
     expect(cta.querySelector('a[href^="https://wa.me/"]')).not.toBeNull();
-    await act(async () => { [...cta.querySelectorAll("button")][0].click(); });
+    await act(async () => { cta.querySelector("button").click(); });
     expect(q(".modal-box, [role='dialog']")).not.toBeNull();
   });
 });

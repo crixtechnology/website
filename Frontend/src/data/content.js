@@ -120,7 +120,7 @@ export const internships = [
     tag: "Mobile",
     title: "Android Development",
     desc: "Build and ship native Android apps — from UI fundamentals to a deployed project.",
-    points: ["Java · Kotlin · React Native", "UI, navigation & local storage", "REST API integration", "15 Days / 1 Month / 3 Month / 6 Month tracks"],
+    points: ["Java · Kotlin · React Native", "UI, navigation & local storage", "REST API integration", "1, 2, 3 and 6 month programs"],
   },
 ];
 
@@ -234,7 +234,7 @@ export const whyCrix = [
 // The Training + Internship journey: train first, then the best performers
 // move on to a stipend-based internship.
 export const process = [
-  { n: "01", title: "Apply for Paid Training", desc: "Pick a track, log in and fill in the Request to apply form — or call us. We confirm your seat and send a payment request for the training fee — training is paid, not free." },
+  { n: "01", title: "Enroll in Paid Training", desc: "Pick a program and duration — 1, 2, 3 or 6 months — tap Enroll now and pay the training fee securely online. Training is paid, not free." },
   { n: "02", title: "Get Trained", desc: "Live sessions, recorded lectures and hands-on tasks, mentored by working industry professionals." },
   { n: "03", title: "Get Evaluated", desc: "Your assignments, project work, attendance and conduct are assessed throughout the training." },
   { n: "04", title: "Stipend Internship", desc: "Top performers are selected for a stipend-based internship on real projects, with an offer letter and LOR." },
@@ -245,7 +245,7 @@ export const trainingStages = [
   {
     tag: "Stage 1 · Paid · Everyone",
     title: "Paid Training",
-    desc: "A structured, mentored training program on the track you pick — fully virtual. Training is paid, not free: the fee is shown on each track's page.",
+    desc: "A structured, mentored training program on the track you pick — fully virtual. Training is paid, not free: each program's card shows its fee, and you enroll and pay online.",
     points: ["Live sessions + recorded lectures", "Hands-on tasks and a capstone project", "Mentor support throughout", "Joining kit + training certificate on completion"],
   },
   {
@@ -328,7 +328,7 @@ export const legal = {
 • Help chat questions — if the site's help assistant has no answer to something you type, we may save that question (without your name or contact details, and with any email address, phone number or link removed) so we can improve its answers
 • Any messages or project submissions you send us
 
-Payment for a Training + Internship program, a plan upgrade, or a payment request sent to your account is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Training programs on our Training + Internship page are paid. Applying for a role on our Careers or Free Internship pages, and taking its aptitude test, is free; no payment details are collected when you apply.`,
+Payment for a Training + Internship program (made at the online checkout when you enroll), a plan upgrade, or a payment request sent to your account is collected and processed securely on this website through our payment partner, Razorpay — see "Payment Processing" below. Training programs on our Training + Internship page are paid. Applying for a role on our Careers or Free Internship pages, and taking its aptitude test, is free; no payment details are collected when you apply.`,
       },
       {
         title: "2. How We Use Your Information",
@@ -473,10 +473,10 @@ You are responsible for all activity that occurs under your account. Crix Techno
       {
         title: "4. Training + Internship Program",
         content: `Crix Technology offers a virtual Training + Internship Program, listed on the Training + Internship page. It runs in two stages:
-• Training — a paid (not free), mentored training program on the track you enroll in. Its price is shown on its page or communicated to you before you enroll (see section 6), and it runs for the duration shown there — 15 days, 1 month, 3 months or 6 months.
+• Training — a paid (not free), mentored training program on the track you enroll in. Its price is set by Crix Technology and shown on its card and its page before you enroll (see section 6), and it runs for the duration shown there — 1 month, 2 months, 3 months or 6 months.
 • Stipend-based internship — after the training, Crix Technology may select trainees for a stipend-based internship, based on their performance during the training (assignments and tasks, the final project, attendance and participation, and professional conduct). Selection is at Crix Technology's sole discretion; the number of internship places, the stipend amount, the internship's duration and its terms are set by Crix Technology for each batch and are communicated to selected trainees in their offer letter.
 
-There is no aptitude test for Training + Internship: you apply, and Crix Technology confirms your seat. Aptitude tests apply only to Free Internship and Careers roles (section 8). Any "Starts on" shown for a track or role is an estimate of when the batch or role begins; the actual start is confirmed to you before it begins.
+There is no aptitude test for Training + Internship: you enroll by choosing a program and paying its training fee online (section 6), and your seat is confirmed when that payment is confirmed. Aptitude tests apply only to Free Internship and Careers roles (section 8). Any "Starts on" shown for a track or role is an estimate of when the batch or role begins; the actual start is confirmed to you before it begins.
 
 Enrolling in and paying for the training does not guarantee selection for the internship, a stipend, or any employment. The training fee is for the training only and is not refunded or adjusted if you are not selected.
 
@@ -509,7 +509,7 @@ A training certificate is issued upon satisfactory completion of all assigned tr
 • If money is debited from your account but the payment fails or is not confirmed, Razorpay or your bank normally reverses it automatically within 5–7 working days. If it is not reversed, or the item you paid for is not unlocked, contact us with your payment reference and we will resolve it.
 • If you are charged twice for the same order, the duplicate payment is refunded to the original payment method once verified.
 
-Training programs on our Training + Internship page are paid programs, but they are not bought through an online checkout: you apply using the "Request to apply" form on the track's page while logged in to your account, or by calling or messaging our Training + Internship team (who will ask you to create an account if you don't have one). Once Crix Technology confirms your seat, it sends a payment request for the training fee to your account (see "Payment requests" below), and your enrollment is complete when that payment is confirmed. The stipend-based internship that follows is not sold: it is offered only to selected trainees (see section 4). Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A training program is open for enrollment only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" or "Request to enroll" option on its page to contact us directly about pricing or upcoming availability.
+Training programs on our Training + Internship page are paid programs, offered in durations of 1, 2, 3 or 6 months. You enroll by choosing a program and paying its training fee through the online checkout while logged in to your account; your enrollment is complete when that payment is confirmed. You may also contact our Training + Internship team by phone or message before enrolling, and Crix Technology may instead send a payment request for the training fee to your account (see "Payment requests" below). The stipend-based internship that follows is not sold: it is offered only to selected trainees (see section 4). Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A training program is open for enrollment only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" option on its page, or call or message our Training + Internship team, to ask about pricing or upcoming availability. The same applies to a program whose places are all filled.
 
 Plans and upgrades: a training program may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and offer codes, referral discounts and wallet credit do not apply to upgrades.
 

@@ -2,7 +2,9 @@ import { formatDuration } from "./duration.js";
 
 // Training + Internship tracks — and Free Internship roles — that share a
 // domain `group` (set in Admin) are one domain offered in several durations.
-// The site shows each group as a single card with a duration switch; one with
+// The home page and Free Internships show each group as a single card with a
+// duration switch (the Training + Internship page shows a card per duration,
+// under its duration filter); one with
 // no group is a group of one. A track's length is durationDays; a role's is
 // its Duration text ("6 months").
 

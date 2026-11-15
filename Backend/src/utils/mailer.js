@@ -166,9 +166,10 @@ async function sendApplicationEmail({ type, refTitle }) {
     path: "/training-internship",
     subject: `New ${label} — ${title}`,
     title: `New ${label.toLowerCase()}`,
-    // Training is paid through a payment request the team sends after confirming the seat.
-    summaryHtml: `A new ${label.toLowerCase()} just came in for <strong>${escapeHtml(title)}</strong>.${type === "internship" ? " Call them to confirm their seat, then use <strong>Send payment request</strong> on the application." : ""}`,
-    summaryText: `A new ${label} was received for "${title}".${type === "internship" ? " Call them to confirm their seat, then use Send payment request on the application." : ""}`,
+    // Students normally pay online from the program card; this entry is also made when
+    // they only applied, in which case the team sends a payment request.
+    summaryHtml: `A new ${label.toLowerCase()} just came in for <strong>${escapeHtml(title)}</strong>.${type === "internship" ? " If they haven't paid online, call them and use <strong>Send payment request</strong> on the application." : ""}`,
+    summaryText: `A new ${label} was received for "${title}".${type === "internship" ? " If they haven't paid online, call them and use Send payment request on the application." : ""}`,
     link,
     linkLabel: "Open applications",
   });

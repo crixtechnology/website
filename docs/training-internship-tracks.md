@@ -1,6 +1,6 @@
 # Training + Internship tracks: what to type in Admin
 
-Five tracks for the Training + Internship page (`/training-internship`), in the **same domains as the five free internship roles** (see `free-internship-roles.md`). Each domain is offered in **two durations, 3 months and 6 months**, which show on the site as one card with a duration switch. The free internship roles use the same two durations.
+Five tracks for the Training + Internship page (`/training-internship`), in the **same domains as the five free internship roles** (see `free-internship-roles.md`). Each domain is offered in **two durations, 3 months and 6 months** (you can also add 1 month and 2 months), and **each duration is its own card** on the site. Visitors pick a length with the filter on top of the page: All, 1 month, 2 months, 3 months, 6 months. The free internship roles use the same two durations.
 
 Go to **Admin → Training + Internship → Add a Training + Internship track**. Fill in one track, press **Create**, then do the next. That's 10 entries in all (5 domains × 2 durations).
 
@@ -12,8 +12,8 @@ Each section lists the fields **in the same order as the admin form**. Copy the 
 
 ## Before you start
 
-1. **Same domain = same Domain group.** Give the 3-month and the 6-month track of a domain exactly the same Domain group (e.g. `Frontend (React.js)`). That's what joins them into one card with a **3 months | 6 months** switch. Once one entry has a group, the field suggests it when you type.
-2. **There is no aptitude test for training.** The training form has no test section. Students apply (or call), you confirm their seat, then you send a payment request from **Admin → Applications → Send payment request**.
+1. **Same domain = same Domain group.** Give the 3-month and the 6-month track of a domain exactly the same Domain group (e.g. `Frontend (React.js)`). That's what links the two cards' pages to each other ("Other durations of this track"). Once one entry has a group, the field suggests it when you type.
+2. **There is no aptitude test for training.** The training form has no test section. Students tap **Enroll now** on the card and pay your price online through Razorpay. A card with no price shows **Request to apply** instead; for those you send a payment request from **Admin → Applications → Send payment request**.
 3. **Training is paid.** Set a fee on at least one plan. A ₹0 plan is refused; free internships belong under Free Internship.
 4. **A new track starts Closed.** After you press Create, press **Closed** in the list to open it, so it shows on the site.
 5. **Eligibility differs from Free Internship.** Training has no webcam test, so the webcam line is gone. The age rule follows the Terms: 16 or older, and 16–17 year olds need a parent's or guardian's permission. The free internship test is 18+ only.
@@ -327,15 +327,16 @@ Anyone who wants a path to a paid internship
 
 | Question | Answer |
 |---|---|
-| `Is there an aptitude test?` | `No. Training + Internship has no test — you apply, and we confirm your seat.` |
+| `Is there an aptitude test?` | `No. Training + Internship has no test — you enroll online by paying the training fee.` |
 | `Is the stipend guaranteed?` | `No. The stipend-based internship is offered to the top performers of each batch, based on tasks, project work, attendance and conduct.` |
-| `When does it start?` | `The card shows roughly when the next batch starts. We confirm the exact start when we confirm your seat.` |
+| `When does it start?` | `The card shows roughly when the next batch starts. We confirm the exact start after you enroll.` |
 | `What do I get if I'm not selected?` | `You keep your training certificate, your project work and everything you learned.` |
 
 ---
 
 ## After you've added them
 
-- **Check the page:** open `/training-internship`. You should see **5 cards** (one per domain), each with a **3 months | 6 months** switch.
-- **Duration switch looks wrong:** if a domain shows two separate cards, its two Domain group values aren't identical. Fix the spelling or spacing in Admin.
+- **Check the page:** open `/training-internship`. You should see **10 cards** (one per domain and duration), each with its price and an **Enroll now** button. Tap **3 months** or **6 months** on top to see 5 at a time.
+- **A card is missing under a filter:** its Duration isn't set (it then shows only under All). Edit it in Admin and pick the length.
+- **A track's page doesn't link its other duration:** the two Domain group values aren't identical. Fix the spelling or spacing in Admin.
 - **A track doesn't show:** it's still **Closed**. Press the toggle in the Admin list.

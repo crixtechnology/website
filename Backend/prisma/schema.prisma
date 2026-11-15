@@ -149,7 +149,8 @@ model Course {
   experience      String       @default("")
   mode            String       @default("")
   // Tracks with the same group (e.g. "MERN") are one domain offered in several
-  // durations: the site shows them as a single card with a duration switch.
+  // durations (1 / 2 / 3 / 6 months): each is its own card on the Training +
+  // Internship page, and its page links to the others.
   group           String       @default("")
   // The card's optional "Starts on": roughly when the batch is expected to
   // start, in the admin's words ("15 December", "mid-January"). Admin no longer

@@ -975,7 +975,7 @@ body.no-copy img{-webkit-user-drag:none}
 @media(min-width:721px){.stage-grid::after{content:"→";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);color:var(--teal);font-size:1.1rem;z-index:1}}
 @media(max-width:720px){.stage-grid{grid-template-columns:1fr;gap:18px}}
 
-/* Training + Internship: apply / call / WhatsApp instead of an online checkout. */
+/* Training + Internship: the apply / call / WhatsApp row beside the online checkout. */
 .training-contact{margin-top:22px;padding:18px 20px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(160deg,var(--panel),var(--panel-2));max-width:760px}
 .training-contact-note{color:var(--muted);font-size:.92rem;line-height:1.6;margin:0 0 14px}
 .training-contact-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
@@ -992,3 +992,15 @@ body.no-copy img{-webkit-user-drag:none}
 .duration-opt:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .starting-from{display:inline-block;margin:0 0 12px;font-size:.82rem;color:var(--muted)}
 .starting-from b{color:var(--amber);font-weight:600}
+
+/* ---------- Training + Internship: duration filter capsules + card fee ---------- */
+.filter-pills{display:flex;flex-wrap:wrap;gap:10px}
+.filter-pill{font:inherit;font-family:'JetBrains Mono',monospace;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:rgba(127,232,224,.04);border:1px solid var(--line);border-radius:999px;padding:10px 20px;min-height:44px;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s}
+.filter-pill:hover{color:var(--text);border-color:var(--teal)}
+.filter-pill.on{background:var(--teal);border-color:var(--teal);color:#04170c}
+.filter-pill:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.filter-empty{color:var(--muted);margin:8px 0 0}
+.filter-reset{font:inherit;color:var(--teal);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+.card-price{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.card-price-label{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
+@media(max-width:560px){.filter-pills{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:2px 16px 6px;scrollbar-width:none}.filter-pills::-webkit-scrollbar{display:none}}

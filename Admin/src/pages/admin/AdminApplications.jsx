@@ -54,7 +54,8 @@ export default function AdminApplications() {
             <span className="eyebrow">Admin</span>
             <h1 className="title-lg" style={{ margin: "14px 0 0" }}>Applications &amp; inquiries</h1>
             <p style={{ color: "var(--muted)", margin: "6px 0 0" }}>
-              "Request to apply" and "Request to enroll" submissions from the public site — no account required to submit.
+              "Request to apply" submissions, plus an entry for each online enrollment a student starts on a program card.
+              Students normally pay online themselves; use Send payment request for anyone who applied without paying.
             </p>
           </div>
           <button className="btn btn-ghost" onClick={() => navigate("/admin")}>← Dashboard</button>
@@ -114,7 +115,7 @@ export default function AdminApplications() {
                 </div>
                 <div className="admin-row-actions">
                   {a.type === "internship" && a.course && (
-                    // Training is paid through a payment request: open the form
+                    // For someone who applied without paying online: open the payment request form
                     // with this applicant and track already picked.
                     <Link className="btn btn-solid" to={`/admin/payment-requests?email=${encodeURIComponent(a.email)}&courseId=${encodeURIComponent(a.course)}`}>
                       Send payment request

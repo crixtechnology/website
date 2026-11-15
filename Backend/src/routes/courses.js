@@ -140,7 +140,7 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
           durationDays: durationDays ? Number(durationDays) : null,
           startsAt: start.value || null,
           // Whether the track takes applications — Admin's Open/Closed switch.
-          // Tracks are joined by applying (never bought online), so it needs no price.
+          // A priced, open track is bought online (Razorpay); one with no price is apply-only.
           status: status === "closed" ? "closed" : "open",
         },
         include: WITH_SEATS,

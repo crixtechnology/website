@@ -34,14 +34,14 @@ router.post("/applications", publicWriteLimiter, attachUserIfPresent, async (req
     if (type !== "internship") {
       return res.status(400).json({ ok: false, error: type === "course" ? COURSES_DROPPED : "type must be 'internship'" });
     }
-    // Training + Internship is paid through a payment request, which can only be
-    // sent to an account — so applying needs one, and the application carries
+    // Training + Internship is paid online, or through a payment request, and both
+    // belong to an account — so enrolling or applying needs one, and the application carries
     // the account's own email (the admin's "Send payment request" looks it up).
     let accountEmail = null;
     if (type === "internship") {
       const account = req.user ? await prisma.user.findUnique({ where: { id: req.user.sub }, select: { email: true } }) : null;
       if (!account) {
-        return res.status(401).json({ ok: false, code: "LOGIN_REQUIRED", error: "Log in or create your free account to apply — that's where we send your payment request." });
+        return res.status(401).json({ ok: false, code: "LOGIN_REQUIRED", error: "Log in or create your free account to continue — your training and payments are kept on your account." });
       }
       accountEmail = account.email;
     }
