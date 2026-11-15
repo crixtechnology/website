@@ -1,6 +1,5 @@
 const express = require("express");
 const crypto = require("crypto");
-const rateLimit = require("express-rate-limit");
 const { prisma } = require("../db");
 const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
 const { safeEqual } = require("../utils/safeCompare");
@@ -11,8 +10,7 @@ const { round2 } = require("../utils/money");
 const { WITH_TIERS, WITH_SEATS, seatsOf, isTier, tierRank, tierTotal, listPriceOf } = require("../utils/tiers");
 const { getUpgradeOptions } = require("../utils/upgrades");
 const { requireAuth } = require("../middleware/requireAuth");
-const { priceOrder, rewardReferrerForPurchase, redeemCreditForPurchase } = require("../utils/referrals");
-const { checkCoupon, overLimitAfterReserving } = require("../utils/coupons");
+const { priceOrder, redeemCreditForPurchase } = require("../utils/pricing");
 const { WALLET_ORDER_PREFIX, isWalletPayment, lockUser, expireCredits } = require("../utils/wallet");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
@@ -21,18 +19,6 @@ const { rejectWithoutTerms } = require("../utils/terms");
 const { rejectIfProfileIncomplete } = require("../utils/accounts");
 
 const router = express.Router();
-
-// Offer codes are guessable words, and /quote is where a code gets tried — so
-// requests that carry one are capped per IP. Requests with no code (the plain
-// price lookup the buy popup makes on every plan change) aren't counted.
-const couponAttemptLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => !(req.body && req.body.couponCode),
-  message: { ok: false, error: "Too many attempts. Please try again in a few minutes." },
-});
 
 // The Razorpay SDK rejects with { statusCode, error: { description } } —
 // shapes the generic error handler can't read, so it would otherwise become a
@@ -122,12 +108,8 @@ async function grantAccessForPayment(payment, razorpayPaymentId) {
       });
     }
 
-    // A first purchase rewards whoever referred this student, and spends any
-    // referral credit the order was priced with. An upgrade is neither.
-    if (!payment.fromTier) {
-      await rewardReferrerForPurchase(payment, application);
-      await redeemCreditForPurchase(payment, application);
-    }
+    // A purchase spends the wallet credit the order was priced with. An upgrade doesn't use credit.
+    if (!payment.fromTier) await redeemCreditForPurchase(payment, application);
 
     await attachReceipt(payment, application);
   }
@@ -171,7 +153,8 @@ async function attachReceipt(payment, application) {
   // though the charge is rounded to whole rupees.
   const extraOff = (payment.referralDiscount || 0) + (payment.creditApplied || 0) + (payment.couponDiscount || 0) > 0;
   const discountAmount = discountPercent > 0 || extraOff ? round2(Math.max(0, basePrice - totalPaid)) : 0;
-  // With a referral discount, credit or offer code in the mix, the plain plan % no longer
+  // (referralDiscount / couponDiscount only on payments from before those were retired.)
+  // With wallet credit or an old discount in the mix, the plain plan % no longer
   // describes the discount, so show the effective % of the list price instead.
   const effectiveDiscountPercent = extraOff && basePrice > 0 ? round2((discountAmount / basePrice) * 100) : discountPercent;
 
@@ -291,16 +274,11 @@ async function loadPurchasablePlan(courseSlug, tierName, userId) {
 }
 
 // What checkout will charge for a plan, itemised, so the buy popup can show it
-// before the student pays: plan price, offer code, referral welcome discount,
-// referral credit, total. Same pricing code create-order uses. Amounts are in
-// rupees. An offer code that can't be used doesn't fail the quote — the price
-// comes back without it, plus `couponError` to show next to the code box. Offer
-// codes are handed out personally by the admin and never shown on the site, so
-// the reply only says WHETHER one was applied and what it saved — it doesn't echo
-// the code or the admin's internal note back.
-router.post("/quote", requireAuth, couponAttemptLimiter, async (req, res, next) => {
+// before the student pays: plan price, wallet credit, total. Same pricing code
+// create-order uses. Amounts are in rupees.
+router.post("/quote", requireAuth, async (req, res, next) => {
   try {
-    const { courseSlug, tier: tierName, couponCode } = req.body || {};
+    const { courseSlug, tier: tierName } = req.body || {};
     if (!courseSlug) return res.status(400).json({ ok: false, error: "courseSlug is required" });
     const found = await loadPurchasablePlan(courseSlug, tierName, req.user.sub);
     if (found.error) return res.status(found.error.status).json({ ok: false, error: found.error.message });
@@ -308,21 +286,10 @@ router.post("/quote", requireAuth, couponAttemptLimiter, async (req, res, next) 
     await expireCredits(req.user.sub);
 
     const planRupees = tierTotal(found.plan);
-    let applied = null;
-    let couponError = null;
-    if (couponCode) {
-      const checked = await checkCoupon({ rawCode: couponCode, userId: req.user.sub, course: found.course, planRupees });
-      if (checked.ok) applied = checked; else couponError = checked.error;
-    }
-    const pricing = await priceOrder(req.user.sub, planRupees, applied ? applied.discountPaise : 0);
+    const pricing = await priceOrder(req.user.sub, planRupees);
     res.json({
       ok: true,
       planPrice: planRupees,
-      couponApplied: !!applied,
-      couponDiscount: pricing.couponDiscount / 100,
-      couponError,
-      referralPercent: pricing.referralPercent,
-      referralDiscount: pricing.referralDiscount / 100,
       creditApplied: pricing.creditApplied / 100,
       creditAvailable: pricing.availableCredit / 100,
       payable: pricing.payablePaise / 100,
@@ -337,25 +304,21 @@ router.post("/quote", requireAuth, couponAttemptLimiter, async (req, res, next) 
 });
 
 // The checks create-order and pay-with-wallet share: the request is well-formed,
-// the application is the caller's own, the plan can be bought right now, and any
-// offer code is usable. Returns { error: { status, message } } or
-// { application, course, plan, applied } (applied = the checked offer code, or null).
+// the application is the caller's own, and the plan can be bought right now.
+// Returns { error: { status, message } } or { application, course, plan }.
 async function prepareOrder(req) {
-  const { applicationId, courseSlug, tier: tierName, couponCode } = req.body || {};
+  const { applicationId, courseSlug, tier: tierName } = req.body || {};
   if (!applicationId || !courseSlug) {
     return { error: { status: 400, message: "applicationId and courseSlug are required" } };
   }
   if (typeof applicationId !== "string" || typeof courseSlug !== "string") {
     return { error: { status: 400, message: "applicationId and courseSlug must be text" } };
   }
-  if (couponCode !== undefined && couponCode !== null && typeof couponCode !== "string") {
-    return { error: { status: 400, message: "couponCode must be text" } };
-  }
   const application = await prisma.application.findUnique({ where: { id: applicationId } });
   // Only the account the application belongs to can pay for it. This is also what
   // keeps an application with no account (a guest form filled in while logged out)
   // from taking a payment it could never unlock, and stops anyone who learned
-  // someone else's application id from opening orders — or reserving their referral
+  // someone else's application id from opening orders — or reserving their wallet
   // credit — on their behalf. Same answer for "missing" and "not yours".
   if (!application || !application.userId || application.userId !== req.user.sub) {
     return { error: { status: 404, message: "Application not found" } };
@@ -365,18 +328,9 @@ async function prepareOrder(req) {
   if (found.error) return { error: found.error };
   const { course, plan } = found;
 
-  // An offer code, if one was entered, must be usable — checked again here, so
-  // a code that stopped being valid since the quote is refused rather than
-  // silently dropped (which would charge more than the buyer was shown).
-  let applied = null;
-  if (couponCode && couponCode.trim()) {
-    const checked = await checkCoupon({ rawCode: couponCode, userId: application.userId, course, planRupees: tierTotal(plan) });
-    if (!checked.ok) return { error: { status: 400, message: checked.error } };
-    applied = checked;
-  }
   // Lapsed credit is taken back before the balance is priced in.
   await expireCredits(application.userId);
-  return { application, course, plan, applied };
+  return { application, course, plan };
 }
 
 // ---------- 1. create an order (called right after the applicant submits the form) ----------
@@ -390,14 +344,13 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
     }
     if (rejectWithoutTerms(req, res)) return;
     if (await rejectIfProfileIncomplete(req, res)) return;
-    // What this buyer really pays: the plan price, less any offer code and referral
-    // welcome discount, less any referral credit they hold (utils/referrals.js) — all
-    // worked out on the server, never taken from the client.
+    // What this buyer really pays: the plan price less any wallet credit they hold
+    // (utils/pricing.js) — worked out on the server, never taken from the client.
     const prepared = await prepareOrder(req);
     if (prepared.error) return res.status(prepared.error.status).json({ ok: false, error: prepared.error.message });
-    const { application, course, plan, applied } = prepared;
+    const { application, course, plan } = prepared;
 
-    const pricing = await priceOrder(application.userId, tierTotal(plan), applied ? applied.discountPaise : 0);
+    const pricing = await priceOrder(application.userId, tierTotal(plan));
     const amountPaise = pricing.payablePaise; // whole rupees in paise, Razorpay's smallest unit
 
     const order = await razorpay.orders.create({
@@ -415,27 +368,13 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
         status: "created",
         applicationId: application.id,
         tier: plan.tier,
-        referralDiscount: pricing.referralDiscount,
         creditApplied: pricing.creditApplied,
-        couponId: applied ? applied.coupon.id : null,
-        couponCode: applied ? applied.coupon.code : "",
-        couponDiscount: pricing.couponDiscount,
         // Snapshotted now, not re-read from the plan at grant time — see the
         // field's own doc comment in prisma/schema.prisma for why.
         orderSnapshotBasePrice: listPriceOf(plan).basePrice,
         orderSnapshotDiscountPercent: listPriceOf(plan).discountPercent,
       },
     });
-
-    // This order now counts against the code's limits. If that pushed it over
-    // (someone else took the last redemption in the same instant), cancel it.
-    if (applied) {
-      const over = await overLimitAfterReserving(applied.coupon, application.userId);
-      if (over) {
-        await prisma.payment.update({ where: { id: payment.id }, data: { status: "failed" } });
-        return res.status(409).json({ ok: false, error: over });
-      }
-    }
 
     await prisma.application.update({
       where: { id: application.id },
@@ -475,23 +414,18 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
     if (await rejectIfProfileIncomplete(req, res)) return;
     const prepared = await prepareOrder(req);
     if (prepared.error) return res.status(prepared.error.status).json({ ok: false, error: prepared.error.message });
-    const { application, course, plan, applied } = prepared;
+    const { application, course, plan } = prepared;
     const userId = application.userId;
 
-    let result;
-    try { result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Everything below runs under a lock on the student's row, so a second
       // request (double click, another tab) waits and then sees the spent balance.
       await lockUser(tx, userId);
-      // An offer code is locked too, BEFORE the first plain read below (which fixes
-      // this transaction's snapshot): two buyers of a code's last use then queue up,
-      // and the second one's limit check sees the first one's committed payment.
-      if (applied) await tx.$queryRaw`SELECT id FROM coupons WHERE id = ${applied.coupon.id} FOR UPDATE`;
 
       const enrollment = await tx.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: course.id } } });
       if (hasValidAccess(enrollment)) return { error: { status: 400, message: "You already have access to this course." } };
 
-      const pricing = await priceOrder(userId, tierTotal(plan), applied ? applied.discountPaise : 0, tx);
+      const pricing = await priceOrder(userId, tierTotal(plan), tx);
       if (!pricing.walletCoversAll) {
         return { error: { status: 400, message: "Your wallet doesn't have enough credit to pay for this in full." } };
       }
@@ -505,22 +439,11 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
           status: "paid",
           applicationId: application.id,
           tier: plan.tier,
-          referralDiscount: pricing.referralDiscount,
           creditApplied: pricing.totalDuePaise,
-          couponId: applied ? applied.coupon.id : null,
-          couponCode: applied ? applied.coupon.code : "",
-          couponDiscount: pricing.couponDiscount,
           orderSnapshotBasePrice: listPriceOf(plan).basePrice,
           orderSnapshotDiscountPercent: listPriceOf(plan).discountPercent,
         },
       });
-      // This purchase now counts against the code's limits. If that pushed it over,
-      // throw: that rolls the whole purchase back (no payment, no spent credit, no
-      // access) — nothing has been granted yet.
-      if (applied) {
-        const over = await overLimitAfterReserving(applied.coupon, userId, tx);
-        if (over) throw Object.assign(new Error(over), { couponLimit: over });
-      }
       await tx.creditEntry.create({
         data: { userId, amount: -pricing.totalDuePaise, kind: "redeemed", paymentId: payment.id, note: "Paid for a training program from the wallet" },
       });
@@ -540,14 +463,11 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
         update: { paymentId: payment.id, tier: plan.tier, status: "active", startDate, endDate: computeEndDate(startDate, course.durationDays) },
       });
       return { payment };
-    }); } catch (e) {
-      if (e && e.couponLimit) return res.status(409).json({ ok: false, error: e.couponLimit });
-      throw e;
-    }
+    });
     if (result.error) return res.status(result.error.status).json({ ok: false, error: result.error.message });
     const { payment } = result;
 
-    // Access already exists; this adds the referral reward and the receipt. It's
+    // Access already exists; this adds the receipt. It's
     // idempotent, and the credit is spent, so a hiccup gets one retry.
     let granted;
     try {
@@ -742,8 +662,8 @@ router.post("/webhook", async (req, res, next) => {
       // A payment an admin requested (routes/paymentRequests.js) has its own
       // grant path; required here, not at the top, since that file requires this one.
       if (payment && payment.paymentRequestId) await require("./paymentRequests").grantAccessForRequestPayment(payment, entity.id);
-      // An aptitude-test fee (routes/careers.js): credits the wallet and unlocks the test.
-      else if (payment && payment.jobApplicationId) await require("../utils/careers").grantTestForPayment(payment, entity.id);
+      // (An old aptitude-test fee payment carries jobApplicationId; tests are free now, so it is left alone.)
+      else if (payment && payment.jobApplicationId) { /* nothing to grant */ }
       else if (payment) await grantAccessForPayment(payment, entity.id);
     } else if (entity && event.event === "payment.failed") {
       const payment = await prisma.payment.findFirst({ where: { razorpayOrderId: entity.order_id } });

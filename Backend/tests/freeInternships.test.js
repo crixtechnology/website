@@ -1,36 +1,29 @@
-const crypto = require("crypto");
 const request = require("supertest");
 const { setupTestDb, teardownTestDb } = require("./testDb");
 const { signToken } = require("../src/utils/jwt");
 
-// Free internships: roles listed only on the unlinked /free-internships page,
-// unlocked only once the candidate has uploaded a CV (a PDF) and filled in their
-// education. Nothing is paid: there is no processing fee. Same stand-ins as careers.test.js: no real
-// mail, storage, Razorpay call or rate limiting.
-process.env.RAZORPAY_KEY_SECRET = "free-internships-key-secret";
+// Free internships: roles kept off /careers (the /free-internships page is
+// static and applications go through a Google Form). Older on-site applications
+// for a free role carry on like any other: an admin gives test access (no fee),
+// and a CV uploaded back then can still be opened by an admin. Same stand-ins as
+// careers.test.js: no real mail, storage, Razorpay call or rate limiting.
 jest.mock("../src/utils/rateLimit", () => ({ publicWriteLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/testRateLimit", () => ({ testApiLimiter: (req, res, next) => next() }));
 jest.mock("../src/utils/mailer", () => ({
   sendWelcomeEmail: jest.fn(async () => ({})),
   sendTestSubmittedEmail: jest.fn(async () => ({})),
   sendApplicationStatusEmail: jest.fn(async () => ({})),
-  sendTestPaymentEmail: jest.fn(async () => ({})),
+  sendTestAccessEmail: jest.fn(async () => ({})),
 }));
 jest.mock("../src/utils/receiptPdf", () => ({ buildReceiptPdfBuffer: jest.fn(() => Buffer.from("fake-pdf")) }));
-jest.mock("../src/utils/razorpay", () => ({
-  isLiveBlocked: false,
-  razorpay: { orders: { create: jest.fn(async () => ({ id: `order_free_${Math.random().toString(36).slice(2)}`, currency: "INR" })) } },
-}));
 jest.mock("../src/utils/proctorStorage", () => ({
   PENDING_PREFIX: "pending:",
   deleteSnapshot: jest.fn(async () => {}),
   saveSnapshot: jest.fn(async (attemptId) => `local:${attemptId}/test.jpg`),
-  saveCv: jest.fn(async (applicationId) => `local:cv-${applicationId}/cv.pdf`),
   readSnapshot: jest.fn(async () => Buffer.from("%PDF-1.4 stored")),
   describeStorageError: (err) => `${err.name}: ${err.message}`,
   checkStorage: jest.fn(async () => ({ inBucket: true, message: "stored in bucket", results: [{ area: "CVs", ok: false, error: "AccessDenied (HTTP 403): not entitled" }, { area: "Webcam photos", ok: true }] })),
 }));
-const storage = require("../src/utils/proctorStorage");
 const mailer = require("../src/utils/mailer");
 
 let app, prisma, adminToken;
@@ -38,7 +31,6 @@ let seq = 0;
 
 const authed = (req, token) => req.set("Authorization", `Bearer ${token}`);
 const asAdmin = (req) => authed(req, adminToken);
-const PDF = Buffer.from("%PDF-1.4\n% a tiny test CV\n%%EOF");
 
 const EDUCATION = { college: "Gujarat University", course: "B.Com", department: "Commerce", semester: "4", passingYear: 2028 };
 
@@ -60,15 +52,21 @@ async function opening(overrides = {}) {
   return res.body.opening;
 }
 
-const apply = (s, o) => authed(request(app).post("/api/me/job-applications"), s.token).send({ opening: o.slug });
-const uploadCv = (s, id, body = PDF, type = "application/pdf") =>
-  authed(request(app).put(`/api/me/job-applications/${id}/cv`), s.token).set("Content-Type", type).set("X-File-Name", encodeURIComponent("My CV (final).pdf")).send(body);
-const createOrder = (s, id) => authed(request(app).post(`/api/me/job-applications/${id}/create-order`), s.token).send({ acceptTerms: true, confirmAdult: true });
-const verify = (orderId, paymentId) => request(app).post("/api/careers/verify").send({
-  razorpay_order_id: orderId, razorpay_payment_id: paymentId,
-  razorpay_signature: crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(`${orderId}|${paymentId}`).digest("hex"),
-});
-const unlock = (s, id) => authed(request(app).post(`/api/me/job-applications/${id}/unlock-free`), s.token).send({ acceptTerms: true, confirmAdult: true });
+const apply = (s, o) => authed(request(app).post("/api/me/job-applications"), s.token).send({ opening: o.slug, acceptTerms: true, confirmAdult: true });
+const grant = (id) => asAdmin(request(app).post(`/api/admin/job-applications/${id}/grant-test`)).send({});
+
+// Applies for a free role, an admin gives access, and the candidate sits and submits the test.
+async function takenTest(o) {
+  const s = await student();
+  const id = (await apply(s, o)).body.application._id;
+  expect((await grant(id)).status).toBe(200);
+  const started = await authed(request(app).post(`/api/me/job-applications/${id}/test/start`), s.token).send({ consent: true });
+  expect(started.status).toBe(200);
+  const t = started.body;
+  const submitted = await authed(request(app).post(`/api/me/test/${t.attempt._id}/submit`), s.token).set("X-Test-Session", t.sessionId).send({});
+  expect(submitted.status).toBe(200);
+  return { s, id };
+}
 
 beforeAll(async () => {
   app = await setupTestDb();
@@ -155,24 +153,6 @@ describe("Free internships", () => {
     }
   });
 
-  it("answers a storage failure during the CV upload with a clear message, and lets the student retry", async () => {
-    const o = await opening();
-    const s = await student();
-    const applied = await apply(s, o);
-    const id = applied.body.application._id;
-    storage.saveCv.mockRejectedValueOnce(Object.assign(new Error("not entitled"), { name: "AccessDenied" }));
-    const spy = jest.spyOn(console, "error").mockImplementation(() => {});
-    const failed = await uploadCv(s, id);
-    expect(failed.status).toBe(503);
-    expect(failed.body).toMatchObject({ ok: false, code: "CV_STORAGE", error: expect.stringMatching(/couldn't save your CV/) });
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining("AccessDenied: not entitled"));
-    spy.mockRestore();
-    expect((await prisma.jobApplication.findUnique({ where: { id } })).cvKey).toBeFalsy();
-
-    expect((await uploadCv(s, id)).status).toBe(200);
-    expect((await prisma.jobApplication.findUnique({ where: { id } })).cvKey).toBe(`local:cv-${id}/cv.pdf`);
-  });
-
   it("lets an admin, and only an admin, run the storage check", async () => {
     const s = await student();
     expect((await authed(request(app).get("/api/admin/careers/storage-check"), s.token)).status).toBe(403);
@@ -181,161 +161,40 @@ describe("Free internships", () => {
     expect(res.body).toMatchObject({ ok: true, inBucket: true, results: [{ area: "CVs", ok: false, error: "AccessDenied (HTTP 403): not entitled" }, { area: "Webcam photos", ok: true }] });
   });
 
-  it("needs an account, then a PDF CV, before the free test unlocks", async () => {
-    const o = await opening();
-    expect((await request(app).post("/api/me/job-applications").send({ opening: o.slug })).status).toBe(401);
-
-    const s = await student();
-    const applied = await apply(s, o);
-    expect(applied.status).toBe(201);
-    const id = applied.body.application._id;
-
-    const early = await unlock(s, id);
-    expect(early.status).toBe(400);
-    expect(early.body.code).toBe("CV_REQUIRED");
-
-    expect((await uploadCv(s, id, Buffer.from("not a pdf at all"))).status).toBe(400);
-    const other = await student();
-    expect((await uploadCv(other, id)).status).toBe(404);
-
-    const up = await uploadCv(s, id);
-    expect(up.status).toBe(200);
-    expect(up.body.cv.fileName).toBe("My CV (final).pdf");
-
-    const unlocked = await unlock(s, id);
-    expect(unlocked.status).toBe(200);
-    expect(unlocked.body.application).toMatchObject({ status: "test_pending", cv: { fileName: "My CV (final).pdf" } });
-
-    // A second CV replaces the first, and the old file is deleted.
-    storage.deleteSnapshot.mockClear();
-    expect((await uploadCv(s, id)).status).toBe(200);
-    expect(storage.deleteSnapshot).toHaveBeenCalledWith(`local:cv-${id}/cv.pdf`);
-  });
-
-  it("needs the student's education from Profile before the test unlocks", async () => {
-    const o = await opening();
-    const s = await student({});
-    const id = (await apply(s, o)).body.application._id;
-    await uploadCv(s, id);
-    const refused = await unlock(s, id);
-    expect(refused.status).toBe(400);
-    expect(refused.body).toMatchObject({ code: "PROFILE_INCOMPLETE", missing: ["college name", "course", "branch / department", "semester", "year of passing"] });
-
-    const me = (body) => authed(request(app).patch("/api/auth/me"), s.token).send(body);
-    expect((await me({ semester: "11" })).status).toBe(400);
-    expect((await me({ passingYear: 1800 })).status).toBe(400);
-    expect((await me({ college: "x".repeat(151) })).status).toBe(400);
-    const saved = await me({ ...EDUCATION, college: "  Gujarat   University " });
-    expect(saved.status).toBe(200);
-    expect(saved.body.user.education).toEqual({ ...EDUCATION, college: "Gujarat University" });
-
-    expect((await unlock(s, id)).status).toBe(200);
-    const detail = await asAdmin(request(app).get(`/api/admin/job-applications/${id}`));
-    expect(detail.body.application.user.education).toMatchObject({ college: "Gujarat University", semester: "4", passingYear: 2028 });
-    // The application keeps the details it was made with, even after the profile moves on.
-    await me({ semester: "5" });
-    const later = await asAdmin(request(app).get(`/api/admin/job-applications/${id}`));
-    expect(later.body.application.education).toEqual(EDUCATION);
-    expect(later.body.application.user.education.semester).toBe("5");
-  });
-
-  it("refuses a CV larger than 2 MB", async () => {
+  it("has no CV upload any more; a CV uploaded before can still be opened by an admin", async () => {
     const o = await opening();
     const s = await student();
     const id = (await apply(s, o)).body.application._id;
-    const big = Buffer.concat([PDF, Buffer.alloc(2 * 1024 * 1024 + 10, 0x20)]);
-    expect((await uploadCv(s, id, big)).status).toBe(413);
-  });
+    const upload = await authed(request(app).put(`/api/me/job-applications/${id}/cv`), s.token).set("Content-Type", "application/pdf").send(Buffer.from("%PDF-1.4"));
+    expect(upload.status).toBe(404);
 
-  it("lets the admin open the CV and select straight from the test", async () => {
-    const o = await opening();
-    const s = await student();
-    const id = (await apply(s, o)).body.application._id;
-    await uploadCv(s, id);
-    await unlock(s, id);
-    const started = await authed(request(app).post(`/api/me/job-applications/${id}/test/start`), s.token).send({ consent: true });
-    expect(started.status).toBe(200);
-    const t = started.body;
-    const submitted = await authed(request(app).post(`/api/me/test/${t.attempt._id}/submit`), s.token).set("X-Test-Session", t.sessionId).send({});
-    expect(submitted.status).toBe(200);
-
-    // The CV can't be swapped once the test is in.
-    expect((await uploadCv(s, id)).status).toBe(400);
-
+    await prisma.jobApplication.update({ where: { id }, data: { cvKey: `local:cv-${id}/cv.pdf`, cvFileName: "My CV (final).pdf", cvUploadedAt: new Date() } });
     const cv = await asAdmin(request(app).get(`/api/admin/job-applications/${id}/cv`));
     expect(cv.status).toBe(200);
     expect(cv.headers["content-type"]).toMatch(/application\/pdf/);
     expect((await authed(request(app).get(`/api/admin/job-applications/${id}/cv`), s.token)).status).toBe(403);
-
     const list = await asAdmin(request(app).get("/api/admin/job-applications"));
     expect(list.body.applications.find((a) => a._id === id)).toMatchObject({ cv: { fileName: "My CV (final).pdf" }, opening: { audience: "free" } });
+  });
 
+  it("gives a free role's applicant the test once an admin gives access, and lets the admin select straight from it", async () => {
+    const o = await opening();
+    const { id } = await takenTest(o);
     mailer.sendApplicationStatusEmail.mockClear();
     const selected = await asAdmin(request(app).post(`/api/admin/job-applications/${id}/status`)).send({ action: "select" });
     expect(selected.status).toBe(200);
     expect(selected.body.application.status).toBe("selected");
-    expect(mailer.sendApplicationStatusEmail).toHaveBeenCalledWith(expect.objectContaining({ status: "selected", free: true }));
+    expect(mailer.sendApplicationStatusEmail).toHaveBeenCalledWith(expect.objectContaining({ status: "selected" }));
   });
 
-  it("sends the not-selected email without wallet talk for a free role", async () => {
+  it("sends the not-shortlisted email with no wallet or fee talk", async () => {
     const o = await opening();
-    const s = await student();
-    const id = (await apply(s, o)).body.application._id;
-    await uploadCv(s, id);
-    await unlock(s, id);
-    const t = (await authed(request(app).post(`/api/me/job-applications/${id}/test/start`), s.token).send({ consent: true })).body;
-    await authed(request(app).post(`/api/me/test/${t.attempt._id}/submit`), s.token).set("X-Test-Session", t.sessionId).send({});
-
+    const { id } = await takenTest(o);
     mailer.sendApplicationStatusEmail.mockClear();
     const res = await asAdmin(request(app).post(`/api/admin/job-applications/${id}/status`)).send({ action: "not_shortlist" });
     expect(res.body.application.status).toBe("not_shortlisted");
-    expect(mailer.sendApplicationStatusEmail).toHaveBeenCalledWith(expect.objectContaining({ status: "not_shortlisted", free: true }));
-  });
-
-  describe("with no processing fee", () => {
-    it("has no payment step, even with the old fee settings sent again", async () => {
-      // Settings from when there was a fee are ignored.
-      expect((await asAdmin(request(app).put("/api/admin/careers/settings")).send({ processingFeeRupees: 94, testFeeRupees: 289 })).status).toBe(200);
-
-      // So is a per-role "charge the fee" choice.
-      const o = await opening({ waiveFee: false, feeRequired: true });
-      const s = await student();
-      const id = (await apply(s, o)).body.application._id;
-      // The old "start paying" endpoint is gone.
-      expect((await createOrder(s, id)).status).toBe(404);
-
-      await uploadCv(s, id);
-      const res = await unlock(s, id);
-      expect(res.status).toBe(200);
-      expect(res.body.application.status).toBe("test_pending");
-      expect(await prisma.payment.count({ where: { jobApplicationId: id } })).toBe(0);
-      expect(await prisma.creditEntry.count({ where: { userId: s.id } })).toBe(0);
-    });
-
-    it("still settles a processing-fee order made before the fee was removed", async () => {
-      const o = await opening();
-      const s = await student();
-      const id = (await apply(s, o)).body.application._id;
-      await uploadCv(s, id);
-      const orderId = `order_free_${Math.random().toString(36).slice(2)}`;
-      await prisma.payment.create({
-        data: { termsAcceptedAt: new Date(), razorpayOrderId: orderId, amount: 9400, status: "created", userId: s.id, jobApplicationId: id, orderSnapshotBasePrice: 94, orderSnapshotDiscountPercent: 0 },
-      });
-
-      const paymentId = `pay_${Math.random().toString(36).slice(2)}`;
-      expect((await verify(orderId, paymentId)).body).toMatchObject({ ok: true, unlocked: true });
-      // A second confirmation (the webhook) changes nothing.
-      await verify(orderId, paymentId);
-
-      const app1 = await prisma.jobApplication.findUnique({ where: { id }, include: { payments: true } });
-      expect(app1.status).toBe("test_pending");
-      expect(app1.payments[0]).toMatchObject({ status: "paid", amount: 9400, receiptItemTitle: `Test Processing Fee - ${o.title}` });
-
-      const credits = await prisma.creditEntry.findMany({ where: { userId: s.id } });
-      expect(credits).toHaveLength(1);
-      expect(credits[0]).toMatchObject({ amount: 9400, kind: "test_fee_credit" });
-      expect(credits[0].note).toMatch(/^Test processing fee/);
-      expect(mailer.sendTestPaymentEmail).toHaveBeenCalledWith(expect.objectContaining({ to: s.email, amount: 94, credits: 94 }));
-    });
+    const args = mailer.sendApplicationStatusEmail.mock.calls[0][0];
+    expect(args).toMatchObject({ status: "not_shortlisted" });
+    expect(args).not.toHaveProperty("free");
   });
 });

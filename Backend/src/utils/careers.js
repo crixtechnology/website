@@ -4,10 +4,7 @@
 const crypto = require("crypto");
 const { prisma } = require("../db");
 const { safeEqual } = require("./safeCompare");
-const { issueReceiptNumber } = require("./receiptNumber");
 const { round2 } = require("./money");
-const { creditBalance } = require("./referrals");
-const { getCareerSettings, creditExpiryDate } = require("./careerSettings");
 const { addNotification, sendCareerEmail } = require("./notifications");
 const { generateQuestions, generatorCount } = require("./questionGenerators");
 const { PENDING_PREFIX } = require("./proctorStorage");
@@ -53,8 +50,8 @@ function normalizeCounts(raw) {
 }
 
 const STATUS_LABELS = {
-  // The database name is from when a test had a fee; it now means "applied, terms not accepted yet".
-  payment_pending: "Application incomplete",
+  // Applied; waiting for an admin to give test access.
+  awaiting_access: "Waiting for test access",
   test_pending: "Test pending",
   submitted: "Submitted",
   shortlisted: "Shortlisted",
@@ -110,135 +107,37 @@ function shapeOpening(o, { admin = false } = {}) {
   };
 }
 
-// ---------- test fees (no longer charged) ----------
-// Every role's test is free now: it unlocks at /me/job-applications/:id/unlock-free
-// and no new fee order can be created. What follows only settles a fee payment
-// started before the fees were removed (the Razorpay webhook or /careers/verify
-// may still confirm one) and keeps old receipts and wallet credit as they were.
-const feeName = (opening) => (opening && opening.audience === "free" ? "Test processing fee" : "Aptitude test fee");
-
-// Marks a test-fee payment paid and does everything that follows from it:
-// unlocks the test (payment_pending -> test_pending), returns the fee to the
-// wallet as credit, mints the receipt, and emails it. Idempotent and safe to
-// call from BOTH /careers/verify and the Razorpay webhook: every step is either
-// a compare-and-swap or guarded by a unique key, so whichever confirmation lands
-// first does the work and the other changes nothing — in particular the same
-// payment can never credit the wallet twice (CreditEntry's unique
-// [paymentId, kind]). Returns the JobApplication, or null.
-async function grantTestForPayment(payment, razorpayPaymentId) {
-  if (payment.status !== "paid" || payment.razorpayPaymentId !== razorpayPaymentId) {
-    payment = await prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: "paid", razorpayPaymentId },
-    });
-  }
-  const application = payment.jobApplicationId
-    ? await prisma.jobApplication.findUnique({
-        where: { id: payment.jobApplicationId },
-        include: { user: true, opening: true },
-      })
-    : null;
-  if (!application || !application.user) return null;
-  const { user, opening } = application;
-
-  // Unlock the test. Only an application still waiting for payment moves; one
-  // that is already unlocked (the other confirmation got here first, or a
-  // second order was somehow paid) is left exactly as it is.
-  await prisma.jobApplication.updateMany({
-    where: { id: application.id, status: "payment_pending" },
-    data: { status: "test_pending", paymentId: payment.id, paidAt: new Date() },
+// ---------- test access (given by an admin) ----------
+// The test has no fee and a candidate can't unlock it: an admin gives access to
+// one application (awaiting_access -> test_pending). Compare-and-swap on the
+// status, so a double click or two admins at once give it only once; the
+// candidate gets a dashboard notification and an email. Returns the
+// application (with user and opening) when access was given now, else null.
+async function grantTestAccess(applicationId, adminId) {
+  const changed = await prisma.jobApplication.updateMany({
+    where: { id: applicationId, status: "awaiting_access" },
+    data: { status: "test_pending", testAccessAt: new Date(), testAccessBy: adminId || null, clearedAt: null },
   });
-
-  // The whole fee comes back as wallet credit: 1 credit per rupee paid.
-  const settings = await getCareerSettings();
-  try {
-    await prisma.creditEntry.create({
-      data: {
-        userId: user.id,
-        amount: payment.amount,
-        kind: "test_fee_credit",
-        paymentId: payment.id,
-        note: `${feeName(opening)} — ${opening.title}`,
-        expiresAt: creditExpiryDate(settings.creditExpiryMonths),
-      },
+  if (changed.count !== 1) return null;
+  const application = await prisma.jobApplication.findUnique({
+    where: { id: applicationId },
+    include: { user: { select: { id: true, name: true, email: true } }, opening: { select: { title: true, durationMinutes: true } } },
+  });
+  if (application && application.user) {
+    const roleTitle = application.opening ? application.opening.title : "the role";
+    await addNotification(application.user.id, {
+      title: "Your aptitude test is ready",
+      body: `You can now take the ${roleTitle} aptitude test from My Applications.`,
+      link: "/dashboard?tab=applications",
     });
-  } catch (e) {
-    if (!(e && e.code === "P2002")) throw e;
+    sendCareerEmail("sendTestAccessEmail", {
+      to: application.user.email,
+      name: application.user.name,
+      roleTitle,
+      durationMinutes: application.opening ? application.opening.durationMinutes : null,
+    });
   }
-
-  await attachTestReceipt(payment, user, opening, settings);
   return application;
-}
-
-// The receipt for a test fee, on the same Payment columns and with the same
-// race-safe "only one caller mints it" UPDATE as a course receipt
-// (routes/payments.js attachReceipt). The winner also sends the confirmation
-// email and the dashboard notification, so those go out exactly once.
-async function attachTestReceipt(payment, user, opening, settings) {
-  if (payment.receiptNumber) return;
-  const totalPaid = round2((payment.amount || 0) / 100);
-  // A plain hyphen: the receipt PDF's built-in font has no long dash.
-  const itemTitle = opening.audience === "free" ? `Test Processing Fee - ${opening.title}` : `Aptitude Test Fee - ${opening.title}`;
-
-  // Same shared counter as every other receipt (utils/receiptNumber.js).
-  // null: the other concurrent caller (verify vs webhook) got there first.
-  const issued = await issueReceiptNumber(payment.id, {
-    userId: user.id,
-    receiptBuyerName: user.name || "",
-    receiptBuyerEmail: user.email || "",
-    receiptBuyerPhone: user.phone || "",
-    receiptItemType: "aptitude_test",
-    receiptItemTitle: itemTitle,
-    receiptBasePrice: totalPaid,
-    receiptDiscountPercent: 0,
-    receiptDiscountAmount: 0,
-    receiptTotalPaid: totalPaid,
-    receiptPaymentMode: "Razorpay (Online)",
-  });
-  if (!issued) return;
-  const { receiptNumber, issuedAt } = issued;
-
-  const credits = Math.round((payment.amount || 0) / 100);
-  await addNotification(user.id, {
-    title: "Payment received — your test is unlocked",
-    body: `We received ₹${totalPaid} for the ${opening.title} aptitude test. ${credits} credits were added to your wallet, and you can take the test now.`,
-    link: "/dashboard?tab=apply",
-  });
-
-  // Best-effort — a failed/unconfigured email must never undo the payment.
-  try {
-    const mailer = require("./mailer");
-    if (typeof mailer.sendTestPaymentEmail !== "function") return;
-    const { buildReceiptPdfBuffer } = require("./receiptPdf");
-    const pdfBuffer = buildReceiptPdfBuffer({
-      receiptNumber,
-      issuedAt,
-      buyerName: user.name || "",
-      buyerEmail: user.email || "",
-      buyerPhone: user.phone || "",
-      itemType: "aptitude_test",
-      itemTitle,
-      basePrice: totalPaid,
-      discountPercent: 0,
-      discountAmount: 0,
-      totalPaid,
-      paymentMode: "Razorpay (Online)",
-      razorpay_payment_id: payment.razorpayPaymentId,
-    });
-    await mailer.sendTestPaymentEmail({
-      to: user.email,
-      name: user.name,
-      roleTitle: opening.title,
-      amount: totalPaid,
-      credits,
-      balance: (await creditBalance(user.id)) / 100,
-      expiryMonths: settings.creditExpiryMonths,
-      receiptNumber,
-      pdfBuffer,
-    });
-  } catch (mailErr) {
-    console.error("[careers] test payment email failed:", mailErr.message);
-  }
 }
 
 // ---------- the paper ----------
@@ -464,7 +363,7 @@ module.exports = {
   shapeOpening,
   positionsOf,
   OPENING_COUNTS,
-  grantTestForPayment,
+  grantTestAccess,
   shuffle,
   buildPaper,
   publicPaper,

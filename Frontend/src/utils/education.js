@@ -9,8 +9,6 @@ export const SEMESTERS = [
   ["graduated", "Graduated"],
 ];
 
-export const semesterLabel = (value) => (SEMESTERS.find(([v]) => v === value) || [, ""])[1];
-
 export const emptyEducation = { college: "", course: "", department: "", semester: "", passingYear: "" };
 
 // The user's saved education as form values (the year as text, for the input).

@@ -1,5 +1,5 @@
 const { prisma } = require("../db");
-const { creditBalance, reservedCredit } = require("./referrals");
+const { creditBalance, reservedCredit } = require("./pricing");
 const { notifyCreditAdded } = require("./walletNotices");
 const { getCareerSettings, creditExpiryDate } = require("./careerSettings");
 const { addNotification, sendCareerEmail } = require("./notifications");
@@ -7,8 +7,8 @@ const { addNotification, sendCareerEmail } = require("./notifications");
 // The student wallet.
 //
 // There is no separate balance: the wallet IS the CreditEntry ledger that
-// referral rewards already use (utils/referrals.js) — append-only, in paise,
-// balance = the sum. Credit comes from referral rewards, from the admin
+// checkout prices with (utils/pricing.js) — append-only, in paise,
+// balance = the sum. Credit comes from the admin
 // (adjustCredit below), from the signup bonus (grantSignupBonus) and from the
 // aptitude-test fee coming back as credit (utils/careers.js); it is spent
 // automatically as a discount at checkout, or in full via POST

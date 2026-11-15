@@ -13,8 +13,6 @@ const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.jsx"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages.jsx"));
 const AdminApplications = lazy(() => import("./pages/admin/AdminApplications.jsx"));
 const AdminServices = lazy(() => import("./pages/admin/AdminServices.jsx"));
-const AdminReferrals = lazy(() => import("./pages/admin/AdminReferrals.jsx"));
-const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons.jsx"));
 const AdminPaymentRequests = lazy(() => import("./pages/admin/AdminPaymentRequests.jsx"));
 const AdminWallet = lazy(() => import("./pages/admin/AdminWallet.jsx"));
 const AdminBotQuestions = lazy(() => import("./pages/admin/AdminBotQuestions.jsx"));
@@ -33,8 +31,6 @@ const ROUTES = [
   ["/admin/messages", AdminMessages],
   ["/admin/applications", AdminApplications],
   ["/admin/services", AdminServices],
-  ["/admin/referrals", AdminReferrals],
-  ["/admin/coupons", AdminCoupons],
   ["/admin/payment-requests", AdminPaymentRequests],
   ["/admin/wallet", AdminWallet],
   ["/admin/bot-questions", AdminBotQuestions],

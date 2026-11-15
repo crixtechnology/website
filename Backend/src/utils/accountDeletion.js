@@ -8,7 +8,7 @@ const { purgeUserSnapshots, purgeUserCvs } = require("./proctorRetention");
 //
 // What goes (Digital Personal Data Protection Act 2023, s.12 — erasure):
 //   - the account itself: name, email, phone, password, Google link, sessions
-//   - enrolments and course access, wallet credit, referrals
+//   - enrolments and course access, wallet credit, old referral records
 //   - careers applications, aptitude tests, answers, violations, and the
 //     webcam photos in storage (deleted first: if storage can't be reached,
 //     nothing is deleted, so no photo is ever left behind without its record)

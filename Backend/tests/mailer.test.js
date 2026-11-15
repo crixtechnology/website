@@ -126,11 +126,7 @@ describe("mailer via Brevo's HTTP API", () => {
     expect(body.textContent).toContain("Reason: Welcome <i>credit</i>");
     expect(body.textContent).toContain("Wallet balance: ₹1,250.50");
 
-    // Referral rewards get their own wording; a missing note falls back to a plain one.
-    global.fetch.mockClear();
-    await sendWalletCreditEmail({ to: "a@example.com", name: "", amount: 500, balance: 500, reason: "referral" });
-    body = JSON.parse(global.fetch.mock.calls[0][1].body);
-    expect(body.textContent).toContain("A friend you referred made their first purchase");
+    // A missing note falls back to a plain one.
     global.fetch.mockClear();
     await sendWalletCreditEmail({ to: "a@example.com", amount: 100, balance: 100, reason: "admin" });
     expect(JSON.parse(global.fetch.mock.calls[0][1].body).textContent).toContain("Credit from Crix");

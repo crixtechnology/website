@@ -41,6 +41,10 @@ describe("the Training + Internship page", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     jest.resetAllMocks();
+    api.getMyWallet.mockResolvedValue({ ok: false });
+    api.getOpenings.mockResolvedValue({ ok: false, openings: [] });
+    // The page shuffles its cards; this value keeps them in the order given.
+    jest.spyOn(Math, "random").mockReturnValue(0.9999);
   });
   afterEach(() => { act(() => root.unmount()); container.remove(); });
 

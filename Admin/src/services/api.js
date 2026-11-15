@@ -7,9 +7,6 @@
 // ============================================================
 
 const API = process.env.REACT_APP_API_URL || "";
-// Lets pages show a loading state only when there is actually a backend to wait for.
-export const hasBackend = !!API;
-
 // One unified login for everyone (student or admin — role comes back in the
 // user object / JWT payload). Same token key is used for every authFetch
 // call below, admin or student.
@@ -312,46 +309,7 @@ export async function adminDeleteLecture(id) {
   }
 }
 
-export async function adminGetReferrals(q, status) {
-  try {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (status) params.set("status", status);
-    const res = await authFetch(`/admin/referrals${params.toString() ? `?${params}` : ""}`);
-    if (res.status === 401) adminLogout();
-    return await res.json();
-  } catch (e) {
-    return { ok: false, error: "Could not load referrals" };
-  }
-}
-
-export async function adminGetReferralSettings() {
-  try {
-    const res = await authFetch("/admin/referral-settings");
-    if (res.status === 401) adminLogout();
-    return await res.json();
-  } catch (e) {
-    return { ok: false, error: "Could not load the referral rules" };
-  }
-}
-
-export async function adminUpdateReferralSettings(settings) {
-  try {
-    const res = await authFetch("/admin/referral-settings", { method: "PUT", body: JSON.stringify(settings) });
-    if (res.status === 401) adminLogout();
-    return await res.json();
-  } catch (e) {
-    return { ok: false, error: "Could not save the referral rules" };
-  }
-}
-
-// ---------- Admin: offer / discount codes ----------
-export const adminGetCoupons = () => adminCall("/admin/coupons", {}, "Could not load the offer codes");
-export const adminCreateCoupon = (payload) => adminCall("/admin/coupons", { method: "POST", body: JSON.stringify(payload) }, "Could not create the offer code");
-export const adminUpdateCoupon = (id, patch) => adminCall(`/admin/coupons/${id}`, { method: "PUT", body: JSON.stringify(patch) }, "Could not save the offer code");
-export const adminDeleteCoupon = (id) => adminCall(`/admin/coupons/${id}`, { method: "DELETE" }, "Could not delete the offer code");
-
-// Small helper: every coupon call above is "authFetch, drop the session on a 401, read
+// Small helper for admin calls: "authFetch, drop the session on a 401, read
 // the JSON, turn a failure into { ok:false, error }".
 async function adminCall(path, options, fallbackError) {
   try {
@@ -686,6 +644,9 @@ export const adminGetJobApplication = (id) => adminCall(`/admin/job-applications
 // action: "shortlist" | "not_shortlist" | "schedule_interview" | "select" | "reject"
 export const adminSetJobApplicationStatus = (id, payload) => adminCall(`/admin/job-applications/${id}/status`, jsonBody("POST", payload), "Could not update the application");
 export const adminAllowRetest = (id) => adminCall(`/admin/job-applications/${id}/retest`, jsonBody("POST", {}), "Could not reset the test");
+// Gives test access on a waiting application, or (adminGiveTestAccess) directly to a student for a role.
+export const adminGrantTestAccess = (id) => adminCall(`/admin/job-applications/${id}/grant-test`, jsonBody("POST", {}), "Could not give test access");
+export const adminGiveTestAccess = (payload) => adminCall("/admin/job-applications", jsonBody("POST", payload), "Could not give test access");
 
 export const adminGetCareerSettings = () => adminCall("/admin/careers/settings", {}, "Could not load the careers settings");
 export const adminUpdateCareerSettings = (settings) => adminCall("/admin/careers/settings", jsonBody("PUT", settings), "Could not save the careers settings");

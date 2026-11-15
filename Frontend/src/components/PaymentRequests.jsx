@@ -9,8 +9,8 @@ import { PAYMENT_REQUESTS_EVENT } from "../hooks/usePendingPaymentRequests.js";
 
 // Payment requests the admin sent this student — the second way (after the
 // online checkout on a program's card) Training + Internship is
-// paid for. Pressing Pay on one opens its price breakdown (offer code, referral
-// discount, wallet credit — CheckoutExtras, priced by the request's own quote),
+// paid for. Pressing Pay on one opens its price breakdown (wallet credit —
+// CheckoutExtras, priced by the request's own quote),
 // then Razorpay Checkout (confirmed at /payment-requests/verify) or, when the
 // wallet covers it all, a wallet payment. Renders nothing when there are none.
 // `onPaid` refreshes the course list.
@@ -22,11 +22,10 @@ export default function PaymentRequests({ onPaid }) {
   const [agreed, setAgreed] = useState(false);
   // The request whose price breakdown is open, and what it was priced at.
   const [active, setActive] = useState(null);
-  const [couponCode, setCouponCode] = useState("");
   const [payable, setPayable] = useState(null);
   const [walletPays, setWalletPays] = useState(null);
   const mounted = useRef(true);
-  const getQuote = useCallback((code) => getPaymentRequestQuote(active, code), [active]);
+  const getQuote = useCallback(() => getPaymentRequestQuote(active), [active]);
 
   const load = () => getMyPaymentRequests().then((res) => {
     if (!res.ok) return;
@@ -45,7 +44,6 @@ export default function PaymentRequests({ onPaid }) {
 
   const open = (r) => {
     setActive(r._id);
-    setCouponCode("");
     setPayable(null);
     setWalletPays(null);
     setMsg({ kind: "", text: "" });
@@ -62,7 +60,7 @@ export default function PaymentRequests({ onPaid }) {
     if (busy || !agreed) return;
     setBusy(r._id);
     setMsg({ kind: "info", text: "Paying from your wallet..." });
-    const res = await payPaymentRequestWithWallet(r._id, couponCode);
+    const res = await payPaymentRequestWithWallet(r._id);
     if (!mounted.current) return;
     setBusy("");
     if (res.ok) paid(r);
@@ -73,7 +71,7 @@ export default function PaymentRequests({ onPaid }) {
     if (busy || !agreed) return;
     setBusy(r._id);
     setMsg({ kind: "", text: "" });
-    const order = await createPaymentRequestOrder(r._id, couponCode);
+    const order = await createPaymentRequestOrder(r._id);
     if (!order.ok) {
       setBusy("");
       setMsg({ kind: "error", text: order.error || "Could not start payment right now." });
@@ -174,10 +172,10 @@ export default function PaymentRequests({ onPaid }) {
               <div className="preq-pay" style={{ flexBasis: "100%", marginTop: 12 }}>
                 {r.allowDiscounts === false ? (
                   // The amount is already the agreed price: nothing comes off it.
-                  <p className="form-note" style={{ marginTop: 0 }}>This amount already includes your discount, so wallet credit and offer codes don't apply to it.</p>
+                  <p className="form-note" style={{ marginTop: 0 }}>This amount already includes your discount, so wallet credit doesn't apply to it.</p>
                 ) : (
                   <CheckoutExtras item={{ slug: r.course?.slug || r._id }} tier={r.tier} getQuote={getQuote}
-                    onPayable={setPayable} onWalletCovers={setWalletPays} couponCode={couponCode} onCoupon={setCouponCode} />
+                    onPayable={setPayable} onWalletCovers={setWalletPays} />
                 )}
                 {walletPays != null ? (
                   <button className="btn btn-solid" disabled={!!busy || !agreed} onClick={() => payFromWallet(r)}>

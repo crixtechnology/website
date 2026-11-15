@@ -7,7 +7,6 @@ import { Navbar, Footer, Chrome, AuthModal } from "./components/ui.jsx";
 import { Home, TrainingInternship, CourseDetail, Services, About, Contact, PrivacyPolicy, TermsOfService, ClientTerms, NotFound } from "./pages/pages.jsx";
 import { useCopyProtection } from "./hooks/useCopyProtection.js";
 import { initAnalytics, trackPageview } from "./utils/analytics.js";
-import { captureReferralFromUrl } from "./utils/referral.js";
 import { registerPrefetch } from "./utils/prefetch.js";
 
 // Called at module load (not inside a useEffect) deliberately: React fires
@@ -80,11 +79,7 @@ const savedScroll = (key) => {
 };
 
 function ScrollToTop() {
-  const { pathname, hash, key, search } = useLocation();
-
-  // A shared referral link (?ref=CODE) can land on any page — remember the code
-  // so it goes with the new account (login form) and checkout later.
-  useEffect(() => { captureReferralFromUrl(search); }, [search]);
+  const { pathname, hash, key } = useLocation();
 
   const navType = useNavigationType();
 
@@ -218,7 +213,7 @@ export default function App() {
             <Route path="/dashboard" element={<MyCourses />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/learn/:slug" element={<Learn />} />
-            {/* The aptitude test an application's fee unlocks (My Dashboard → Apply / Aptitude Test). */}
+            {/* The aptitude test, once Crix has given the student access (My Dashboard → My Applications). */}
             <Route path="/test/:applicationId" element={<AptitudeTest />} />
 
             {/* Any other address: a real "not found" page, not the home page under a wrong URL. */}

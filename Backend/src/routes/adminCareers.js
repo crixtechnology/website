@@ -13,7 +13,7 @@ const { addNotification, sendCareerEmail } = require("../utils/notifications");
 const { readSnapshot, checkStorage, PENDING_PREFIX } = require("../utils/proctorStorage");
 const { lapsedCredit } = require("../utils/wallet");
 const {
-  CATEGORIES, GENERAL_CATEGORIES, TECH_CATEGORIES, MAX_PER_CATEGORY, STATUS_LABELS, isCategory, normalizeCounts, shapeOpening, positionsOf, OPENING_COUNTS, finalizeExpiredAttempts,
+  CATEGORIES, GENERAL_CATEGORIES, TECH_CATEGORIES, MAX_PER_CATEGORY, STATUS_LABELS, isCategory, normalizeCounts, shapeOpening, positionsOf, OPENING_COUNTS, finalizeExpiredAttempts, grantTestAccess,
 } = require("../utils/careers");
 
 const router = express.Router();
@@ -450,9 +450,7 @@ function shapeApplicant(a) {
     education: a.education || null,
     status: a.status,
     statusLabel: STATUS_LABELS[a.status] || a.status,
-    // "paid" only on an application from when the test had a fee.
-    paymentStatus: a.paidAt ? "paid" : "free",
-    paidAt: a.paidAt,
+    testAccessAt: a.testAccessAt,
     interviewAt: a.interviewAt,
     interviewLink: a.interviewLink,
     adminNote: a.adminNote,
@@ -485,11 +483,10 @@ router.get("/admin/job-applications", requireAdmin, async (req, res, next) => {
   try {
     // Tests whose time ran out with the tab closed are submitted before they are listed.
     await finalizeExpiredAttempts();
-    const [applications, total, byStatus, payments, scores] = await Promise.all([
+    const [applications, total, byStatus, scores] = await Promise.all([
       prisma.jobApplication.findMany({ where: applicantFilter(req.query), include: LIST_INCLUDE, orderBy: { createdAt: "desc" }, take: 500 }),
       prisma.jobApplication.count(),
       prisma.jobApplication.groupBy({ by: ["status"], _count: { _all: true } }),
-      prisma.payment.aggregate({ where: { status: "paid", jobApplicationId: { not: null } }, _count: { _all: true }, _sum: { amount: true } }),
       prisma.testAttempt.aggregate({ where: { status: "submitted" }, _avg: { score: true }, _count: { _all: true } }),
     ]);
     const count = (...statuses) => byStatus.filter((s) => statuses.includes(s.status)).reduce((n, s) => n + s._count._all, 0);
@@ -497,8 +494,7 @@ router.get("/admin/job-applications", requireAdmin, async (req, res, next) => {
       ok: true,
       summary: {
         totalApplicants: total,
-        paymentsReceived: payments._count._all,
-        amountReceived: (payments._sum.amount || 0) / 100,
+        awaitingAccess: count("awaiting_access"),
         testsSubmitted: scores._count._all,
         averageScore: scores._avg.score === null ? null : Math.round(scores._avg.score * 100) / 100,
         shortlisted: count(...SHORTLISTED_STATUSES),
@@ -541,8 +537,7 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
       { header: "Year of passing", key: "passingYear", width: 14 },
       { header: "Role", key: "role", width: 28 },
       { header: "Status", key: "status", width: 20 },
-      { header: "Payment", key: "payment", width: 10 },
-      { header: "Paid at (IST)", key: "paidAt", width: 22 },
+      { header: "Test access given (IST)", key: "testAccessAt", width: 22 },
       { header: "Score", key: "score", width: 9 },
       { header: "Out of", key: "maxScore", width: 9 },
       { header: "Cleared cut-off", key: "passed", width: 14 },
@@ -578,8 +573,7 @@ router.get("/admin/job-applications/export", requireAdmin, async (req, res, next
         passingYear: edu.passingYear || "",
         role: safe(a.opening ? a.opening.title : ""),
         status: STATUS_LABELS[a.status] || a.status,
-        payment: a.paidAt ? "Paid" : "Free",
-        paidAt: ist(a.paidAt),
+        testAccessAt: ist(a.testAccessAt),
         score: t && t.score !== null ? t.score : "",
         maxScore: t && t.maxScore !== null ? t.maxScore : "",
         passed: t && t.passed !== null ? (t.passed ? "Yes" : "No") : "",
@@ -621,10 +615,6 @@ router.get("/admin/job-applications/:id", requireAdmin, async (req, res, next) =
     });
     if (!application) return res.status(404).json({ ok: false, error: "Application not found" });
 
-    const payment = application.paymentId
-      ? await prisma.payment.findUnique({ where: { id: application.paymentId }, select: { id: true, amount: true, receiptNumber: true, razorpayPaymentId: true } })
-      : null;
-
     const t = application.attempt;
     let review = null;
     if (t) {
@@ -659,7 +649,6 @@ router.get("/admin/job-applications/:id", requireAdmin, async (req, res, next) =
     res.json({
       ok: true,
       application: shapeApplicant(application),
-      payment: payment ? { _id: payment.id, amount: payment.amount / 100, receiptNumber: payment.receiptNumber, razorpay_payment_id: payment.razorpayPaymentId } : null,
       review,
     });
   } catch (e) {
@@ -790,8 +779,6 @@ router.post("/admin/job-applications/:id/status", requireAdmin, async (req, res,
         status: application.status,
         interviewAt: application.interviewAt,
         interviewLink: application.interviewLink,
-        // No wallet credit to mention unless this application paid a (now removed) test fee.
-        free: !application.paidAt,
       });
     }
     res.json({ ok: true, application: shapeApplicant(application) });
@@ -800,10 +787,71 @@ router.post("/admin/job-applications/:id/status", requireAdmin, async (req, res,
   }
 });
 
+// ---------- give test access ----------
+// The test has no fee and candidates can't unlock it themselves: an admin gives
+// access to one student's application (awaiting_access -> test_pending). The
+// candidate gets a notification and an email (utils/careers.js grantTestAccess).
+router.post("/admin/job-applications/:id/grant-test", requireAdmin, async (req, res, next) => {
+  try {
+    const granted = await grantTestAccess(req.params.id, req.admin.sub);
+    if (!granted) {
+      const existing = await prisma.jobApplication.findUnique({ where: { id: req.params.id }, select: { status: true } });
+      if (!existing) return res.status(404).json({ ok: false, error: "Application not found" });
+      return res.status(400).json({ ok: false, error: `Test access can only be given to an application that's waiting for it — this one is "${STATUS_LABELS[existing.status] || existing.status}".` });
+    }
+    console.log(`[admin] ${req.admin.sub} gave test access on job application ${granted.id}`);
+    const application = await prisma.jobApplication.findUnique({ where: { id: granted.id }, include: LIST_INCLUDE });
+    res.json({ ok: true, application: shapeApplicant(application) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Gives a specific student test access for a role directly, whether or not they
+// applied: creates their application with access already given, or gives access
+// on the one they have waiting. Body: { email | userId, openingId }. The
+// student confirms they're 18+ and accepts the test rules when they start.
+router.post("/admin/job-applications", requireAdmin, async (req, res, next) => {
+  try {
+    const { email, userId, openingId } = req.body || {};
+    if (typeof openingId !== "string" || !openingId) return res.status(400).json({ ok: false, error: "Choose the role the test is for." });
+    const who = typeof userId === "string" && userId ? { id: userId } : typeof email === "string" && email.trim() ? { email: email.trim().toLowerCase() } : null;
+    if (!who) return res.status(400).json({ ok: false, error: "Choose the student." });
+    const [user, opening] = await Promise.all([
+      prisma.user.findUnique({ where: who, select: { id: true, role: true } }),
+      prisma.jobOpening.findUnique({ where: { id: openingId }, select: { id: true } }),
+    ]);
+    if (!user) return res.status(404).json({ ok: false, error: "No account with that email — the student must sign up first." });
+    if (user.role === "admin") return res.status(400).json({ ok: false, error: "Admin accounts can't take the test." });
+    if (!opening) return res.status(404).json({ ok: false, error: "Role not found" });
+
+    const open = await prisma.jobApplication.findFirst({
+      where: { userId: user.id, openingId: opening.id, status: { notIn: ["not_shortlisted", "rejected"] } },
+      select: { id: true, status: true },
+    });
+    let id;
+    if (open) {
+      if (open.status !== "awaiting_access") {
+        return res.status(400).json({ ok: false, error: `This student already has this role's test or a later step ("${STATUS_LABELS[open.status] || open.status}").` });
+      }
+      id = open.id;
+    } else {
+      id = (await prisma.jobApplication.create({ data: { userId: user.id, openingId: opening.id } })).id;
+    }
+    const granted = await grantTestAccess(id, req.admin.sub);
+    if (!granted) return res.status(409).json({ ok: false, error: "This application changed meanwhile — reload and try again." });
+    console.log(`[admin] ${req.admin.sub} gave test access directly on job application ${id}`);
+    const application = await prisma.jobApplication.findUnique({ where: { id }, include: LIST_INCLUDE });
+    res.status(open ? 200 : 201).json({ ok: true, application: shapeApplicant(application) });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ---------- allow a retest ----------
 // Wipes the finished attempt (answers, violations, webcam photos) and puts the
 // application back to "test pending", so the candidate sits a fresh paper on
-// the same application — no new fee. Not once they're in the interview round
+// the same application. Not once they're in the interview round
 // or selected, and never while a test is still running.
 const RETEST_FROM = ["submitted", "shortlisted", "not_shortlisted", "rejected"];
 

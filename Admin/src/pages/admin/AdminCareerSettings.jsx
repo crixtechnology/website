@@ -79,7 +79,7 @@ export default function AdminCareerSettings() {
               </div>
               <p className="form-note" style={{ margin: "-4px 0 20px" }}>
                 Applying and the aptitude test are free for every role, so there is no fee to set here.
-                The expiry applies to signup bonus credit added from now on (1 credit = ₹1) — credit already in a wallet keeps the expiry it was given, and referral or admin credit doesn't expire.
+                The expiry applies to signup bonus credit added from now on (1 credit = ₹1) — credit already in a wallet keeps the expiry it was given, and admin credit doesn't expire.
                 The usage limit applies to every purchase: at 100% credit can pay for a whole course.
               </p>
 

@@ -211,7 +211,7 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
         <button type="button" className="btn btn-solid" tabIndex={show ? 0 : -1} disabled>Applications closed</button>
       ) : (
         <button type="button" className="btn btn-solid" tabIndex={show ? 0 : -1} onClick={onInquire}>
-          {course.type === "internship" ? "Request to apply" : "Request to enroll"}
+          Request to apply
         </button>
       )}
     </div>

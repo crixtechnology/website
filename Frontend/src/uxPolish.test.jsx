@@ -61,7 +61,6 @@ describe("back-to-top button", () => {
 
   beforeEach(async () => {
     Object.defineProperty(window, "scrollY", { value: 0, configurable: true, writable: true });
-    api.getMyReferral && api.getMyReferral.mockResolvedValue({ ok: false });
   });
 
   it("on a phone: shows only while scrolling UP, hides again on the way down", async () => {

@@ -14,7 +14,6 @@ const { sendWelcomeEmail } = require("../utils/mailer");
 const { getCareerSettings } = require("../utils/careerSettings");
 const { respondNoEarlierThan } = require("../utils/authTiming");
 const { publicUser, ensureDefaultPassword, nameFromEmail, educationData } = require("../utils/accounts");
-const { applyReferralCode } = require("../utils/referrals");
 const { grantSignupBonus, holdSignupBonus, claimSignupBonus } = require("../utils/wallet");
 
 const router = express.Router();
@@ -120,7 +119,7 @@ function welcome(user) {
 // where they add the rest, and every payment waits until they have.
 router.post("/login", authLimiter, async (req, res, next) => {
   try {
-    const { email, password, createAccount, ageConfirmed, referralCode } = req.body || {};
+    const { email, password, createAccount, ageConfirmed } = req.body || {};
     if (!email || !password) {
       return res.status(400).json({ ok: false, error: "Email and password are required" });
     }
@@ -134,7 +133,7 @@ router.post("/login", authLimiter, async (req, res, next) => {
     const workStartedAt = Date.now();
     const normalizedEmail = String(email).toLowerCase().trim();
     const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-    if (!user) return createFromLogin(req, res, { email: normalizedEmail, password, createAccount, ageConfirmed, referralCode, workStartedAt });
+    if (!user) return createFromLogin(req, res, { email: normalizedEmail, password, createAccount, ageConfirmed, workStartedAt });
     // Always runs, against DUMMY_PASSWORD_HASH when there's no real one to
     // check (no such user, or a Google-only account) — see that constant's
     // own comment. Every failure path below (no user, Google-only, wrong
@@ -157,7 +156,7 @@ router.post("/login", authLimiter, async (req, res, next) => {
 });
 
 // The "no account for this email yet" half of /login.
-async function createFromLogin(req, res, { email, password, createAccount, ageConfirmed, referralCode, workStartedAt }) {
+async function createFromLogin(req, res, { email, password, createAccount, ageConfirmed, workStartedAt }) {
   if (!isValidEmail(email)) {
     return res.status(400).json({ ok: false, error: "Enter a valid email address." });
   }
@@ -202,9 +201,6 @@ async function createFromLogin(req, res, { email, password, createAccount, ageCo
     }
     throw createErr;
   }
-  if (referralCode) {
-    await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
-  }
   // The welcome credit (utils/wallet.js) waits until the email is verified.
   await holdSignupBonus(user).catch((e) => console.error("[auth] signup bonus hold failed:", e.message));
   const fresh = (await prisma.user.findUnique({ where: { id: user.id } })) || user;
@@ -223,7 +219,7 @@ router.post("/google", authLimiter, async (req, res, next) => {
     if (!googleClient) {
       return res.status(503).json({ ok: false, error: "Google Sign-In isn't configured yet." });
     }
-    const { credential, referralCode, ageConfirmed } = req.body || {};
+    const { credential, ageConfirmed } = req.body || {};
     if (!credential) return res.status(400).json({ ok: false, error: "Missing Google credential" });
 
     let payload;
@@ -256,9 +252,6 @@ router.post("/google", authLimiter, async (req, res, next) => {
       user = await prisma.user.create({
         data: { name: payload.name || email.split("@")[0], email, phone: "", googleId: payload.sub, role: "student", ageConfirmedAt: new Date() },
       });
-      if (referralCode) {
-        await applyReferralCode(user.id, referralCode).catch((e) => console.error("[auth] referral apply failed:", e.message));
-      }
       await grantSignupBonus(user).catch((e) => console.error("[auth] signup bonus failed:", e.message));
       welcome(user);
     } else if (!user.googleId) {

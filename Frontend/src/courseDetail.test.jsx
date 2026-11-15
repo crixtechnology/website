@@ -281,11 +281,6 @@ describe("the details a free internship shows", () => {
     expect(container.textContent).toContain("Build app screens");
   });
 
-  it("calls a course's places seats", async () => {
-    await renderPage({ ...base, positions: { total: 30, filled: 0, left: 30 } });
-    expect(facts().Seats).toBe("30 seats open");
-  });
-
   it("still offers the application once every place is taken", async () => {
     await renderPage({ ...detailed, positions: { total: 10, filled: 10, left: 0 } });
     expect(facts().Positions).toBe("All filled");

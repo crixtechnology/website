@@ -1,5 +1,5 @@
 // The aptitude test itself: start (or resume) the one attempt an application's
-// payment bought, save answers as they are picked, log anti-cheating violations
+// admin gave access to, save answers as they are picked, log anti-cheating violations
 // and webcam snapshots, and submit.
 //
 // What the browser is never trusted with:
@@ -100,7 +100,7 @@ router.get("/me/job-applications/:id/test", requireAuth, testApiLimiter, async (
     const settings = await getCareerSettings();
     const state = attempt
       ? (attempt.status === "in_progress" ? "in_progress" : "submitted")
-      : application.status === "test_pending" ? "ready" : application.status === "payment_pending" ? "locked" : "submitted";
+      : application.status === "test_pending" ? "ready" : application.status === "awaiting_access" ? "locked" : "submitted";
     res.set("Cache-Control", "no-store");
     res.json({
       ok: true,
@@ -135,11 +135,11 @@ router.post("/me/job-applications/:id/test/start", requireAuth, testApiLimiter, 
     let attempt = application.attempt;
     let sessionId = null;
     if (!attempt) {
-      if (application.status === "payment_pending") return res.status(400).json({ ok: false, error: "Unlock this test from My Dashboard first — accept the terms to unlock it (there is no fee)." });
+      if (application.status === "awaiting_access") return res.status(400).json({ ok: false, error: "This test isn't open for you yet — Crix will give you access and let you know by email." });
       if (application.status !== "test_pending") return res.status(400).json({ ok: false, error: "This test has already been taken." });
       if (consent !== true) return res.status(400).json({ ok: false, error: "Please accept the test rules and webcam monitoring to start." });
-      // Adults only. Confirmed when the test was unlocked; an application from before
-      // that existed confirms it here, with the same box as the rules.
+      // Adults only. Confirmed when they applied; when an admin gave access
+      // directly (no application of their own), it is confirmed here, with the same box as the rules.
       if (!application.adultConfirmedAt) {
         if (adult !== true) return res.status(400).json({ ok: false, code: "ADULT_REQUIRED", error: "The aptitude test is only for candidates aged 18 or older. Please confirm your age to start." });
         await prisma.jobApplication.update({ where: { id: application.id }, data: { adultConfirmedAt: new Date() } });
@@ -154,7 +154,7 @@ router.post("/me/job-applications/:id/test/start", requireAuth, testApiLimiter, 
       sessionId = newSessionId();
       try {
         attempt = await prisma.$transaction(async (tx) => {
-          // One attempt per payment: the application row is locked, so two
+          // One attempt per application: the row is locked, so two
           // "Start" clicks can't both find no attempt and each create one.
           await tx.$queryRaw`SELECT id FROM job_applications WHERE id = ${application.id} FOR UPDATE`;
           const fresh = await tx.jobApplication.findUnique({ where: { id: application.id }, include: { attempt: true } });

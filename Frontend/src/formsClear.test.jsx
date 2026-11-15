@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { UserContext } from "./context/UserContext.jsx";
 import { Contact } from "./pages/pages.jsx";
 import { AuthModal, InquiryModal } from "./components/ui.jsx";
-import ReferralCard from "./components/ReferralCard.jsx";
 import * as api from "./services/api.js";
 import { IDLE_TIMEOUT_MINUTES } from "./hooks/useIdleLogout.js";
 
@@ -193,38 +192,6 @@ describe("login popup — one form that logs in or creates the account", () => {
     await submit(q("#auth-password").closest("form"));
     expect(container.textContent).toContain("Invalid credentials");
     expect(q("#auth-password").value).toBe("a-long-password");
-  });
-});
-
-describe("referral 'friend's code' box", () => {
-  const referral = () => ({
-    ok: true, code: "ABC123", displayCode: "CRIX-ABC123", canApplyCode: true, creditBalance: 0, referrals: [], referredBy: null,
-    stats: { total: 0, rewarded: 0, earned: 0 }, settings: { enabled: true, refereeDiscountPercent: 10, referrerCreditRupees: 500 },
-  });
-
-  it("empties the box once the code has been applied", async () => {
-    api.getMyReferral.mockResolvedValue(referral());
-    api.applyReferral.mockResolvedValue({ ok: true, discountPercent: 10 });
-    await render(<ReferralCard />);
-
-    await type("#ref-friend-code", "CRIX-XYZ789");
-    expect(q("#ref-friend-code").value).toBe("CRIX-XYZ789");
-    const apply = [...container.querySelectorAll("button")].find((b) => b.textContent.includes("Apply"));
-    await click(apply);
-
-    expect(api.applyReferral).toHaveBeenCalledWith("CRIX-XYZ789");
-    // The card reloads its data (still offering the box in this mock), so the box is still there — and empty.
-    expect(q("#ref-friend-code").value).toBe("");
-  });
-
-  it("keeps the code when it is rejected, so a typo can be fixed", async () => {
-    api.getMyReferral.mockResolvedValue(referral());
-    api.applyReferral.mockResolvedValue({ ok: false, error: "That referral code isn't valid." });
-    await render(<ReferralCard />);
-    await type("#ref-friend-code", "CRIX-BAD000");
-    const apply = [...container.querySelectorAll("button")].find((b) => b.textContent.includes("Apply"));
-    await click(apply);
-    expect(q("#ref-friend-code").value).toBe("CRIX-BAD000");
   });
 });
 

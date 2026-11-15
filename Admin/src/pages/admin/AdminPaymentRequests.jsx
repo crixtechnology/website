@@ -140,7 +140,7 @@ export default function AdminPaymentRequests() {
           <h3 style={{ margin: "0 0 16px" }}>Request a payment</h3>
           <p className="form-note" style={{ margin: "-8px 0 16px" }}>
             The student must already have an account. They'll see this on their dashboard (and get an email),
-            and get access as soon as they pay — whether the track is open or closed. Enter the full fee: when they pay, their wallet credit, an offer code and their referral discount (first purchase only) come off it automatically, as at checkout — unless you untick that below.
+            and get access as soon as they pay — whether the track is open or closed. Enter the full fee: when they pay, their wallet credit comes off it automatically, as at checkout — unless you untick that below.
           </p>
           <div className="admin-form-grid">
             <div className="field"><label htmlFor="paymentrequests-student">Student</label>
@@ -172,7 +172,7 @@ export default function AdminPaymentRequests() {
             <label className="check-row" style={{ gridColumn: "1 / -1" }}>
               <input id="paymentrequests-allow-discounts" type="checkbox" checked={form.allowDiscounts}
                 onChange={(e) => setForm({ ...form, allowDiscounts: e.target.checked })} />
-              <span>Let the student use wallet credit, an offer code and their referral discount on this amount. Untick it if you've already lowered the amount, so they don't get a discount twice.</span>
+              <span>Let the student use wallet credit on this amount. Untick it if you've already lowered the amount, so they don't get a discount twice.</span>
             </label>
           </div>
           {formError && <p className="form-error">{formError}</p>}

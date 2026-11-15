@@ -36,25 +36,6 @@ export function isDisposableEmail(email) {
   return DISPOSABLE_EMAIL_DOMAINS.has(domain);
 }
 
-// Returns "" when `email` passes both the format and disposable-domain
-// checks, else a sentence fragment to slot into the same "Please add X, Y
-// and Z." messages every form here already builds. Presence is the
-// caller's job — some forms treat email as optional.
-export function emailFormatError(email) {
-  if (!isValidEmail(email)) return "a valid email address";
-  if (isDisposableEmail(email)) return "a permanent email address (not a temporary/disposable one)";
-  return "";
-}
-
-// Letters (incl. accented/non-Latin scripts) plus spaces, apostrophes, dots
-// and hyphens — covers "Mary-Jane O'Connor", "Zoë", etc. without accepting
-// digits or symbols a real name never has. 2-60 chars.
-const NAME_RE = /^[\p{L}][\p{L} .'-]{1,59}$/u;
-
-export function isValidName(name) {
-  return NAME_RE.test(String(name).trim());
-}
-
 // Mirrors Backend/src/utils/validators.js's isValidHttpUrl — defense in
 // depth for anywhere a stored link gets rendered straight into an <a href>
 // (e.g. Learn.jsx's "Join live" button, built from an admin-set Lecture

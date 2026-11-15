@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
-import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetReferrals, adminGetBotQuestions, adminGetJobApplications } from "../../services/api.js";
+import { adminGetCourses, adminGetEnrollments, adminGetUsers, adminGetContacts, adminGetApplications, adminGetBotQuestions, adminGetJobApplications } from "../../services/api.js";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
 import { offeredTiers } from "../../utils/tiers.js";
 
@@ -13,8 +13,6 @@ const TILE_ICONS = {
   "Live class schedule": <path d="M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4 M9 14l2 2 4-4" />,
   "Recorded lectures": <path d="M3 5h18v14H3z M10 9.5v5l4.5-2.5z" />,
   Services: <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M12 2v3 M12 19v3 M4.9 4.9 7 7 M17 17l2.1 2.1 M2 12h3 M19 12h3 M4.9 19.1 7 17 M17 7l2.1-2.1" />,
-  "Offer codes": <path d="M3 12V4h8l10 10-8 8z M7.5 7.5h.01" />,
-  Referrals: <path d="M16 3h5v5 M21 3l-7 7 M8 21H3v-5 M3 21l7-7" />,
   "Payment requests": <path d="M3 6h18v12H3z M3 10h18 M15 14.5h3 M7 14.5h2" />,
   Messages: <path d="M4 5h16v11H8l-4 4z" />,
   "Help agent questions": <path d="M4 5h16v11H9l-5 4z M10 9.5a2 2 0 1 1 2.5 1.9c-.4.2-.5.5-.5.9 M12 13.6h.01" />,
@@ -33,15 +31,15 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     courses: 0, openCourses: 0, internships: 0, openInternships: 0,
     students: 0, enrollments: 0, users: 0, newMessages: 0, newApplications: 0,
-    referrals: 0, referralsRewarded: 0, botQuestions: 0,
+    botQuestions: 0,
     jobApplicants: 0, jobToReview: 0, jobSelected: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, referralsRes, botRes, jobsRes] = await Promise.all([
-        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetReferrals(), adminGetBotQuestions(), adminGetJobApplications(),
+      const [entriesRes, enrollRes, usersRes, contactsRes, applicationsRes, botRes, jobsRes] = await Promise.all([
+        adminGetCourses(), adminGetEnrollments(), adminGetUsers(), adminGetContacts(), adminGetApplications(), adminGetBotQuestions(), adminGetJobApplications(),
       ]);
       const jobs = jobsRes && jobsRes.ok ? jobsRes : null;
       const entries = entriesRes.ok ? entriesRes.courses || [] : [];
@@ -71,8 +69,6 @@ export default function AdminDashboard() {
         users: users.length,
         newMessages: contacts.filter((c) => c.status === "new").length,
         newApplications: applications.filter((a) => !a.contacted).length,
-        referrals: referralsRes.ok ? referralsRes.summary.total : 0,
-        referralsRewarded: referralsRes.ok ? referralsRes.summary.rewarded : 0,
         botQuestions: botRes.ok && botRes.summary ? botRes.summary.open : 0,
         jobApplicants: jobs ? jobs.summary.totalApplicants : 0,
         // Tests that are in and still need a shortlist / not-shortlist decision.
@@ -98,8 +94,6 @@ export default function AdminDashboard() {
     { label: "Services", value: "Manage", sub: "public /services page", to: "/admin/services" },
     { label: "Payment requests", value: "Manage", sub: "for students who didn't pay online on the program card", to: "/admin/payment-requests" },
     { label: "Wallet credit", value: "Manage", sub: "add credit to a student's wallet", to: "/admin/wallet" },
-    { label: "Offer codes", value: "Manage", sub: "discount codes for training programs", to: "/admin/coupons" },
-    { label: "Referrals", value: stats.referrals, sub: `${stats.referralsRewarded} led to a purchase · rules & credit`, to: "/admin/referrals" },
     { label: "Messages", value: stats.newMessages, sub: "unread contact-form messages", to: "/admin/messages" },
     { label: "Help agent questions", value: stats.botQuestions, sub: "questions the help agent couldn't answer", to: "/admin/bot-questions" },
     { label: "Applications", value: stats.newApplications, sub: "not-yet-contacted Apply/Request submissions", to: "/admin/applications" },

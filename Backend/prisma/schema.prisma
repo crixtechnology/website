@@ -680,7 +680,7 @@ model TestQuestion {
 }
 
 enum JobApplicationStatus {
-  payment_pending
+  awaiting_access
   test_pending
   submitted
   shortlisted
@@ -690,19 +690,22 @@ enum JobApplicationStatus {
   rejected
 }
 
-// One student applying for one role. Accepting the terms (the test is free)
-// moves it from payment_pending — a name kept from when the test had a fee —
-// to test_pending and unlocks exactly one TestAttempt.
+// One student applying for one role. The test has no fee and the candidate
+// can't unlock it: an admin gives test access (awaiting_access -> test_pending),
+// on their application or directly to a student, which unlocks one TestAttempt.
 model JobApplication {
   id            String               @id @default(cuid())
   userId        String
   user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   openingId     String
   opening       JobOpening           @relation(fields: [openingId], references: [id])
-  status        JobApplicationStatus @default(payment_pending)
-  // The Payment that paid the test fee: only on applications from before the fee was removed.
+  status        JobApplicationStatus @default(awaiting_access)
+  // The Payment that paid the test fee: only on applications from before the fee was removed (history).
   paymentId     String?
   paidAt        DateTime?
+  // When an admin gave this application test access, and which admin (user id).
+  testAccessAt  DateTime?
+  testAccessBy  String?
   interviewAt   DateTime?
   interviewLink String               @default("") @db.VarChar(500)
   adminNote     String               @default("") @db.VarChar(500)
@@ -711,8 +714,8 @@ model JobApplication {
   // (utils/proctorRetention.js).
   closedAt      DateTime?
   // When the candidate confirmed they are 18 or older — the aptitude test
-  // (webcam monitoring) is for adults only. Set when paying the fee or, for an
-  // older application, when starting the test.
+  // (webcam monitoring) is for adults only. Set when they apply or, when an
+  // admin gave access directly, when they start the test.
   adultConfirmedAt DateTime?
   // The candidate's CV (a PDF), required for a "free" role before its test
   // unlocks. Stored like the webcam photos (utils/proctorStorage.js); only the

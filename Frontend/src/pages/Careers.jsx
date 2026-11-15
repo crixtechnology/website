@@ -5,7 +5,7 @@ import {
   useBodyScrollLock, useModalEscape, useModalFocus, burstConfetti, REDUCED,
 } from "../components/ui.jsx";
 import {
-  unlockFreeRole, openApplicationFor, StatusPill, AdultCheckbox,
+  applyToRole, openApplicationFor, StatusPill, AdultCheckbox,
   useMyJobApplications, RoleApplyButton, isInReview, MY_APPLICATIONS,
 } from "../components/CareersDashboard.jsx";
 import { UserContext } from "../context/UserContext.jsx";
@@ -119,7 +119,7 @@ function OpeningModal({ opening, terms, mine, onClose, onApply }) {
 
         <h4 className="job-modal-heading">Registration</h4>
         <p className="form-note" style={{ marginTop: 0 }}>
-          Applying and the aptitude test are free. You'll accept the Terms &amp; Conditions and confirm you're 18 or older before the test unlocks.
+          Applying and the aptitude test are free. You'll accept the Terms &amp; Conditions and confirm you're 18 or older when you apply; our team then gives you access to the test and emails you when it's ready.
         </p>
 
         {mine && <p className="form-note" style={{ margin: "16px 0 0" }}>You've applied for this role. Status: <StatusPill application={mine} /></p>}
@@ -133,19 +133,19 @@ function OpeningModal({ opening, terms, mine, onClose, onApply }) {
   );
 }
 
-/* ---------- register for the aptitude test, right here ----------
+/* ---------- apply for a role, right here ----------
    Opened by Apply Now for a logged-in student. Shows the 18+ and Terms &
-   Conditions boxes; once both are ticked the test unlocks, free, and can be
-   started straight away. A role they've already applied for shows where that
-   application stands instead. */
-function UnlockTestModal({ opening, onClose }) {
+   Conditions boxes; applying is free, and our team then gives access to the
+   aptitude test (the student hears by email and in their notifications). A
+   role they've already applied for shows where that application stands. */
+function ApplyModal({ opening, onClose }) {
   const [application, setApplication] = useState(undefined); // undefined = checking
   const [agreed, setAgreed] = useState(false);
   const [adult, setAdult] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ kind: "", text: "" });
-  const [paidId, setPaidId] = useState(""); // the application just unlocked
-  const payBtn = useRef(null);
+  const [justApplied, setJustApplied] = useState(false);
+  const applyBtn = useRef(null);
   const alive = useRef(true);
   useBodyScrollLock(!!opening);
   useModalFocus(!!opening);
@@ -161,7 +161,7 @@ function UnlockTestModal({ opening, onClose }) {
     setAdult(false);
     setBusy(false);
     setMsg({ kind: "", text: "" });
-    setPaidId("");
+    setJustApplied(false);
     getMyJobApplications().then((res) => {
       if (alive.current) setApplication(res && res.ok ? openApplicationFor(res.applications || [], opening) || null : null);
     });
@@ -172,49 +172,51 @@ function UnlockTestModal({ opening, onClose }) {
   const test = opening.test || {};
   const status = application ? application.status : "none";
 
-  const pay = async () => {
+  const apply = async () => {
     if (busy || !agreed || !adult) return;
     setBusy(true);
     setMsg({ kind: "", text: "" });
-    const r = await unlockFreeRole({ opening });
+    const r = await applyToRole({ opening });
     if (!alive.current) return;
     setBusy(false);
     if (r.ok) {
-      setMsg({ kind: "", text: "" });
-      setPaidId(r.applicationId);
-      burstConfetti(payBtn.current);
+      setApplication(r.application);
+      setJustApplied(r.application.status === "awaiting_access");
+      if (r.application.status === "awaiting_access") burstConfetti(applyBtn.current);
     } else {
       setMsg({ kind: "error", text: r.error });
     }
   };
 
   let body;
-  if (paidId) {
+  if (application === undefined) {
+    body = <p className="form-note">Checking your applications…</p>;
+  } else if (status === "awaiting_access") {
     body = (
       <>
-        <Alert inline kind="success">
-          You're registered — your aptitude test is unlocked.
-        </Alert>
+        {justApplied
+          ? <Alert inline kind="success">You've applied for this role.</Alert>
+          : <p className="form-note">You've already applied for this role. <StatusPill application={application} /></p>}
+        <p className="form-note">
+          Our team will give you access to the aptitude test — we'll email you and let you know in your dashboard as soon as it's ready.
+        </p>
+        <Link className="btn btn-ghost" style={{ width: "100%" }} to="/dashboard?tab=applications">See My Applications →</Link>
+      </>
+    );
+  } else if (status === "test_pending") {
+    body = (
+      <>
+        <p className="form-note">Your aptitude test for this role is ready. <StatusPill application={application} /></p>
         <p className="form-note">
           You have {test.durationMinutes || "the set"} minutes for {test.questions || "the"} questions, and one attempt. Find a quiet
           place with a steady connection and a working webcam before you start.
         </p>
-        <Link className="btn btn-solid" style={{ width: "100%" }} to={`/test/${paidId}`}>Start test now →</Link>
-        <Link className="btn btn-ghost" style={{ width: "100%", marginTop: 10 }} to="/dashboard?tab=applications">Take it later from My Dashboard</Link>
-      </>
-    );
-  } else if (application === undefined) {
-    body = <p className="form-note">Checking your applications…</p>;
-  } else if (status === "test_pending") {
-    body = (
-      <>
-        <p className="form-note">You've already registered for this role — your test is unlocked. <StatusPill application={application} /></p>
         <Link className="btn btn-solid" style={{ width: "100%" }} to={`/test/${application._id}`}>
           {application.attempt ? "Resume test →" : "Start test →"}
         </Link>
       </>
     );
-  } else if (status !== "none" && status !== "payment_pending") {
+  } else if (status !== "none") {
     body = (
       <>
         <p className="form-note">You've taken the test for this role. Current status: <StatusPill application={application} /></p>
@@ -225,13 +227,14 @@ function UnlockTestModal({ opening, onClose }) {
     body = (
       <>
         <p className="form-note" style={{ marginTop: 0 }}>
-          Applying and the aptitude test are free. Accept the terms to unlock your test
-          {test.questions ? ` — ${test.questions} questions` : ""}{test.durationMinutes ? ` in ${test.durationMinutes} minutes` : ""}. You can take it straight away.
+          Applying and the aptitude test are free. Once you've applied, our team gives you access to the test
+          {test.questions ? ` (${test.questions} questions` : ""}{test.questions && test.durationMinutes ? ` in ${test.durationMinutes} minutes)` : test.questions ? ")" : ""} and
+          emails you when it's ready.
         </p>
         <AdultCheckbox checked={adult} onChange={(v) => { setAdult(v); setMsg({ kind: "", text: "" }); }} disabled={busy} />
         <TermsCheckbox checked={agreed} onChange={(v) => { setAgreed(v); setMsg({ kind: "", text: "" }); }} disabled={busy} what="the aptitude test" />
-        <button ref={payBtn} className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={pay}>
-          {busy ? "Please wait..." : "Unlock Free Test"}
+        <button ref={applyBtn} className="btn btn-solid" style={{ width: "100%" }} disabled={busy || !agreed || !adult} onClick={apply}>
+          {busy ? "Please wait..." : "Apply — Free"}
         </button>
       </>
     );
@@ -239,10 +242,10 @@ function UnlockTestModal({ opening, onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={close}>
-      <div className="modal-box test-fee-modal" role="dialog" aria-modal="true" aria-labelledby="test-fee-modal-title" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-box apply-modal" role="dialog" aria-modal="true" aria-labelledby="apply-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={close} aria-label="Close" disabled={busy}>✕</button>
         <span className="eyebrow">Apply · Aptitude test</span>
-        <h3 id="test-fee-modal-title" style={{ margin: "12px 0 12px" }}>{opening.title}</h3>
+        <h3 id="apply-modal-title" style={{ margin: "12px 0 12px" }}>{opening.title}</h3>
         {body}
         <Alert inline kind={msg.kind || "info"}>{msg.text}</Alert>
       </div>
@@ -285,8 +288,8 @@ export default function Careers() {
   const [slow, setSlow] = useState(false);
   const [detail, setDetail] = useState(null);
   const [notice, setNotice] = useState("");
-  // The role being registered for in <UnlockTestModal>.
-  const [paying, setPaying] = useState(null);
+  // The role being applied for in <ApplyModal>.
+  const [applying, setApplying] = useState(null);
   // Roles already applied for show "View my application" / "Continue application".
   const { applications, reload: reloadApplications } = useMyJobApplications(isLoggedIn && !isAdmin);
 
@@ -326,7 +329,7 @@ export default function Careers() {
       ? async () => {
         const res = await getMyJobApplications();
         const mine = res && res.ok ? openApplicationFor(res.applications || [], opening) : null;
-        if (isInReview(mine)) navigate(MY_APPLICATIONS); else setPaying(opening);
+        if (isInReview(mine)) navigate(MY_APPLICATIONS); else setApplying(opening);
       }
       : () => navigate("/dashboard?tab=apply");
     if (!isLoggedIn) {
@@ -417,7 +420,7 @@ export default function Careers() {
         </div>
       </section>
       <OpeningModal opening={detail} terms={terms} mine={detail ? openApplicationFor(applications, detail) : null} onClose={() => setDetail(null)} onApply={apply} />
-      <UnlockTestModal opening={paying} onClose={() => { setPaying(null); reloadApplications(); }} />
+      <ApplyModal opening={applying} onClose={() => { setApplying(null); reloadApplications(); }} />
 
       {/* 4. Final CTA */}
       <section className="section" style={{ paddingTop: 40 }}>

@@ -5,7 +5,7 @@ import HelpAgent from "./HelpAgent.jsx";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import {
   submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder,
-  getMyReferral, applyReferral, getPriceQuote, payWithWallet, forgotPassword, resetPassword,
+  getPriceQuote, payWithWallet, forgotPassword, resetPassword,
 } from "../services/api.js";
 import { UserContext, isProfileComplete, profileMissing } from "../context/UserContext.jsx";
 import { IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
@@ -20,11 +20,11 @@ import PhoneInput from "./PhoneInput.jsx";
 import { FieldError, EmailFieldNote, emailFieldProblem } from "./FormFields.jsx";
 import { useEmailCheck } from "../hooks/useEmailCheck.js";
 import { useTouched, focusFirstError } from "../hooks/useTouched.js";
-import { getStoredReferral, clearStoredReferral } from "../utils/referral.js";
 import { variantLabel } from "../utils/variants.js";
 import { TIER_ORDER, offeredTiers, planPrice, listPrice, offPercent, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
+import { walletDiscount } from "../hooks/useWalletCredit.js";
 import { isFull, placeWord, positionsTag, programFacts } from "../utils/positions.js";
 
 export const REDUCED =
@@ -471,13 +471,15 @@ export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Dura
    tag, a badge on the right, title, the shared facts (utils/positions.js
    programFacts), then the two buttons. The description and skills live only
    in View details. Only the
-   content differs: "Paid training" instead of a test fee, the training fee
+   content differs: "Paid training" instead of "Free", the training fee
    with Enroll now (pay online through Razorpay) instead of an application with
    a test, and View details opens the track's own page. A track the admin gave
    no price, or one that's full, offers Request to apply instead. onBuy(item)
    opens the checkout; without it the button goes to the Training + Internship
    page, which opens it. `switcher` is the duration switch of a grouped domain. */
-export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, switcher = null }) {
+// `wallet` (hooks/useWalletCredit.js) is the logged-in student's credit: when
+// some of it would come off the fee, the card also shows what they'd pay.
+export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, switcher = null, wallet = null }) {
   const navigate = useNavigate();
   const { isAdmin } = useContext(UserContext);
   const full = isFull(item);
@@ -488,6 +490,7 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
   const plans = offeredTiers(item);
   const cheapest = plans.length ? plans.reduce((a, b) => (planPrice(b) < planPrice(a) ? b : a)) : null;
   const canBuy = isOpenForBuy(item) && !full && !!item.slug;
+  const walletOff = cheapest && !owned ? walletDiscount(planPrice(cheapest), wallet) : 0;
   const buy = () => {
     if (onBuy) onBuy(item);
     else navigate(`/training-internship?buy=${encodeURIComponent(item.slug)}`);
@@ -520,6 +523,12 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
             <div className="card-price">
               <span className="card-price-label">{plans.length > 1 ? "Training fee from" : "Training fee"}</span>
               <PlanPrice plan={cheapest} />
+              {walletOff > 0 && (
+                <span className="card-price-wallet">
+                  Payable <b>{formatINR(planPrice(cheapest) - walletOff)}</b>
+                  <span className="card-price-wallet-note"> after {formatINR(walletOff)} wallet credit</span>
+                </span>
+              )}
             </div>
           ) : null}
         </div>
@@ -552,6 +561,50 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
         </div>
       </TiltCard>
     </Reveal>
+  );
+}
+
+/* ---------- SignupBonusPopup: the welcome-credit offer on Training + Internship ----------
+   Opens a moment after the page loads for a visitor who isn't logged in, once
+   per browser tab (sessionStorage), telling them a new account gets `bonus`
+   rupees of wallet credit to spend on a program. Nothing shows when the admin
+   has set the bonus to 0 or someone is logged in. */
+const BONUS_SEEN_KEY = "crix_signup_bonus_seen";
+export function SignupBonusPopup({ bonus }) {
+  const { isLoggedIn, openAuthModal } = useContext(UserContext);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (isLoggedIn || !(bonus > 0)) { setOpen(false); return undefined; }
+    let seen = false;
+    try { seen = window.sessionStorage.getItem(BONUS_SEEN_KEY) === "1"; } catch (e) { /* storage blocked */ }
+    if (seen) return undefined;
+    const t = setTimeout(() => setOpen(true), 700);
+    return () => clearTimeout(t);
+  }, [isLoggedIn, bonus]);
+  const close = () => {
+    setOpen(false);
+    try { window.sessionStorage.setItem(BONUS_SEEN_KEY, "1"); } catch (e) { /* storage blocked */ }
+  };
+  useBodyScrollLock(open);
+  useModalFocus(open);
+  useModalEscape(open, close);
+  if (!open) return null;
+  const claim = () => { close(); if (openAuthModal) openAuthModal("login"); };
+  return (
+    <div className="modal-backdrop" onClick={close}>
+      <div className="modal-box bonus-modal" role="dialog" aria-modal="true" aria-labelledby="bonus-modal-title" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={close} aria-label="Close">✕</button>
+        <span className="bonus-modal-gift" aria-hidden="true">🎁</span>
+        <span className="eyebrow">Signup bonus</span>
+        <h3 id="bonus-modal-title">Get {formatINR(bonus)} in your wallet</h3>
+        <p>
+          Create your free account and verify your email — we add <b>{formatINR(bonus)}</b> of wallet credit,
+          which comes straight off your training fee at checkout.
+        </p>
+        <button type="button" className="btn btn-solid buy-btn" style={{ width: "100%" }} onClick={claim}>Sign up &amp; claim {formatINR(bonus)}</button>
+        <button type="button" className="btn btn-ghost" style={{ width: "100%", marginTop: 8 }} onClick={close}>Maybe later</button>
+      </div>
+    </div>
   );
 }
 
@@ -595,142 +648,35 @@ export function TrainingContact({ onApply, compact = false }) {
   );
 }
 
-/* ---------- InfoCard (program/service/course) ---------- */
+/* ---------- InfoCard: a service card ---------- */
 // Alternates entrance direction per column (left / top / right) so a 3-up grid
-// visibly converges from different sides as it scrolls into view.
-// isProgram: true for course/internship cards (they always get a Buy now or
-// Inquire button) — false/omitted for plain content cards like Services,
-// which only ever show "See more".
-// kind: "internship" | "course" — drives the type pill, the card's accent
-// color, and the CTA verb, so the category reads even out of context (not
-// just from the section heading above the grid). Omit for Services cards.
-// owned: the logged-in student already has access — the card sends them to My Dashboard.
-// switcher: the duration switch when this card stands for a domain offered in
-// several durations (ProgramGroupCard).
-export function InfoCard({ item, i, onDetail, onInquire, onServiceInquire, isProgram, kind, owned, switcher = null }) {
-  const navigate = useNavigate();
+// visibly converges from different sides as it scrolls into view. "Inquiry"
+// opens the service inquiry form; "See more" opens the service's details popup.
+// (Training + Internship tracks use TrainingCard.)
+export function InfoCard({ item, i, onDetail, onServiceInquire }) {
   const variant = i % 3 === 0 ? "reveal-l" : i % 3 === 2 ? "reveal-r" : "reveal-top";
-  // "See more" and "Choose a plan" both land here. A course or internship opens
-  // its own page (/programs/:slug), on every screen size — the plans, features
-  // and upgrade options live there. Popups are kept for the request/inquiry
-  // forms, and for what has no page to open: services, and the static fallback
-  // items shown before the backend responds (they have no slug).
-  const openDetail = () => {
-    if (isProgram && item.slug) navigate(`/programs/${item.slug}`);
-    else if (onDetail) onDetail({ item, kind, isProgram });
-  };
-  const closed = item.status === "closed";
-  const openForBuy = isOpenForBuy(item);
-  const { isAdmin } = useContext(UserContext);
-  const kindLabel = kind === "internship" ? "Training + Internship" : kind === "course" ? "Course" : null;
-  // Derived from `kind`, not `item.deliverables` — every internship/course
-  // issues the same fixed set of documents for its type (see content.js's
-  // programDeliverables), so this works whether `item` came from the static
-  // fallback or the live API (whose Course schema has no such field).
-  const deliverables = kind ? programDeliverables[kind] : null;
-  // Every place taken (utils/positions.js): no "Choose a plan" — someone who
-  // already bought it still reaches it from My Dashboard.
-  const full = isProgram && isFull(item);
-  const facts = isProgram ? programFacts({ ...item, type: kind || item.type }) : [];
-  const skills = isProgram && Array.isArray(item.skills) ? item.skills : [];
+  const openDetail = () => { if (onDetail) onDetail({ item, isProgram: false }); };
   return (
     <Reveal as="div" variant={variant} style={{ "--i": i }}>
-      <TiltCard className={kind ? `card-type-${kind}` : undefined}>
+      <TiltCard>
         <div className="card-top">
           <div className="card-top-left">
-            {kindLabel && <span className={`type-pill type-pill--${kind}`}>{kindLabel}</span>}
-            <span className={`tag${full ? " tag--full" : ""}`}>{isProgram ? positionsTag(item.positions, item.tag, placeWord({ type: kind || item.type })) : item.tag}</span>
+            <span className="tag">{item.tag}</span>
           </div>
-          {closed && <span className="closed-badge">Currently closed</span>}
         </div>
         <h3>{item.title}</h3>
-        {switcher}
-        {/* Roughly when the batch starts (the admin's estimate, e.g. "15 December"). */}
-        {isProgram && item.startingFrom ? <span className="starting-from">Starting from <b>{item.startingFrom}</b></span> : null}
         <div className="card-peek-wrap">
           <p className="card-benefit">{item.desc}</p>
-          {/* Desktop hover: the program's first key points fade in over the
-              description (mouse only — see upgrade.css). Decorative; the
-              same points are on the course page / popup. */}
-          {isProgram && Array.isArray(item.points) && item.points.length ? (
-            <ul className="card-peek" aria-hidden="true">
-              {item.points.slice(0, 3).map((pt, n) => <li key={n}>{String(pt)}</li>)}
-            </ul>
-          ) : null}
         </div>
-        {/* With a duration switch, the switch already says how long it is. */}
-        {item.durationDays && !switcher ? <span className="duration-chip">{formatDuration(item.durationDays)}</span> : null}
-        {skills.length ? (
-          <div className="deliverable-row">
-            {skills.map((s) => <span key={s} className="deliverable-chip">{s}</span>)}
-          </div>
-        ) : null}
-        {deliverables?.length ? (
-          <div className="deliverable-row">
-            {deliverables.map((d) => <span key={d} className="deliverable-chip">{d}</span>)}
-          </div>
-        ) : null}
-        {facts.length ? (
-          <dl className="job-facts">
-            {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-          </dl>
-        ) : null}
         <div className="card-btn-row">
-          {isProgram && (
-            isAdmin && item.slug ? (
-              // Admins open any course/internship directly — nothing to buy or request.
-              <Link className="btn btn-solid buy-btn" to={`/learn/${item.slug}`}>
-                {kind === "internship" ? "Open internship" : "Open course"} →
-              </Link>
-            ) : owned ? (
-              <Link className="btn btn-solid buy-btn" to="/dashboard">View in My Dashboard →</Link>
-            ) : kind === "internship" ? (
-              // Training + Internship isn't bought online: the student applies
-              // (or calls), and the team sends a payment request to their account.
-              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Apply for this training — no account needed">
-                Request to apply
-              </button>
-            ) : openForBuy && full ? (
-              <button className="btn btn-solid buy-btn" disabled>All {placeWord({ type: kind || item.type })}s filled</button>
-            ) : openForBuy ? (
-              // Prices live in the "See more" popup, not on the card — choosing
-              // a plan opens that same popup rather than a separate flow.
-              <button className="btn btn-solid buy-btn" onClick={openDetail}>
-                Choose a plan
-              </button>
-            ) : kind === "internship" ? (
-              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Request to apply for this internship — no account needed">
-                Request to apply
-              </button>
-            ) : (
-              <button className="btn btn-solid buy-btn" onClick={() => onInquire && onInquire(item)} title="Request to enroll in this course — no account needed">
-                Request to enroll
-              </button>
-            )
-          )}
-          {!isProgram && onServiceInquire && (
+          {onServiceInquire && (
             <button className="btn btn-solid buy-btn" onClick={() => onServiceInquire(item)} title="Send an inquiry about this service — no account needed">
               Inquiry
             </button>
           )}
-          {item.slug ? (
-            // A real anchor to /programs/:slug (CourseDetail still exists as a
-            // route) so ctrl/cmd-click "open in new tab", right-click "copy
-            // link address", and crawler discovery all keep working — a plain
-            // click still opens the popup, same as the button-only path below.
-            <a className="btn btn-ghost see-more-btn" href={`/programs/${item.slug}`}
-              onClick={(e) => {
-                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                e.preventDefault();
-                openDetail();
-              }}>
-              See more →
-            </a>
-          ) : (
-            <button className="btn btn-ghost see-more-btn" onClick={openDetail}>
-              See more →
-            </button>
-          )}
+          <button className="btn btn-ghost see-more-btn" onClick={openDetail}>
+            See more →
+          </button>
         </div>
       </TiltCard>
     </Reveal>
@@ -930,94 +876,26 @@ export const paymentFailedText = (failure) => (failure && failure.timedOut
   ? "The payment window timed out before the payment finished. If money left your account, it's confirmed automatically or returned within 5–7 working days — check My Dashboard, or try again."
   : `The payment didn't go through${failure && failure.reason ? ` (${failure.reason.replace(/\.$/, "")})` : ""}. If any money left your account, it's returned automatically within 5–7 working days. You can try again.`);
 
-// The referral part of checkout: an optional code box (only for a student who
-// hasn't been referred and hasn't bought anything), and the itemised total —
-// plan price, referral discount, referral credit — as the server will charge it.
-// `onPayable` tells the buy button what to show as the amount.
-// getQuote(couponCode): where the price comes from — the checkout's plan quote
-// by default; a payment request passes its own (PaymentRequests.jsx). Keep it
-// stable (useCallback): a new function re-prices.
-export function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCode, onCoupon, getQuote }) {
+// The checkout's itemised total — plan price, wallet credit, what you pay — as
+// the server will charge it. `onPayable` tells the buy button what to show as
+// the amount. getQuote(): where the price comes from — the checkout's plan
+// quote by default; a payment request passes its own (PaymentRequests.jsx).
+// Keep it stable (useCallback): a new function re-prices.
+export function CheckoutExtras({ item, tier, onPayable, onWalletCovers, getQuote }) {
   const [quote, setQuote] = useState(null);
-  // The offer-code box (an admin-made code, separate from the referral code below).
-  // Offer codes are handed to individual students personally by the admin, so the
-  // box is just a plain input — no hint of any code on the page, and the code the
-  // student typed is never displayed back to them.
-  const [offerInput, setOfferInput] = useState("");
-  const [offerNote, setOfferNote] = useState({ kind: "", text: "" });
-  const [offerBusy, setOfferBusy] = useState(false);
-  const [referral, setReferral] = useState(null); // /me/referral: whether a code can still be applied
-  const [open, setOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [note, setNote] = useState({ kind: "", text: "" });
-  const [busy, setBusy] = useState(false);
-  const [requote, setRequote] = useState(0); // bumped after a code is applied
-
-  useEffect(() => {
-    let alive = true;
-    getMyReferral().then((res) => {
-      if (!alive || !res.ok) return;
-      setReferral(res);
-      const remembered = getStoredReferral(); // from a shared ?ref= link
-      if (res.canApplyCode && remembered) { setCode(remembered); setOpen(true); }
-    });
-    return () => { alive = false; };
-  }, []);
 
   useEffect(() => {
     let alive = true;
     onPayable(null);
     onWalletCovers(null);
-    (getQuote ? getQuote(couponCode) : getPriceQuote(item.slug, tier, couponCode)).then((res) => {
+    (getQuote ? getQuote() : getPriceQuote(item.slug, tier)).then((res) => {
       if (!alive) return;
-      // An applied code that no longer works for this plan (or has just run out)
-      // is dropped, and the buyer told — never silently charged a different price.
-      if (res.ok && couponCode && res.couponError) {
-        onCoupon("");
-        setOfferNote({ kind: "error", text: res.couponError });
-      }
       setQuote(res.ok ? res : null);
       onPayable(res.ok ? res.payable : null);
       onWalletCovers(res.ok && res.walletCoversAll ? res.walletPayable : null);
     });
     return () => { alive = false; };
-  }, [item.slug, tier, requote, couponCode, onPayable, onWalletCovers, onCoupon, getQuote]);
-
-  const applyOffer = async () => {
-    if (offerBusy || !offerInput.trim()) return;
-    setOfferBusy(true);
-    setOfferNote({ kind: "", text: "" });
-    const typed = offerInput.trim();
-    const res = await (getQuote ? getQuote(typed) : getPriceQuote(item.slug, tier, typed));
-    setOfferBusy(false);
-    if (res.ok && res.couponApplied) {
-      setOfferInput("");
-      onCoupon(typed); // kept only to send with the order; the server normalises and re-checks it
-    } else {
-      setOfferNote({ kind: "error", text: res.couponError || res.error || "That offer code isn't valid." });
-    }
-  };
-  const removeOffer = () => {
-    onCoupon("");
-    setOfferNote({ kind: "", text: "" });
-  };
-
-  const apply = async () => {
-    if (busy || !code.trim()) return;
-    setBusy(true);
-    setNote({ kind: "", text: "" });
-    const res = await applyReferral(code);
-    setBusy(false);
-    if (res.ok) {
-      clearStoredReferral();
-      setCode("");
-      setReferral((r) => (r ? { ...r, canApplyCode: false } : r));
-      setNote({ kind: "ok", text: `Code applied — ${res.discountPercent}% off your first purchase.` });
-      setRequote((n) => n + 1);
-    } else {
-      setNote({ kind: "error", text: res.error });
-    }
-  };
+  }, [item.slug, tier, onPayable, onWalletCovers, getQuote]);
 
   // When the wallet pays in full (BuyModal's "Pay with wallet"), the summary shows
   // that — the whole price from wallet credit, nothing left to pay — not the ₹1
@@ -1025,63 +903,14 @@ export function CheckoutExtras({ item, tier, onPayable, onWalletCovers, couponCo
   const walletAll = !!(quote && quote.walletCoversAll);
   const creditShown = walletAll ? quote.walletPayable : quote && quote.creditApplied;
   const payShown = walletAll ? 0 : quote && quote.payable;
-  const hasBreakdown = quote && (quote.couponDiscount > 0 || quote.referralDiscount > 0 || creditShown > 0);
+  if (!(quote && creditShown > 0)) return null;
   return (
     <div className="checkout-extras">
-      {couponCode ? (
-        <p className="ref-ok" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 8px" }}>
-          <span>Offer applied{quote && quote.couponDiscount > 0 ? ` — you save ${formatINR(quote.couponDiscount)}` : ""}</span>
-          <button type="button" className="link-btn" onClick={removeOffer}>Remove</button>
-        </p>
-      ) : (
-        <div className="ref-apply" style={{ marginBottom: 8 }}>
-          <label htmlFor="buy-offer">Offer code</label>
-          <div className="ref-apply-row">
-            <input id="buy-offer" value={offerInput} placeholder="Enter offer code" autoComplete="off" spellCheck={false}
-              onChange={(e) => { setOfferInput(e.target.value); setOfferNote({ kind: "", text: "" }); }}
-              // Enter here applies the code — it must not submit the form and start a payment.
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyOffer(); } }} />
-            <button className="btn btn-ghost" type="button" onClick={applyOffer} disabled={offerBusy || !offerInput.trim()}>
-              {offerBusy ? "Checking…" : "Apply"}
-            </button>
-          </div>
-        </div>
-      )}
-      {offerNote.text && <p className={offerNote.kind === "ok" ? "ref-ok" : "form-error"}>{offerNote.text}</p>}
-      {referral && referral.canApplyCode && (
-        open ? (
-          <div className="ref-apply">
-            <label htmlFor="buy-ref">Referral code</label>
-            <div className="ref-apply-row">
-              <input id="buy-ref" value={code} placeholder="CRIX-XXXXXX" autoComplete="off"
-                onChange={(e) => { setCode(e.target.value); setNote({ kind: "", text: "" }); }}
-                // Enter here applies the code — it must not submit the form and start a payment.
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); apply(); } }} />
-              <button className="btn btn-ghost" type="button" onClick={apply} disabled={busy || !code.trim()}>
-                {busy ? "Checking…" : "Apply"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button type="button" className="link-btn ref-toggle" onClick={() => setOpen(true)}>Have a referral code?</button>
-        )
-      )}
-      {note.text && <p className={note.kind === "ok" ? "ref-ok" : "form-error"}>{note.text}</p>}
-      {hasBreakdown && (
-        <dl className="order-summary">
-          <div><dt>Plan price</dt><dd>{formatINR(quote.planPrice)}</dd></div>
-          {quote.couponDiscount > 0 && (
-            <div className="is-off"><dt>Offer discount</dt><dd>−{formatINR(quote.couponDiscount)}</dd></div>
-          )}
-          {quote.referralDiscount > 0 && (
-            <div className="is-off"><dt>Referral discount ({quote.referralPercent}%)</dt><dd>−{formatINR(quote.referralDiscount)}</dd></div>
-          )}
-          {creditShown > 0 && (
-            <div className="is-off"><dt>Wallet credit</dt><dd>−{formatINR(creditShown)}</dd></div>
-          )}
-          <div className="is-total"><dt>You pay</dt><dd>{formatINR(payShown)}</dd></div>
-        </dl>
-      )}
+      <dl className="order-summary">
+        <div><dt>Plan price</dt><dd>{formatINR(quote.planPrice)}</dd></div>
+        <div className="is-off"><dt>Wallet credit</dt><dd>−{formatINR(creditShown)}</dd></div>
+        <div className="is-total"><dt>You pay</dt><dd>{formatINR(payShown)}</dd></div>
+      </dl>
     </div>
   );
 }
@@ -1102,14 +931,11 @@ export function BuyModal({ item, user, initialTier, onClose }) {
   // one they arrived with (initialTier, from a "Choose Pro" button) or the
   // first plan on offer is used — see `plan` below.
   const [tier, setTier] = useState(null);
-  // What the server will actually charge for the chosen plan (after any referral
-  // discount / credit); null until CheckoutExtras has priced it.
+  // What the server will actually charge for the chosen plan (after any wallet
+  // credit); null until CheckoutExtras has priced it.
   const [payable, setPayable] = useState(null);
   // The price (rupees) when the wallet alone can pay for the chosen plan, else null.
   const [walletPays, setWalletPays] = useState(null);
-  // An admin offer code the buyer has applied (already checked by the server);
-  // the server checks it again when the order is created.
-  const [couponCode, setCouponCode] = useState("");
   // The Terms & Conditions box; un-ticked again for every new item.
   const [agreed, setAgreed] = useState(false);
   useBodyScrollLock(!!item);
@@ -1136,7 +962,6 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       setStatus({ text: "", kind: "" });
       setLoading(false);
       setTier(null);
-      setCouponCode("");
       setAgreed(false);
     }
   }, [item, user]);
@@ -1204,11 +1029,10 @@ export function BuyModal({ item, user, initialTier, onClose }) {
 
     if (useWallet) {
       setInfo("Paying from your wallet...");
-      const paid = await payWithWallet(appRes.application._id, item.slug, plan.tier, couponCode);
+      const paid = await payWithWallet(appRes.application._id, item.slug, plan.tier);
       if (stale()) return;
       setLoading(false);
       if (!paid.ok) { setError(paid.error || "Could not pay from your wallet right now."); return; }
-      clearStoredReferral();
       trackEvent("purchase", {
         transaction_id: `wallet_${appRes.application._id}`, currency: "INR", value: walletPays || 0,
         items: [{ item_id: item.slug, item_name: item.title, item_category: item.type, item_variant: plan.tier }],
@@ -1221,7 +1045,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       return;
     }
 
-    const orderRes = await createRazorpayOrder(appRes.application._id, item.slug, plan.tier, couponCode);
+    const orderRes = await createRazorpayOrder(appRes.application._id, item.slug, plan.tier);
     if (stale()) return;
     if (!orderRes.ok) {
       setLoading(false);
@@ -1256,7 +1080,6 @@ export function BuyModal({ item, user, initialTier, onClose }) {
         const v = await verifyPayment(resp);
         if (stale()) return;
         if (v.ok) {
-          clearStoredReferral();
           trackEvent("purchase", {
             transaction_id: resp.razorpay_payment_id, currency: orderRes.currency, value: (orderRes.amount || 0) / 100,
             items: [{ item_id: item.slug, item_name: item.title, item_category: item.type, item_variant: plan.tier }],
@@ -1346,7 +1169,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
                   </label>
                 ))}
               </fieldset>
-              {plan && <CheckoutExtras key={item.slug} item={item} tier={plan.tier} onPayable={setPayable} onWalletCovers={setWalletPays} couponCode={couponCode} onCoupon={setCouponCode} />}
+              {plan && <CheckoutExtras key={item.slug} item={item} tier={plan.tier} onPayable={setPayable} onWalletCovers={setWalletPays} />}
               <TermsCheckbox checked={agreed} onChange={(v) => { setAgreed(v); clearStatus(); }} disabled={loading}
                 what={item.type === "internship" ? "this internship" : "this course"} />
               <button className="btn btn-solid" type="submit" disabled={loading || !agreed} style={{ width: "100%" }}>
@@ -1529,8 +1352,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
 }
 
 // InquiryModal: collects name/email/phone/college and creates an Application
-// (routes/applications.js) — this is what "Request to apply" (internships)
-// and "Request to enroll" (unpriced/closed courses) open now, replacing the
+// (routes/applications.js) — this is what "Request to apply" opens, replacing the
 // old wa.me/phone redirect so a submission is actually captured (and visible at
 // /admin/applications) instead of depending on the visitor having WhatsApp
 // and the admin catching the message there. No account needed either way.
@@ -1789,12 +1611,10 @@ export function DetailModal({ data, onClose, onInquire, onServiceInquire }) {
 
         <div style={{ marginTop: 24 }}>
           {isProgram ? (
-            kind === "internship" && closed ? (
+            closed ? (
               <button className="btn btn-solid buy-btn" disabled>Applications closed</button>
-            ) : kind === "internship" ? (
-              <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to apply</button>
             ) : (
-              <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to enroll</button>
+              <button className="btn btn-solid buy-btn" onClick={act(onInquire)}>Request to apply</button>
             )
           ) : onServiceInquire ? (
             <button className="btn btn-solid buy-btn" onClick={act(onServiceInquire)}>Inquiry</button>

@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
 import { getMyEnrollments, getMyReceipts, getReceipt } from "../../services/api.js";
 import { UpgradeModal } from "../../components/ui.jsx";
-import ReferralCard from "../../components/ReferralCard.jsx";
 import PaymentRequests from "../../components/PaymentRequests.jsx";
 import WalletCard from "../../components/WalletCard.jsx";
 import { ApplyTab, ApplicationsTab, NotificationsTab, useNotifications } from "../../components/CareersDashboard.jsx";
@@ -21,7 +20,6 @@ const TABS = [
   ["courses", "My Programs"],
   ["applications", "My Applications"],
   ["wallet", "My Wallet"],
-  ["refer", "Refer & Earn"],
   ["notifications", "Notifications"],
 ];
 // Inside My Applications: the list, or applying for a role (?tab=apply).
@@ -146,7 +144,6 @@ export default function MyCourses() {
         )}
         {!isAdmin && view === "applications" && <ApplicationsTab onGoToApply={() => goToTab("apply")} />}
         {!isAdmin && tab === "wallet" && <WalletCard />}
-        {!isAdmin && tab === "refer" && <ReferralCard />}
         {!isAdmin && tab === "notifications" && <NotificationsTab items={notices.items} onSeen={notices.markRead} onClear={notices.clear} />}
 
         {(isAdmin || tab === "courses") && (<>
@@ -228,7 +225,6 @@ export default function MyCourses() {
             ))}
           </div>
         )}
-        {isAdmin && <ReferralCard />}
         </>)}
         </SectionPanel>
       </div>
