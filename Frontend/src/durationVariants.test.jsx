@@ -83,14 +83,14 @@ describe("the Training + Internship page", () => {
       track("Web 1M", "web-1", 30), track("Web 2M", "web-2", 60), track("Web 3M", "web-3", 90),
       track("Data 3M", "data-3", 90), track("Any length", "any", null),
     ]);
-    expect(pills().map((b) => b.textContent)).toEqual(["All", "1 month", "2 months", "3 months", "6 months"]);
+    expect(pills().map((b) => b.textContent)).toEqual(["All", "1 month", "2 months", "3 months", "6 months", "Stipend"]);
     expect(pills()[0].getAttribute("aria-pressed")).toBe("true");
     expect(titles()).toHaveLength(5);
 
     await pick("3 months");
     // Each card names its length, since one domain is a card per duration.
     expect(titles()).toEqual(["Web 3M — 3 months", "Data 3M — 3 months"]);
-    expect(pills().map((b) => b.getAttribute("aria-pressed"))).toEqual(["false", "false", "false", "true", "false"]);
+    expect(pills().map((b) => b.getAttribute("aria-pressed"))).toEqual(["false", "false", "false", "true", "false", "false"]);
     await pick("2 months");
     expect(titles()).toEqual(["Web 2M — 2 months"]);
 
@@ -102,5 +102,24 @@ describe("the Training + Internship page", () => {
     expect(titles()).toHaveLength(5);
     await pick("All");
     expect(titles()).toHaveLength(5);
+  });
+
+  it("shows only programs that pay a stipend under Stipend", async () => {
+    await renderPage([
+      track("Paid A", "paid-a", 90, { stipend: "₹3,000/month" }),
+      track("Old none", "old-none", 90, { stipend: "No Stipend" }),
+      track("No stipend", "none", 30),
+      track("Paid B", "paid-b", 180, { stipend: "Up to ₹7,000/month", stipendTrainingMonths: 2 }),
+    ]);
+    await pick("Stipend");
+    expect(titles()).toEqual(["Paid A — 3 months", "Paid B — 6 months"]);
+    expect(pills().find((b) => b.textContent === "Stipend").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("says so when no program pays a stipend", async () => {
+    await renderPage([track("No stipend", "none", 30)]);
+    await pick("Stipend");
+    expect(titles()).toEqual([]);
+    expect(container.querySelector("#programs .filter-empty").textContent).toContain("No programs with a stipend right now.");
   });
 });
