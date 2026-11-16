@@ -6,6 +6,7 @@ import {
 } from "../services/api.js";
 import { Alert, burstConfetti, TermsCheckbox } from "./ui.jsx";
 import { formatIST, isRoleFull, positionsLabel } from "../data/careers.js";
+import { stipendText } from "../utils/positions.js";
 
 // The careers sections of My Dashboard (pages/student/MyCourses.jsx):
 //   <ApplyTab>         pick a role and apply (free); Crix then gives test access
@@ -224,7 +225,7 @@ export function ApplyTab({ initialRole, onGoToApplications, onChange }) {
               </span>
               <span className="plan-option-sub">{o.summary}</span>
               <span className="plan-option-sub">
-                {o.test.questions} questions · {o.test.durationMinutes} minutes · Free · {o.stipend}
+                {o.test.questions} questions · {o.test.durationMinutes} minutes · Free · {stipendText(o.stipend)}
               </span>
               {o.positions && (
                 <span className={`plan-option-sub positions-note${isRoleFull(o) ? " is-full" : ""}`}>

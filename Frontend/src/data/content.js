@@ -281,7 +281,7 @@ export const benefits = [
   { icon: "briefcase", title: "Resume Boost", desc: "Real project experience to impress top recruiters." },
   { icon: "mentor", title: "Learn from Industry Experts", desc: "Taught by working industry professionals throughout the program." },
   { icon: "home", title: "Work from Home", desc: "Fully virtual — join from anywhere in India." },
-  { icon: "star", title: "Stipend", desc: "Paid on programs that offer one, as shown in the program's details.", optional: true },
+  { icon: "star", title: "Stipend", desc: "Given on the basis of your performance, on programs that offer one.", optional: true },
   { icon: "gift", title: "Joining Kit", desc: "A welcome kit shipped to your address, on programs that include one.", optional: true },
   { icon: "linkedin", title: "LinkedIn Recognition", desc: "An official LinkedIn recommendation, on programs that include it.", optional: true },
 ];
@@ -483,11 +483,11 @@ You are responsible for all activity that occurs under your account. Crix Techno
         title: "4. Training + Internship Program",
         content: `Crix Technology offers a virtual Training + Internship Program, listed on the Training + Internship page. Each program is a paid (not free), mentored, virtual training on real tasks, on the track you enroll in. Its price is set by Crix Technology and shown on its card and its page before you enroll (see section 6), and it runs for the duration shown there — 1 month, 2 months, 3 months or 6 months.
 • Included in every program — an offer letter, a training certificate, a Letter of Recommendation, mentor support, real project tasks and teaching by industry professionals.
-• Only on some programs — a stipend, a joining kit and LinkedIn recognition. A program's details, or its offer letter, say which of these it includes; a program that does not list one does not include it. Where a stipend is offered, its amount and terms are set by Crix Technology and stated in the offer letter.
+• Only on some programs — a stipend, a joining kit and LinkedIn recognition. A program's details, or its offer letter, say which of these it includes; a program that does not list one does not include it. Where a stipend is offered, it is given on the basis of the trainee's performance: whether it is paid, and how much, depends on their performance during the program as assessed by Crix Technology. Its terms are stated in the offer letter.
 
 There is no aptitude test for Training + Internship: you enroll by choosing a program and paying its training fee online (section 6), and your seat is confirmed when that payment is confirmed. Aptitude tests apply only to Free Internship and Careers roles (section 8). Any "Starts on" shown for a track or role is an estimate of when the batch or role begins; the actual start is confirmed to you before it begins.
 
-Enrolling in and paying for a program does not guarantee a stipend (unless the program offers one), a job, or any employment outcome. The training fee is for the program only.
+Enrolling in and paying for a program does not guarantee a stipend (even where a program offers one, it depends on your performance), a job, or any employment outcome. The training fee is for the program only.
 
 Opportunities without a fee are not part of this program: they are listed as roles on our Careers page, under section 8. Whichever track you join, by enrolling you agree to:
 • Complete assigned tasks honestly and on time

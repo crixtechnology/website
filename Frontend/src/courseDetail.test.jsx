@@ -274,7 +274,7 @@ describe("the details a free internship shows", () => {
 
   it("shows positions, stipend, experience, mode, skills, what you'll do and eligibility", async () => {
     await renderPage(detailed);
-    expect(facts()).toMatchObject({ Positions: "6 of 10 positions open", Stipend: "Up to ₹4,000/month", Experience: "Freshers welcome", Mode: "Remote" });
+    expect(facts()).toMatchObject({ Positions: "6 of 10 positions open", Stipend: "Up to ₹4,000/month (performance based)", Experience: "Freshers welcome", Mode: "Remote" });
     const headings = qa("h2").map((h) => h.textContent);
     expect(headings).toEqual(expect.arrayContaining(["Skills", "What you'll do", "Eligibility"]));
     expect(container.textContent).toContain("Kotlin");

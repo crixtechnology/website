@@ -401,7 +401,7 @@ export function TrainingInternship() {
             ))}
           </div>
           <Reveal as="p" variant="reveal-r" className="form-note">
-            Where a program offers a stipend, its amount and terms are shared in your offer letter. See our <Link to="/terms-of-service">Terms of Service</Link>.
+            Where a program offers a stipend, it is given on the basis of your performance; its terms are shared in your offer letter. See our <Link to="/terms-of-service">Terms of Service</Link>.
           </Reveal>
         </div>
       </section>
