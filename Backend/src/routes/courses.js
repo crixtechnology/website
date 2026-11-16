@@ -2,20 +2,12 @@ const express = require("express");
 const { prisma } = require("../db");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { serialize } = require("../utils/serialize");
-const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED, programSlugBase, freeSlug, findProgramBySlug } = require("../utils/programs");
 const { WITH_SEATS, withSeats, parseTiers } = require("../utils/tiers");
 const { parseCourseContent } = require("../utils/courseContent");
 const { accessStartFor, computeEndDate } = require("../utils/enrollmentAccess");
 
 const router = express.Router();
-
-function slugify(title) {
-  return String(title)
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
 
 // Blank / null means "no fixed duration" (lifetime access); anything else must
 // be a positive whole number of days — a stray string would otherwise reach the
@@ -59,7 +51,8 @@ router.get("/courses", async (req, res, next) => {
 
 router.get("/courses/:slug", async (req, res, next) => {
   try {
-    const found = await prisma.course.findUnique({ where: { slug: req.params.slug }, include: WITH_SEATS });
+    // An old address of a program still finds it; the page then moves to `course.slug`.
+    const found = await findProgramBySlug(req.params.slug, WITH_SEATS);
     const course = isProgram(found) ? found : null;
     if (!course) return res.status(404).json({ ok: false, error: "Program not found" });
     res.json({ ok: true, course: serialize(withSeats(course)) });
@@ -113,11 +106,9 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     }
     const parsed = parseTiers(tiers === undefined ? [] : tiers);
     if (!parsed.ok) return res.status(400).json({ ok: false, error: parsed.error });
-    let slug = slugify(title);
-    let suffix = 1;
-    while (await prisma.course.findUnique({ where: { slug } })) {
-      slug = `${slugify(title)}-${suffix++}`;
-    }
+    // Its address names the domain and length ("mern-stack-developer-3-months"),
+    // and never changes afterwards, so shared links keep working.
+    const slug = await freeSlug(programSlugBase({ title, group: content.data.group, durationDays }));
     let course;
     try {
       course = await prisma.course.create({

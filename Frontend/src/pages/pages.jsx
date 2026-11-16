@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
   DownloadPdfButton, TrainingContact, ProgramGroupCard, TrainingCard, DurationSwitch, SignupBonusPopup,
@@ -443,6 +443,14 @@ export function CourseDetail() {
   const [siblings, setSiblings] = useState([]);
   const { ownedTier, hasAccess, reload: reloadPlans } = useMyPlans();
   const { isLoggedIn, isAdmin, user, openAuthModal } = useContext(UserContext);
+  const navigate = useNavigate();
+  // An old address of a program (its address was cleaned up) still finds it:
+  // move to the current one, keeping ?buy= etc., so only one URL is indexed.
+  useEffect(() => {
+    if (course && course.slug && course.slug !== slug) {
+      navigate({ pathname: `/programs/${course.slug}`, search: window.location.search }, { replace: true });
+    }
+  }, [course, slug, navigate]);
   useNoIndex(course === null); // a course that doesn't exist is a "not found" screen: keep it out of search results
   useCourseJsonLd(course); // schema.org "Course" markup while a real course is showing
 

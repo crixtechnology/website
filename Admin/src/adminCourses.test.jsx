@@ -167,6 +167,17 @@ describe("admin course form", () => {
     });
   });
 
+  it("loads and saves the per-program extras (joining kit, LinkedIn recognition)", async () => {
+    await renderAdmin([{ ...base, _id: "c1", joiningKit: true, linkedinRecognition: false }]);
+    await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
+    const box = (text) => qa("label.check-row").find((l) => l.textContent.trim() === text).querySelector("input");
+    expect(box("Joining kit").checked).toBe(true);
+    expect(box("LinkedIn recognition").checked).toBe(false);
+    await act(async () => { box("LinkedIn recognition").click(); });
+    await submit();
+    expect(api.adminUpdateCourse.mock.calls[0][1]).toMatchObject({ joiningKit: true, linkedinRecognition: true });
+  });
+
   it("warns that saving drops a card's older Plus or Pro plan, and sends only the one price", async () => {
     const old = { ...base, _id: "c1", tiers: [
       { tier: "basic", price: 1000, discountPercent: 0, features: [] }, { tier: "pro", price: 3000, discountPercent: 0, features: ["1:1 mentoring"] },
@@ -291,7 +302,7 @@ describe("admin course form", () => {
       const labels = qa("form label").map((l) => l.textContent);
       // Same fields, same order as the Careers form…
       const order = ["Title", "Short description", "Skills (separate with commas)", "Responsibilities (one per line)", "Eligibility (one per line)",
-        "Positions available", "Stipend (selected interns only)", "Experience", "Duration", "Mode", "Starts on (optional)"];
+        "Positions available", "Stipend (empty = none)", "Experience", "Duration", "Mode", "Starts on (optional)"];
       expect(labels.filter((l) => order.includes(l))).toEqual(order);
       // …with no tag, points or exact date, and its fee where those have the aptitude test.
       expect(labels).not.toContain("Tag");

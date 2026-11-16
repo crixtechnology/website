@@ -22,4 +22,49 @@ function programTitle(course) {
   return already.test(course.title) ? course.title : `${course.title} — ${length}`;
 }
 
-module.exports = { PROGRAM_TYPE, PROGRAM_WHERE, isProgram, COURSES_DROPPED, programTitle };
+// ---------- program addresses (/programs/<slug>) ----------
+const slugify = (text) => String(text || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+// The address a program should have: its domain (Admin's "Domain group", else
+// its title) and its length — "mern-stack-developer-3-months". Before this,
+// a domain's durations got "-1", "-2", "-3" on the end, and a renamed track
+// kept its first title's address ("android-development" for Data Science).
+function programSlugBase({ title, group, durationDays } = {}) {
+  const name = slugify(String(group || "").trim() || title) || "program";
+  const n = Number(durationDays);
+  if (!Number.isFinite(n) || n <= 0) return name;
+  const length = n % 30 === 0 ? `${n / 30}-month${n === 30 ? "" : "s"}` : `${n}-days`;
+  return name.endsWith(length) ? name : `${name}-${length}`;
+}
+
+// A free address from `base`: base, base-2, base-3, … — one no other program
+// uses now or used before (old addresses stay reserved for their redirects).
+// `exceptCourseId`: the program's own current/old addresses count as free.
+async function freeSlug(base, { db = null, exceptCourseId = null } = {}) {
+  const client = db || require("../db").prisma;
+  for (let i = 1; ; i++) {
+    const slug = i === 1 ? base : `${base}-${i}`;
+    const [course, redirect] = await Promise.all([
+      client.course.findUnique({ where: { slug }, select: { id: true } }),
+      client.courseSlugRedirect.findUnique({ where: { oldSlug: slug }, select: { courseId: true } }),
+    ]);
+    const mine = (row) => row && exceptCourseId && (row.id || row.courseId) === exceptCourseId;
+    if ((!course || mine(course)) && (!redirect || mine(redirect))) return slug;
+  }
+}
+
+// A program by its address — or by an address it used to have, so old links
+// keep working. The caller compares `course.slug` with what was asked for and
+// sends the visitor to the current address. `include` as for findUnique.
+async function findProgramBySlug(slug, include) {
+  const { prisma } = require("../db");
+  const s = String(slug || "");
+  if (!s) return null;
+  const found = await prisma.course.findUnique({ where: { slug: s }, ...(include ? { include } : {}) });
+  if (found) return found;
+  const moved = await prisma.courseSlugRedirect.findUnique({ where: { oldSlug: s } });
+  if (!moved) return null;
+  return prisma.course.findUnique({ where: { id: moved.courseId }, ...(include ? { include } : {}) });
+}
+
+module.exports = { PROGRAM_TYPE, PROGRAM_WHERE, isProgram, COURSES_DROPPED, programTitle, slugify, programSlugBase, freeSlug, findProgramBySlug };

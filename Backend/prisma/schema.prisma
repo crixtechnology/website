@@ -156,6 +156,10 @@ model Course {
   // start, in the admin's words ("15 December", "mid-January"). Admin no longer
   // sets an exact startsAt date — no program has one. Empty: not shown.
   startingFrom    String       @default("")
+  // Extras only some programs include (every program includes the offer
+  // letter, training certificate and LOR). Shown on the program's card/page.
+  joiningKit          Boolean  @default(false)
+  linkedinRecognition Boolean  @default(false)
   positions       Int?
   durationDays    Int?
   // When the course/internship begins. Students can buy (and get their
@@ -174,8 +178,22 @@ model Course {
   applications Application[]
   payments     Payment[]
   paymentRequests PaymentRequest[]
+  slugRedirects   CourseSlugRedirect[]
 
   @@map("courses")
+}
+
+// An address a program used to have (/programs/<oldSlug>), so links shared
+// before its address was cleaned up still open it (utils/programs.js
+// findProgramBySlug). Written by utils/programSlugsOnce.js.
+model CourseSlugRedirect {
+  oldSlug   String   @id @db.VarChar(191)
+  courseId  String
+  createdAt DateTime @default(now())
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@map("course_slug_redirects")
 }
 
 // One row per plan (basic / plus / pro) a course or internship offers. A tier

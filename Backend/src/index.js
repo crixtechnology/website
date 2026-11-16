@@ -9,6 +9,7 @@ const { storageStatus } = require("./utils/proctorStorage");
 const { careersStartup } = require("./utils/careersFirstRun");
 const { switchServicesOnce } = require("./utils/servicesSwitch");
 const { openTracksOnce } = require("./utils/tracksOpenOnce");
+const { cleanProgramSlugsOnce } = require("./utils/programSlugsOnce");
 const { startBotDigest } = require("./utils/botDigest");
 
 // A guessable JWT_SECRET would let anyone forge an admin login: stop here in production.
@@ -68,4 +69,6 @@ connectWithRetry().then((connected) => {
   if (connected) switchServicesOnce().catch((e) => console.error("[services] switch to the new list failed (will retry on next start):", e.message));
   // Opens every existing track once, now that status is the applications switch (utils/tracksOpenOnce.js).
   if (connected) openTracksOnce().catch((e) => console.error("[tracks] opening existing tracks failed (will retry on next start):", e.message));
+  // Clean "/programs/<domain>-<length>" addresses for existing programs, once; old ones redirect.
+  if (connected) cleanProgramSlugsOnce().catch((e) => console.error("[programs] cleaning program addresses failed (will retry on next start):", e.message));
 });

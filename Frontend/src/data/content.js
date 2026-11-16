@@ -495,7 +495,7 @@ Opportunities without a fee are not part of this program: they are listed as rol
 • Maintain professional conduct in all communications
 • Not share confidential task materials with third parties
 
-Some programs include a physical joining kit — not every one does; the program's plan details, or our team when you join, tell you whether yours includes one. Where it does, the kit is shipped to the postal address you give us. Delivery times depend on your location and the courier; please make sure your address is complete and correct — Crix Technology is not responsible for a kit that is delayed or lost because of an incorrect or incomplete address, or for delays caused by the courier.
+Some programs include a physical joining kit — not every one does; the program's details ("Also includes") tell you whether yours includes one. Where it does, the kit is shipped to the postal address you give us. Delivery times depend on your location and the courier; please make sure your address is complete and correct — Crix Technology is not responsible for a kit that is delayed or lost because of an incorrect or incomplete address, or for delays caused by the courier.
 
 Every trainee receives an offer letter for their program. A training certificate and a Letter of Recommendation are issued upon satisfactory completion of all assigned tasks.`,
       },

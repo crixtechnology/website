@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
 import { getLearnData } from "../../services/api.js";
 import { usePageMeta, programTitle } from "../../hooks/usePageMeta.js";
@@ -56,6 +56,13 @@ export default function Learn() {
     });
     return () => { alive = false; };
   }, [slug, isLoggedIn]);
+
+  // Opened from an old address of the program: move to its current one.
+  const navigate = useNavigate();
+  const currentSlug = data && data.course && data.course.slug;
+  useEffect(() => {
+    if (currentSlug && currentSlug !== slug) navigate(`/learn/${currentSlug}`, { replace: true });
+  }, [currentSlug, slug, navigate]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
