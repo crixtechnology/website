@@ -643,7 +643,7 @@ function TestLobby({ info, camera, onEnableCamera, onStart, starting, error }) {
 
 /* ================= the page ================= */
 export default function AptitudeTest() {
-  usePageMeta({ title: "Aptitude Test | Crix Technology" });
+  usePageMeta({ title: "Aptitude Test | Crix Technology", description: "Your Crix Technology aptitude test." });
   useNoIndex(true);
   const { applicationId } = useParams();
   const { isLoggedIn, openAuthModal } = useContext(UserContext);

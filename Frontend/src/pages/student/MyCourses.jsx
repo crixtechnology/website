@@ -8,7 +8,8 @@ import WalletCard from "../../components/WalletCard.jsx";
 import { ApplyTab, ApplicationsTab, NotificationsTab, useNotifications } from "../../components/CareersDashboard.jsx";
 import SectionTabs, { SectionPanel } from "../../components/SectionTabs.jsx";
 import { takeRememberedRole } from "../../data/careers.js";
-import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { usePageMeta, programTitle } from "../../hooks/usePageMeta.js";
+import { useNoIndex } from "../../hooks/useNoIndex.js";
 import { downloadReceiptPdf } from "../../utils/receiptPdfLazy.js";
 import { tierLabel } from "../../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../../utils/startDate.js";
@@ -29,7 +30,8 @@ const APPLICATION_VIEWS = [
 ];
 
 export default function MyCourses() {
-  usePageMeta({ title: "My Dashboard | Crix Technology" });
+  usePageMeta({ title: "My Dashboard | Crix Technology", description: "Your Crix Technology programs, applications, wallet and notifications." });
+  useNoIndex(true); // a private, signed-in page (robots.txt keeps crawlers out too)
   const [params, setParams] = useSearchParams();
   const view = [...TABS, ...APPLICATION_VIEWS].some(([id]) => id === params.get("tab")) ? params.get("tab") : "courses";
   const tab = view === "apply" ? "applications" : view;
@@ -160,7 +162,7 @@ export default function MyCourses() {
             {enrollments.map((en) => (
               <div className="admin-row" key={en._id}>
                 <div className="admin-row-main">
-                  <b>{en.course?.title || "Course"} {en.tier && <span className="plan-pill">{tierLabel(en.tier)}</span>} {en.expired && <span className="admin-pill expired">expired</span>}
+                  <b>{en.course ? programTitle(en.course) || "Program" : "Program"} {en.tier && <span className="plan-pill">{tierLabel(en.tier)}</span>} {en.expired && <span className="admin-pill expired">expired</span>}
                     {!en.adminAccess && startsInFuture(en.course) && <span className="admin-pill new">starts {formatStartDate(en.course.startsAt)}</span>}</b>
                   <span className="admin-row-meta">
                     {en.adminAccess

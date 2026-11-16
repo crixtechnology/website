@@ -30,7 +30,7 @@ const TEMPLATE = [
 // filter them, and upload many at once from Excel or CSV. The correct answer is
 // only ever shown here — it is never sent to a candidate's browser.
 export default function AdminTestQuestions() {
-  usePageMeta({ title: "Question bank | Crix Technology" });
+  usePageMeta({ title: "Question Bank | Crix Technology" });
   const navigate = useNavigate();
   const { logout } = useContext(UserContext);
   const [questions, setQuestions] = useState([]);

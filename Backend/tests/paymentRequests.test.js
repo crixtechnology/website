@@ -12,6 +12,7 @@ jest.mock("../src/utils/razorpay", () => ({
   razorpay: { orders: { create: jest.fn(async () => ({ id: `order_mock_${Math.random().toString(36).slice(2)}`, currency: "INR" })) } },
 }));
 const { razorpay } = require("../src/utils/razorpay");
+const { programTitle } = require("../src/utils/programs");
 
 let app, prisma, adminToken;
 
@@ -81,7 +82,8 @@ describe("payment requests", () => {
 
     const receipts = await authed(request(app).get("/api/me/receipts"), token);
     expect(receipts.body.receipts).toHaveLength(1);
-    expect(receipts.body.receipts[0]).toMatchObject({ totalPaid: 2500, itemTitle: course.title, tier: "plus" });
+    // The receipt names the program's length too (utils/programs.js programTitle).
+    expect(receipts.body.receipts[0]).toMatchObject({ totalPaid: 2500, itemTitle: programTitle(course), tier: "plus" });
     expect(enrollment.paymentId).toBe(receipts.body.receipts[0].paymentId);
 
     // Idempotent: confirming again changes nothing and mints no second receipt.

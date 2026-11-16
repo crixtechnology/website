@@ -20,7 +20,7 @@ function fmtDate(d) {
 // from the normal checkout: it works whether the item is open or closed, and
 // the student pays it from their dashboard and gets access once it's paid.
 export default function AdminPaymentRequests() {
-  usePageMeta({ title: "Payment requests | Crix Technology" });
+  usePageMeta({ title: "Payment Requests | Crix Technology" });
   const navigate = useNavigate();
   const { logout } = useContext(UserContext);
   const [requests, setRequests] = useState([]);

@@ -8,14 +8,14 @@ const { addNotification, sendCareerEmail } = require("./notifications");
 //
 // There is no separate balance: the wallet IS the CreditEntry ledger that
 // checkout prices with (utils/pricing.js) — append-only, in paise,
-// balance = the sum. Credit comes from the admin
-// (adjustCredit below), from the signup bonus (grantSignupBonus) and from the
-// aptitude-test fee coming back as credit (utils/careers.js); it is spent
+// balance = the sum. Credit comes ONLY from the signup bonus (grantSignupBonus)
+// and from an admin (adjustCredit below) — nothing else (applying, the
+// aptitude test, a purchase) may ever add credit. It is spent
 // automatically as a discount at checkout, or in full via POST
 // /payments/pay-with-wallet when it covers the whole price. 1 credit = ₹1: it
 // only ever pays for purchases on the site — there is no withdrawal or transfer.
 //
-// Signup-bonus and test-fee credit carry an expiresAt; whatever is left of them
+// Signup-bonus credit carries an expiresAt (old test-fee credit did too); whatever is left of them
 // after that is taken back by an `expired` entry (expireCredits below).
 //
 // Anything that spends or removes credit takes a lock on the user's row first

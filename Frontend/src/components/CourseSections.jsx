@@ -6,7 +6,7 @@ import { site } from "../data/content.js";
 import { offeredTiers, planPrice, formatINR, isOpenForBuy, isFreeProgram } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
 import { isFull, placeWord, programFacts } from "../utils/positions.js";
-import { useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/usePageMeta.js";
+import { useJsonLd, canonicalUrl, SITE_URL, programKeywords, programTitle } from "../hooks/usePageMeta.js";
 
 // The extra sections of a course / internship page (CourseDetail in pages/pages.jsx).
 // Everything the admin types in (what you'll learn, who it's for, prerequisites, FAQs) is
@@ -125,15 +125,21 @@ export function RelatedPrograms({ course }) {
     getCourses().then((res) => {
       if (!alive || !res || !res.ok) return;
       const rank = (c) => (c.type === course.type ? 0 : 2) + (c.status === "closed" ? 1 : 0);
+      // One card per domain, and never this page's own domain: its other
+      // durations are already offered by the page's duration switch, and they
+      // share its title, so they looked like links back to this same page.
+      const domain = (c) => String(c.group || "").trim().toLowerCase() || `slug:${c.slug}`;
+      const seen = new Set([domain(course)]);
       const others = (res.courses || [])
         .filter((c) => c.slug && c.slug !== course.slug && c.type === "internship" && !isFreeProgram(c))
         .map((c, i) => ({ c, i }))
         .sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i)
-        .map((x) => x.c);
+        .map((x) => x.c)
+        .filter((c) => !seen.has(domain(c)) && seen.add(domain(c)));
       setItems(others.slice(0, 3));
     });
     return () => { alive = false; };
-  }, [course.slug, course.type]);
+  }, [course.slug, course.type, course.group]);
 
   if (!items.length) return null;
   return (
@@ -145,7 +151,7 @@ export function RelatedPrograms({ course }) {
             <span className="type-pill type-pill--internship">{kindLabel(c)}</span>
             <h3>{c.title}</h3>
             <p>{c.desc}</p>
-            <span className="related-more">See more →</span>
+            <span className="related-more">View details →</span>
           </Link>
         ))}
       </div>
@@ -228,7 +234,7 @@ export function useCourseJsonLd(course) {
   useJsonLd("course-jsonld", ok ? {
     "@context": "https://schema.org",
     "@type": "Course",
-    name: course.title,
+    name: programTitle(course),
     description: course.desc || course.title,
     url: canonicalUrl(),
     provider: { "@type": "Organization", name: "Crix Technology", url: SITE_URL, ...(site.email ? { email: site.email } : {}) },

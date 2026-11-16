@@ -16,7 +16,7 @@
 const express = require("express");
 const crypto = require("crypto");
 const { prisma } = require("../db");
-const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED, programTitle } = require("../utils/programs");
 const { safeEqual } = require("../utils/safeCompare");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
@@ -40,13 +40,13 @@ const MAX_PAISE = 10000000 * 100;
 const MAX_NOTE = 190;
 
 const USER_SUMMARY = { id: true, name: true, email: true, phone: true };
-const COURSE_SUMMARY = { id: true, title: true, slug: true, type: true, status: true, startsAt: true };
+const COURSE_SUMMARY = { id: true, title: true, slug: true, type: true, status: true, startsAt: true, durationDays: true };
 
 function shape(r) {
   return {
     _id: r.id,
     user: r.user ? { _id: r.user.id, name: r.user.name, email: r.user.email, phone: r.user.phone } : undefined,
-    course: r.course ? { _id: r.course.id, title: r.course.title, slug: r.course.slug, type: r.course.type, startsAt: r.course.startsAt || null } : undefined,
+    course: r.course ? { _id: r.course.id, title: programTitle(r.course), slug: r.course.slug, type: r.course.type, startsAt: r.course.startsAt || null } : undefined,
     tier: r.tier,
     amount: r.amount / 100,
     allowDiscounts: r.allowDiscounts !== false,
@@ -251,7 +251,7 @@ router.post("/admin/payment-requests", requireAdmin, async (req, res, next) => {
 
     // Best-effort heads-up; the request is on their dashboard either way.
     sendPaymentRequestEmail({
-      to: user.email, name: user.name, itemTitle: course.title, itemType: course.type,
+      to: user.email, name: user.name, itemTitle: programTitle(course), itemType: course.type,
       tier: request.tier, amount: paise / 100, note: cleanNote,
     }).catch((err) => console.error("[payment-requests] email failed:", err.message));
 

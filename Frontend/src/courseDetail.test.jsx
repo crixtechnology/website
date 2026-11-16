@@ -167,7 +167,7 @@ describe("search-engine markup", () => {
   it("describes the course, and leaves when the page does", async () => {
     await renderPage({ ...base, durationDays: 30, outcomes: ["Build a REST API"] });
     const data = JSON.parse(ld().textContent);
-    expect(data).toMatchObject({ "@type": "Course", name: "Web Development", provider: { name: "Crix Technology" }, teaches: ["Build a REST API"] });
+    expect(data).toMatchObject({ "@type": "Course", name: "Web Development — 1 month", provider: { name: "Crix Technology" }, teaches: ["Build a REST API"] });
     expect(data.hasCourseInstance).toMatchObject({ courseMode: "online", courseWorkload: "P30D" });
     act(() => root.unmount());
     expect(ld()).toBeNull();

@@ -51,3 +51,24 @@ describe("validators", () => {
     expect(emailFormatError("real@gmail.com")).toBe("");
   });
 });
+
+// One domain is sold in several durations under the same title: each page,
+// card and receipt names its length so they don't read as duplicates.
+describe("programTitle / programDescription", () => {
+  const { programTitle, programDescription } = require("../hooks/usePageMeta.js");
+  test("adds the length to the name", () => {
+    expect(programTitle({ title: "MERN Stack Developer", durationDays: 90 })).toBe("MERN Stack Developer — 3 months");
+    expect(programTitle({ title: "Web", durationDays: 30 })).toBe("Web — 1 month");
+    expect(programTitle({ title: "Cyber", durationDays: 45 })).toBe("Cyber — 45 days");
+  });
+  test("leaves a name that already says its length, or has none", () => {
+    expect(programTitle({ title: "MERN — 3 Months", durationDays: 90 })).toBe("MERN — 3 Months");
+    expect(programTitle({ title: "Web 6-month track", durationDays: 180 })).toBe("Web 6-month track");
+    expect(programTitle({ title: "Open ended" })).toBe("Open ended");
+    expect(programTitle(null)).toBe("");
+  });
+  test("the description starts with the full name", () => {
+    expect(programDescription({ title: "Web", durationDays: 60, desc: "Build sites." })).toBe("Web — 2 months: Build sites.");
+    expect(programDescription({ title: "Web", durationDays: 60 })).toMatch(/^Web — 2 months — online Training \+ Internship/);
+  });
+});

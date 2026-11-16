@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import seo from "../data/seo.json";
+import { formatDuration } from "../utils/duration.js";
 
 export const SITE_URL = seo.siteUrl;
 
@@ -34,6 +35,28 @@ export function routeMeta(path) {
     keywords: r.keywords || null,
     crumbs: r.crumb ? [{ name: "Home", path: "/" }, { name: r.crumb, path }] : null,
   };
+}
+
+// A program's name with its length, e.g. "MERN Stack Developer — 3 months".
+// One domain is sold in several durations under the same title (1 / 2 / 3 / 6
+// months), so the title alone gave each duration's page the same <title>, H1
+// and description — duplicates in search results. A title that already says
+// its length is left as it is. scripts/prerender-meta.js does the same.
+export function programTitle(course) {
+  if (!course || !course.title) return "";
+  const length = formatDuration(course.durationDays);
+  if (!length) return course.title;
+  const n = String(Number(course.durationDays) / 30);
+  const already = new RegExp(`\\b(${n}[\\s-]*months?|${Number(course.durationDays)}[\\s-]*days?)\\b`, "i");
+  return already.test(course.title) ? course.title : `${course.title} — ${length}`;
+}
+
+// A program page's meta description: its length-qualified name, then its own
+// summary — so the 1 / 2 / 3 / 6 month pages of one domain don't share one.
+export function programDescription(course) {
+  if (!course || !course.title) return "";
+  const desc = String(course.desc || "").trim();
+  return desc ? `${programTitle(course)}: ${desc}` : `${programTitle(course)} — online Training + Internship by Crix Technology, Ahmedabad.`;
 }
 
 // Keywords for one course/internship page, taken only from its own content:

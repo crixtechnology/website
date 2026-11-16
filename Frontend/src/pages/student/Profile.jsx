@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { UserContext, isProfileComplete, profileMissing } from "../../context/UserContext.jsx";
 import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { useNoIndex } from "../../hooks/useNoIndex.js";
 import { Alert } from "../../components/ui.jsx";
 import PhoneInput from "../../components/PhoneInput.jsx";
 import PasswordSettings from "../../components/PasswordSettings.jsx";
@@ -23,6 +24,7 @@ const TABS = [
 
 export default function Profile() {
   usePageMeta({ title: "Your Profile | Crix Technology", description: "Manage your Crix Technology account details." });
+  useNoIndex(true); // a private, signed-in page
   const { isLoggedIn, user, updateProfile, openAuthModal } = useContext(UserContext);
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();

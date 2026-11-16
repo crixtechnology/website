@@ -38,9 +38,10 @@ export const values = [
   { icon: "star", title: "Growth", desc: "Clear feedback, growing responsibility, and a path to a full-time role for those who earn it." },
 ];
 
-// The hiring timeline. The signup bonus comes from the live terms.
-export const hiringSteps = ({ signupBonus }) => [
-  { title: "Log in", desc: `Log in with your email and a password — a new email gets a free account straight away, with ${signupBonus} bonus credits in your wallet.` },
+// The hiring timeline. Wallet credit comes only from the signup bonus and from
+// Crix (Admin) — never from applying or the test — so it isn't part of these steps.
+export const hiringSteps = () => [
+  { title: "Log in", desc: "Log in with your email and a password — a new email gets a free account straight away." },
   { title: "Apply for a role", desc: "Pick a role, accept the Terms & Conditions and confirm you're 18 or older. Applying and the test are free." },
   { title: "Take the aptitude test", desc: "Our team gives you access to the test and emails you when it's ready — then take it from My Dashboard." },
   { title: "Get your result", desc: "You'll hear from us within 7 days of submitting the test." },
@@ -48,17 +49,6 @@ export const hiringSteps = ({ signupBonus }) => [
   { title: "Final selection", desc: "Selected candidates receive their offer letter." },
 ];
 
-// "Usable up to ..." line for the credit rules.
-const usageText = (percent) =>
-  percent >= 100 ? "They can pay for up to the full value of a purchase." : `They can pay for up to ${percent}% of a purchase.`;
-
-// What the signup bonus credit is worth and how long it lasts.
-export const creditPoints = ({ signupBonus, creditExpiryMonths, creditUsagePercent }) => [
-  `${signupBonus} signup bonus credits as soon as you create your account.`,
-  "1 credit = ₹1, usable only for purchases on crixtechnology.com.",
-  `${creditExpiryMonths > 0 ? `Credits are valid for ${creditExpiryMonths} months. ` : "Credits don't expire. "}${usageText(creditUsagePercent)}`,
-  "Credits cannot be withdrawn as cash or transferred.",
-];
 
 // Where the role someone chose on the Careers page is remembered while they
 // log in (or create their account), so the dashboard can open on it.
@@ -118,14 +108,13 @@ export const careersRulesDocument = (terms, { role = "", rules = null } = {}) =>
     intro:
       "These rules apply to every application made through the Crix Technology Careers page. They are part of our Terms of Service (section 8, \"Careers, Aptitude Test & Selection\"), which you accept when you apply.",
     sections: [
-      // Hiring steps and credit rules only when the live terms are known (the Careers page).
+      // Hiring steps and the no-fee rule only on the Careers page (terms passed).
       ...(terms ? [
         { title: "How hiring works", content: bullets(hiringSteps(terms).map((s) => `${s.title} — ${s.desc}`)) },
         {
           title: "No fee to apply",
           content:
-            "Applying for a role and taking its aptitude test are free. Crix Technology never asks an applicant for a registration, test or processing fee — if anyone does, don't pay and tell us. After you apply, our team gives you access to the test and emails you when it's ready.\n\n" +
-            bullets(creditPoints(terms)),
+            "Applying for a role and taking its aptitude test are free. Crix Technology never asks an applicant for a registration, test or processing fee — if anyone does, don't pay and tell us. Applying and taking the test earn no wallet credit. After you apply, our team gives you access to the test and emails you when it's ready.",
         },
       ] : []),
       { title: "The aptitude test", content: bullets([...facts, ...testRuleLines(rules || {})]) },

@@ -88,10 +88,11 @@ describe("the Training + Internship page", () => {
     expect(titles()).toHaveLength(5);
 
     await pick("3 months");
-    expect(titles()).toEqual(["Web 3M", "Data 3M"]);
+    // Each card names its length, since one domain is a card per duration.
+    expect(titles()).toEqual(["Web 3M — 3 months", "Data 3M — 3 months"]);
     expect(pills().map((b) => b.getAttribute("aria-pressed"))).toEqual(["false", "false", "false", "true", "false"]);
     await pick("2 months");
-    expect(titles()).toEqual(["Web 2M"]);
+    expect(titles()).toEqual(["Web 2M — 2 months"]);
 
     // Nothing of that length: says so, and offers the way back.
     await pick("6 months");
