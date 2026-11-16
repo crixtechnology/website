@@ -398,7 +398,7 @@ export function ApplicationsTab({ onGoToApply }) {
               )}
               {a.status === "shortlisted" && <p className="form-note" style={{ marginBottom: 0 }}>You're shortlisted. We'll share your interview date, time and meeting link here and by email.</p>}
               {a.status === "selected" && <p className="form-note" style={{ marginBottom: 0 }}>Congratulations — you're selected! Your offer letter is on its way by email.</p>}
-              {CLOSED.includes(a.status) && <p className="form-note" style={{ marginBottom: 0 }}>Thank you for applying. You're welcome to apply again — your wallet credits are still yours to use.</p>}
+              {CLOSED.includes(a.status) && <p className="form-note" style={{ marginBottom: 0 }}>Thank you for applying. You're welcome to apply again.</p>}
             </div>
           );
         })}

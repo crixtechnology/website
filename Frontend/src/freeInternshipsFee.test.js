@@ -41,3 +41,20 @@ describe("no test or processing fee", () => {
     expect(all).toMatch(/No fee to apply\. Applying for a role and taking its aptitude test are free/);
   });
 });
+
+// Wallet credit comes only from the signup bonus and from Crix (Admin):
+// applying or taking the aptitude test never earns any.
+describe("no credit for applying or the test", () => {
+  it("the hiring steps and rules document don't promise credit", () => {
+    const steps = hiringSteps(defaultTerms).map((s) => s.desc).join("\n");
+    const rules = JSON.stringify(careersRulesDocument(defaultTerms));
+    expect(`${steps}\n${rules}`).not.toMatch(/bonus credits|signup bonus|credits? (are|is) valid/i);
+    expect(rules).toMatch(/earn no wallet credit/);
+  });
+
+  it("the Terms name only the signup bonus and Crix as sources of credit", () => {
+    const all = JSON.stringify(legal.terms);
+    expect(all).toMatch(/Credit reaches your wallet in only two ways/);
+    expect(all).not.toMatch(/returned (to your Crix wallet )?as credit|credit returned from a past aptitude-test fee/i);
+  });
+});
