@@ -164,6 +164,9 @@ model Course {
   // letter, training certificate and LOR). Shown on the program's card/page.
   joiningKit          Boolean  @default(false)
   linkedinRecognition Boolean  @default(false)
+  // Live classes plus recordings to watch later. On for every program unless
+  // the admin turns it off; shown as "Lectures: Live + Recorded available".
+  liveRecordedLectures Boolean @default(true)
   positions       Int?
   durationDays    Int?
   // When the course/internship begins. Students can buy (and get their

@@ -159,6 +159,14 @@ describe("internship-style details and positions", () => {
     expect((await update(res.body.course._id, { stipendTrainingMonths: 3 })).status).toBe(200);
   });
 
+  it("offers live + recorded lectures unless the admin turns it off", async () => {
+    expect((await create()).body.course.liveRecordedLectures).toBe(true);
+    const off = await create({ liveRecordedLectures: false });
+    expect(off.body.course.liveRecordedLectures).toBe(false);
+    expect((await update(off.body.course._id, { liveRecordedLectures: true })).body.course.liveRecordedLectures).toBe(true);
+    expect((await create({ liveRecordedLectures: "yes" })).status).toBe(400);
+  });
+
   it("rejects a bad number of positions or over-long text", async () => {
     expect((await create({ positions: 0 })).status).toBe(400);
     expect((await create({ positions: 1.5 })).status).toBe(400);

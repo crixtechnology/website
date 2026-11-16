@@ -100,6 +100,8 @@ export const programFacts = (item, opts = {}) => [
   ["Experience", item.experience],
   ["Duration", item.duration || formatDuration(item.durationDays)],
   ["Mode", item.mode],
+  // Training + Internship programs only (Admin's switch, on unless turned off).
+  ["Lectures", item.liveRecordedLectures === true && "Live + Recorded available"],
   ["Starts on", item.startsOn || item.startingFrom],
   // Extras only some Training + Internship programs include (Admin switches).
   ["Also includes", [item.joiningKit && "Joining kit", item.linkedinRecognition && "LinkedIn recognition"].filter(Boolean).join(" · ")],

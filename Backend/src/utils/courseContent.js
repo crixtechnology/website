@@ -26,7 +26,7 @@ const LIST_LIMITS = {
 const TEXT_FIELDS = { stipend: "Stipend", experience: "Experience", mode: "Mode", group: "Domain group", startingFrom: "Starting from" };
 // Extras only some programs include (every program has the offer letter,
 // training certificate and LOR). On/off, shown on the program's card and page.
-const FLAG_FIELDS = { joiningKit: "Joining kit", linkedinRecognition: "LinkedIn recognition" };
+const FLAG_FIELDS = { joiningKit: "Joining kit", linkedinRecognition: "LinkedIn recognition", liveRecordedLectures: "Live + recorded lectures" };
 const FAQ_LIMITS = { max: 15, qChars: 200, aChars: 1500 };
 
 const KEYS = [...Object.keys(LIST_LIMITS), "faqs", ...Object.keys(TEXT_FIELDS), ...Object.keys(FLAG_FIELDS), "positions", "stipendTrainingMonths"];

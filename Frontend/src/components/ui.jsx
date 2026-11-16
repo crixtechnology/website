@@ -946,20 +946,12 @@ export function CheckoutExtras({ item, tier, onPayable, onWalletCovers, getQuote
 /* ---------- StipendStrip: a program's stipend, on its card and its page ----------
    The amount, a "Performance based" badge and — when the program opens with
    training months that pay no stipend (Admin) — a month-by-month bar with
-   which months are training and which pay. "No Stipend" shows as a quiet
-   line. Nothing when the program states no stipend. */
+   which months are training and which pay. Nothing at all when the program
+   pays no stipend (Admin's Stipend box unticked, or an old "No Stipend"). */
 const monthsLabel = (from, to) => (from === to ? `Month ${from}` : `Months ${from}–${to}`);
 export function StipendStrip({ item, className = "" }) {
   const info = stipendInfo(item);
-  if (!info) return null;
-  if (info.none) {
-    return (
-      <div className={`stipend-strip stipend-strip--none ${className}`.trim()}>
-        <span className="stipend-strip-label">Stipend</span>
-        <span className="stipend-strip-none">Not included</span>
-      </div>
-    );
-  }
+  if (!info || info.none) return null;
   const { amount, per, months, trainingMonths: t } = info;
   return (
     <div className={`stipend-strip ${className}`.trim()}>

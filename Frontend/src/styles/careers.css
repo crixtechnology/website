@@ -199,9 +199,5 @@
 .stipend-legend span{display:inline-flex;align-items:center;gap:6px}
 .stipend-legend .is-paid{color:var(--text)}
 .stipend-legend i{display:inline-block;width:8px;height:8px;border-radius:999px}
-.stipend-strip--none{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
-  background:rgba(255,255,255,.02);border-color:var(--line);padding:10px 16px}
-.stipend-strip-none{font-size:.85rem;color:var(--muted);white-space:nowrap}
 .stipend-strip--page{margin:14px 0 4px;max-width:520px}
 [data-theme="light"] .stipend-track .is-training,[data-theme="light"] .stipend-legend .is-training i{background:rgba(85,98,122,.25)}
-[data-theme="light"] .stipend-strip--none{background:rgba(16,27,51,.02)}
