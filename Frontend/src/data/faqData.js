@@ -152,10 +152,10 @@ export const FAQ_TOPICS = [
     id: "referrals", icon: "🎁", label: "Wallet & credit",
     faqs: [
       { id: "r-wallet", q: "What is the wallet and how do I use it?", k: "wallet credit balance history pay spend add money top up",
-        a: "Your wallet holds credit (1 credit = ₹1). It comes from:\n• Your signup bonus, once your email is verified\n• Credit our team adds\nAt checkout the credit is taken off the price automatically, and if it covers the whole price you can pay with the wallet alone. Your balance, history and each credit's expiry date are in My Dashboard → My Wallet.\nBonus credit is valid for a limited time, and there may be a limit on how much of one purchase credit can pay for — the wallet shows both.",
+        a: "Your wallet holds credit (1 credit = ₹1). It comes from:\n• Your signup bonus, added when you create your account\n• Credit our team adds\nAt checkout the credit is taken off the price automatically, and if it covers the whole price you can pay with the wallet alone. Your balance, history and each credit's expiry date are in My Dashboard → My Wallet.\nBonus credit is valid for a limited time, and there may be a limit on how much of one purchase credit can pay for — the wallet shows both.",
         links: [{ to: "/dashboard", label: "Open my wallet" }] },
       { id: "r-bonus", q: "How do I get my signup bonus?", k: "signup bonus welcome credit free credits new account verify email code",
-        a: "New accounts get bonus credits. If you signed up with Google, they're added straight away. If you signed up with an email and password, open My Dashboard → My Wallet and choose “Email me a code” — enter the code we send you and the credits are added. The bonus is valid for a limited time.",
+        a: "Every new account gets bonus credits, added to your wallet as soon as you sign up — with Google or with an email and password. You'll see them in My Dashboard → My Wallet. The bonus is valid for a limited time.",
         links: [{ to: "/dashboard", label: "Open my wallet" }] },
       { id: "r-credit", q: "Can I withdraw wallet credit as cash?", k: "credit cash withdraw transfer money value",
         a: "No. Wallet credit has no cash value and can't be withdrawn, transferred or exchanged." },

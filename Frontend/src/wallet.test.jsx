@@ -71,27 +71,12 @@ describe("WalletCard", () => {
     expect(container.querySelectorAll(".wallet-history li")).toHaveLength(9);
   });
 
-  it("lets a new student verify their email to collect the signup bonus", async () => {
-    api.getMyWallet.mockResolvedValue({ ok: true, wallet: wallet({ balance: 0, available: 0, earned: 0, spent: 0, entries: [], pendingBonus: 300 }) });
-    api.sendBonusCode.mockResolvedValue({ ok: true, sentTo: "asha@example.com" });
-    api.verifyBonusCode.mockResolvedValue({ ok: true, credited: 300, wallet: wallet({ balance: 300, available: 300, earned: 300, spent: 0, pendingBonus: 0, entries: [{ id: "signup_1", amount: 300, kind: "signup_bonus", type: "Signup Bonus", label: "Signup Bonus", createdAt: "2026-10-16T10:00:00Z" }] }) });
+  it("shows the signup bonus as already in the wallet — there's no code to enter", async () => {
+    api.getMyWallet.mockResolvedValue({ ok: true, wallet: wallet({ balance: 300, available: 300, earned: 300, spent: 0, entries: [{ id: "signup_1", amount: 300, kind: "signup_bonus", type: "Signup Bonus", label: "Signup Bonus", createdAt: "2026-10-16T10:00:00Z" }] }) });
     await render(<WalletCard />);
-    expect(q(".wallet-bonus").textContent).toContain("300 bonus credits are waiting");
-
-    await act(async () => { q(".wallet-bonus button").click(); });
-    expect(api.sendBonusCode).toHaveBeenCalled();
-    expect(q(".wallet-bonus").textContent).toContain("asha@example.com");
-
-    const input = q("#bonus-code");
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(input, "12a3456");
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    expect(input.value).toBe("123456"); // digits only
-    await act(async () => { q(".wallet-bonus-form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
-    expect(api.verifyBonusCode).toHaveBeenCalledWith("123456");
-    expect(q(".wallet-bonus")).toBeNull();
     expect(q(".wallet-amount").textContent).toBe("₹300");
+    expect(q(".wallet-bonus")).toBeNull();
+    expect(container.textContent).not.toMatch(/Email me a code/);
   });
 
   it("renders nothing when the wallet can't be loaded, rather than breaking the profile page", async () => {

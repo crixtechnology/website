@@ -14,7 +14,7 @@ const { sendWelcomeEmail } = require("../utils/mailer");
 const { getCareerSettings } = require("../utils/careerSettings");
 const { respondNoEarlierThan } = require("../utils/authTiming");
 const { publicUser, ensureDefaultPassword, nameFromEmail, educationData } = require("../utils/accounts");
-const { grantSignupBonus, holdSignupBonus, claimSignupBonus } = require("../utils/wallet");
+const { grantSignupBonus, claimSignupBonus } = require("../utils/wallet");
 
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -147,6 +147,10 @@ router.post("/login", authLimiter, async (req, res, next) => {
 
     if (rejectIfAlreadyLoggedInElsewhere(res, user)) return;
 
+    // An account from when email sign-ups had to confirm their address first
+    // gets its waiting bonus now (no code needed any more).
+    if (user.signupBonusPending) await claimSignupBonus(user.id).catch((e) => console.error("[auth] signup bonus release failed:", e.message));
+
     const sessionId = await startSession(user);
     const token = signToken(user, sessionId);
     respondNoEarlierThan(workStartedAt, () => res.json({ ok: true, token, user: publicUser(user) }));
@@ -201,8 +205,9 @@ async function createFromLogin(req, res, { email, password, createAccount, ageCo
     }
     throw createErr;
   }
-  // The welcome credit (utils/wallet.js) waits until the email is verified.
-  await holdSignupBonus(user).catch((e) => console.error("[auth] signup bonus hold failed:", e.message));
+  // Every new account gets the welcome credit straight away (utils/wallet.js),
+  // whether it signed up with an email and password or with Google.
+  await grantSignupBonus(user).catch((e) => console.error("[auth] signup bonus failed:", e.message));
   const fresh = (await prisma.user.findUnique({ where: { id: user.id } })) || user;
   welcome(fresh);
   const sessionId = await startSession(user);

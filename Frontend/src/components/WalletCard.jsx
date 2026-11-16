@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMyWallet, sendBonusCode, verifyBonusCode } from "../services/api.js";
-import { Alert } from "./ui.jsx";
+import { getMyWallet } from "../services/api.js";
 import { formatINR } from "../utils/tiers.js";
 
 const shortDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -14,55 +13,6 @@ const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || 
 // what it's been spent on, and how it's used. Credit is
 // applied at checkout, and when it covers the whole price the buy popup offers
 // "Pay with wallet" — see BuyModal in components/ui.jsx.
-/* ---------- the signup bonus, waiting for the email to be verified ---------- */
-function BonusVerify({ credits, onClaimed }) {
-  const [sentTo, setSentTo] = useState("");
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState({ kind: "", text: "" });
-
-  const send = async () => {
-    if (busy) return;
-    setBusy(true);
-    setMsg({ kind: "", text: "" });
-    const res = await sendBonusCode();
-    setBusy(false);
-    if (res.ok) setSentTo(res.sentTo || "your email");
-    else setMsg({ kind: "error", text: res.error });
-  };
-  const verify = async (e) => {
-    e.preventDefault();
-    if (busy || !/^\d{6}$/.test(code.trim())) { setMsg({ kind: "error", text: "Enter the 6-digit code from the email." }); return; }
-    setBusy(true);
-    setMsg({ kind: "", text: "" });
-    const res = await verifyBonusCode(code.trim());
-    setBusy(false);
-    if (res.ok) onClaimed(res.wallet);
-    else setMsg({ kind: "error", text: res.error });
-  };
-
-  return (
-    <div className="wallet-bonus" role="region" aria-label="Claim your signup bonus">
-      <b>{credits} bonus credits are waiting for you</b>
-      <p className="wallet-muted">Verify your email address to add them to your wallet.</p>
-      {!sentTo ? (
-        <button type="button" className="btn btn-solid" onClick={send} disabled={busy}>{busy ? "Sending…" : "Email me a code"}</button>
-      ) : (
-        <form onSubmit={verify} className="wallet-bonus-form">
-          <label htmlFor="bonus-code" className="wallet-muted">Enter the 6-digit code we sent to {sentTo}</label>
-          <div className="wallet-bonus-row">
-            <input id="bonus-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
-            <button type="submit" className="btn btn-solid" disabled={busy}>{busy ? "Checking…" : "Verify"}</button>
-          </div>
-          <button type="button" className="link-btn" onClick={send} disabled={busy}>Send a new code</button>
-        </form>
-      )}
-      <Alert inline kind={msg.kind || "info"}>{msg.text}</Alert>
-    </div>
-  );
-}
-
 export default function WalletCard() {
   const [wallet, setWallet] = useState(undefined); // undefined = loading, null = couldn't load
   const [showAll, setShowAll] = useState(false);
@@ -93,7 +43,6 @@ export default function WalletCard() {
         {wallet.usagePercent < 100 && <li>Credit can pay for up to {wallet.usagePercent}% of a purchase.</li>}
         <li>Credit can't be withdrawn as cash or transferred to anyone else.</li>
       </ul>
-      {wallet.pendingBonus > 0 && <BonusVerify credits={wallet.pendingBonus} onClaimed={(w) => w && setWallet(w)} />}
       {wallet.reserved > 0 && (
         <p className="wallet-note" role="status">
           {formatINR(wallet.reserved)} is held by a checkout you started and haven't finished, so only {formatINR(wallet.available)} can be spent right now.

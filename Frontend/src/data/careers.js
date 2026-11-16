@@ -40,7 +40,7 @@ export const values = [
 
 // The hiring timeline. The signup bonus comes from the live terms.
 export const hiringSteps = ({ signupBonus }) => [
-  { title: "Log in", desc: `Log in with your email and a password — a new email gets a free account straight away. Verify your email to get ${signupBonus} bonus credits.` },
+  { title: "Log in", desc: `Log in with your email and a password — a new email gets a free account straight away, with ${signupBonus} bonus credits in your wallet.` },
   { title: "Apply for a role", desc: "Pick a role, accept the Terms & Conditions and confirm you're 18 or older. Applying and the test are free." },
   { title: "Take the aptitude test", desc: "Our team gives you access to the test and emails you when it's ready — then take it from My Dashboard." },
   { title: "Get your result", desc: "You'll hear from us within 7 days of submitting the test." },
@@ -54,7 +54,7 @@ const usageText = (percent) =>
 
 // What the signup bonus credit is worth and how long it lasts.
 export const creditPoints = ({ signupBonus, creditExpiryMonths, creditUsagePercent }) => [
-  `${signupBonus} signup bonus credits when you create your account and verify your email.`,
+  `${signupBonus} signup bonus credits as soon as you create your account.`,
   "1 credit = ₹1, usable only for purchases on crixtechnology.com.",
   `${creditExpiryMonths > 0 ? `Credits are valid for ${creditExpiryMonths} months. ` : "Credits don't expire. "}${usageText(creditUsagePercent)}`,
   "Credits cannot be withdrawn as cash or transferred.",
