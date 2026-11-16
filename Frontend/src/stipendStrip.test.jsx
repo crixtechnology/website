@@ -35,9 +35,9 @@ it("shows no bar when the stipend runs from month 1", () => {
   expect(container.querySelector(".stipend-track")).toBeNull();
 });
 
-it("says plainly when a program has no stipend, and shows nothing when none is stated", () => {
+it("shows nothing when the program pays no stipend", () => {
   render({ stipend: "No Stipend", durationDays: 90 });
-  expect(text(".stipend-strip")).toBe("StipendNot included");
+  expect(container.innerHTML).toBe("");
   render({ stipend: "" });
   expect(container.innerHTML).toBe("");
 });
@@ -45,4 +45,12 @@ it("says plainly when a program has no stipend, and shows nothing when none is s
 it("leaves the stipend rows out of the facts when the strip draws it", () => {
   const item = { type: "internship", stipend: "₹4,000/month", durationDays: 90, stipendTrainingMonths: 1, mode: "Remote" };
   expect(programFacts(item, { stipendStrip: true }).map(([l]) => l)).toEqual(["Duration", "Mode"]);
+});
+
+it("shows live + recorded lectures on a program that has them", () => {
+  const item = { type: "internship", mode: "Remote" };
+  expect(Object.fromEntries(programFacts({ ...item, liveRecordedLectures: true }))).toMatchObject({ Lectures: "Live + Recorded available" });
+  expect(programFacts({ ...item, liveRecordedLectures: false }).map(([l]) => l)).not.toContain("Lectures");
+  // Careers and Free Internship roles have no such switch: nothing shown.
+  expect(programFacts(item).map(([l]) => l)).not.toContain("Lectures");
 });

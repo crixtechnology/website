@@ -302,7 +302,7 @@ describe("admin course form", () => {
       const labels = qa("form label").map((l) => l.textContent);
       // Same fields, same order as the Careers form…
       const order = ["Title", "Short description", "Skills (separate with commas)", "Responsibilities (one per line)", "Eligibility (one per line)",
-        "Positions available", "Stipend (empty = none)", "Experience", "Duration", "Mode", "Starts on (optional)"];
+        "Positions available", " This program pays a stipend", "Experience", "Duration", "Mode", "Starts on (optional)"];
       expect(labels.filter((l) => order.includes(l))).toEqual(order);
       // …with no tag, points or exact date, and its fee where those have the aptitude test.
       expect(labels).not.toContain("Tag");
@@ -340,6 +340,7 @@ describe("admin course form", () => {
       await pick("Training + Internship");
       await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
       await act(async () => { fill(q("#cd-positions"), "12"); });
+      await act(async () => { q("#cd-has-stipend").click(); });
       await act(async () => { fill(q("#cd-stipend"), "Up to ₹5,000/month"); });
       await act(async () => { fill(q("#cd-mode"), "Remote"); });
       await act(async () => { fill(q("#cd-skills"), "React, Node"); });
@@ -364,8 +365,10 @@ describe("admin course form", () => {
       await renderAdmin();
       await pick("Training + Internship");
       await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
-      // Only offered once there is a stipend.
+      // The amount and training months are asked for only once Stipend is ticked.
+      expect(q("#cd-stipend")).toBeNull();
       expect(q("#cd-stipend-training")).toBeNull();
+      await act(async () => { q("#cd-has-stipend").click(); });
       await act(async () => { fill(q("#cd-stipend"), "₹3000 - ₹7000/ month"); });
       const choose = (el, value) => {
         Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(el, value);
@@ -375,9 +378,48 @@ describe("admin course form", () => {
       // A 6-month program: none, or 1–5 training months.
       expect([...q("#cd-stipend-training").options].map((o) => o.value)).toEqual(["0", "1", "2", "3", "4", "5"]);
       await act(async () => { choose(q("#cd-stipend-training"), "2"); });
-      expect(q("#cd-stipend-training").selectedOptions[0].textContent).toBe("First 2 months — stipend from month 3");
+      expect(q("#cd-stipend-training").selectedOptions[0].textContent).toBe("First 2 months");
+      expect(container.textContent).toContain("Training (no stipend) in months 1–2; stipend in months 3–6.");
       await submit();
       expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ stipend: "₹3000 - ₹7000/ month", durationDays: 180, stipendTrainingMonths: 2 });
+    });
+
+    it("saves no stipend when Stipend is unticked, and asks for an amount when it is ticked", async () => {
+      await renderAdmin();
+      await pick("Training + Internship");
+      await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
+      await act(async () => { q("#cd-has-stipend").click(); });
+      await submit();
+      expect(api.adminCreateCourse).not.toHaveBeenCalled();
+      expect(container.textContent).toContain("Enter the stipend amount, or untick Stipend.");
+      await act(async () => { fill(q("#cd-stipend"), "₹4,000/month"); });
+      await act(async () => { q("#cd-has-stipend").click(); });
+      expect(q("#cd-stipend")).toBeNull();
+      await submit();
+      expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ stipend: "", stipendTrainingMonths: 0 });
+    });
+
+    it("loads an old \"No Stipend\" as unticked, and a real stipend as ticked", async () => {
+      await renderAdmin([{ ...base, stipend: "No Stipend" }]);
+      await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
+      expect(q("#cd-has-stipend").checked).toBe(false);
+      act(() => root.unmount());
+      root = createRoot(container);
+      await renderAdmin([{ ...base, stipend: "₹4,000/month", stipendTrainingMonths: 1, durationDays: 90 }]);
+      await act(async () => { qa("button").find((b) => b.textContent === "Edit").click(); });
+      expect(q("#cd-has-stipend").checked).toBe(true);
+      expect(q("#cd-stipend").value).toBe("₹4,000/month");
+      expect(q("#cd-stipend-training").value).toBe("1");
+    });
+
+    it("ticks live + recorded lectures for a new program, and saves it when unticked", async () => {
+      await renderAdmin();
+      await pick("Training + Internship");
+      await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
+      expect(q("#cd-live-recorded").checked).toBe(true);
+      await act(async () => { q("#cd-live-recorded").click(); });
+      await submit();
+      expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ liveRecordedLectures: false });
     });
 
     it("leaves positions blank for no limit, and refuses a bad number", async () => {
