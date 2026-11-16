@@ -199,19 +199,59 @@ it("shows the cards in a random order", async () => {
   expect(titles()).toEqual(["B Track", "C Track", "A Track"]);
 });
 
-it("logged in, shows the fee less the student's wallet credit as payable", async () => {
+it("logged in, takes the student's wallet credit straight off the price shown", async () => {
   api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 999)] });
   api.getMyWallet.mockResolvedValue({ ok: true, wallet: { available: 50, usagePercent: 100 } });
   api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [] });
   await renderTI({ user: { id: "u1", name: "Asha" }, isLoggedIn: true });
   const price = container.querySelector(".card-price");
-  expect(price.textContent).toContain("999");
-  expect(price.querySelector(".card-price-wallet").textContent).toMatch(/Payable\s*₹\s?949/);
+  // Final price after the ₹50 credit, the full price struck through, and a note why.
+  expect(price.querySelector(".price-now").textContent).toMatch(/₹\s?949$/);
+  expect(price.querySelector(".price-old").textContent).toMatch(/₹\s?999$/);
+  expect(price.querySelector(".price-off").textContent).toBe("5% off");
+  expect(price.querySelector(".card-price-wallet-note").textContent).toMatch(/Includes your ₹\s?50 wallet credit/);
+  expect(price.textContent).not.toMatch(/Payable/);
+});
+
+it("shows ₹0 when the wallet pays for the whole program, as checkout does", async () => {
+  api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 999)] });
+  api.getMyWallet.mockResolvedValue({ ok: true, wallet: { available: 5000, usagePercent: 100 } });
+  api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [] });
+  await renderTI({ user: { id: "u1", name: "Asha" }, isLoggedIn: true });
+  const price = container.querySelector(".card-price");
+  expect(price.querySelector(".price-now").textContent).toMatch(/₹\s?0$/);
+  expect(price.querySelector(".card-price-wallet-note").textContent).toMatch(/Paid in full from your ₹\s?999 wallet credit/);
 });
 
 it("logged out, shows only the admin's price — no wallet line", async () => {
   api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 999)] });
   await renderTI({ user: null, isLoggedIn: false });
   expect(api.getMyWallet).not.toHaveBeenCalled();
-  expect(container.querySelector(".card-price-wallet")).toBeNull();
+  expect(container.querySelector(".card-price-wallet-note")).toBeNull();
+  expect(container.querySelector(".card-price .price-now").textContent).toMatch(/₹\s?999$/);
+});
+
+// The owner's example: original ₹999, offer ₹899; with ₹50 in the wallet the
+// card shows ₹849, still against the original ₹999.
+it("takes wallet credit off the offer price, against the original price", async () => {
+  const offer = { ...program("Python Developer", 899), tiers: [{ tier: "basic", price: 899, originalPrice: 999, discountPercent: 0, features: [] }] };
+  api.getCourses.mockResolvedValue({ ok: true, courses: [offer] });
+  api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [] });
+
+  api.getMyWallet.mockResolvedValue({ ok: true, wallet: { available: 50, usagePercent: 100 } });
+  await renderTI({ user: { id: "u1", name: "Asha" }, isLoggedIn: true });
+  const price = container.querySelector(".card-price");
+  expect(price.querySelector(".price-old").textContent).toMatch(/₹\s?999$/);
+  expect(price.querySelector(".price-now").textContent).toMatch(/₹\s?849$/);
+  expect(price.querySelector(".price-off").textContent).toBe("15% off");
+});
+
+it("logged out, the same program shows the offer price only", async () => {
+  const offer = { ...program("Python Developer", 899), tiers: [{ tier: "basic", price: 899, originalPrice: 999, discountPercent: 0, features: [] }] };
+  api.getCourses.mockResolvedValue({ ok: true, courses: [offer] });
+  await renderTI({ user: null, isLoggedIn: false });
+  const price = container.querySelector(".card-price");
+  expect(price.querySelector(".price-old").textContent).toMatch(/₹\s?999$/);
+  expect(price.querySelector(".price-now").textContent).toMatch(/₹\s?899$/);
+  expect(price.querySelector(".price-off").textContent).toBe("10% off");
 });
