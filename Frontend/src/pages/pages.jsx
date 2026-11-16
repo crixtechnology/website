@@ -48,7 +48,7 @@ import { useTouched, focusFirstError } from "../hooks/useTouched.js";
 import PhoneInput from "../components/PhoneInput.jsx";
 import { CourseFacts, CourseLists, CourseFaq, RelatedPrograms, EnrollBar, useCourseJsonLd } from "../components/CourseSections.jsx";
 import { offeredTiers, isOpenForBuy, isFreeProgram, TIER_ORDER } from "../utils/tiers.js";
-import { isFull, placeWord, positionsTag } from "../utils/positions.js";
+import { isFull, placeWord, positionsTag, stipendInfo } from "../utils/positions.js";
 
 // The ?tier= a purchase link carries, if it names a real plan.
 const tierFromParams = (params) => {
@@ -228,7 +228,8 @@ export function TrainingInternship() {
   const [buyItem, setBuyItem] = useState(null);
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
-  // The duration filter: "all", or a length in days (30 / 60 / 90 / 180).
+  // The filter: "all", a length in days (30 / 60 / 90 / 180), or "stipend"
+  // (only programs that pay a stipend — Admin's Stipend box ticked).
   const [duration, setDuration] = useState("all");
   const [params, setParams] = useSearchParams();
   // What they already have: those cards say "View in My Dashboard" instead of offering plans again.
@@ -289,9 +290,12 @@ export function TrainingInternship() {
   // Shuffled once per list (each visit sees a fresh order), so every filter shows
   // its cards in a random order but switching filters doesn't reshuffle.
   const programs = useMemo(() => shuffled(liveInternships.filter((item) => !isFreeProgram(item))), [liveInternships]);
-  const shown = duration === "all" ? programs : programs.filter((item) => Number(item.durationDays) === duration);
+  const paysStipend = (item) => { const info = stipendInfo(item); return !!info && !info.none; };
+  const shown = duration === "all" ? programs
+    : duration === "stipend" ? programs.filter(paysStipend)
+      : programs.filter((item) => Number(item.durationDays) === duration);
   // "3 months" -> "3-month", for "No 3-month programs right now."
-  const durationWord = duration === "all" ? "" : formatDuration(duration).replace(" ", "-").replace(/s$/, "");
+  const durationWord = typeof duration === "number" ? formatDuration(duration).replace(" ", "-").replace(/s$/, "") : "";
 
   // Search engines: the programs on this page as an ItemList pointing at each
   // one's own page (only live entries have a slug/page to point at).
@@ -314,12 +318,12 @@ export function TrainingInternship() {
       <span id="courses" className="anchor-section" aria-hidden="true" />
       <section id="programs" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
-          {/* Duration filter: All, then one capsule per length a program can run for. */}
-          <div className="filter-pills" role="group" aria-label="Filter programs by duration">
-            {["all", ...PROGRAM_DURATIONS].map((d) => (
+          {/* Filter: All, one capsule per length a program can run for, then Stipend. */}
+          <div className="filter-pills" role="group" aria-label="Filter programs">
+            {["all", ...PROGRAM_DURATIONS, "stipend"].map((d) => (
               <button key={d} type="button" className={`filter-pill${duration === d ? " on" : ""}`} aria-pressed={duration === d}
                 onClick={() => setDuration(d)}>
-                {d === "all" ? "All" : formatDuration(d)}
+                {d === "all" ? "All" : d === "stipend" ? "Stipend" : formatDuration(d)}
               </button>
             ))}
           </div>
@@ -332,7 +336,8 @@ export function TrainingInternship() {
           </div>
           {!loading && shown.length === 0 && (
             <p className="filter-empty" role="status">
-              {duration === "all" ? "No programs are open right now — check back soon." : `No ${durationWord} programs right now.`}
+              {duration === "all" ? "No programs are open right now — check back soon."
+                : duration === "stipend" ? "No programs with a stipend right now." : `No ${durationWord} programs right now.`}
               {duration !== "all" && <>{" "}<button type="button" className="filter-reset" onClick={() => setDuration("all")}>Show all programs</button></>}
             </p>
           )}
