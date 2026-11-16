@@ -291,7 +291,7 @@ export function ApplyTab({ initialRole, onGoToApplications, onChange }) {
 // The path every application follows, and how far along a given status is.
 const TRACK = ["Applied", "Test ready", "Submitted", "Shortlisted", "Interview scheduled", "Selected"];
 const TRACK_INDEX = { awaiting_access: 0, test_pending: 1, submitted: 2, shortlisted: 3, not_shortlisted: 3, interview_scheduled: 4, selected: 5, rejected: 5 };
-const TRACK_STOP = { not_shortlisted: "Not shortlisted", rejected: "Rejected" };
+const TRACK_STOP = { not_shortlisted: "Not shortlisted", rejected: "Not selected" };
 
 function StatusTrack({ status }) {
   const at = TRACK_INDEX[status] ?? -1;
