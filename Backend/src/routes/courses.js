@@ -4,7 +4,7 @@ const { requireAdmin } = require("../middleware/requireAdmin");
 const { serialize } = require("../utils/serialize");
 const { isProgram, PROGRAM_WHERE, COURSES_DROPPED, programSlugBase, freeSlug, findProgramBySlug } = require("../utils/programs");
 const { WITH_SEATS, withSeats, parseTiers } = require("../utils/tiers");
-const { parseCourseContent } = require("../utils/courseContent");
+const { parseCourseContent, stipendMonthsError } = require("../utils/courseContent");
 const { accessStartFor, computeEndDate } = require("../utils/enrollmentAccess");
 
 const router = express.Router();
@@ -104,6 +104,8 @@ router.post("/admin/courses", requireAdmin, async (req, res, next) => {
     if (entryType === "internship" && durationDays && !INTERNSHIP_DURATION_DAYS.includes(Number(durationDays))) {
       return res.status(400).json({ ok: false, error: INTERNSHIP_DURATION_ERROR });
     }
+    const stipendError = stipendMonthsError(content.data.stipendTrainingMonths, durationDays);
+    if (stipendError) return res.status(400).json({ ok: false, error: stipendError });
     const parsed = parseTiers(tiers === undefined ? [] : tiers);
     if (!parsed.ok) return res.status(400).json({ ok: false, error: parsed.error });
     // Its address names the domain and length ("mern-stack-developer-3-months"),
@@ -193,6 +195,11 @@ router.put("/admin/courses/:id", requireAdmin, async (req, res, next) => {
       update.durationDays = durationDays ? Number(durationDays) : null;
     }
     if (status !== undefined) update.status = status === "closed" ? "closed" : "open";
+    const stipendError = stipendMonthsError(
+      update.stipendTrainingMonths ?? existing.stipendTrainingMonths,
+      update.durationDays !== undefined ? update.durationDays : existing.durationDays,
+    );
+    if (stipendError) return res.status(400).json({ ok: false, error: stipendError });
 
     // `tiers`, when sent, is the COMPLETE set of plans this item offers: any
     // existing plan missing from it is removed, so the admin form can just post

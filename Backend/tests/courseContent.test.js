@@ -145,6 +145,20 @@ describe("internship-style details and positions", () => {
     expect((await create()).body.course).toMatchObject({ skills: [], stipend: "", positions: null });
   });
 
+  it("saves the training months that come with no stipend, leaving at least one paid month", async () => {
+    const res = await create({ stipend: "₹3,000/month", durationDays: 180, stipendTrainingMonths: 2 });
+    expect(res.status).toBe(201);
+    expect((await request(app).get(`/api/courses/${res.body.course.slug}`)).body.course).toMatchObject({ stipendTrainingMonths: 2 });
+    expect((await create()).body.course.stipendTrainingMonths).toBe(0);
+    // All 6 months as training would leave no paid month.
+    expect((await create({ durationDays: 180, stipendTrainingMonths: 6 })).status).toBe(400);
+    expect((await create({ stipendTrainingMonths: -1 })).status).toBe(400);
+    expect((await create({ stipendTrainingMonths: 1.5 })).status).toBe(400);
+    // Shortening the program below its training months is refused too.
+    expect((await update(res.body.course._id, { durationDays: 60 })).status).toBe(400);
+    expect((await update(res.body.course._id, { stipendTrainingMonths: 3 })).status).toBe(200);
+  });
+
   it("rejects a bad number of positions or over-long text", async () => {
     expect((await create({ positions: 0 })).status).toBe(400);
     expect((await create({ positions: 1.5 })).status).toBe(400);

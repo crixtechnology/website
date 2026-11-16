@@ -36,9 +36,37 @@ export const stipendText = (s) => {
   return `${t} (performance based)`;
 };
 
+// On a program whose opening months are training with no stipend
+// (item.stipendTrainingMonths, set in Admin), which months pay and which don't:
+// { paid: "months 3–6", training: "Months 1–2 · no stipend" }, or null when
+// the stipend runs from month 1 (or there is none).
+const monthSpan = (from, to) => (from === to ? `month ${from}` : `months ${from}–${to}`);
+export function stipendSchedule(item) {
+  const t = Number(item && item.stipendTrainingMonths) || 0;
+  if (!item || !String(item.stipend || "").trim() || /^no stipend/i.test(item.stipend.trim()) || t < 1) return null;
+  const months = Math.round(Number(item.durationDays) / 30);
+  if (months > 0 && t >= months) return null; // no paid month left: not a valid schedule
+  const training = monthSpan(1, t);
+  return {
+    paid: months > 0 ? monthSpan(t + 1, months) : `month ${t + 1} onwards`,
+    training: `${training.charAt(0).toUpperCase()}${training.slice(1)} · no stipend`,
+  };
+}
+
+// The Stipend line: the amount, which months it is paid for, and that it is
+// performance based.
+export function stipendFact(item) {
+  const schedule = stipendSchedule(item);
+  if (!schedule) return stipendText(item.stipend);
+  const t = String(item.stipend).trim();
+  const note = /performance/i.test(t) ? "" : " (performance based)";
+  return `${t} for ${schedule.paid}${note}`;
+}
+
 export const programFacts = (item) => [
   ["Positions", positionsLabel(item.positions, placeWord(item))],
-  ["Stipend", stipendText(item.stipend)],
+  ["Stipend", stipendFact(item)],
+  ["Training period", stipendSchedule(item) && stipendSchedule(item).training],
   ["Experience", item.experience],
   ["Duration", item.duration || formatDuration(item.durationDays)],
   ["Mode", item.mode],

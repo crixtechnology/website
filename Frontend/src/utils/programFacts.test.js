@@ -87,3 +87,24 @@ describe("stipend is performance based", () => {
     expect(JSON.stringify(legal)).toMatch(/stipend is offered, it is given on the basis of the trainee's performance/);
   });
 });
+
+// Some programs start with training months that pay no stipend.
+describe("stipend after a training period", () => {
+  const { programFacts } = require("./positions.js");
+  const facts = (item) => Object.fromEntries(programFacts({ type: "internship", ...item }));
+  it("shows which months pay and which are training", () => {
+    expect(facts({ stipend: "₹3000 - ₹7000/ month", durationDays: 180, stipendTrainingMonths: 2 })).toMatchObject({
+      Stipend: "₹3000 - ₹7000/ month for months 3–6 (performance based)",
+      "Training period": "Months 1–2 · no stipend",
+    });
+    expect(facts({ stipend: "₹4,000/month", durationDays: 90, stipendTrainingMonths: 1 })).toMatchObject({
+      Stipend: "₹4,000/month for months 2–3 (performance based)", "Training period": "Month 1 · no stipend",
+    });
+    expect(facts({ stipend: "₹4,000/month", durationDays: 60, stipendTrainingMonths: 1 }).Stipend).toBe("₹4,000/month for month 2 (performance based)");
+  });
+  it("shows no training period when the stipend runs from month 1, or there is none", () => {
+    expect(facts({ stipend: "₹4,000/month", durationDays: 90, stipendTrainingMonths: 0 })).not.toHaveProperty("Training period");
+    expect(facts({ stipend: "", durationDays: 90, stipendTrainingMonths: 2 })).not.toHaveProperty("Training period");
+    expect(facts({ stipend: "₹4,000/month", durationDays: 60, stipendTrainingMonths: 2 }).Stipend).toBe("₹4,000/month (performance based)");
+  });
+});

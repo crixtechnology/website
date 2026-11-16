@@ -146,6 +146,10 @@ model Course {
   responsibilities Json        @default("[]")
   eligibility      Json        @default("[]")
   stipend         String       @default("")
+  // How many opening months are training with no stipend; the stipend is paid
+  // for the months after (e.g. 2 on a 6-month program: months 3–6 are paid).
+  // 0 = stipend from the start.
+  stipendTrainingMonths Int    @default(0)
   experience      String       @default("")
   mode            String       @default("")
   // Tracks with the same group (e.g. "MERN") are one domain offered in several
