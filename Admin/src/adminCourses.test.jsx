@@ -360,6 +360,26 @@ describe("admin course form", () => {
       expect(q("#cd-exp").value).toBe("Freshers");
     });
 
+    it("sets how many opening months are training with no stipend", async () => {
+      await renderAdmin();
+      await pick("Training + Internship");
+      await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Paid Cloud Internship"); });
+      // Only offered once there is a stipend.
+      expect(q("#cd-stipend-training")).toBeNull();
+      await act(async () => { fill(q("#cd-stipend"), "₹3000 - ₹7000/ month"); });
+      const choose = (el, value) => {
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(el, value);
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      await act(async () => { choose(q("#ac-duration"), "180"); });
+      // A 6-month program: none, or 1–5 training months.
+      expect([...q("#cd-stipend-training").options].map((o) => o.value)).toEqual(["0", "1", "2", "3", "4", "5"]);
+      await act(async () => { choose(q("#cd-stipend-training"), "2"); });
+      expect(q("#cd-stipend-training").selectedOptions[0].textContent).toBe("First 2 months — stipend from month 3");
+      await submit();
+      expect(api.adminCreateCourse.mock.calls[0][0]).toMatchObject({ stipend: "₹3000 - ₹7000/ month", durationDays: 180, stipendTrainingMonths: 2 });
+    });
+
     it("leaves positions blank for no limit, and refuses a bad number", async () => {
       await renderAdmin();
       await act(async () => { fill(q('input[placeholder="Full Stack (MERN) Development"]'), "Cloud Basics"); });

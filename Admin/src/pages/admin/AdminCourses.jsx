@@ -27,7 +27,7 @@ const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "
 // mode and positions: the same details a Careers role shows.
 const EMPTY_FORM = {
   type: "internship", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
-  skills: "", responsibilities: "", eligibility: "", stipend: "", experience: "", mode: "", positions: "",
+  skills: "", responsibilities: "", eligibility: "", stipend: "", stipendTrainingMonths: "0", experience: "", mode: "", positions: "",
   // Extras only some programs include (offer letter, certificate and LOR come with every one).
   joiningKit: false, linkedinRecognition: false,
   // Training + Internship card: one entry per duration (1 / 2 / 3 / 6 months),
@@ -57,7 +57,7 @@ function courseToForm(c) {
     skills: (c.skills || []).join(", "),
     responsibilities: (c.responsibilities || []).join("\n"),
     eligibility: (c.eligibility || []).join("\n"),
-    stipend: c.stipend || "", experience: c.experience || "", mode: c.mode || "",
+    stipend: c.stipend || "", stipendTrainingMonths: String(c.stipendTrainingMonths || 0), experience: c.experience || "", mode: c.mode || "",
     joiningKit: !!c.joiningKit, linkedinRecognition: !!c.linkedinRecognition,
     group: c.group || "", startingFrom: c.startingFrom || "",
     positions: c.positions ? String(c.positions.total) : "",
@@ -66,6 +66,18 @@ function courseToForm(c) {
     startsAt: toStartDateInput(c.startsAt),
     plans,
   };
+}
+
+// Choices for "Training months (no stipend)": none, or 1 up to one less than
+// the program's length (at least one month must pay). With no length set, up
+// to 5. The current value stays listed so editing never silently changes it.
+function stipendTrainingChoices(durationDays, current) {
+  const months = Math.round(Number(durationDays) / 30);
+  const max = months > 0 ? months - 1 : 5;
+  const list = Array.from({ length: max + 1 }, (_, m) => m);
+  const cur = Number(current) || 0;
+  if (!list.includes(cur)) list.push(cur);
+  return list;
 }
 
 export default function AdminCourses() {
@@ -216,6 +228,8 @@ export default function AdminCourses() {
       responsibilities: lines(form.responsibilities),
       eligibility: lines(form.eligibility),
       stipend: form.stipend.trim(), experience: form.experience.trim(), mode: form.mode.trim(),
+      // No stipend means no unpaid training months to show either.
+      stipendTrainingMonths: form.stipend.trim() ? Number(form.stipendTrainingMonths) || 0 : 0,
       joiningKit: !!form.joiningKit, linkedinRecognition: !!form.linkedinRecognition,
       group: form.group.trim(), startingFrom: form.startingFrom.trim(),
       positions,
@@ -348,7 +362,18 @@ export default function AdminCourses() {
               <input id="cd-positions" type="number" min="1" max="1000" step="1" value={form.positions} onChange={set("positions")} placeholder="No limit" />
               <p className="form-note" style={{ margin: "6px 0 0" }}>Each enrolled student fills one. When all are filled, the track shows “All positions filled”.</p></div>
             <div className="field"><label htmlFor="cd-stipend">Stipend (empty = none)</label>
-              <input id="cd-stipend" value={form.stipend} onChange={set("stipend")} placeholder="Up to ₹6,000/month (performance based)" /></div>
+              <input id="cd-stipend" value={form.stipend} onChange={set("stipend")} placeholder="Up to ₹6,000/month (performance based)" />
+              {form.stipend.trim() && (
+                <>
+                  <label htmlFor="cd-stipend-training" className="field-label" style={{ marginTop: 14 }}>Training months (no stipend)</label>
+                  <select id="cd-stipend-training" value={form.stipendTrainingMonths} onChange={set("stipendTrainingMonths")}>
+                    {stipendTrainingChoices(form.durationDays, form.stipendTrainingMonths).map((m) => (
+                      <option key={m} value={String(m)}>{m === 0 ? "None — stipend from month 1" : `First ${m} month${m === 1 ? "" : "s"} — stipend from month ${m + 1}`}</option>
+                    ))}
+                  </select>
+                  <p className="form-note" style={{ margin: "6px 0 0" }}>The opening months that are training only. The stipend is paid for the months after them.</p>
+                </>
+              )}</div>
             <div className="field"><span className="field-label">Extras this program includes</span>
               <label className="check-row"><input type="checkbox" checked={!!form.joiningKit}
                 onChange={(e) => setForm({ ...form, joiningKit: e.target.checked })} /> Joining kit</label>

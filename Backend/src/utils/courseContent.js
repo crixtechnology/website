@@ -6,6 +6,7 @@
 // and the details a free internship shows too:
 //   skills, responsibilities, eligibility                 lists of short texts
 //   stipend, experience, mode                             short texts
+//   stipendTrainingMonths  opening months with no stipend  a whole number 0–11
 // and for Training + Internship cards:
 //   group          tracks sharing it are one domain in several durations
 //   startingFrom   the card's optional "Starting from …" tag: roughly when the batch starts
@@ -28,7 +29,7 @@ const TEXT_FIELDS = { stipend: "Stipend", experience: "Experience", mode: "Mode"
 const FLAG_FIELDS = { joiningKit: "Joining kit", linkedinRecognition: "LinkedIn recognition" };
 const FAQ_LIMITS = { max: 15, qChars: 200, aChars: 1500 };
 
-const KEYS = [...Object.keys(LIST_LIMITS), "faqs", ...Object.keys(TEXT_FIELDS), ...Object.keys(FLAG_FIELDS), "positions"];
+const KEYS = [...Object.keys(LIST_LIMITS), "faqs", ...Object.keys(TEXT_FIELDS), ...Object.keys(FLAG_FIELDS), "positions", "stipendTrainingMonths"];
 
 // Returns { ok: true, data } — `data` holds only the lists that were sent, trimmed and with
 // empty rows dropped — or { ok: false, error } with a message written for the admin.
@@ -67,6 +68,15 @@ function parseCourseContent(body) {
     data.positions = b.positions;
   }
 
+  // The training months at the start of a program that come with no stipend.
+  if (b.stipendTrainingMonths !== undefined) {
+    const n = b.stipendTrainingMonths === null ? 0 : b.stipendTrainingMonths;
+    if (!Number.isInteger(n) || n < 0 || n > 11) {
+      return { ok: false, error: "The training months without stipend must be a whole number from 0 to 11." };
+    }
+    data.stipendTrainingMonths = n;
+  }
+
   if (b.faqs !== undefined) {
     if (!Array.isArray(b.faqs) || b.faqs.some((f) => !f || typeof f !== "object" || Array.isArray(f))) {
       return { ok: false, error: "FAQs must be a list of questions with answers." };
@@ -91,4 +101,16 @@ function parseCourseContent(body) {
   return { ok: true, data };
 }
 
-module.exports = { parseCourseContent, CONTENT_KEYS: KEYS };
+// The training months with no stipend must leave at least one paid month:
+// fewer than the program's length (durationDays / 30). Null when fine, else
+// the admin's error message. A program with no length set isn't checked.
+function stipendMonthsError(trainingMonths, durationDays) {
+  const months = Math.round(Number(durationDays) / 30);
+  if (!trainingMonths || !(months > 0)) return null;
+  if (trainingMonths >= months) {
+    return `The training months without stipend (${trainingMonths}) must be fewer than the program's ${months} month${months === 1 ? "" : "s"}.`;
+  }
+  return null;
+}
+
+module.exports = { parseCourseContent, stipendMonthsError, CONTENT_KEYS: KEYS };
