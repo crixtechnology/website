@@ -6,7 +6,7 @@
 
 export const site = {
   name: "Crix Technology",
-  tagline: "IT services for growing businesses — websites, custom software, AI and automation — plus a Training + Internship program where top trainees earn a stipend, built and taught by working professionals.",
+  tagline: "IT services for growing businesses — websites, custom software, AI and automation — plus a Training + Internship program where top trainees move on to an internship, built and taught by working professionals.",
   city: "Ahmedabad, Gujarat, India",
   eyebrow: "Ahmedabad · Serving pan‑India & globally", // non-breaking hyphen: "pan-India" never splits across lines
   email: "crixtechnology@gmail.com",
@@ -58,7 +58,7 @@ export const hero = {
     { big: "End-to-end", small: "web, app & software builds" },
     { big: "AI-first", small: "agents & automation" },
     { big: "Pan-India", small: "& globally" },
-    { big: "Train → Earn", small: "stipend internships" },
+    { big: "Train → Intern", small: "for top performers" },
   ],
 };
 
@@ -92,9 +92,9 @@ export const techStack = [
 // CourseDetail get correct chips regardless of whether the data came from
 // this static fallback or the live API. See [[crix-saas-course-platform]].
 export const programDeliverables = {
-  // Training + Internship: everyone is trained; the offer letter, stipend and
-  // LOR come with the internship, which only top performers are selected for.
-  internship: ["Paid mentored training", "Joining kit", "Training certificate", "Stipend internship for top performers"],
+  // Training + Internship: everyone is trained; the offer letter, LOR (and a
+  // stipend, on programs that offer one) come with the internship, which only top performers are selected for.
+  internship: ["Paid mentored training", "Joining kit", "Training certificate", "Internship for top performers"],
 };
 
 export const internships = [
@@ -231,35 +231,40 @@ export const whyCrix = [
   { title: "Talent pipeline", desc: "Our internship and training programs mean a steady bench of trained developers ready to staff new work quickly." },
 ];
 
-// The Training + Internship journey: train first, then the best performers
-// move on to a stipend-based internship.
+// The Training + Internship journey, as it works today: pick a program card
+// (1, 2, 3 or 6 months), log in, pay online, train from My Dashboard, and the
+// best performers of each batch move on to an internship (a stipend only on
+// programs that offer one).
 export const process = [
-  { n: "01", title: "Enroll in Paid Training", desc: "Pick a program and duration — 1, 2, 3 or 6 months — tap Enroll now and pay the training fee securely online." },
-  { n: "02", title: "Get Trained", desc: "Live sessions, recorded lectures and hands-on tasks, mentored by working industry professionals." },
-  { n: "03", title: "Get Evaluated", desc: "Your assignments, project work, attendance and conduct are assessed throughout the training." },
-  { n: "04", title: "Stipend Internship", desc: "Top performers are selected for a stipend-based internship on real projects, with an offer letter and LOR." },
+  { n: "01", title: "Pick a Program", desc: "Choose your track and length — 1, 2, 3 or 6 months. Each card shows its training fee." },
+  { n: "02", title: "Enroll Online", desc: "Log in (a new account gets signup bonus credit), tap Enroll now and pay securely with Razorpay — your wallet credit comes off the fee." },
+  { n: "03", title: "Train & Get Evaluated", desc: "Live classes and recorded lectures in My Dashboard, with a mentor. Your tasks, project, attendance and conduct are assessed." },
+  { n: "04", title: "Move to the Internship", desc: "At the end of the batch, trainees selected on performance are offered an internship with an offer letter and LOR. A stipend is paid only on programs that offer one." },
 ];
 
 // The two stages of the program — shown on the Training + Internship page.
+// `facts` are the short "how it works" chips under each card's list.
 export const trainingStages = [
   {
-    tag: "Stage 1 · Paid · Everyone",
+    tag: "Stage 1 · Everyone who enrolls",
     title: "Paid Training",
-    desc: "A structured, mentored training program on the track you pick — fully virtual. Each program's card shows its training fee, and you enroll and pay online.",
-    points: ["Live sessions + recorded lectures", "Hands-on tasks and a capstone project", "Mentor support throughout", "Joining kit + training certificate on completion"],
+    desc: "A mentored, fully virtual training on the track and length you pick. Enroll and pay online from the program's card — it opens in My Dashboard the moment you've paid.",
+    points: ["Live classes + recorded lectures", "Hands-on tasks and a final project", "Mentor support throughout", "Joining kit + training certificate on completion"],
+    facts: ["1 · 2 · 3 · 6 months", "Pay online · wallet credit applies"],
   },
   {
     tag: "Stage 2 · Selected on performance",
-    title: "Stipend-based Internship",
-    desc: "The best performers from each batch are offered an internship on real projects — and are paid for it.",
-    points: ["Monthly stipend", "Work on live client and in-house projects", "Offer letter + internship certificate", "Letter of Recommendation"],
+    title: "Internship",
+    desc: "At the end of each batch, trainees selected on performance are offered an internship on real projects. Not every internship is paid — a stipend comes only with programs that offer one, as shown in the program's details. Selection isn't guaranteed.",
+    points: ["Work on live client and in-house projects", "Offer letter + internship certificate", "Letter of Recommendation", "Stipend on selected programs only"],
+    facts: ["Selected at the end of the batch", "Stipend only where the program offers one"],
   },
 ];
 
-// How selection for the stipend internship is decided.
+// How selection for the internship is decided.
 export const selectionCriteria = [
   { title: "Assignments & tasks", desc: "Quality and on-time submission of every task in the training." },
-  { title: "Capstone project", desc: "How well your final project is built, explained and deployed." },
+  { title: "Final project", desc: "How well your final project is built, explained and deployed." },
   { title: "Attendance & participation", desc: "Showing up to live sessions and engaging with your mentor." },
   { title: "Professional conduct", desc: "Communication, honesty and original work throughout." },
 ];
@@ -268,27 +273,27 @@ export const benefits = [
   { icon: "gift", title: "Joining Kit", desc: "A welcome kit shipped to your address when you join the training." },
   { icon: "award", title: "Training Certificate", desc: "Verified certificate when you complete the training." },
   { icon: "home", title: "Work from Home", desc: "Fully virtual — join from anywhere in India." },
-  { icon: "document", title: "Offer Letter + LOR", desc: "Issued to trainees selected for the stipend-based internship." },
+  { icon: "document", title: "Offer Letter + LOR", desc: "Issued to trainees selected for the internship." },
   { icon: "linkedin", title: "LinkedIn Recognition", desc: "Official LinkedIn recommendation added to your profile." },
   { icon: "briefcase", title: "Resume Boost", desc: "Real project experience to impress top recruiters." },
   { icon: "mentor", title: "Learn from Industry Experts", desc: "Taught and mentored by working industry professionals throughout the program." },
   { icon: "tasks", title: "Real Tasks", desc: "Industry-level project tasks — not just theory." },
-  { icon: "star", title: "Earn a Stipend", desc: "Top performers move on to a paid, stipend-based internship." },
+  { icon: "star", title: "Internship Opportunity", desc: "Top performers move on to an internship on real projects — with a stipend on programs that offer one." },
 ];
 
 // Counted from the lists above, so these can't drift from what the site shows.
 export const stats = [
   { value: internships.length, suffix: "", label: "Training tracks" },
-  { value: process.length, suffix: "", label: "Steps from training to stipend" },
+  { value: process.length, suffix: "", label: "Steps from training to internship" },
   { value: 12, suffix: "+", label: "Technologies taught" },
   { value: 100, suffix: "%", label: "Hands-on labs" },
 ];
 
 export const about = {
   heading: "Built in Ahmedabad. Serving pan-India and globally.",
-  body: "Crix Technology Private Limited is a technology and training company with two pillars: IT services for growing businesses, and a Training + Internship program — paid, mentored training, after which the top performers are selected for a stipend-based internship. Our curricula and products are built by working developers — so students learn, and clients get, what industry actually uses in production.",
+  body: "Crix Technology Private Limited is a technology and training company with two pillars: IT services for growing businesses, and a Training + Internship program — paid, mentored training, after which the top performers are selected for an internship (with a stipend on programs that offer one). Our curricula and products are built by working developers — so students learn, and clients get, what industry actually uses in production.",
   overview:
-    "Crix Technology Private Limited is an Ahmedabad-based technology company offering IT services, custom software development, and a Training + Internship program: paid, mentored training followed by a stipend-based internship for the top performers. We're virtual-first — delivered remotely from our Ahmedabad base — working with businesses across India and around the world that need dependable engineering support, and with learners across India who want hands-on, real-world project experience, particularly in web development and AI/ML.",
+    "Crix Technology Private Limited is an Ahmedabad-based technology company offering IT services, custom software development, and a Training + Internship program: paid, mentored training followed by an internship for the top performers (with a stipend on programs that offer one). We're virtual-first — delivered remotely from our Ahmedabad base — working with businesses across India and around the world that need dependable engineering support, and with learners across India who want hands-on, real-world project experience, particularly in web development and AI/ML.",
   history:
     "Registered as a private limited company in Gujarat (CIN U63122GJ2026PTC179737), Crix Technology was built around two connected ideas: giving businesses a dependable extended engineering team for software and web work, and giving learners a mentor-led route into real project experience in web development and AI/ML — a model in which the training arm also feeds a talent pipeline for client delivery work.",
   facts: [
@@ -316,8 +321,8 @@ export const legal = {
 • Education details — your college or university, course, branch / department, semester and year of passing — if you add them to your profile
 • College/university name and year of study, if you give them when applying for a training program
 • Training track or internship preference
-• Training performance — your assignments and tasks, project work, attendance and your mentor's assessment, which we use to decide selection for the stipend-based internship
-• If you are selected for the stipend-based internship — the details we need to pay your stipend, which we ask you for at that time
+• Training performance — your assignments and tasks, project work, attendance and your mentor's assessment, which we use to decide selection for the internship
+• If you are selected for an internship that carries a stipend — the details we need to pay your stipend, which we ask you for at that time
 • Account credentials — either a password, stored as a secure one-way hash and never in plain text, or, if you choose "Continue with Google", the name, email address, and account identifier provided to us by Google
 • Postal address — when you join a training program, so we can ship your joining kit
 • Purchase records — what you bought or upgraded, the plan, the amount paid, any discount or wallet credit used, and your receipt details
@@ -335,7 +340,7 @@ Payment for a Training + Internship program (made at the online checkout when yo
         content: `We use the information you provide to:
 • Create and maintain your account, and verify your identity when you log in
 • Process your training enrollment or internship application
-• Assess your performance during the training and decide who is selected for the stipend-based internship — and, if you are selected, issue your offer letter and pay your stipend
+• Assess your performance during the training and decide who is selected for the internship — and, if you are selected, issue your offer letter and pay your stipend where the internship carries one
 • Run the aptitude test for a role you apply for — mark it, check that it was taken fairly and by you, and decide shortlisting and selection
 • Grant and manage access to your training's live-class schedules and recorded lectures
 • Send you tasks, updates, and certificates via email
@@ -473,7 +478,7 @@ You are responsible for all activity that occurs under your account. Crix Techno
         title: "4. Training + Internship Program",
         content: `Crix Technology offers a virtual Training + Internship Program, listed on the Training + Internship page. It runs in two stages:
 • Training — a paid (not free), mentored training program on the track you enroll in. Its price is set by Crix Technology and shown on its card and its page before you enroll (see section 6), and it runs for the duration shown there — 1 month, 2 months, 3 months or 6 months.
-• Stipend-based internship — after the training, Crix Technology may select trainees for a stipend-based internship, based on their performance during the training (assignments and tasks, the final project, attendance and participation, and professional conduct). Selection is at Crix Technology's sole discretion; the number of internship places, the stipend amount, the internship's duration and its terms are set by Crix Technology for each batch and are communicated to selected trainees in their offer letter.
+• Internship — after the training, Crix Technology may select trainees for an internship, based on their performance during the training (assignments and tasks, the final project, attendance and participation, and professional conduct). Selection is at Crix Technology's sole discretion; the number of internship places, any stipend amount, the internship's duration and its terms are set by Crix Technology for each batch and are communicated to selected trainees in their offer letter. Not every internship carries a stipend: a stipend is paid only where the program offers one, as stated in its details and in the offer letter.
 
 There is no aptitude test for Training + Internship: you enroll by choosing a program and paying its training fee online (section 6), and your seat is confirmed when that payment is confirmed. Aptitude tests apply only to Free Internship and Careers roles (section 8). Any "Starts on" shown for a track or role is an estimate of when the batch or role begins; the actual start is confirmed to you before it begins.
 
@@ -487,7 +492,7 @@ Opportunities without a fee are not part of this program: they are listed as rol
 
 Every trainee receives a physical joining kit, shipped to the postal address you give us. Delivery times depend on your location and the courier; please make sure your address is complete and correct — Crix Technology is not responsible for a kit that is delayed or lost because of an incorrect or incomplete address, or for delays caused by the courier.
 
-A training certificate is issued upon satisfactory completion of all assigned training tasks. Trainees selected for the stipend-based internship receive an offer letter on selection, and an internship certificate and Letter of Recommendation upon satisfactory completion of the internship.`,
+A training certificate is issued upon satisfactory completion of all assigned training tasks. Trainees selected for the internship receive an offer letter on selection, and an internship certificate and Letter of Recommendation upon satisfactory completion of the internship.`,
       },
       {
         title: "5. Training Content",
@@ -508,7 +513,7 @@ A training certificate is issued upon satisfactory completion of all assigned tr
 • If money is debited from your account but the payment fails or is not confirmed, Razorpay or your bank normally reverses it automatically within 5–7 working days. If it is not reversed, or the item you paid for is not unlocked, contact us with your payment reference and we will resolve it.
 • If you are charged twice for the same order, the duplicate payment is refunded to the original payment method once verified.
 
-Training programs on our Training + Internship page are paid programs, offered in durations of 1, 2, 3 or 6 months. You enroll by choosing a program and paying its training fee through the online checkout while logged in to your account; your enrollment is complete when that payment is confirmed. You may also contact our Training + Internship team by phone or message before enrolling, and Crix Technology may instead send a payment request for the training fee to your account (see "Payment requests" below). The stipend-based internship that follows is not sold: it is offered only to selected trainees (see section 4). Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A training program is open for enrollment only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" option on its page, or call or message our Training + Internship team, to ask about pricing or upcoming availability. The same applies to a program whose places are all filled.
+Training programs on our Training + Internship page are paid programs, offered in durations of 1, 2, 3 or 6 months. You enroll by choosing a program and paying its training fee through the online checkout while logged in to your account; your enrollment is complete when that payment is confirmed. You may also contact our Training + Internship team by phone or message before enrolling, and Crix Technology may instead send a payment request for the training fee to your account (see "Payment requests" below). The internship that follows is not sold: it is offered only to selected trainees (see section 4). Wherever a price is shown, it (along with any active discount) is as displayed on the program's page at the time of purchase and is payable in full through our payment partner, Razorpay, at checkout — see our Privacy Policy for how payment data is handled. A training program is open for enrollment only once Crix Technology has opened it for enrollment; a program shown without a listed price, or marked "Currently closed", is not available for purchase — use the "Request to apply" option on its page, or call or message our Training + Internship team, to ask about pricing or upcoming availability. The same applies to a program whose places are all filled.
 
 Plans and upgrades: a training program may be offered in more than one plan (Basic, Plus or Pro), each with its own price and features as described on the program's page at the time of purchase. If you hold a plan on a program, you may upgrade to a higher plan where one is offered, by paying the difference between the higher plan's current price and what you have already paid for that enrollment. An upgrade changes only your plan — not your access start or end dates — and wallet credit does not apply to upgrades.
 

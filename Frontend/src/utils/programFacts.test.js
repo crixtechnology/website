@@ -22,3 +22,16 @@ it("lists a training track's facts the same way, from its own fields", () => {
 it("leaves out what isn't set", () => {
   expect(labels({ stipend: "₹4,000" })).toEqual(["Stipend"]);
 });
+
+// Not every Training + Internship program pays a stipend: the site must never
+// promise one for every internship (only "on programs that offer one").
+describe("stipend wording", () => {
+  const { trainingStages, process, benefits, legal, programDeliverables } = require("../data/content.js");
+  const faqs = require("../data/faqData.js").ALL_FAQS;
+  const seo = require("../data/seo.json");
+  it("makes no unconditional stipend promise", () => {
+    const text = JSON.stringify({ trainingStages, process, benefits, legal, programDeliverables, faqs, seo });
+    expect(text).not.toMatch(/stipend-based internship|stipend internship|earn a stipend|Training \+ Stipend/i);
+    expect(JSON.stringify(trainingStages)).toMatch(/programs that offer one/);
+  });
+});

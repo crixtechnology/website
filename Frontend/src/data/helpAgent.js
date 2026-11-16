@@ -151,7 +151,7 @@ function programsReply(ctx, n) {
     };
   }
   return {
-    text: `Happy to help you pick. Our Training + Internship program starts with mentored training (joining kit and certificate); top performers are then selected for a stipend-based internship with an offer letter and LOR — all fully online, from anywhere in India.\nWhich area interests you?`,
+    text: `Happy to help you pick. Our Training + Internship program starts with mentored training (joining kit and certificate); top performers are then selected for an internship with an offer letter and LOR (a stipend only on programs that offer one) — all fully online, from anywhere in India.\nWhich area interests you?`,
     chips: [...TRACKS.map((t) => ({ label: t.label, say: `Training in ${t.words[0]}` })), { label: "Show everything", say: "Show all programs" }],
     links: [{ to: "/training-internship", label: "Training + Internship" }],
   };

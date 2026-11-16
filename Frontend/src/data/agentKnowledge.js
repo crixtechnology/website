@@ -77,7 +77,7 @@ export function programAnswer(p, n) {
   if (asked(n, "test")) facts.push("There's no aptitude test for Training + Internship — you enroll online by paying the training fee, and that confirms your seat. Aptitude tests are only for Free Internship and Careers roles.");
   if (asked(n, "certificate")) {
     facts.push(kind(p) === "internship"
-      ? "Yes — you get a training certificate when you complete the training. If you're selected for the stipend-based internship, you also get an offer letter, and an internship certificate and Letter of Recommendation at the end."
+      ? "Yes — you get a training certificate when you complete the training. If you're selected for the internship, you also get an offer letter, and an internship certificate and Letter of Recommendation at the end."
       : "Yes — you get a training certificate once you complete the training.");
   }
   if (asked(n, "syllabus") && (p.points || []).length) facts.push(`What it covers:\n${p.points.slice(0, 6).map((x) => `• ${x}`).join("\n")}`);
@@ -85,7 +85,7 @@ export function programAnswer(p, n) {
   if (!facts.length) {
     const from = isOpenForBuy(p) ? Math.min(...offeredTiers(p).map(planPrice)) : null;
     facts.push([
-      `${p.title} — ${"paid, mentored training — top performers are selected for a stipend-based internship"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${formatINR(from)}` : ""}.`,
+      `${p.title} — ${"paid, mentored training — top performers are selected for an internship"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${formatINR(from)}` : ""}.`,
       p.desc || "",
       (p.points || []).length ? (p.points || []).slice(0, 4).map((x) => `• ${x}`).join("\n") : "",
     ].filter(Boolean).join("\n"));

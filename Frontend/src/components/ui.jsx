@@ -2226,7 +2226,7 @@ function ThemeToggle() {
 // The pages under "Internships": a dropdown on desktop, a second slide-in
 // panel in the mobile menu.
 const PROGRAM_MENU = [
-  { to: "/training-internship", label: "Training + Internship", desc: "Get trained · top performers earn a stipend" },
+  { to: "/training-internship", label: "Training + Internship", desc: "Get trained · top performers get an internship" },
   { to: "/free-internships", label: "Free Internship", desc: "Free to apply · aptitude test · interview" },
 ];
 const isProgramPath = (pathname) => PROGRAM_MENU.some((m) => m.to === pathname);
@@ -2581,7 +2581,7 @@ export function Footer() {
           <Logo className="foot-logo" />
           <p className="foot-desc">
             Your one-stop solution for IT services, and training that leads to
-            stipend-based internships. Based in Ahmedabad — serving clients pan-India and globally.
+            internships. Based in Ahmedabad — serving clients pan-India and globally.
           </p>
           <div className="foot-contact">
             <ul className="foot-phones">

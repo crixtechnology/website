@@ -163,7 +163,7 @@ export function Home() {
         <div className="orb orb-1"></div>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">Training + Internship</Reveal>
-          <Reveal as="h2" variant="reveal-l">Get trained. Perform. Earn a stipend.</Reveal>
+          <Reveal as="h2" variant="reveal-l">Get trained. Perform. Get an internship.</Reveal>
           <div className="grid3 stagger">
             {/* One card per domain: tracks sharing a group get a duration switch. */}
             {loadingInternships ? <SkeletonCards count={internships.length} /> : groupVariants(liveInternships).map((g, i) => (
@@ -203,7 +203,7 @@ export function Home() {
 
 /* ================= TRAINING + INTERNSHIP ================= */
 // Every student is trained first; the best performers are then selected for a
-// stipend-based internship. Only internship-type programs are sold here — the
+// internship (a stipend only on programs that offer one). Only internship-type programs are sold here — the
 // old Courses + Internship page is gone, and free roles live on Careers.
 // The program cards come first, under a duration filter (All / 1 / 2 / 3 / 6
 // months): one card per program, each with the fee the admin set and an
@@ -305,8 +305,8 @@ export function TrainingInternship() {
 
   return (
     <>
-      <PageHead eyebrow="Training + Internship" title="Get trained. Perform. Earn a stipend."
-        text="Fully virtual — join from anywhere in India. Every student first goes through paid, mentored training on real projects; the top performers are then selected for a stipend-based internship with an offer letter and a Letter of Recommendation." />
+      <PageHead eyebrow="Training + Internship" title="Get trained. Perform. Get an internship."
+        text="Fully virtual — join from anywhere in India. Every student first goes through paid, mentored training on real projects; the top performers are then selected for an internship with an offer letter and a Letter of Recommendation — with a stipend on programs that offer one." />
       <SectionIndex items={TRAINING_INDEX} />
 
       {/* The old #internships / #courses anchors still land on the programs. */}
@@ -337,8 +337,8 @@ export function TrainingInternship() {
             </p>
           )}
           <p className="section-lede" style={{ marginTop: 28 }}>
-            Training is paid, not free — each program shows its training fee. Your fee covers the training only; the stipend-based internship that follows is
-            offered on performance. Looking for a free one? See <Link to="/free-internships">Free Internships</Link>.
+            Training is paid, not free — each program shows its training fee. Your fee covers the training only; the internship that follows is offered on
+            performance, and carries a stipend only on programs that offer one. Looking for a free one? See <Link to="/free-internships">Free Internships</Link>.
           </p>
           <TrainingContact />
         </div>
@@ -351,7 +351,7 @@ export function TrainingInternship() {
       <section id="how-it-works" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-l" className="eyebrow">How It Works</Reveal>
-          <Reveal as="h2" variant="reveal-l">Train first. Then intern — and get paid.</Reveal>
+          <Reveal as="h2" variant="reveal-l">Train first. Then intern on real projects.</Reveal>
           <div className="process stagger">
             {process.map((p, i) => (
               <Reveal key={p.n} variant="reveal" className="step" style={{ "--i": i }}>
@@ -368,8 +368,17 @@ export function TrainingInternship() {
                 <h3>{s.title}</h3>
                 <p>{s.desc}</p>
                 <ul>{s.points.map((p) => <li key={p}>{p}</li>)}</ul>
+                {s.facts?.length ? (
+                  <div className="stage-facts">{s.facts.map((f) => <span key={f}>{f}</span>)}</div>
+                ) : null}
               </Reveal>
             ))}
+            {/* Between the cards: who moves on from training to the internship. */}
+            <span className="stage-link" aria-hidden="true"><b>→</b><small>Selected trainees</small></span>
+          </div>
+          <div className="stage-cta">
+            <a className="btn btn-solid" href="#programs">Choose your program</a>
+            <a className="btn btn-ghost" href="#selection">How selection works</a>
           </div>
         </div>
       </section>
@@ -377,10 +386,10 @@ export function TrainingInternship() {
       <section id="selection" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
           <Reveal as="span" variant="reveal-r" className="eyebrow">Selection</Reveal>
-          <Reveal as="h2" variant="reveal-r">How we pick our stipend interns.</Reveal>
+          <Reveal as="h2" variant="reveal-r">How we pick our interns.</Reveal>
           <Reveal as="p" variant="reveal-r" className="section-lede">
             Throughout the training, your mentor tracks how you do. At the end of each batch, the strongest performers are
-            offered the stipend-based internship.
+            offered the internship.
           </Reveal>
           <div className="grid4 bento stagger">
             {selectionCriteria.map((c, i) => (
@@ -392,7 +401,7 @@ export function TrainingInternship() {
             ))}
           </div>
           <Reveal as="p" variant="reveal-r" className="form-note">
-            Selection is merit-based and not guaranteed with enrollment. The stipend amount, internship duration and number of
+            Selection is merit-based and not guaranteed with enrollment. Whether the internship carries a stipend (and how much), its duration and the number of
             places are set for each batch and shared in the offer letter. See our <Link to="/terms-of-service">Terms of Service</Link>.
           </Reveal>
         </div>
