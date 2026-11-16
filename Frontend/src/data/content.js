@@ -94,7 +94,7 @@ export const techStack = [
 export const programDeliverables = {
   // Training + Internship: everyone is trained; the offer letter, LOR (and a
   // stipend, on programs that offer one) come with the internship, which only top performers are selected for.
-  internship: ["Paid mentored training", "Joining kit", "Training certificate", "Internship for top performers"],
+  internship: ["Paid mentored training", "Training certificate", "Internship for top performers"],
 };
 
 export const internships = [
@@ -249,7 +249,7 @@ export const trainingStages = [
     tag: "Stage 1 · Everyone who enrolls",
     title: "Paid Training",
     desc: "A mentored, fully virtual training on the track and length you pick. Enroll and pay online from the program's card — it opens in My Dashboard the moment you've paid.",
-    points: ["Live classes + recorded lectures", "Hands-on tasks and a final project", "Mentor support throughout", "Joining kit + training certificate on completion"],
+    points: ["Live classes + recorded lectures", "Hands-on tasks and a final project", "Mentor support throughout", "Training certificate on completion", "Joining kit on programs that include one"],
     facts: ["1 · 2 · 3 · 6 months", "Pay online · wallet credit applies"],
   },
   {
@@ -270,7 +270,7 @@ export const selectionCriteria = [
 ];
 
 export const benefits = [
-  { icon: "gift", title: "Joining Kit", desc: "A welcome kit shipped to your address when you join the training." },
+  { icon: "gift", title: "Joining Kit", desc: "On programs that include one, a welcome kit shipped to your address when you join." },
   { icon: "award", title: "Training Certificate", desc: "Verified certificate when you complete the training." },
   { icon: "home", title: "Work from Home", desc: "Fully virtual — join from anywhere in India." },
   { icon: "document", title: "Offer Letter + LOR", desc: "Issued to trainees selected for the internship." },
@@ -324,7 +324,7 @@ export const legal = {
 • Training performance — your assignments and tasks, project work, attendance and your mentor's assessment, which we use to decide selection for the internship
 • If you are selected for an internship that carries a stipend — the details we need to pay your stipend, which we ask you for at that time
 • Account credentials — either a password, stored as a secure one-way hash and never in plain text, or, if you choose "Continue with Google", the name, email address, and account identifier provided to us by Google
-• Postal address — when you join a training program, so we can ship your joining kit
+• Postal address — when you join a training program that includes a joining kit, so we can ship it
 • Purchase records — what you bought or upgraded, the plan, the amount paid, any discount or wallet credit used, and your receipt details
 • Wallet activity — the credit added to and spent from your wallet
 • Free internship applications — the details you enter in our application form (a Google Form) and the CV you upload with it, which reach us through Google Forms and are used only to consider your application and to contact you about the aptitude test and interview
@@ -347,7 +347,7 @@ Payment for a Training + Internship program (made at the online checkout when yo
 • Send account and transaction emails — one-time verification codes, receipts, payment requests, wallet credit notices, and security notices such as a password change
 • Verify that your email address is really yours — for example before a signup bonus is added to your wallet
 • Detect and prevent fraud and misuse — of signup bonuses, wallet credit and the aptitude test
-• Ship your joining kit to the address you give us
+• Ship your joining kit, where your program includes one, to the address you give us
 • Respond to your queries and support requests
 • Improve our programs and website experience
 • Tell you about new training batches — if we send such announcements, each one will tell you how to opt out, and opting out never affects account or transaction emails`,
@@ -490,7 +490,7 @@ Opportunities without a fee are not part of this program: they are listed as rol
 • Maintain professional conduct in all communications
 • Not share confidential task materials with third parties
 
-Every trainee receives a physical joining kit, shipped to the postal address you give us. Delivery times depend on your location and the courier; please make sure your address is complete and correct — Crix Technology is not responsible for a kit that is delayed or lost because of an incorrect or incomplete address, or for delays caused by the courier.
+Some programs include a physical joining kit — not every one does; the program's plan details, or our team when you join, tell you whether yours includes one. Where it does, the kit is shipped to the postal address you give us. Delivery times depend on your location and the courier; please make sure your address is complete and correct — Crix Technology is not responsible for a kit that is delayed or lost because of an incorrect or incomplete address, or for delays caused by the courier.
 
 A training certificate is issued upon satisfactory completion of all assigned training tasks. Trainees selected for the internship receive an offer letter on selection, and an internship certificate and Letter of Recommendation upon satisfactory completion of the internship.`,
       },

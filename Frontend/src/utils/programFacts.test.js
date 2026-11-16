@@ -35,3 +35,14 @@ describe("stipend wording", () => {
     expect(JSON.stringify(trainingStages)).toMatch(/programs that offer one/);
   });
 });
+
+// Not every program includes a joining kit either.
+describe("joining kit wording", () => {
+  const { trainingStages, benefits, legal, programDeliverables } = require("../data/content.js");
+  const faqs = require("../data/faqData.js").ALL_FAQS;
+  it("never promises a kit to every trainee", () => {
+    const text = JSON.stringify({ trainingStages, benefits, legal, programDeliverables, faqs });
+    expect(text).not.toMatch(/Every trainee receives a physical joining kit|• A joining kit\n/);
+    expect(JSON.stringify(programDeliverables)).not.toMatch(/Joining kit/);
+  });
+});
