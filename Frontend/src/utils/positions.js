@@ -28,9 +28,17 @@ export function positionsTag(p, fallback, word = "position") {
 // Training + Internship tracks, Free Internship roles and Careers roles.
 // Duration is a role's own text, or a track's length; Starts on is the admin's
 // rough estimate (a role's startsOn, a track's startingFrom). Empty ones are left out.
+// A stipend is always given on the basis of performance: say so beside the
+// amount unless the admin's text already does (or there is no stipend).
+export const stipendText = (s) => {
+  const t = String(s || "").trim();
+  if (!t || /performance|^no stipend/i.test(t)) return t;
+  return `${t} (performance based)`;
+};
+
 export const programFacts = (item) => [
   ["Positions", positionsLabel(item.positions, placeWord(item))],
-  ["Stipend", item.stipend],
+  ["Stipend", stipendText(item.stipend)],
   ["Experience", item.experience],
   ["Duration", item.duration || formatDuration(item.durationDays)],
   ["Mode", item.mode],

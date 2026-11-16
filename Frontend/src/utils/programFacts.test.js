@@ -69,3 +69,21 @@ describe("per-program extras", () => {
     expect(programFacts({}).map(([k]) => k)).not.toContain("Also includes");
   });
 });
+
+// A stipend is always given on the basis of performance.
+describe("stipend is performance based", () => {
+  const { stipendText } = require("./positions.js");
+  const { benefits, legal } = require("../data/content.js");
+  const faqs = require("../data/faqData.js").ALL_FAQS;
+  it("says so beside every stipend amount, once", () => {
+    expect(stipendText("Up to ₹4,000/month")).toBe("Up to ₹4,000/month (performance based)");
+    expect(stipendText("Up to ₹6,000/month (performance based)")).toBe("Up to ₹6,000/month (performance based)");
+    expect(stipendText("No Stipend")).toBe("No Stipend");
+    expect(stipendText("")).toBe("");
+  });
+  it("says so in the benefits, FAQ and Terms", () => {
+    expect(benefits.find((b) => b.title === "Stipend").desc).toMatch(/performance/);
+    expect(faqs.find((f) => f.id === "i-stipend").a).toMatch(/performance/);
+    expect(JSON.stringify(legal)).toMatch(/stipend is offered, it is given on the basis of the trainee's performance/);
+  });
+});
