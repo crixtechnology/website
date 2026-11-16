@@ -5,7 +5,7 @@ import HelpAgent from "./HelpAgent.jsx";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import {
   submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder,
-  getPriceQuote, payWithWallet, forgotPassword, resetPassword,
+  getPriceQuote, payWithWallet, forgotPassword, resetPassword, hasAccountOnThisDevice,
 } from "../services/api.js";
 import { UserContext, isProfileComplete, profileMissing } from "../context/UserContext.jsx";
 import { IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
@@ -586,7 +586,8 @@ export function SignupBonusPopup({ bonus }) {
   const { isLoggedIn, openAuthModal } = useContext(UserContext);
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    if (isLoggedIn || !(bonus > 0)) { setOpen(false); return undefined; }
+    // Not for someone who already has an account and is just logged out.
+    if (isLoggedIn || !(bonus > 0) || hasAccountOnThisDevice()) { setOpen(false); return undefined; }
     const t = setTimeout(() => setOpen(true), 700);
     return () => clearTimeout(t);
   }, [isLoggedIn, bonus]);

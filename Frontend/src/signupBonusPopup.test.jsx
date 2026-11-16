@@ -54,3 +54,26 @@ it("closes when the visitor logs in", () => {
   show({ isLoggedIn: true });
   expect(container.querySelector(".bonus-modal")).toBeNull();
 });
+
+// Someone who already has an account (they've logged in on this browser before)
+// is only logged out — the "Sign up & claim" offer isn't for them.
+it("doesn't show to a returning student who has logged in on this browser before", () => {
+  window.localStorage.setItem("crix_has_account", "1");
+  try {
+    show({ isLoggedIn: false });
+    expect(container.querySelector(".bonus-modal")).toBeNull();
+  } finally {
+    window.localStorage.removeItem("crix_has_account");
+  }
+});
+
+it("remembers the account once someone logs in", () => {
+  const { setStoredUser, hasAccountOnThisDevice } = require("./services/api.js");
+  window.localStorage.removeItem("crix_has_account");
+  expect(hasAccountOnThisDevice()).toBe(false);
+  setStoredUser({ name: "Asha" });
+  expect(hasAccountOnThisDevice()).toBe(true);
+  setStoredUser(null); // logging out keeps the flag
+  expect(hasAccountOnThisDevice()).toBe(true);
+  window.localStorage.removeItem("crix_has_account");
+});

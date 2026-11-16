@@ -154,6 +154,18 @@ describe("login popup — one form that logs in or creates the account", () => {
   // checkbox to find — and agreeing creates the account and logs in.
   const agreeButton = () => [...container.querySelectorAll("button")].find((b) => /I agree/.test(b.textContent));
 
+  // The "I agree" popup is only for an email the server says has no account.
+  it("never shows the 'I agree' popup to an existing account, even with a wrong password", async () => {
+    const value = ctx();
+    value.login.mockResolvedValueOnce({ ok: false, error: "Invalid credentials" });
+    await renderModal(value);
+    await fillLogin();
+    await submit(q("#auth-password").closest("form"));
+    expect(q(".agree-box")).toBeNull();
+    expect(container.textContent).toContain("Invalid credentials");
+    expect(container.textContent).toContain("Log in or create an account");
+  });
+
   it("asks a new email for one 'I agree', then creates the account and logs in", async () => {
     const value = ctx();
     value.login.mockResolvedValueOnce({ ok: false, code: "NEW_ACCOUNT", error: "There's no account with this email yet." });
