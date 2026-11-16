@@ -709,6 +709,8 @@ export function BenefitIcon({ name }) {
       return (<svg {...p}><circle cx="12" cy="8" r="3.5" /><path d="M5 21c0-3.9 3.1-7 7-7 1 0 2 .2 2.8.6" /><path d="m15.5 17.5 1.5 1.5 3-3" /></svg>);
     case "tasks":
       return (<svg {...p}><rect x="5" y="4" width="14" height="17" rx="1.5" /><path d="M9 3.5h6v2H9z" /><path d="m8.5 12 1.5 1.5L13 10" /><path d="M8.5 17h7" /></svg>);
+    case "chat":
+      return (<svg {...p}><path d="M4 5h16v11H9l-5 4z" /><path d="M8 9.5h8M8 12.5h5" /></svg>);
     case "star":
       return (<svg {...p}><path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3-4.8-4.3 6.4-.6z" /></svg>);
     default:
@@ -2226,7 +2228,7 @@ function ThemeToggle() {
 // The pages under "Internships": a dropdown on desktop, a second slide-in
 // panel in the mobile menu.
 const PROGRAM_MENU = [
-  { to: "/training-internship", label: "Training + Internship", desc: "Get trained · top performers get an internship" },
+  { to: "/training-internship", label: "Training + Internship", desc: "Paid training · offer letter, certificate + LOR" },
   { to: "/free-internships", label: "Free Internship", desc: "Free to apply · aptitude test · interview" },
 ];
 const isProgramPath = (pathname) => PROGRAM_MENU.some((m) => m.to === pathname);
@@ -2554,7 +2556,7 @@ const FOOT_COLS = [
     heading: "For Students",
     links: [
       ["Training + Internship", "/training-internship"],
-      ["How selection works", "/training-internship#selection"],
+      ["How you're assessed", "/training-internship#selection"],
       ["Free Internship", "/free-internships"],
       ["Student support", "/contact"],
     ],

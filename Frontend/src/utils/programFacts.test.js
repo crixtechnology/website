@@ -32,7 +32,7 @@ describe("stipend wording", () => {
   it("makes no unconditional stipend promise", () => {
     const text = JSON.stringify({ trainingStages, process, benefits, legal, programDeliverables, faqs, seo });
     expect(text).not.toMatch(/stipend-based internship|stipend internship|earn a stipend|Training \+ Stipend/i);
-    expect(JSON.stringify(trainingStages)).toMatch(/programs that offer one/);
+    expect(JSON.stringify(trainingStages)).toMatch(/Stipend/);
   });
 });
 
@@ -44,5 +44,19 @@ describe("joining kit wording", () => {
     const text = JSON.stringify({ trainingStages, benefits, legal, programDeliverables, faqs });
     expect(text).not.toMatch(/Every trainee receives a physical joining kit|• A joining kit\n/);
     expect(JSON.stringify(programDeliverables)).not.toMatch(/Joining kit/);
+  });
+});
+
+// Every program includes the offer letter, certificate and LOR; only the
+// stipend, joining kit and LinkedIn recognition depend on the program.
+describe("what every program includes", () => {
+  const { trainingStages, benefits, programDeliverables } = require("../data/content.js");
+  it("lists the core documents as included and the extras as optional", () => {
+    const included = trainingStages[0].points.join(" ");
+    ["Offer letter", "Training certificate", "Letter of Recommendation", "Mentor support", "Real project tasks", "industry experts", "resume boost"]
+      .forEach((x) => expect(included).toMatch(new RegExp(x, "i")));
+    expect(trainingStages[1].points).toEqual(["Stipend", "Joining kit", "LinkedIn recognition"]);
+    expect(benefits.filter((b) => b.optional).map((b) => b.title).sort()).toEqual(["Joining Kit", "LinkedIn Recognition", "Stipend"]);
+    expect(programDeliverables.internship).toEqual(expect.arrayContaining(["Offer letter", "Training certificate", "Letter of Recommendation"]));
   });
 });

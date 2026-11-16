@@ -54,9 +54,9 @@ it("lists only paid training tracks, never courses, and explains the stipend sel
   expect(section.textContent).toContain("Web Internship");
   expect(container.textContent).not.toContain("React Course");
   expect(section.querySelectorAll(".card")).toHaveLength(1); // the free one is left out
-  // Train first, then the selected few move on to a stipend internship.
+  // What every program includes, and the extras only some have.
   expect(container.querySelectorAll(".stage-card")).toHaveLength(2);
-  expect(container.querySelector("#selection").textContent).toContain("not guaranteed");
+  expect(container.querySelector("#selection").textContent).toContain("Letter of Recommendation");
   // Old anchors still resolve.
   expect(container.querySelector("#internships")).not.toBeNull();
   expect(container.querySelector("#courses")).not.toBeNull();

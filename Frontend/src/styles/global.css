@@ -417,6 +417,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .benefit:hover{border-color:rgba(127,232,224,.35)}
 .benefit-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(20,201,201,.12);color:var(--teal);margin-bottom:14px}
 .benefit h3{font-size:.95rem;margin:0 0 8px}
+/* A benefit only some programs include: a small tag, and a dashed outline. */
+.benefit--optional{border-style:dashed}
+.benefit-opt{position:absolute;top:16px;right:16px;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:999px;border:1px solid rgba(var(--teal-rgb),.35);color:var(--teal);background:rgba(var(--teal-rgb),.06)}
 .benefit p{color:var(--muted);font-size:.82rem;line-height:1.55}
 
 /* ---------- Admin panel (course management) ---------- */
