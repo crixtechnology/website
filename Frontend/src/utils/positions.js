@@ -63,10 +63,40 @@ export function stipendFact(item) {
   return `${t} for ${schedule.paid}${note}`;
 }
 
-export const programFacts = (item) => [
+// The stipend as a Training + Internship card or page draws it (StipendStrip
+// in components/ui.jsx), or null when the program states no stipend at all:
+//   { none: true }                                   "No Stipend"
+//   { amount, per, months, trainingMonths }          e.g. "₹3,000 – ₹7,000", "month", 6, 3
+// The admin's text is tidied for display: ₹3000 → ₹3,000, "3000 - 7000" → an
+// en dash, a trailing "/ month" split off, and "(performance based)" dropped
+// (the strip says it). months is null when the program has no length set.
+const groupINR = (digits) => Number(digits).toLocaleString("en-IN");
+export function stipendInfo(item) {
+  const raw = String((item && item.stipend) || "").trim();
+  if (!raw) return null;
+  if (/^(no stipend|none|unpaid|nil)\.?$/i.test(raw)) return { none: true };
+  let text = raw.replace(/\(?\s*performance[\s-]*based\s*\)?/i, "").trim();
+  let per = "";
+  const perMatch = text.match(/\s*\/\s*(month|mo|week|day)\.?$/i);
+  if (perMatch) {
+    per = perMatch[1].toLowerCase() === "mo" ? "month" : perMatch[1].toLowerCase();
+    text = text.slice(0, perMatch.index).trim();
+  }
+  text = text
+    .replace(/(₹\s*)(\d{4,})/g, (_, sign, d) => `₹${groupINR(d)}`)
+    .replace(/\s*-\s*(?=₹|\d)/g, " – ");
+  const months = Math.round(Number(item.durationDays) / 30) || null;
+  let trainingMonths = Number(item.stipendTrainingMonths) || 0;
+  if (trainingMonths < 0 || (months && trainingMonths >= months)) trainingMonths = 0;
+  return { amount: text, per, months, trainingMonths };
+}
+
+// `opts.stipendStrip`: the caller draws the stipend itself (StipendStrip), so
+// the Stipend and Training period rows are left out of the facts.
+export const programFacts = (item, opts = {}) => [
   ["Positions", positionsLabel(item.positions, placeWord(item))],
-  ["Stipend", stipendFact(item)],
-  ["Training period", stipendSchedule(item) && stipendSchedule(item).training],
+  ["Stipend", !opts.stipendStrip && stipendFact(item)],
+  ["Training period", !opts.stipendStrip && stipendSchedule(item) && stipendSchedule(item).training],
   ["Experience", item.experience],
   ["Duration", item.duration || formatDuration(item.durationDays)],
   ["Mode", item.mode],

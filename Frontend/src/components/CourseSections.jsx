@@ -6,6 +6,7 @@ import { site } from "../data/content.js";
 import { offeredTiers, planPrice, formatINR, isOpenForBuy, isFreeProgram } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
 import { isFull, placeWord, programFacts } from "../utils/positions.js";
+import { StipendStrip } from "./ui.jsx";
 import { useJsonLd, canonicalUrl, SITE_URL, programKeywords, programTitle } from "../hooks/usePageMeta.js";
 
 // The extra sections of a course / internship page (CourseDetail in pages/pages.jsx).
@@ -26,13 +27,16 @@ export function CourseFacts({ course }) {
   if (plans.length && course.status !== "closed") facts.push(["Training fee from", formatINR(Math.min(...plans.map(planPrice)))]);
   // Positions, stipend, experience, duration, mode, starts on — the same facts
   // every card shows (Careers and Free Internship roles too).
-  facts.push(...programFacts(course));
+  facts.push(...programFacts(course, { stipendStrip: true }));
   return (
-    <dl className="course-facts">
-      {facts.map(([label, value]) => (
-        <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
-      ))}
-    </dl>
+    <>
+      <dl className="course-facts">
+        {facts.map(([label, value]) => (
+          <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+        ))}
+      </dl>
+      <StipendStrip item={course} className="stipend-strip--page" />
+    </>
   );
 }
 
