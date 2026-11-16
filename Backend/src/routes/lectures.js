@@ -1,6 +1,6 @@
 const express = require("express");
 const { prisma } = require("../db");
-const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED, findProgramBySlug } = require("../utils/programs");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { requireAuth } = require("../middleware/requireAuth");
 const { hasValidAccess, isAdminUser, hasStarted, notStartedResponse } = require("../utils/enrollmentAccess");
@@ -114,7 +114,8 @@ router.delete("/admin/lectures/:id", requireAdmin, async (req, res, next) => {
 // ---------- student: view a purchased course's upcoming live classes ----------
 router.get("/learn/:courseSlug", requireAuth, async (req, res, next) => {
   try {
-    const course = await prisma.course.findUnique({ where: { slug: req.params.courseSlug } });
+    // An old address of the program still opens it (the page moves to the current one).
+    const course = await findProgramBySlug(req.params.courseSlug);
     if (!isProgram(course)) return res.status(404).json({ ok: false, error: "Program not found" });
 
     // Admins can open any track without being enrolled.

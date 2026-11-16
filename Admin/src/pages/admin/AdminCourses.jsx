@@ -11,8 +11,8 @@ import { formatDuration, INTERNSHIP_DURATIONS } from "../../utils/duration.js";
 
 // What the form adds: a Training + Internship track, a courses-table entry
 // (type "internship") sold on /training-internship as a program card — 1, 2, 3
-// or 6 months long, at the price set here, paid online through Razorpay — after
-// which top performers are selected for a stipend-based internship. Courses
+// or 6 months long, at the price set here, paid online through Razorpay. Every
+// program includes an offer letter, certificate and LOR. Courses
 // were dropped. Free internships are not managed in Admin: the Free Internship
 // page is static, its roles written in the website's code
 // (Frontend/src/data/freeInternships.json).
@@ -28,6 +28,8 @@ const emptyPlans = () => Object.fromEntries(TIER_ORDER.map((t) => [t, { price: "
 const EMPTY_FORM = {
   type: "internship", title: "", tag: "", desc: "", points: "", outcomes: "", audience: "", prerequisites: "", faqs: [], durationDays: "", startsAt: "",
   skills: "", responsibilities: "", eligibility: "", stipend: "", experience: "", mode: "", positions: "",
+  // Extras only some programs include (offer letter, certificate and LOR come with every one).
+  joiningKit: false, linkedinRecognition: false,
   // Training + Internship card: one entry per duration (1 / 2 / 3 / 6 months),
   // each its own card; entries sharing a group link to each other. startingFrom is the card's optional "Starting from …" tag —
   // roughly when the batch is expected to start (not a price, not the exact date).
@@ -56,6 +58,7 @@ function courseToForm(c) {
     responsibilities: (c.responsibilities || []).join("\n"),
     eligibility: (c.eligibility || []).join("\n"),
     stipend: c.stipend || "", experience: c.experience || "", mode: c.mode || "",
+    joiningKit: !!c.joiningKit, linkedinRecognition: !!c.linkedinRecognition,
     group: c.group || "", startingFrom: c.startingFrom || "",
     positions: c.positions ? String(c.positions.total) : "",
     faqs: (c.faqs || []).map((f) => ({ q: f.q || "", a: f.a || "" })),
@@ -213,6 +216,7 @@ export default function AdminCourses() {
       responsibilities: lines(form.responsibilities),
       eligibility: lines(form.eligibility),
       stipend: form.stipend.trim(), experience: form.experience.trim(), mode: form.mode.trim(),
+      joiningKit: !!form.joiningKit, linkedinRecognition: !!form.linkedinRecognition,
       group: form.group.trim(), startingFrom: form.startingFrom.trim(),
       positions,
       faqs: form.faqs.filter((f) => f.q.trim() && f.a.trim()).map((f) => ({ q: f.q.trim(), a: f.a.trim() })),
@@ -343,8 +347,14 @@ export default function AdminCourses() {
             <div className="field"><label htmlFor="cd-positions">Positions available</label>
               <input id="cd-positions" type="number" min="1" max="1000" step="1" value={form.positions} onChange={set("positions")} placeholder="No limit" />
               <p className="form-note" style={{ margin: "6px 0 0" }}>Each enrolled student fills one. When all are filled, the track shows “All positions filled”.</p></div>
-            <div className="field"><label htmlFor="cd-stipend">Stipend (selected interns only)</label>
+            <div className="field"><label htmlFor="cd-stipend">Stipend (empty = none)</label>
               <input id="cd-stipend" value={form.stipend} onChange={set("stipend")} placeholder="Up to ₹6,000/month (performance based)" /></div>
+            <div className="field"><span className="field-label">Extras this program includes</span>
+              <label className="check-row"><input type="checkbox" checked={!!form.joiningKit}
+                onChange={(e) => setForm({ ...form, joiningKit: e.target.checked })} /> Joining kit</label>
+              <label className="check-row" style={{ marginTop: 8 }}><input type="checkbox" checked={!!form.linkedinRecognition}
+                onChange={(e) => setForm({ ...form, linkedinRecognition: e.target.checked })} /> LinkedIn recognition</label>
+              <p className="form-note" style={{ margin: "6px 0 0" }}>Offer letter, training certificate and LOR come with every program. Ticked extras show as “Also includes” on the card and page.</p></div>
             <div className="field"><label htmlFor="cd-exp">Experience</label>
               <input id="cd-exp" value={form.experience} onChange={set("experience")} placeholder="0–1 year (freshers welcome)" /></div>
             <div className="field"><label htmlFor="ac-duration">Duration</label>

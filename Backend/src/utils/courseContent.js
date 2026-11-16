@@ -23,9 +23,12 @@ const LIST_LIMITS = {
   eligibility: { label: "Eligibility", max: 30, chars: 300 },
 };
 const TEXT_FIELDS = { stipend: "Stipend", experience: "Experience", mode: "Mode", group: "Domain group", startingFrom: "Starting from" };
+// Extras only some programs include (every program has the offer letter,
+// training certificate and LOR). On/off, shown on the program's card and page.
+const FLAG_FIELDS = { joiningKit: "Joining kit", linkedinRecognition: "LinkedIn recognition" };
 const FAQ_LIMITS = { max: 15, qChars: 200, aChars: 1500 };
 
-const KEYS = [...Object.keys(LIST_LIMITS), "faqs", ...Object.keys(TEXT_FIELDS), "positions"];
+const KEYS = [...Object.keys(LIST_LIMITS), "faqs", ...Object.keys(TEXT_FIELDS), ...Object.keys(FLAG_FIELDS), "positions"];
 
 // Returns { ok: true, data } — `data` holds only the lists that were sent, trimmed and with
 // empty rows dropped — or { ok: false, error } with a message written for the admin.
@@ -48,6 +51,13 @@ function parseCourseContent(body) {
     if (b[key] === undefined) continue;
     if (typeof b[key] !== "string" || b[key].length > 190) return { ok: false, error: `${label} must be text (up to 190 characters).` };
     data[key] = b[key].trim();
+  }
+
+  // Extras only some programs include: yes/no switches.
+  for (const [key, label] of Object.entries(FLAG_FIELDS)) {
+    if (b[key] === undefined) continue;
+    if (typeof b[key] !== "boolean") return { ok: false, error: `${label} must be on or off.` };
+    data[key] = b[key];
   }
 
   if (b.positions !== undefined) {

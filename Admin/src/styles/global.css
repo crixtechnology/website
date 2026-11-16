@@ -332,6 +332,9 @@ footer{border-top:1px solid var(--line);padding:44px 0 96px;margin-top:40px}
 /* Admin: checkbox rows, search + status filter row. */
 .check-row{display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:.92rem}
 .check-row input{margin-top:3px;width:18px;height:18px;flex:none;accent-color:var(--teal)}
+/* A group of checkboxes inside a form field: a heading styled like a field label, and plain-text options. */
+.field .field-label{display:block;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+.field label.check-row{display:flex;font-family:inherit;font-size:.92rem;letter-spacing:0;text-transform:none;color:var(--text);margin-bottom:0}
 .admin-filters{display:flex;gap:12px;flex-wrap:wrap}
 .admin-filters .admin-search{flex:1 1 260px}
 .admin-select{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;color:var(--text);font-family:'Sora',sans-serif;font-size:.88rem}

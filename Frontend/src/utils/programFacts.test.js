@@ -60,3 +60,12 @@ describe("what every program includes", () => {
     expect(programDeliverables.internship).toEqual(expect.arrayContaining(["Offer letter", "Training certificate", "Letter of Recommendation"]));
   });
 });
+
+describe("per-program extras", () => {
+  const { programFacts } = require("./positions.js");
+  it("shows the extras a program includes, and nothing when it has none", () => {
+    expect(programFacts({ joiningKit: true, linkedinRecognition: true })).toContainEqual(["Also includes", "Joining kit · LinkedIn recognition"]);
+    expect(programFacts({ joiningKit: true })).toContainEqual(["Also includes", "Joining kit"]);
+    expect(programFacts({}).map(([k]) => k)).not.toContain("Also includes");
+  });
+});

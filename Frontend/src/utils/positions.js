@@ -35,4 +35,6 @@ export const programFacts = (item) => [
   ["Duration", item.duration || formatDuration(item.durationDays)],
   ["Mode", item.mode],
   ["Starts on", item.startsOn || item.startingFrom],
+  // Extras only some Training + Internship programs include (Admin switches).
+  ["Also includes", [item.joiningKit && "Joining kit", item.linkedinRecognition && "LinkedIn recognition"].filter(Boolean).join(" · ")],
 ].filter(([, v]) => v);
