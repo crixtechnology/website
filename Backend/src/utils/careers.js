@@ -58,7 +58,7 @@ const STATUS_LABELS = {
   not_shortlisted: "Not shortlisted",
   interview_scheduled: "Interview scheduled",
   selected: "Selected",
-  rejected: "Rejected",
+  rejected: "Not selected",
 };
 
 const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);

@@ -105,6 +105,12 @@ function ApplicantReview({ id, onBack, onChanged }) {
   // Every position already taken by a selected applicant (selecting more is still allowed).
   const roleFull = !!a.opening?.positions && a.opening.positions.left === 0 && a.status !== "selected";
   const can = (action) => CAN[action].includes(a.status) || (action === "select" && a.status === "submitted" && a.opening?.audience === "free");
+  // One "No" button instead of two that clashed (Not shortlisted / Reject):
+  // after the test it marks the candidate not shortlisted; once shortlisted or
+  // interviewed it closes the application as not selected (server action
+  // "reject", whose message thanks them for interviewing).
+  const declineAction = can("reject") ? "reject" : "not_shortlist";
+  const declineLabel = declineAction === "reject" ? "Not selected" : "Not shortlisted";
 
   const openCv = async () => {
     const res = await adminGetApplicationCv(a._id);
@@ -198,11 +204,11 @@ function ApplicantReview({ id, onBack, onChanged }) {
           <input id="ap-note" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Strong on technical, weak on verbal" /></div>
         <div className="admin-actions">
           <button className="btn btn-solid" disabled={busy || !can("shortlist")} onClick={() => act("shortlist", "Shortlist")}>Shortlist</button>
-          <button className="btn btn-ghost admin-danger" disabled={busy || !can("not_shortlist")} onClick={() => act("not_shortlist", "Mark as not shortlisted")}>Not shortlisted</button>
+          <button className="btn btn-ghost admin-danger" disabled={busy || !can(declineAction)}
+            onClick={() => act(declineAction, declineAction === "reject" ? "Mark as not selected (close the application)" : "Mark as not shortlisted")}>{declineLabel}</button>
           <button className="btn btn-solid" disabled={busy || !can("select")} onClick={() => act("select", roleFull
             ? `All ${a.opening.positions.total} positions for this role are already filled. Select anyway (send the final offer)`
             : "Select (send the final offer)")}>Select</button>
-          <button className="btn btn-ghost admin-danger" disabled={busy || !can("reject")} onClick={() => act("reject", "Reject")}>Reject</button>
           <button className="btn btn-ghost" disabled={busy || !canRetest} onClick={retest}>Allow retest</button>
         </div>
 
