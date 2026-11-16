@@ -1820,18 +1820,22 @@ function loadGoogleScript() {
    call openAuthModal("login", onSuccess) from anywhere to open it; onSuccess(user)
    fires right after a successful login, before the modal closes, so callers
    (e.g. "Buy now") can pick up where they left off without a page redirect.
-   There is no separate sign-up form: an email with no account comes back
-   NEW_ACCOUNT, and the same form asks to confirm (with the age box) before
-   creating it with that password. The new account's name is a placeholder
+   There is no separate sign-up form: an email (or Google account) with no
+   account comes back NEW_ACCOUNT / AGE_CONFIRMATION_REQUIRED, and the popup
+   asks for one "I agree" (age, Terms, Privacy). That click creates the account
+   with the password typed and logs in. The new account's name is a placeholder
    until the owner saves their details in Profile. */
 export function AuthModal() {
   const { authModal, closeAuthModal, login, loginWithGoogle, sessionExpired } = useContext(UserContext);
   const navigate = useNavigate();
   const [mode, setMode] = useState("login"); // "login" | "forgot"
   const [form, setForm] = useState({ email: "", password: "" });
-  // Set once the server says this email has no account yet: the form then
-  // shows the age box and its button creates the account.
-  const [creating, setCreating] = useState(false);
+  // Set once the server says this email (or Google account) has no account
+  // yet: the popup then asks for one "I agree" (age, Terms, Privacy) and that
+  // click creates the account and logs in. null | { via: "email" } |
+  // { via: "google", credential } (Google's ID token, sent again on agreeing).
+  const [agree, setAgree] = useState(null);
+  const creating = !!agree;
   const [status, setStatus] = useState("");
   const [statusKind, setStatusKind] = useState("error");
   const [loading, setLoading] = useState(false);
@@ -1841,10 +1845,6 @@ export function AuthModal() {
   const [reset, setReset] = useState({ otp: "", password: "", confirm: "" });
   const [resendIn, setResendIn] = useState(0); // seconds until "Resend code" is available again
   const googleBtnRef = useRef(null);
-  // "I'm 18 or older, or my parent/guardian agrees" — needed to create an
-  // account, by form or with Google. A ref too, for Google's callback.
-  const [ageOk, setAgeOk] = useState(false);
-  const ageOkRef = useRef(false);
   // Only a new account's email needs its domain checked — an existing
   // account's address already got this far once.
   const emailCheck = useEmailCheck(form.email, !!authModal && mode === "login" && creating);
@@ -1865,12 +1865,10 @@ export function AuthModal() {
       setReset({ otp: "", password: "", confirm: "" });
       setResendIn(0);
       setForm({ email: "", password: "" });
-      setCreating(false);
+      setAgree(null);
       setStatus("");
       setStatusKind("error");
       setLoading(false);
-      setAgeOk(false);
-      ageOkRef.current = false;
       fields.reset();
     }
   }, [authModal]);
@@ -1878,7 +1876,7 @@ export function AuthModal() {
   useModalEscape(!!authModal, closeAuthModal);
 
   const switchMode = (m) => {
-    setMode(m); setStatus(""); setStatusKind("error"); setCreating(false); fields.reset();
+    setMode(m); setStatus(""); setStatusKind("error"); setAgree(null); fields.reset();
     if (m === "forgot") { setResetStep(1); setReset({ otp: "", password: "", confirm: "" }); setResendIn(0); }
   };
 
@@ -1911,13 +1909,11 @@ export function AuthModal() {
         callback: async (response) => {
           setLoading(true);
           setStatus("");
-          const res = await loginWithGoogle(response.credential, { ageConfirmed: ageOkRef.current });
+          const res = await loginWithGoogle(response.credential);
           setLoading(false);
-          // A new Google account needs the age box: show it.
+          // A new Google account: ask for the one "I agree", then create it.
           if (res.code === "AGE_CONFIRMATION_REQUIRED") {
-            setCreating(true);
-            setStatusKind("error");
-            setStatus("To create your account, tick the age box below, then continue with Google again.");
+            setAgree({ via: "google", credential: response.credential });
             return;
           }
           finishAuth(res, "Could not sign in with Google.");
@@ -1933,7 +1929,7 @@ export function AuthModal() {
       });
     });
     return () => { cancelled = true; };
-  }, [authModal, mode]);
+  }, [authModal, mode, agree]);
 
   if (!authModal) return null;
 
@@ -1962,11 +1958,9 @@ export function AuthModal() {
   // line is what a screen reader hears with it.
   const errProps = (id) => ({ onBlur: fields.touch(id), "aria-invalid": !!showErr(id) || undefined, "aria-describedby": `${id}-err` });
 
-  // Editing the email after "no account yet" asks again, so a fixed typo logs in normally.
   const set = (k) => (e) => {
     setForm({ ...form, [k]: e.target.value });
     setStatus("");
-    if (k === "email") setCreating(false);
   };
 
   const setResetField = (k) => (e) => { setReset({ ...reset, [k]: e.target.value }); setStatus(""); };
@@ -2014,49 +2008,86 @@ export function AuthModal() {
     setStatusKind("error"); // any status set from here down defaults to an error styling, unless overridden below
     if (mode === "forgot") { await (resetStep === 1 ? sendResetCode() : submitReset()); return; }
     if (!form.email.trim() || !form.password.trim()) { setStatus("Enter your email and password."); return; }
-    if (creating) {
-      const emailProblem = emailFormatError(form.email);
-      if (emailProblem) { setStatus(`Please add ${emailProblem}.`); return; }
-      if (form.password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
-      if (form.password.length > 72) { setStatus("Password must be at most 72 characters."); return; }
-      if (!ageOk) { setStatus("Please confirm your age to create your account."); return; }
-    }
     setLoading(true);
     setStatus("");
-    if (creating) {
+    const res = await login(form.email.trim(), form.password);
+    setLoading(false);
+    if (res.code === "NEW_ACCOUNT") {
+      // No account for this email yet. A new account's password has its own
+      // rules: say so on the form; otherwise go straight to the one "I agree".
+      if (form.password.length < 8 || form.password.length > 72) {
+        setStatus(`There's no account with this email yet. To create one, choose a password of ${form.password.length < 8 ? "at least 8" : "at most 72"} characters.`);
+        return;
+      }
+      const emailProblem = emailFormatError(form.email);
+      if (emailProblem) { setStatus(`There's no account with this email yet. Please add ${emailProblem}.`); return; }
+      setAgree({ via: "email" });
+      return;
+    }
+    finishAuth(res, "Login failed.");
+  };
+
+  // "I agree" in the new-account popup: creates the account and logs in, in one step.
+  const confirmCreate = async () => {
+    if (loading || !agree) return;
+    setLoading(true);
+    setStatus("");
+    setStatusKind("error");
+    let res;
+    if (agree.via === "google") {
+      res = await loginWithGoogle(agree.credential, { ageConfirmed: true });
+    } else {
       // The live domain check may still be waiting out its typing pause.
       const domain = await emailCheck.verify();
       if (domain && !domain.valid) { setLoading(false); setStatus(domain.error); return; }
+      res = await login(form.email.trim(), form.password, { createAccount: true, ageConfirmed: true });
     }
-    const res = await login(form.email.trim(), form.password, creating ? { createAccount: true, ageConfirmed: ageOk } : undefined);
     setLoading(false);
-    if (res.code === "NEW_ACCOUNT") {
-      setCreating(true);
-      setStatusKind("info");
-      setStatus(res.error);
-      return;
-    }
-    finishAuth(res, creating ? "Could not create your account." : "Login failed.");
+    finishAuth(res, "Could not create your account.");
   };
 
-  const ageBox = (
-    <label className="check-row age-check">
-      <input type="checkbox" checked={ageOk} disabled={loading}
-        onChange={(e) => { setAgeOk(e.target.checked); ageOkRef.current = e.target.checked; setStatus(""); }} />
-      <span>
-        I am 18 or older, or I am 16 or 17 and my parent or guardian has agreed to me using Crix Technology and to
-        the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
-      </span>
-    </label>
-  );
+  // Back from the "I agree" popup to the form, to fix the email or use another.
+  const cancelCreate = () => { setAgree(null); setStatus(""); setForm((f) => ({ ...f, password: "" })); };
+
+  if (mode === "login" && agree) {
+    return (
+      <div className="modal-backdrop" onClick={closeAuthModal}>
+        <div className="modal-box agree-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" onClick={(e) => e.stopPropagation()}>
+          <button className="modal-close" onClick={closeAuthModal} aria-label="Close">✕</button>
+          <span className="eyebrow">New here</span>
+          <h3 id="auth-modal-title" style={{ margin: "10px 0 8px" }}>Create your account</h3>
+          <p className="form-note" style={{ marginTop: 0 }}>
+            {agree.via === "google"
+              ? "There's no Crix account for this Google account yet. Agree below and we'll create it and sign you in."
+              : <>There's no account for <b>{form.email.trim()}</b> yet. Agree below and we'll create it with the password you entered and log you in.</>}
+          </p>
+          <div className="agree-box">
+            <span className="agree-box-title">By creating an account, I confirm that:</span>
+            <ul>
+              <li>I am 18 or older — or I am 16 or 17 and my parent or guardian has agreed to me using Crix Technology.</li>
+              <li>I agree to the <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a> and
+                the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</li>
+            </ul>
+          </div>
+          <Alert inline kind={statusKind}>{status}</Alert>
+          <button type="button" className="btn btn-solid" style={{ width: "100%" }} disabled={loading} onClick={confirmCreate}>
+            {loading ? "Creating your account…" : "I agree — create my account"}
+          </button>
+          <button type="button" className="btn btn-ghost" style={{ width: "100%", marginTop: 10 }} disabled={loading} onClick={cancelCreate}>
+            {agree.via === "google" ? "Cancel" : "Use a different email"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-backdrop" onClick={closeAuthModal}>
       <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={closeAuthModal} aria-label="Close">✕</button>
-        <span className="eyebrow">{mode === "forgot" ? "Account recovery" : creating ? "New here" : "Welcome"}</span>
+        <span className="eyebrow">{mode === "forgot" ? "Account recovery" : "Welcome"}</span>
         <h3 id="auth-modal-title" style={{ margin: "10px 0 14px" }}>
-          {mode === "forgot" ? "Reset your password" : creating ? "Create your account" : "Log in or create an account"}
+          {mode === "forgot" ? "Reset your password" : "Log in or create an account"}
         </h3>
         {sessionExpired && (
           <Alert inline kind="info">You were signed out after {IDLE_TIMEOUT_MINUTES} minutes of inactivity. Please log in again.</Alert>
@@ -2114,25 +2145,19 @@ export function AuthModal() {
                   onUseSuggestion={(email) => { setForm((f) => ({ ...f, email })); setStatus(""); }} /></div>
               <div className="field"><label htmlFor="auth-password">Password</label>
                 <input id="auth-password" type="password" value={form.password} onChange={set("password")}
-                  placeholder={creating ? "At least 8 characters" : "••••••••"}
-                  autoComplete={creating ? "new-password" : "current-password"} disabled={loading} {...errProps("auth-password")} />
+                  placeholder="••••••••" autoComplete="current-password" disabled={loading} {...errProps("auth-password")} />
                 <FieldError id="auth-password-err">{showErr("auth-password")}</FieldError>
-                {!creating && (
-                  <button type="button" className="link-btn" style={{ marginTop: 6, fontSize: ".82rem" }}
-                    onClick={() => switchMode("forgot")}>Forgot password?</button>
-                )}
+                <button type="button" className="link-btn" style={{ marginTop: 6, fontSize: ".82rem" }}
+                  onClick={() => switchMode("forgot")}>Forgot password?</button>
               </div>
-              {creating && ageBox}
-              {!creating && (
-                <p className="form-note" style={{ marginTop: 0 }}>New to Crix? Enter your email and choose a password — we'll create your account.</p>
-              )}
+              <p className="form-note" style={{ marginTop: 0 }}>New to Crix? Enter your email and choose a password (at least 8 characters) — we'll create your account.</p>
             </>
           )}
           <Alert inline kind={statusKind}>{status}</Alert>
           <button className="btn btn-solid" type="submit" disabled={loading} style={{ width: "100%" }}>
             {loading ? "Please wait..."
               : mode === "forgot" ? (resetStep === 1 ? "Send code" : "Reset password")
-              : creating ? "Create account" : "Continue"}
+              : "Continue"}
           </button>
         </form>
         <p className="form-note" style={{ marginTop: 14 }}>
@@ -2148,8 +2173,6 @@ export function AuthModal() {
               )}
               <button type="button" className="link-btn" onClick={() => switchMode("login")}>Back to log in</button>
             </>
-          ) : creating ? (
-            <>Already have an account? <button type="button" className="link-btn" onClick={() => switchMode("login")}>Use a different email</button></>
           ) : null}
         </p>
       </div>
