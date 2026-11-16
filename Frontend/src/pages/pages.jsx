@@ -37,7 +37,7 @@ const ABOUT_INDEX = [
   { id: "tech-stack", label: "Technologies" },
 ];
 import { UserContext } from "../context/UserContext.jsx";
-import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL, programKeywords } from "../hooks/usePageMeta.js";
+import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL, programKeywords, programTitle, programDescription } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
 import { useNoIndex } from "../hooks/useNoIndex.js";
 import { emailError, nameError } from "../utils/validators.js";
@@ -300,7 +300,7 @@ export function TrainingInternship() {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Crix Technology Training + Internship programs",
-    itemListElement: listed.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: canonicalUrl(`/programs/${p.slug}`), name: p.title })),
+    itemListElement: listed.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: canonicalUrl(`/programs/${p.slug}`), name: programTitle(p) })),
   } : null);
 
   return (
@@ -440,10 +440,13 @@ export function CourseDetail() {
     open();
   };
 
+  // The name with its length ("… — 3 months"): each duration of a domain is its
+  // own page, and the bare title made them all look the same to search engines.
+  const fullTitle = programTitle(course);
   usePageMeta({
-    title: course ? `${course.title} | Crix Technology` : "Programs | Crix Technology",
-    description: course ? course.desc : undefined,
-    crumbs: course ? [{ name: "Home", path: "/" }, { name: "Training + Internship", path: "/training-internship" }, { name: course.title, path: `/programs/${slug}` }] : null,
+    title: course ? `${fullTitle} | Crix Technology` : "Programs | Crix Technology",
+    description: course ? programDescription(course) : undefined,
+    crumbs: course ? [{ name: "Home", path: "/" }, { name: "Training + Internship", path: "/training-internship" }, { name: fullTitle, path: `/programs/${slug}` }] : null,
     keywords: course ? programKeywords(course) : null,
   });
 
@@ -496,7 +499,7 @@ export function CourseDetail() {
       <section className="section" style={{ paddingTop: 140 }}>
         <div className="wrap">
           <span className="eyebrow">Not found</span>
-          <h2 style={{ margin: "14px 0 16px" }}>We couldn't find that training track.</h2>
+          <h1 className="title-lg" style={{ margin: "14px 0 16px" }}>We couldn't find that training track.</h1>
           <p style={{ color: "var(--muted)", marginBottom: 24 }}>It may have been removed or renamed.</p>
           <Link className="btn btn-solid" to="/training-internship">← Back to Training + Internship</Link>
         </div>
@@ -530,7 +533,7 @@ export function CourseDetail() {
               {closed ? <span className="closed-badge">Currently closed</span> : <span className="fee-pill">Paid training</span>}
             </div>
             <h1 style={{ fontFamily: "'Unbounded',sans-serif", fontSize: "clamp(1.8rem,4vw,2.6rem)", lineHeight: 1.15, margin: "14px 0 16px" }}>
-              {course.title}
+              {fullTitle}
             </h1>
             <DurationSwitch variants={siblings} active={siblings.findIndex((v) => v.slug === course.slug)}
               hrefOf={(v) => `/programs/${v.slug}`} label="Other durations of this track" />

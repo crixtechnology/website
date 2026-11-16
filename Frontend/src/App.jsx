@@ -71,7 +71,15 @@ function RouteLoading() {
 // course's page land on the card that was clicked instead of the top of the
 // list. sessionStorage, so it's per-tab and gone when the tab closes.
 const scrollKey = (key) => `crix-scroll:${key}`;
+// Every page opened fresh in a tab (typed in, a link from another site, a
+// reload of that first page) has the same key, "default" — so a position saved
+// under it belonged to whichever page was opened that way last, and the next
+// one opened fresh jumped to that spot (often the footer). It is never saved
+// or restored (a reload of that first page starts at the top; every page
+// reached by a link inside the site has its own key and is restored as before).
+const isSharedKey = (key) => !key || key === "default";
 const savedScroll = (key) => {
+  if (isSharedKey(key)) return null;
   try {
     const y = Number(sessionStorage.getItem(scrollKey(key)));
     return Number.isFinite(y) && y > 0 ? y : null;
@@ -110,6 +118,7 @@ function ScrollToTop() {
         // ui.jsx), which makes scrollY read 0 even though the page is still
         // scrolled — don't overwrite the real position with that.
         if (document.body.style.position === "fixed") return;
+        if (isSharedKey(keyRef.current)) return;
         try { sessionStorage.setItem(scrollKey(keyRef.current), String(Math.round(window.scrollY))); } catch (e) { /* storage blocked — skip */ }
       });
     };

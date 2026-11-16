@@ -2,7 +2,8 @@ import { useContext, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { UserContext } from "../../context/UserContext.jsx";
 import { getLearnData } from "../../services/api.js";
-import { usePageMeta } from "../../hooks/usePageMeta.js";
+import { usePageMeta, programTitle } from "../../hooks/usePageMeta.js";
+import { useNoIndex } from "../../hooks/useNoIndex.js";
 import { isValidHttpUrl } from "../../utils/validators.js";
 import CourseVideos from "../../components/CourseVideos.jsx";
 
@@ -34,7 +35,8 @@ export default function Learn() {
   // Ticks once a minute so the Join button's appear/disappear window (and a
   // class that just ended) updates live without the student refreshing.
   const [now, setNow] = useState(() => Date.now());
-  usePageMeta({ title: data?.course ? `${data.course.title} — Learn | Crix Technology` : "Learn | Crix Technology" });
+  usePageMeta({ title: data?.course ? `${programTitle(data.course)} — Learn | Crix Technology` : "Learn | Crix Technology", description: "Your Crix Technology training: classes, recordings and materials." });
+  useNoIndex(true); // a private, signed-in page
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -122,7 +124,7 @@ export default function Learn() {
     <section className="section" style={{ paddingTop: 140 }}>
       <div className="wrap" style={{ maxWidth: 720 }}>
         <Link className="back-link" to="/dashboard">← Dashboard</Link>
-        <h1 className="title-lg" style={{ margin: "24px 0 6px" }}>{course.title}</h1>
+        <h1 className="title-lg" style={{ margin: "24px 0 6px" }}>{programTitle(course)}</h1>
         <p style={{ color: "var(--muted)", marginBottom: 32 }}>{course.desc}</p>
 
         <h3 style={{ margin: "0 0 16px" }}>Upcoming live classes</h3>

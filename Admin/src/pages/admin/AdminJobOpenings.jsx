@@ -265,7 +265,7 @@ export function OpeningList({ openings, bank, onEdit, onCopy, onChanged, empty }
 // The roles on the public Careers page — add, edit, or close — and each role's
 // aptitude-test settings (length, questions per category, marking, cut-off).
 export default function AdminJobOpenings() {
-  usePageMeta({ title: "Job openings | Crix Technology" });
+  usePageMeta({ title: "Job Openings | Crix Technology" });
   const navigate = useNavigate();
   const { openings, bank, loading, error, load } = useJobOpenings();
   const [editing, setEditing] = useState(null);

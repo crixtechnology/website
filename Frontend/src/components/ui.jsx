@@ -25,6 +25,7 @@ import { TIER_ORDER, offeredTiers, planPrice, listPrice, offPercent, formatINR, 
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
 import { walletDiscount } from "../hooks/useWalletCredit.js";
+import { programTitle } from "../hooks/usePageMeta.js";
 import { isFull, placeWord, positionsTag, programFacts } from "../utils/positions.js";
 
 export const REDUCED =
@@ -522,7 +523,9 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
             </div>
             {closed ? <span className="closed-badge">Currently closed</span> : <span className="fee-pill">Paid training</span>}
           </div>
-          <h3>{item.title}</h3>
+          {/* With a duration switch the switch names the length; alone, the title does
+              (each length of a domain is its own card on Training + Internship). */}
+          <h3>{switcher ? item.title : programTitle(item)}</h3>
           {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}
           {facts.length ? (
             <dl className="job-facts">
@@ -1020,7 +1023,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       // API-sourced item (openForBuy requires a real price/status, which
       // the static content.js fallback never has) — so it's never
       // undefined in practice; "course" is just a defensive fallback.
-      type: item.type === "internship" ? "internship" : "course", refTitle: item.title, courseSlug: item.slug,
+      type: item.type === "internship" ? "internship" : "course", refTitle: programTitle(item), courseSlug: item.slug,
       name: form.name, email: form.email, phone: form.phone, tier: plan.tier,
     });
     if (stale()) return;
@@ -1075,7 +1078,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       amount: orderRes.amount,
       currency: orderRes.currency,
       name: "Crix Technology",
-      description: `${item.title} — ${tierLabel(plan.tier)} plan`,
+      description: `${programTitle(item)} — ${tierLabel(plan.tier)} plan`,
       prefill: { name: form.name, email: form.email, contact: compactPhone(form.phone) },
       theme: { color: "#14C9C9" },
       handler: async (resp) => {
@@ -1115,7 +1118,7 @@ export function BuyModal({ item, user, initialTier, onClose }) {
       <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="buy-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <span className="eyebrow">Enroll</span>
-        <h3 id="buy-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
+        <h3 id="buy-modal-title" style={{ margin: "12px 0 4px" }}>{programTitle(item)}</h3>
         {startsInFuture(item) && (
           <Alert inline kind="info">
             Starts on {formatStartDate(item.startsAt)}. You can buy now and get your receipt straight away — the training opens on the start date.
@@ -1268,7 +1271,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
       amount: orderRes.amount,
       currency: orderRes.currency,
       name: "Crix Technology",
-      description: `${item.title} — upgrade to ${tierLabel(selected.tier)}`,
+      description: `${programTitle(item)} — upgrade to ${tierLabel(selected.tier)}`,
       theme: { color: "#14C9C9" },
       handler: async (resp) => {
         setStatus({ text: "Confirming your payment...", kind: "info" });
@@ -1300,7 +1303,7 @@ export function UpgradeModal({ data, onClose, onDone }) {
       <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="upgrade-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <span className="eyebrow">Upgrade plan</span>
-        <h3 id="upgrade-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
+        <h3 id="upgrade-modal-title" style={{ margin: "12px 0 4px" }}>{programTitle(item)}</h3>
 
         {done ? (
           <>
@@ -1447,7 +1450,7 @@ export function InquiryModal({ item, kind, onClose }) {
       return;
     }
     const res = await submitApplication({
-      type: kind, refTitle: item.title, courseSlug: item.slug,
+      type: kind, refTitle: programTitle(item), courseSlug: item.slug,
       name: form.name.trim(), email: form.email.trim(), phone, college: form.college.trim(),
     });
     setLoading(false);
@@ -1471,13 +1474,13 @@ export function InquiryModal({ item, kind, onClose }) {
       <div className="modal-box" role="dialog" aria-modal="true" aria-labelledby="inquiry-modal-title" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
         <span className="eyebrow">{kind === "internship" ? "Apply" : "Request"}</span>
-        <h3 id="inquiry-modal-title" style={{ margin: "12px 0 4px" }}>{item.title}</h3>
+        <h3 id="inquiry-modal-title" style={{ margin: "12px 0 4px" }}>{programTitle(item)}</h3>
 
         {done ? (
           <>
             <Alert inline kind="success">
               Thanks{sent && sent.name ? `, ${sent.name.split(" ")[0]}` : ""} — we've got your details for
-              "{item.title}" and will reach out on {sent && sent.email} or {sent && sent.phone} within 2 working days.
+              "{programTitle(item)}" and will reach out on {sent && sent.email} or {sent && sent.phone} within 2 working days.
             </Alert>
             {kind === "internship" && (
               <p className="form-note" style={{ marginTop: 12 }}>
@@ -1504,10 +1507,10 @@ export function InquiryModal({ item, kind, onClose }) {
           <>
             <p style={{ color: "var(--muted)", fontSize: ".85rem", marginBottom: 20 }}>
               {kind === "internship"
-                ? `Share your details and our team will call you to confirm your place on "${item.title}", then send a payment request for the training fee. Prefer to talk now? Call or WhatsApp ${site.phoneAlt}.`
+                ? `Share your details and our team will call you to confirm your place on "${programTitle(item)}", then send a payment request for the training fee. Prefer to talk now? Call or WhatsApp ${site.phoneAlt}.`
                 : user
-                  ? `Check your details and we'll help you ${verb} "${item.title}".`
-                  : `Share your details and we'll help you ${verb} "${item.title}" — no account needed.`}
+                  ? `Check your details and we'll help you ${verb} "${programTitle(item)}".`
+                  : `Share your details and we'll help you ${verb} "${programTitle(item)}" — no account needed.`}
             </p>
             <form onSubmit={onSubmit} noValidate>
               <div className="field"><label htmlFor="inquiry-name">Full name</label>

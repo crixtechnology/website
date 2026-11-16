@@ -1,7 +1,7 @@
 const express = require("express");
 const crypto = require("crypto");
 const { prisma } = require("../db");
-const { isProgram, PROGRAM_WHERE, COURSES_DROPPED } = require("../utils/programs");
+const { isProgram, PROGRAM_WHERE, COURSES_DROPPED, programTitle } = require("../utils/programs");
 const { safeEqual } = require("../utils/safeCompare");
 const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
@@ -132,9 +132,11 @@ async function attachReceipt(payment, application) {
 
   const course = await prisma.course.findUnique({
     where: { id: application.courseId },
-    select: { title: true, type: true },
+    select: { title: true, type: true, durationDays: true },
   });
   if (!course) return;
+  // The receipt names the length too: one domain is sold in several durations under one title.
+  const itemTitle = programTitle(course);
 
   // Prefer the price/discount as they were when the order was created
   // (payment.orderSnapshot*, see the field's doc comment in prisma/schema.prisma)
@@ -163,7 +165,7 @@ async function attachReceipt(payment, application) {
     buyerEmail: application.email || "",
     buyerPhone: application.phone || "",
     itemType: course.type,
-    itemTitle: course.title,
+    itemTitle,
     basePrice,
     discountPercent: effectiveDiscountPercent,
     discountAmount,
@@ -203,7 +205,7 @@ async function attachReceipt(payment, application) {
       buyerEmail: receipt.buyerEmail,
       buyerPhone: receipt.buyerPhone,
       itemType: course.type,
-      itemTitle: course.title,
+      itemTitle,
       tier: payment.tier,
       fromTier: payment.fromTier,
       basePrice,
@@ -214,7 +216,7 @@ async function attachReceipt(payment, application) {
       razorpay_payment_id: fromWallet ? null : payment.razorpayPaymentId,
     });
     await sendReceiptEmail({
-      receipt: { receiptNumber, buyerName: receipt.buyerName, buyerEmail: receipt.buyerEmail, itemTitle: course.title, itemType: course.type, tier: payment.tier, fromTier: payment.fromTier, totalPaid },
+      receipt: { receiptNumber, buyerName: receipt.buyerName, buyerEmail: receipt.buyerEmail, itemTitle, itemType: course.type, tier: payment.tier, fromTier: payment.fromTier, totalPaid },
       pdfBuffer,
     });
   } catch (mailErr) {
@@ -548,7 +550,7 @@ router.post("/create-upgrade-order", publicWriteLimiter, requireAuth, async (req
     const application = await prisma.application.create({
       data: {
         type: course.type,
-        refTitle: course.title,
+        refTitle: programTitle(course),
         name: user.name,
         email: user.email,
         phone: user.phone || "",

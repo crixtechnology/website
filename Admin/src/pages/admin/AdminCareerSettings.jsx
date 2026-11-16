@@ -10,7 +10,7 @@ const TOGGLES = ["requireWebcam", "requireDesktopApp"];
 // The rules of the careers flow: the credit new accounts get and how it can be
 // used, and how strict the test is. (The test itself is free: there is no fee to set.)
 export default function AdminCareerSettings() {
-  usePageMeta({ title: "Careers settings | Crix Technology" });
+  usePageMeta({ title: "Careers Settings | Crix Technology" });
   const navigate = useNavigate();
   const { logout } = useContext(UserContext);
   const [settings, setSettings] = useState(null); // numbers held as the text typed

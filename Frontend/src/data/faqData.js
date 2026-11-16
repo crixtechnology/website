@@ -118,7 +118,7 @@ export const FAQ_TOPICS = [
       { id: "p-gst", q: "Do you charge GST?", k: "gst tax gstin cgst sgst igst tax invoice",
         a: "No. Crix Technology is not registered under GST, so no GST is charged on our training programs, and your receipt shows no GST." },
       { id: "p-delete", q: "How do I delete my account?", k: "delete account remove erase data close deactivate privacy dpdp",
-        a: "Go to your Profile page and choose “Delete my account”. We email a code to your account's email address to confirm it's you; once you enter it, your account and personal data are deleted straight away and you'll get a confirmation email.\nUnused wallet credit and course access are lost and not refunded. Payment records and receipts are kept, with no link to an account, as Indian tax law requires.",
+        a: "Go to your Profile page and choose “Delete my account”. We email a code to your account's email address to confirm it's you; once you enter it, your account and personal data are deleted straight away and you'll get a confirmation email.\nUnused wallet credit and program access are lost and not refunded. Payment records and receipts are kept, with no link to an account, as Indian tax law requires.",
         links: [{ to: "/profile", label: "My Profile" }, { to: "/privacy-policy", label: "Privacy Policy" }] },
       { id: "p-failed", q: "My payment failed or money was deducted", k: "failed deducted stuck pending error not received access",
         a: "If money left your account but you didn't get access, please contact us with your name, email, the program name and the payment reference from your bank / UPI app, and we'll check it.",
