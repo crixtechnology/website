@@ -270,6 +270,25 @@ export async function createRazorpayOrder(applicationId, courseSlug, tier) {
   }
 }
 
+// Fired on window when the student's spendable wallet credit may have changed
+// (hooks/useWalletCredit.js re-reads the wallet on it).
+export const WALLET_CHANGED_EVENT = "crix:wallet-changed";
+
+// Checkout ended without a payment (closed, failed, timed out): ask the server
+// to free the wallet credit that order was holding, so the wallet and program
+// prices show it again at once. Best effort — never throws.
+export async function releaseRazorpayOrder(orderId) {
+  if (!API || !orderId) return { ok: false };
+  try {
+    const res = await authFetch("/payments/release", { method: "POST", body: JSON.stringify({ orderId }) });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.released) window.dispatchEvent(new Event(WALLET_CHANGED_EVENT));
+    return { ok: res.ok, released: !!data.released };
+  } catch (e) {
+    return { ok: false };
+  }
+}
+
 // Called from Razorpay Checkout's success `handler` with the fields it hands
 // back. The backend re-computes the signature and, if valid, marks the
 // payment paid + grants the course enrolment — this is what unlocks the

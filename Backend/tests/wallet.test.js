@@ -16,7 +16,10 @@ jest.mock("../src/utils/mailer", () => ({
 jest.mock("../src/utils/receiptPdf", () => ({ buildReceiptPdfBuffer: jest.fn(() => Buffer.from("fake-pdf")) }));
 jest.mock("../src/utils/razorpay", () => ({
   isLiveBlocked: false,
-  razorpay: { orders: { create: jest.fn(async () => ({ id: `order_w_${Math.random().toString(36).slice(2)}`, currency: "INR" })) } },
+  razorpay: { orders: {
+    create: jest.fn(async () => ({ id: `order_w_${Math.random().toString(36).slice(2)}`, currency: "INR" })),
+    fetch: jest.fn(async (id) => ({ id, status: "attempted" })),
+  } },
 }));
 const { razorpay } = require("../src/utils/razorpay");
 const mailer = require("../src/utils/mailer");
@@ -183,6 +186,68 @@ describe("paying for a course from the wallet", () => {
     const res = await payWallet(student, course, await application(student, course));
     expect(res.status).toBe(400);
     expect((await walletOf(student)).balance).toBe(1000);
+  });
+
+  describe("a checkout closed without paying", () => {
+    const startOrder = async (student, course) => authed(request(app).post("/api/payments/create-order"), student.token).send({
+      acceptTerms: true, applicationId: await application(student, course), courseSlug: course.slug, tier: "basic",
+    });
+    const release = (student, orderId) => authed(request(app).post("/api/payments/release"), student.token).send({ orderId });
+
+    it("gives the wallet credit back at once, for the wallet and every program's price", async () => {
+      const course = await openCourse([["basic", 1000]]);
+      const other = await openCourse([["basic", 1000]]);
+      const student = await signup("cancel");
+      await grant(student, 300);
+      const start = await startOrder(student, course);
+      expect(start.status).toBe(201);
+      expect(start.body.amount).toBe(70000);
+      expect((await walletOf(student)).available).toBe(0);
+      expect((await quote(student, other)).body.creditApplied).toBe(0);
+
+      const res = await release(student, start.body.orderId);
+      expect(res.body).toMatchObject({ ok: true, released: true });
+      expect(await walletOf(student)).toMatchObject({ balance: 300, available: 300, reserved: 0 });
+      expect((await quote(student, other)).body).toMatchObject({ creditApplied: 300, payable: 700 });
+      // Trying again prices the full credit back in.
+      expect((await startOrder(student, course)).body.amount).toBe(70000);
+
+      // If the released order is captured after all (a slow UPI payment), access
+      // is still granted and the credit is spent then — once.
+      const crypto = require("crypto");
+      const paymentId = "pay_late_1";
+      const paid = await request(app).post("/api/payments/verify").send({
+        razorpay_order_id: start.body.orderId, razorpay_payment_id: paymentId,
+        razorpay_signature: crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "").update(`${start.body.orderId}|${paymentId}`).digest("hex"),
+      });
+      expect(paid.status).toBe(200);
+      expect(paid.body.enrolled).toBe(true);
+      expect((await walletOf(student)).balance).toBe(0);
+    });
+
+    it("frees the credit when the same program is simply tried again (tab closed, no release)", async () => {
+      const course = await openCourse([["basic", 1000]]);
+      const student = await signup("retry");
+      await grant(student, 300);
+      expect((await startOrder(student, course)).body.amount).toBe(70000);
+      // The quote for the same program already counts the held credit as usable.
+      expect((await quote(student, course)).body).toMatchObject({ creditApplied: 300, payable: 700 });
+      expect((await startOrder(student, course)).body.amount).toBe(70000);
+      expect((await walletOf(student)).reserved).toBe(300);
+    });
+
+    it("leaves other people's orders, and orders Razorpay says are paid, alone", async () => {
+      const course = await openCourse([["basic", 1000]]);
+      const owner = await signup("relowner");
+      const other = await signup("relother");
+      await grant(owner, 300);
+      const start = await startOrder(owner, course);
+      expect((await release(other, start.body.orderId)).body.released).toBe(false);
+      razorpay.orders.fetch.mockResolvedValueOnce({ id: start.body.orderId, status: "paid" });
+      expect((await release(owner, start.body.orderId)).body.released).toBe(false);
+      expect((await walletOf(owner)).reserved).toBe(300);
+      expect((await request(app).post("/api/payments/release").send({ orderId: start.body.orderId })).status).toBe(401);
+    });
   });
 
   it("spends the credit only once when the request is sent twice at the same moment", async () => {

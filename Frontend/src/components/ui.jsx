@@ -5,7 +5,7 @@ import HelpAgent from "./HelpAgent.jsx";
 import { site, marquee, programDeliverables } from "../data/content.js";
 import {
   submitApplication, createRazorpayOrder, verifyPayment, submitContact, getUpgradeOptions, createUpgradeOrder,
-  getPriceQuote, payWithWallet, forgotPassword, resetPassword, hasAccountOnThisDevice,
+  getPriceQuote, payWithWallet, releaseRazorpayOrder, forgotPassword, resetPassword, hasAccountOnThisDevice,
 } from "../services/api.js";
 import { UserContext, isProfileComplete, profileMissing } from "../context/UserContext.jsx";
 import { IDLE_TIMEOUT_MINUTES } from "../hooks/useIdleLogout.js";
@@ -859,6 +859,7 @@ export const CHECKOUT_TIMEOUT_S = 300;
 // closed it, else { reason } (Razorpay's text, if it gave one) or { timedOut: true }.
 // A payment that did go through in the meantime is still confirmed by the
 // server's Razorpay webhook. `options.handler` runs on success, as before.
+// Ending without success also frees the order's wallet credit (releaseRazorpayOrder).
 export function openRazorpayCheckout(options, onClose) {
   let done = false;
   let timer = null;
@@ -866,6 +867,8 @@ export function openRazorpayCheckout(options, onClose) {
     if (done) return;
     done = true;
     clearTimeout(timer);
+    // No payment: free the wallet credit this order was holding.
+    releaseRazorpayOrder(options.order_id);
     onClose && onClose(failure);
   };
   const rzp = new window.Razorpay({
