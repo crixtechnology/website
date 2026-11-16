@@ -9,7 +9,6 @@ let container;
 let root;
 beforeEach(() => {
   jest.useFakeTimers();
-  window.sessionStorage.clear();
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -33,17 +32,25 @@ it("tells a logged-out visitor about the signup bonus, and opens login from its 
   expect(container.querySelector(".bonus-modal")).toBeNull();
 });
 
-it("shows once per tab after it's closed", () => {
+it("shows again on every visit while logged out, after being closed", () => {
   show({ isLoggedIn: false });
   act(() => { container.querySelector(".modal-close").click(); });
+  expect(container.querySelector(".bonus-modal")).toBeNull();
   act(() => root.render(<div />));
   show({ isLoggedIn: false });
-  expect(container.querySelector(".bonus-modal")).toBeNull();
+  expect(container.querySelector(".bonus-modal")).not.toBeNull();
 });
 
 it("never shows when logged in or when the bonus is 0", () => {
   show({ isLoggedIn: true });
   expect(container.querySelector(".bonus-modal")).toBeNull();
   show({ isLoggedIn: false }, 0);
+  expect(container.querySelector(".bonus-modal")).toBeNull();
+});
+
+it("closes when the visitor logs in", () => {
+  show({ isLoggedIn: false });
+  expect(container.querySelector(".bonus-modal")).not.toBeNull();
+  show({ isLoggedIn: true });
   expect(container.querySelector(".bonus-modal")).toBeNull();
 });

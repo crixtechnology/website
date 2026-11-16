@@ -131,45 +131,24 @@ afterAll(async () => { await teardownTestDb(); });
 describe("signup bonus", () => {
   afterAll(async () => { await setSettings({ signupBonusCredits: 0 }); });
 
-  // The code the last verification email carried.
-  const lastCode = () => mailer.sendOtpEmail.mock.calls[mailer.sendOtpEmail.mock.calls.length - 1][0].code;
-  const sendCode = (me) => authed(request(app).post("/api/me/signup-bonus/send-code"), me.token).send({});
-  const verifyCode = (me, code) => authed(request(app).post("/api/me/signup-bonus/verify"), me.token).send({ code });
-
-  it("holds an email signup's bonus until the email is verified, then gives it once, with an expiry, and tells them", async () => {
+  it("credits an email-and-password signup straight away, once, with an expiry, and tells them", async () => {
     await setSettings({ signupBonusCredits: 300, creditExpiryMonths: 12 });
+    mailer.sendSignupBonusEmail.mockClear();
     const res = await newStudent(app, { name: "Bonus Person", email: "bonus1@example.com", phone: "9876500000", password: "a-real-password" });
     expect(res.status).toBe(201);
     const me = { id: res.body.user.id, token: res.body.token };
 
-    // Nothing to spend yet — a made-up address can't collect it.
-    const before = await walletOf(me);
-    expect(before).toMatchObject({ balance: 0, pendingBonus: 300 });
-    expect(mailer.sendSignupBonusEmail).not.toHaveBeenCalledWith(expect.objectContaining({ to: "bonus1@example.com" }));
-
-    mailer.sendOtpEmail.mockClear();
-    expect((await sendCode(me)).status).toBe(200);
-    expect(mailer.sendOtpEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "bonus1@example.com", purpose: "verify_email" }));
-    // Asking again straight away is refused (no inbox flooding).
-    expect((await sendCode(me)).status).toBe(429);
-    // A wrong code changes nothing.
-    const wrong = lastCode() === "000000" ? "111111" : "000000";
-    expect((await verifyCode(me, wrong)).status).toBe(400);
-    expect((await walletOf(me)).balance).toBe(0);
-
-    const ok = await verifyCode(me, lastCode());
-    expect(ok.status).toBe(200);
-    expect(ok.body.credited).toBe(300);
-
+    // No email code to enter: the bonus is in the wallet as soon as the account exists.
     const w = await walletOf(me);
-    expect(w.pendingBonus).toBe(0);
     expect(w.balance).toBe(300);
+    expect(w).not.toHaveProperty("pendingBonus");
     expect(w.entries).toHaveLength(1);
     expect(w.entries[0]).toMatchObject({ kind: "signup_bonus", type: "Signup Bonus", amount: 300 });
     const months = (new Date(w.entries[0].expiresAt) - Date.now()) / (30 * 24 * 3600 * 1000);
     expect(months).toBeGreaterThan(11);
     expect(months).toBeLessThan(13);
     expect(mailer.sendSignupBonusEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "bonus1@example.com", credits: 300 }));
+    expect((await prisma.user.findUnique({ where: { id: me.id } })).signupBonusPending).toBe(false);
 
     // Granting again (a retried request, two sign-ins racing) changes nothing.
     const user = await prisma.user.findUnique({ where: { id: me.id } });
@@ -178,46 +157,50 @@ describe("signup bonus", () => {
     expect((await walletOf(me)).balance).toBe(300);
     const notes = await authed(request(app).get("/api/me/notifications"), me.token);
     expect(notes.body.unread).toBe(1);
+
+    // The old "email me a code" endpoints are gone.
+    expect((await authed(request(app).post("/api/me/signup-bonus/send-code"), me.token).send({})).status).toBe(404);
   });
 
-  it("won't release a bonus twice, or to an account that has none waiting", async () => {
+  it("gives an account still waiting from before (email not confirmed) its bonus at its next login or wallet visit, once", async () => {
     await setSettings({ signupBonusCredits: 300 });
-    const res = await newStudent(app, { name: "Twice Person", email: "bonus3@example.com", phone: "9876500000", password: "a-real-password" });
+    const res = await newStudent(app, { name: "Waiting Person", email: "bonus3@example.com", phone: "9876500000", password: "a-real-password" });
     const me = { id: res.body.user.id, token: res.body.token };
-    await sendCode(me);
-    const code = lastCode();
-    const results = await Promise.all([verifyCode(me, code), verifyCode(me, code)]);
-    expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
-    expect((await walletOf(me)).balance).toBe(300);
-    expect((await sendCode(me)).status).toBe(400);
+    // As accounts were left before: no bonus yet, flagged as waiting.
+    await prisma.creditEntry.deleteMany({ where: { userId: me.id } });
+    await prisma.user.update({ where: { id: me.id }, data: { signupBonusPending: true } });
 
-    // An account made before the bonus existed (no flag) can't claim one.
+    const [a, b] = await Promise.all([walletOf(me), walletOf(me)]);
+    expect([a.balance, b.balance]).toContain(300);
+    expect((await walletOf(me)).balance).toBe(300);
+    expect((await prisma.user.findUnique({ where: { id: me.id } })).signupBonusPending).toBe(false);
+
+    // At login too.
+    const other = await newStudent(app, { name: "Login Person", email: "bonus6@example.com", phone: "9876500000", password: "a-real-password" });
+    await prisma.creditEntry.deleteMany({ where: { userId: other.body.user.id } });
+    await prisma.user.update({ where: { id: other.body.user.id }, data: { signupBonusPending: true, activeSessionId: null } });
+    const login = await request(app).post("/api/auth/login").send({ email: "bonus6@example.com", password: "a-real-password" });
+    expect(login.status).toBe(200);
+    expect(await prisma.creditEntry.count({ where: { userId: other.body.user.id, kind: "signup_bonus" } })).toBe(1);
+
+    // An account made before the bonus existed (no flag) gets none.
     const old = await student("oldacct");
-    expect((await sendCode(old)).status).toBe(400);
+    expect((await walletOf(old)).balance).toBe(0);
   });
 
-  it("keeps the bonus waiting when crediting it fails, so it can be claimed again", async () => {
+  it("keeps a waiting bonus waiting when crediting it fails, so it lands next time", async () => {
     await setSettings({ signupBonusCredits: 300 });
     const res = await newStudent(app, { name: "Blip Person", email: "bonus5@example.com", phone: "9876500000", password: "a-real-password" });
     const me = { id: res.body.user.id, token: res.body.token };
-    await sendCode(me);
+    await prisma.creditEntry.deleteMany({ where: { userId: me.id } });
+    await prisma.user.update({ where: { id: me.id }, data: { signupBonusPending: true } });
     const create = jest.spyOn(prisma.creditEntry, "create").mockRejectedValueOnce(new Error("database blip"));
-    expect((await verifyCode(me, lastCode())).status).toBe(500);
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+    expect((await walletOf(me)).balance).toBe(0);
     create.mockRestore();
+    spy.mockRestore();
     expect((await prisma.user.findUnique({ where: { id: me.id } })).signupBonusPending).toBe(true);
-    expect(await wallet.claimSignupBonus(me.id)).toBe(300);
-    expect(await walletOf(me)).toMatchObject({ balance: 300, pendingBonus: 0 });
-  });
-
-  it("says so when the code email can't be sent, and lets them ask again straight away", async () => {
-    await setSettings({ signupBonusCredits: 300 });
-    const res = await newStudent(app, { name: "No Mail Person", email: "bonus4@example.com", phone: "9876500000", password: "a-real-password" });
-    const me = { id: res.body.user.id, token: res.body.token };
-    mailer.sendOtpEmail.mockResolvedValueOnce({ sent: false, reason: "Email not configured" });
-    const failed = await sendCode(me);
-    expect(failed.status).toBe(503);
-    expect(failed.body.error).toMatch(/couldn't send/);
-    expect((await sendCode(me)).status).toBe(200); // no one-minute lockout after a failed send
+    expect((await walletOf(me)).balance).toBe(300);
   });
 
   it("gives nothing when the bonus is set to 0", async () => {

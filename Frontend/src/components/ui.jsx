@@ -294,7 +294,12 @@ export function burstConfetti(fromEl) {
 const revealQueue = new Set();
 let revealFlushScheduled = false;
 let revealObserver = null;
-const showReveal = (el) => { el.classList.add("in"); scrambleEyebrows(el); };
+// Elements already shown. React re-renders a Reveal's className (e.g. a card's
+// entrance direction changes when a list is reordered or filtered), which wipes
+// the "in" added here; Reveal puts it back from this set, or the element would
+// stay invisible — an empty gap where a card should be.
+const revealedEls = new WeakSet();
+const showReveal = (el) => { revealedEls.add(el); el.classList.add("in"); scrambleEyebrows(el); };
 function revealIO() {
   if (!revealObserver && typeof IntersectionObserver !== "undefined") {
     revealObserver = new IntersectionObserver(
@@ -328,6 +333,11 @@ export function Reveal({ as: Tag = "div", variant = "reveal", className = "", ch
     if (!revealFlushScheduled) { revealFlushScheduled = true; queueMicrotask(flushReveals); }
     return () => { revealQueue.delete(el); if (revealObserver) revealObserver.unobserve(el); };
   }, []);
+  // After every render (before paint): keep a shown element shown.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && revealedEls.has(el) && !el.classList.contains("in")) el.classList.add("in");
+  });
   return <Tag ref={ref} className={`${variant} ${className}`} style={style} {...rest}>{children}</Tag>;
 }
 
@@ -565,26 +575,19 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
 }
 
 /* ---------- SignupBonusPopup: the welcome-credit offer on Training + Internship ----------
-   Opens a moment after the page loads for a visitor who isn't logged in, once
-   per browser tab (sessionStorage), telling them a new account gets `bonus`
-   rupees of wallet credit to spend on a program. Nothing shows when the admin
-   has set the bonus to 0 or someone is logged in. */
-const BONUS_SEEN_KEY = "crix_signup_bonus_seen";
+   Opens a moment after the page loads — every time a visitor who isn't logged
+   in lands on it — telling them a new account gets `bonus` rupees of wallet
+   credit to spend on a program. Nothing shows when the admin has set the bonus
+   to 0 or someone is logged in (it closes if they log in meanwhile). */
 export function SignupBonusPopup({ bonus }) {
   const { isLoggedIn, openAuthModal } = useContext(UserContext);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (isLoggedIn || !(bonus > 0)) { setOpen(false); return undefined; }
-    let seen = false;
-    try { seen = window.sessionStorage.getItem(BONUS_SEEN_KEY) === "1"; } catch (e) { /* storage blocked */ }
-    if (seen) return undefined;
     const t = setTimeout(() => setOpen(true), 700);
     return () => clearTimeout(t);
   }, [isLoggedIn, bonus]);
-  const close = () => {
-    setOpen(false);
-    try { window.sessionStorage.setItem(BONUS_SEEN_KEY, "1"); } catch (e) { /* storage blocked */ }
-  };
+  const close = () => setOpen(false);
   useBodyScrollLock(open);
   useModalFocus(open);
   useModalEscape(open, close);
@@ -598,8 +601,8 @@ export function SignupBonusPopup({ bonus }) {
         <span className="eyebrow">Signup bonus</span>
         <h3 id="bonus-modal-title">Get {formatINR(bonus)} in your wallet</h3>
         <p>
-          Create your free account and verify your email — we add <b>{formatINR(bonus)}</b> of wallet credit,
-          which comes straight off your training fee at checkout.
+          Create your free account and we add <b>{formatINR(bonus)}</b> of wallet credit straight away —
+          it comes off your training fee at checkout.
         </p>
         <button type="button" className="btn btn-solid buy-btn" style={{ width: "100%" }} onClick={claim}>Sign up &amp; claim {formatINR(bonus)}</button>
         <button type="button" className="btn btn-ghost" style={{ width: "100%", marginTop: 8 }} onClick={close}>Maybe later</button>

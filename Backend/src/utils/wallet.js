@@ -175,20 +175,10 @@ async function grantSignupBonus(user) {
   return rupees;
 }
 
-// An email/password signup can't prove the address is real, so its welcome
-// credit is held (User.signupBonusPending) until the student enters the code
-// we email them — otherwise a script could sign up with made-up addresses and
-// collect the bonus over and over. Google sign-ups are verified by Google and
-// get the bonus straight away (grantSignupBonus). Returns true when held.
-async function holdSignupBonus(user) {
-  if (!user || user.role !== "student") return false;
-  const settings = await getCareerSettings();
-  if (!(settings.signupBonusCredits > 0)) return false;
-  await prisma.user.update({ where: { id: user.id }, data: { signupBonusPending: true } });
-  return true;
-}
-
-// Releases a held bonus once the email is proven. Returns the rupees credited, or 0.
+// Releases a bonus held for an account made when email sign-ups had to confirm
+// their address first (User.signupBonusPending). Every new account now gets the
+// bonus at sign-up, so this only settles those older accounts — at their next
+// login or wallet visit. Returns the rupees credited, or 0.
 // The credit is written BEFORE the flag is cleared: if writing it fails, the bonus
 // is still waiting and the student can simply try again. Two racing claims credit
 // it once — the entry's fixed id (grantSignupBonus) lets only one of them in.
@@ -202,9 +192,9 @@ async function claimSignupBonus(userId) {
 
 // The wallet as the owner sees it: balance, what's spendable, and recent history.
 async function getWallet(userId, limit = 50) {
+  await claimSignupBonus(userId).catch((e) => console.error("[wallet] signup bonus release failed:", e.message));
   await expireCredits(userId);
-  const [owner, settings, { balance, reserved, available }, entries, earned, spent] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { signupBonusPending: true } }),
+  const [settings, { balance, reserved, available }, entries, earned, spent] = await Promise.all([
     getCareerSettings(),
     availableBalance(userId),
     prisma.creditEntry.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: limit }),
@@ -231,8 +221,6 @@ async function getWallet(userId, limit = 50) {
     spent: Math.abs(spent._sum.amount || 0) / 100,
     // The most of one purchase that credit may pay for (admin setting).
     usagePercent: settings.creditUsagePercent,
-    // Welcome credit waiting for the student to verify their email (0 = none).
-    pendingBonus: owner && owner.signupBonusPending ? settings.signupBonusCredits : 0,
     entries: entries.map((e) => ({
       id: e.id,
       amount: e.amount / 100,
@@ -292,7 +280,6 @@ module.exports = {
   lapsedCredit,
   expireCredits,
   grantSignupBonus,
-  holdSignupBonus,
   claimSignupBonus,
   getWallet,
   adjustCredit,

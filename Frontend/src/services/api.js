@@ -546,24 +546,6 @@ export async function getPriceQuote(courseSlug, tier) {
 // ---------- Wallet ----------
 // The student's wallet: { balance, available, earned, spent, entries: [{ id, amount, kind, label, createdAt }] }
 // (rupees). `available` is what can be spent now — balance less credit held by an unpaid checkout.
-// The signup bonus of an email/password account waits until the email is
-// verified: send a code to the account's own address, then check it.
-export async function sendBonusCode() {
-  try {
-    return await jsonOr(await authFetch("/me/signup-bonus/send-code", { method: "POST", body: "{}" }), "Could not send the code");
-  } catch (e) {
-    return { ok: false, error: "Could not send the code right now." };
-  }
-}
-
-export async function verifyBonusCode(code) {
-  try {
-    return await jsonOr(await authFetch("/me/signup-bonus/verify", { method: "POST", body: JSON.stringify({ code }) }), "Could not check the code");
-  } catch (e) {
-    return { ok: false, error: "Could not check the code right now." };
-  }
-}
-
 export async function getMyWallet() {
   try {
     const res = await authFetch("/me/wallet");
