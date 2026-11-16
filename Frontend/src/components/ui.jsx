@@ -26,7 +26,7 @@ import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
 import { walletOffPrice } from "../hooks/useWalletCredit.js";
 import { programTitle } from "../hooks/usePageMeta.js";
-import { isFull, placeWord, positionsTag, programFacts } from "../utils/positions.js";
+import { isFull, placeWord, positionsTag, programFacts, stipendInfo } from "../utils/positions.js";
 
 export const REDUCED =
   typeof window !== "undefined" &&
@@ -510,7 +510,7 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
   const full = isFull(item);
   // Admin's Open/Closed switch: a closed track takes no enrollments.
   const closed = item.status === "closed";
-  const facts = programFacts({ ...item, type: "internship" });
+  const facts = programFacts({ ...item, type: "internship" }, { stipendStrip: true });
   // The fee the admin set: the cheapest plan's price ("From" when there are several).
   const plans = offeredTiers(item);
   const cheapest = plans.length ? plans.reduce((a, b) => (planPrice(b) < planPrice(a) ? b : a)) : null;
@@ -541,6 +541,7 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
               (each length of a domain is its own card on Training + Internship). */}
           <h3>{switcher ? item.title : programTitle(item)}</h3>
           {switcher && <div onClick={(e) => e.stopPropagation()}>{switcher}</div>}
+          <StipendStrip item={item} />
           {facts.length ? (
             <dl className="job-facts">
               {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
@@ -938,6 +939,48 @@ export function CheckoutExtras({ item, tier, onPayable, onWalletCovers, getQuote
         <div className="is-off"><dt>Wallet credit</dt><dd>−{formatINR(creditShown)}</dd></div>
         <div className="is-total"><dt>You pay</dt><dd>{formatINR(payShown)}</dd></div>
       </dl>
+    </div>
+  );
+}
+
+/* ---------- StipendStrip: a program's stipend, on its card and its page ----------
+   The amount, a "Performance based" badge and — when the program opens with
+   training months that pay no stipend (Admin) — a month-by-month bar with
+   which months are training and which pay. "No Stipend" shows as a quiet
+   line. Nothing when the program states no stipend. */
+const monthsLabel = (from, to) => (from === to ? `Month ${from}` : `Months ${from}–${to}`);
+export function StipendStrip({ item, className = "" }) {
+  const info = stipendInfo(item);
+  if (!info) return null;
+  if (info.none) {
+    return (
+      <div className={`stipend-strip stipend-strip--none ${className}`.trim()}>
+        <span className="stipend-strip-label">Stipend</span>
+        <span className="stipend-strip-none">Not included</span>
+      </div>
+    );
+  }
+  const { amount, per, months, trainingMonths: t } = info;
+  return (
+    <div className={`stipend-strip ${className}`.trim()}>
+      <div className="stipend-strip-head">
+        <span className="stipend-strip-label">Stipend</span>
+        <span className="stipend-strip-badge">Performance based</span>
+      </div>
+      <p className="stipend-strip-amount">{amount}{per && <small>/{per}</small>}</p>
+      {t > 0 && (
+        <>
+          {months && (
+            <div className="stipend-track" aria-hidden="true">
+              {Array.from({ length: months }, (_, m) => <span key={m} className={m < t ? "is-training" : "is-paid"} />)}
+            </div>
+          )}
+          <div className="stipend-legend">
+            <span className="is-training"><i aria-hidden="true" />{monthsLabel(1, t)} · Training</span>
+            <span className="is-paid"><i aria-hidden="true" />{months ? monthsLabel(t + 1, months) : `From month ${t + 1}`} · Stipend</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }

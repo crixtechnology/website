@@ -72,7 +72,9 @@ describe("key facts", () => {
   it("list the same facts as every program card, Starts on included", async () => {
     await renderPage({ ...base, type: "internship", stipend: "Up to ₹4,000/month", experience: "Freshers", mode: "Remote", durationDays: 90, startingFrom: "2nd week of January" });
     const labels = qa(".course-facts > div dt").map((d) => d.textContent);
-    expect(labels).toEqual(["Type", "Format", "Training fee from", "Stipend", "Experience", "Duration", "Mode", "Starts on"]);
+    expect(labels).toEqual(["Type", "Format", "Training fee from", "Experience", "Duration", "Mode", "Starts on"]);
+    // The stipend has its own strip under the facts.
+    expect(q(".stipend-strip-amount").textContent).toBe("Up to ₹4,000/month");
   });
 
   it("show the duration when there is one, and drop the price for a closed course", async () => {
@@ -274,7 +276,9 @@ describe("the details a free internship shows", () => {
 
   it("shows positions, stipend, experience, mode, skills, what you'll do and eligibility", async () => {
     await renderPage(detailed);
-    expect(facts()).toMatchObject({ Positions: "6 of 10 positions open", Stipend: "Up to ₹4,000/month (performance based)", Experience: "Freshers welcome", Mode: "Remote" });
+    expect(facts()).toMatchObject({ Positions: "6 of 10 positions open", Experience: "Freshers welcome", Mode: "Remote" });
+    expect(q(".stipend-strip").textContent).toContain("Up to ₹4,000/month");
+    expect(q(".stipend-strip-badge").textContent).toBe("Performance based");
     const headings = qa("h2").map((h) => h.textContent);
     expect(headings).toEqual(expect.arrayContaining(["Skills", "What you'll do", "Eligibility"]));
     expect(container.textContent).toContain("Kotlin");
