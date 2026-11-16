@@ -75,8 +75,20 @@ export function getStoredUser() {
   }
 }
 export function setStoredUser(user) {
-  if (user) store.setItem(USER_KEY, JSON.stringify(user));
+  if (user) { store.setItem(USER_KEY, JSON.stringify(user)); rememberHasAccount(); }
   else store.removeItem(USER_KEY);
+}
+
+// Whether someone has logged in (or signed up) in this browser before. Kept in
+// localStorage, so it outlives logging out and closing the tab: the signup-bonus
+// popup ("Sign up & claim") is for newcomers, not for a returning student who
+// is only logged out. Holds no personal data — just a flag.
+const HAS_ACCOUNT_KEY = "crix_has_account";
+function rememberHasAccount() {
+  try { window.localStorage.setItem(HAS_ACCOUNT_KEY, "1"); } catch (e) { /* storage blocked */ }
+}
+export function hasAccountOnThisDevice() {
+  try { return window.localStorage.getItem(HAS_ACCOUNT_KEY) === "1"; } catch (e) { return false; }
 }
 
 // ---- Inactivity tracking (see hooks/useIdleLogout.js) ----

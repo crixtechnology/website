@@ -773,6 +773,11 @@ a.wa-pill:focus-visible{outline:2px solid #1EBE5D;outline-offset:2px}
 /* The sign-up popup's age confirmation (AuthModal in ui.jsx). */
 .age-check{margin:0 0 16px;font-size:.82rem;line-height:1.55;color:var(--muted)}
 .age-check a{color:var(--teal);text-decoration:underline;text-underline-offset:2px}
+/* The new-account popup: what the person agrees to, in one box. */
+.agree-box{margin:4px 0 16px;padding:14px 16px;border-radius:12px;border:1px solid rgba(var(--teal-rgb),.35);background:rgba(var(--teal-rgb),.07)}
+.agree-box-title{display:block;font-weight:600;font-size:.9rem;margin-bottom:8px;color:var(--text)}
+.agree-box ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:.86rem;line-height:1.55;color:var(--muted)}
+.agree-box a{color:var(--teal);text-decoration:underline;text-underline-offset:2px}
 .adult-check{margin:14px 0 0;font-size:.82rem;line-height:1.55;color:var(--muted);text-align:left}
 /* The Terms & Conditions box above every Pay button (TermsCheckbox in ui.jsx). */
 .terms-check{margin:14px 0 12px;font-size:.82rem;line-height:1.55;color:var(--muted);text-align:left}

@@ -135,7 +135,7 @@ describe("login popup — one form that logs in or creates the account", () => {
     await renderModal(ctx());
     expect(q("#auth-name")).toBeNull();
     expect(q("#auth-phone")).toBeNull();
-    expect(q(".age-check")).toBeNull();
+    expect(container.querySelector("input[type=checkbox]")).toBeNull();
     expect(container.textContent).toContain("Log in or create an account");
     expect(container.textContent).not.toMatch(/sign up/i);
   });
@@ -146,42 +146,68 @@ describe("login popup — one form that logs in or creates the account", () => {
     await renderModal(value);
     await fillLogin();
     await submit(q("#auth-password").closest("form"));
-    expect(value.login).toHaveBeenCalledWith("new@example.com", "a-long-password", undefined);
+    expect(value.login).toHaveBeenCalledWith("new@example.com", "a-long-password");
     expect(value.closeAuthModal).toHaveBeenCalled();
   });
 
-  it("asks to confirm a new email, needs the age box, then creates the account with that password", async () => {
+  // A new email goes straight to one "I agree" popup — no extra form, no
+  // checkbox to find — and agreeing creates the account and logs in.
+  const agreeButton = () => [...container.querySelectorAll("button")].find((b) => /I agree/.test(b.textContent));
+
+  // The "I agree" popup is only for an email the server says has no account.
+  it("never shows the 'I agree' popup to an existing account, even with a wrong password", async () => {
+    const value = ctx();
+    value.login.mockResolvedValueOnce({ ok: false, error: "Invalid credentials" });
+    await renderModal(value);
+    await fillLogin();
+    await submit(q("#auth-password").closest("form"));
+    expect(q(".agree-box")).toBeNull();
+    expect(container.textContent).toContain("Invalid credentials");
+    expect(container.textContent).toContain("Log in or create an account");
+  });
+
+  it("asks a new email for one 'I agree', then creates the account and logs in", async () => {
     const value = ctx();
     value.login.mockResolvedValueOnce({ ok: false, code: "NEW_ACCOUNT", error: "There's no account with this email yet." });
     await renderModal(value);
     await fillLogin();
     await submit(q("#auth-password").closest("form"));
     expect(container.textContent).toContain("Create your account");
-    expect(q(".age-check").textContent).toContain("18 or older");
-    // The typed details stay for the second step.
-    expect(q("#auth-email").value).toBe("new@example.com");
-    expect(q("#auth-password").value).toBe("a-long-password");
-
-    await submit(q("#auth-password").closest("form"));
+    expect(q(".agree-box").textContent).toMatch(/18 or older/);
+    expect(q(".agree-box").textContent).toMatch(/Terms of Service/);
+    expect(q(".agree-box").textContent).toMatch(/Privacy Policy/);
+    expect(container.querySelector("input[type=checkbox]")).toBeNull();
+    expect(container.textContent).toContain("new@example.com");
     expect(value.login).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain("Please confirm your age");
 
     value.login.mockResolvedValueOnce({ ok: true, created: true, token: "t", user: { name: "New", profilePending: true } });
-    await act(async () => { q(".age-check input").click(); });
-    await submit(q("#auth-password").closest("form"));
+    await act(async () => { agreeButton().click(); });
     expect(value.login).toHaveBeenLastCalledWith("new@example.com", "a-long-password", { createAccount: true, ageConfirmed: true });
     expect(value.closeAuthModal).toHaveBeenCalled();
   });
 
-  it("goes back to a plain login when the email is changed after the 'new email' step", async () => {
+  it("asks for a longer password before offering to create the account", async () => {
+    const value = ctx();
+    value.login.mockResolvedValueOnce({ ok: false, code: "NEW_ACCOUNT", error: "There's no account with this email yet." });
+    await renderModal(value);
+    await type("#auth-email", "new@example.com");
+    await type("#auth-password", "short");
+    await submit(q("#auth-password").closest("form"));
+    expect(q(".agree-box")).toBeNull();
+    expect(container.textContent).toMatch(/at least 8 characters/);
+  });
+
+  it("goes back to the form, password cleared, with 'Use a different email'", async () => {
     const value = ctx();
     value.login.mockResolvedValueOnce({ ok: false, code: "NEW_ACCOUNT", error: "There's no account with this email yet." });
     await renderModal(value);
     await fillLogin();
     await submit(q("#auth-password").closest("form"));
-    expect(q(".age-check")).not.toBeNull();
-    await type("#auth-email", "asha@example.com");
-    expect(q(".age-check")).toBeNull();
+    await act(async () => { [...container.querySelectorAll("button")].find((b) => b.textContent === "Use a different email").click(); });
+    expect(q(".agree-box")).toBeNull();
+    expect(q("#auth-email").value).toBe("new@example.com");
+    expect(q("#auth-password").value).toBe("");
+    expect(value.login).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the fields when login fails, so the problem can be fixed", async () => {
