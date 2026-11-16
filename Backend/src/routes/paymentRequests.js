@@ -22,7 +22,7 @@ const { razorpay, isLiveBlocked } = require("../utils/razorpay");
 const { hasValidAccess, computeEndDate, accessStartFor } = require("../utils/enrollmentAccess");
 const { isTier, tierRank } = require("../utils/tiers");
 const { requireAuth } = require("../middleware/requireAuth");
-const { priceOrder, redeemCreditForPurchase } = require("../utils/pricing");
+const { priceOrder, redeemCreditForPurchase, releaseReservedCredit } = require("../utils/pricing");
 const { WALLET_ORDER_PREFIX, lockUser, expireCredits } = require("../utils/wallet");
 const { requireAdmin } = require("../middleware/requireAdmin");
 const { publicWriteLimiter } = require("../utils/rateLimit");
@@ -336,6 +336,8 @@ router.post("/me/payment-requests/:id/create-order", publicWriteLimiter, require
     const { request } = found;
 
     await expireCredits(request.userId);
+    // A fresh try replaces any earlier unpaid order for this request, freeing its wallet credit.
+    await releaseReservedCredit({ paymentRequestId: request.id, userId: request.userId });
     const { pricing } = await priceRequest(request, request.userId);
     const amountPaise = pricing.payablePaise;
 

@@ -10,7 +10,7 @@ const { round2 } = require("../utils/money");
 const { WITH_TIERS, WITH_SEATS, seatsOf, isTier, tierRank, tierTotal, listPriceOf } = require("../utils/tiers");
 const { getUpgradeOptions } = require("../utils/upgrades");
 const { requireAuth } = require("../middleware/requireAuth");
-const { priceOrder, redeemCreditForPurchase } = require("../utils/pricing");
+const { priceOrder, redeemCreditForPurchase, releaseReservedCredit } = require("../utils/pricing");
 const { WALLET_ORDER_PREFIX, isWalletPayment, lockUser, expireCredits } = require("../utils/wallet");
 const { buildReceiptPdfBuffer } = require("../utils/receiptPdf");
 const { sendReceiptEmail } = require("../utils/mailer");
@@ -288,7 +288,9 @@ router.post("/quote", requireAuth, async (req, res, next) => {
     await expireCredits(req.user.sub);
 
     const planRupees = tierTotal(found.plan);
-    const pricing = await priceOrder(req.user.sub, planRupees);
+    // Credit held by an earlier, unpaid try at this same program is shown as
+    // usable: starting the checkout frees it (create-order / pay-with-wallet).
+    const pricing = await priceOrder(req.user.sub, planRupees, undefined, { replacing: earlierTriesAt(req.user.sub, found.course.id) });
     res.json({
       ok: true,
       planPrice: planRupees,
@@ -303,6 +305,15 @@ router.post("/quote", requireAuth, async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+});
+
+// The unpaid program orders a new checkout for `courseId` replaces: the buyer's
+// earlier tries at buying it (not plan upgrades), whose wallet credit is then
+// freed (utils/pricing.js releaseReservedCredit).
+const earlierTriesAt = (userId, courseId, applicationId) => ({
+  fromTier: null,
+  paymentRequestId: null,
+  application: { userId, OR: [{ courseId }, ...(applicationId ? [{ id: applicationId }] : [])] },
 });
 
 // The checks create-order and pay-with-wallet share: the request is well-formed,
@@ -351,6 +362,11 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
     const prepared = await prepareOrder(req);
     if (prepared.error) return res.status(prepared.error.status).json({ ok: false, error: prepared.error.message });
     const { application, course, plan } = prepared;
+
+    // A new checkout for this program replaces any earlier one the buyer left
+    // unpaid (closed Checkout, closed the tab): that order's wallet credit is
+    // freed so this one is priced with all of it again.
+    await releaseReservedCredit(earlierTriesAt(application.userId, course.id, application.id));
 
     const pricing = await priceOrder(application.userId, tierTotal(plan));
     const amountPaise = pricing.payablePaise; // whole rupees in paise, Razorpay's smallest unit
@@ -403,6 +419,34 @@ router.post("/create-order", publicWriteLimiter, requireAuth, async (req, res, n
   }
 });
 
+// ---------- 1b. the buyer closed Checkout without paying ----------
+// Body: { orderId }. Called by the site whenever Razorpay Checkout ends without
+// a success (closed, failed, timed out). Frees the wallet credit the order was
+// priced with, so the wallet and the next checkout can use it straight away
+// instead of 30 minutes later. Only the caller's own unpaid order is touched;
+// an order Razorpay already reports as paid is left for the webhook.
+router.post("/release", requireAuth, async (req, res, next) => {
+  try {
+    const { orderId } = req.body || {};
+    if (!orderId || typeof orderId !== "string") return res.status(400).json({ ok: false, error: "orderId is required" });
+    const userId = req.user.sub;
+    const where = { razorpayOrderId: orderId, OR: [{ application: { userId } }, { userId }] };
+    const payment = await prisma.payment.findFirst({ where: { ...where, status: "created" }, select: { id: true } });
+    if (!payment) return res.json({ ok: true, released: false });
+    try {
+      const order = await razorpay.orders.fetch(orderId);
+      if (order && order.status === "paid") return res.json({ ok: true, released: false });
+    } catch (e) {
+      // Can't ask Razorpay: release anyway — a late capture is still granted.
+      console.warn("[payments] release: could not fetch order", orderId, e && (e.message || e.statusCode));
+    }
+    const count = await releaseReservedCredit({ id: payment.id });
+    res.json({ ok: true, released: count > 0 });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ---------- 1a. pay for an order entirely from the wallet ----------
 // Same request as create-order, but when the student's wallet credit
 // (utils/wallet.js) covers the whole price it is settled right here — no Razorpay
@@ -427,6 +471,8 @@ router.post("/pay-with-wallet", publicWriteLimiter, requireAuth, async (req, res
       const enrollment = await tx.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: course.id } } });
       if (hasValidAccess(enrollment)) return { error: { status: 400, message: "You already have access to this program." } };
 
+      // Paying now replaces any unpaid Razorpay try at this program: free its credit.
+      await releaseReservedCredit(earlierTriesAt(userId, course.id, application.id), tx);
       const pricing = await priceOrder(userId, tierTotal(plan), tx);
       if (!pricing.walletCoversAll) {
         return { error: { status: 400, message: "Your wallet doesn't have enough credit to pay for this in full." } };

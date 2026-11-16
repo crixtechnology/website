@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMyWallet } from "../services/api.js";
+import { getMyWallet, WALLET_CHANGED_EVENT } from "../services/api.js";
 import { formatINR } from "../utils/tiers.js";
 
 const shortDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -19,8 +19,10 @@ export default function WalletCard() {
 
   useEffect(() => {
     let alive = true;
-    getMyWallet().then((res) => { if (alive) setWallet(res.ok ? res.wallet : null); });
-    return () => { alive = false; };
+    const load = () => getMyWallet().then((res) => { if (alive) setWallet(res.ok ? res.wallet : null); });
+    load();
+    window.addEventListener(WALLET_CHANGED_EVENT, load);
+    return () => { alive = false; window.removeEventListener(WALLET_CHANGED_EVENT, load); };
   }, []);
 
   if (wallet === undefined) return <div className="wallet-card" aria-busy="true"><span className="eyebrow">Wallet</span><p className="wallet-muted">Loading your wallet…</p></div>;

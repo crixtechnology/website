@@ -1,4 +1,10 @@
 import { openRazorpayCheckout, paymentFailedText, CHECKOUT_TIMEOUT_S } from "./components/ui.jsx";
+import * as api from "./services/api.js";
+
+jest.mock("./services/api.js", () => ({
+  ...jest.requireActual("./services/api.js"),
+  releaseRazorpayOrder: jest.fn(async () => ({ ok: true, released: true })),
+}));
 
 // Every payment opens Razorpay Checkout through openRazorpayCheckout, which has
 // to end the checkout on its own when a payment fails or never reports back —
@@ -72,4 +78,26 @@ it("leaves a successful payment to its handler", () => {
   } finally {
     jest.useRealTimers();
   }
+});
+
+describe("wallet credit held by the order", () => {
+  beforeEach(() => api.releaseRazorpayOrder.mockClear());
+
+  it("is released when Checkout is closed or the payment fails", () => {
+    open(jest.fn());
+    instance.close();
+    expect(api.releaseRazorpayOrder).toHaveBeenCalledWith("order_1");
+
+    api.releaseRazorpayOrder.mockClear();
+    open(jest.fn());
+    instance.events["payment.failed"]({ error: { description: "Declined" } });
+    expect(api.releaseRazorpayOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("is kept (and spent) when the payment succeeds", () => {
+    open(jest.fn());
+    instance.options.handler({ razorpay_payment_id: "pay_1" });
+    instance.close();
+    expect(api.releaseRazorpayOrder).not.toHaveBeenCalled();
+  });
 });

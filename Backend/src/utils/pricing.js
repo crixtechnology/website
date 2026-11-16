@@ -26,26 +26,43 @@ async function creditBalance(userId, db = prisma) {
 }
 
 // Credit tied up by this student's unpaid, recently-started orders.
-async function reservedCredit(userId, db = prisma) {
+// `except` (a Payment filter) leaves out orders the caller is about to replace.
+async function reservedCredit(userId, db = prisma, except = null) {
   const since = new Date(Date.now() - RESERVATION_WINDOW_MS);
   const sum = await db.payment.aggregate({
     // Normal checkouts tie the student through their Application; a payment
     // request's payment (routes/paymentRequests.js) carries userId itself.
-    where: { status: "created", createdAt: { gte: since }, OR: [{ application: { userId } }, { userId }] },
+    where: {
+      status: "created", createdAt: { gte: since }, OR: [{ application: { userId } }, { userId }],
+      ...(except ? { NOT: except } : {}),
+    },
     _sum: { creditApplied: true },
   });
   return sum._sum.creditApplied || 0;
 }
 
+// Frees the credit held by unpaid orders matching `where` (a Payment filter):
+// they stop counting in reservedCredit at once instead of 30 minutes later.
+// Used when the buyer closes or fails Checkout, and when they start a fresh
+// checkout for the same thing (the new order replaces the old one). Only the
+// reservation ends — if Razorpay still captures a released order (a slow UPI
+// payment), the webhook/verify grant it as usual (it marks it paid).
+async function releaseReservedCredit(where, db = prisma) {
+  const res = await db.payment.updateMany({ where: { ...where, status: "created" }, data: { status: "failed" } });
+  return res.count;
+}
+
 // ---------- pricing ----------
 // Turns a plan's price into what the buyer actually pays. `planRupees` is the
 // plan's already-discounted whole-rupee price.
-async function priceOrder(userId, planRupees, db = prisma) {
+// `replacing` (a Payment filter, optional): unpaid orders this checkout will
+// replace — their reserved credit counts as the buyer's (see the quote route).
+async function priceOrder(userId, planRupees, db = prisma, { replacing = null } = {}) {
   const planPaise = planRupees * 100;
   let availableCredit = 0;
 
   if (userId) {
-    const [balance, reserved] = await Promise.all([creditBalance(userId, db), reservedCredit(userId, db)]);
+    const [balance, reserved] = await Promise.all([creditBalance(userId, db), reservedCredit(userId, db, replacing)]);
     availableCredit = Math.max(0, balance - reserved);
   }
 
@@ -92,6 +109,7 @@ module.exports = {
   MIN_CHARGE_PAISE,
   creditBalance,
   reservedCredit,
+  releaseReservedCredit,
   priceOrder,
   redeemCreditForPurchase,
 };
