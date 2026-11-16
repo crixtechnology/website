@@ -417,6 +417,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .benefit:hover{border-color:rgba(127,232,224,.35)}
 .benefit-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(20,201,201,.12);color:var(--teal);margin-bottom:14px}
 .benefit h3{font-size:.95rem;margin:0 0 8px}
+/* A benefit only some programs include: a small tag, and a dashed outline. */
+.benefit--optional{border-style:dashed}
+.benefit-opt{position:absolute;top:16px;right:16px;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:999px;border:1px solid rgba(var(--teal-rgb),.35);color:var(--teal);background:rgba(var(--teal-rgb),.06)}
 .benefit p{color:var(--muted);font-size:.82rem;line-height:1.55}
 
 /* ---------- Admin panel (course management) ---------- */
@@ -877,8 +880,24 @@ body.no-copy img{-webkit-user-drag:none}
 .stage-card h3{min-height:0}
 .stage-card--earn{border-color:rgba(var(--internship-rgb),.45)}
 .stage-card--earn .tag{color:var(--teal)}
-@media(min-width:721px){.stage-grid::after{content:"→";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);color:var(--teal);font-size:1.1rem;z-index:1}}
-@media(max-width:720px){.stage-grid{grid-template-columns:1fr;gap:18px}}
+.stage-card{display:flex;flex-direction:column}
+.stage-card ul{flex:1}
+/* Short facts at the foot of each card: length, payment, selection. */
+.stage-facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.stage-facts span{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.04em;padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:rgba(var(--teal-rgb),.05)}
+.stage-card--earn .stage-facts span{border-color:rgba(var(--teal-rgb),.35);color:var(--text)}
+/* The link between the cards: an arrow with who moves on. */
+.stage-link{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.stage-link b{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid rgba(var(--teal-rgb),.45);color:var(--teal);font-size:1.1rem;box-shadow:0 0 0 6px var(--ink)}
+.stage-link small{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);background:var(--ink);padding:3px 8px;border-radius:999px;white-space:nowrap}
+.stage-cta{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:30px}
+@media(max-width:720px){
+  /* Stacked: the arrow sits between the two cards, pointing down. */
+  .stage-grid{grid-template-columns:1fr;gap:12px}
+  .stage-card--earn{order:2}
+  .stage-link{position:static;transform:none;order:1;flex-direction:row;justify-content:center}
+  .stage-link b{transform:rotate(90deg);box-shadow:none}
+}
 
 /* Training + Internship: the apply / call / WhatsApp row beside the online checkout. */
 .training-contact{margin-top:22px;padding:18px 20px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(160deg,var(--panel),var(--panel-2));max-width:760px}

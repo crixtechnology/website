@@ -22,3 +22,41 @@ it("lists a training track's facts the same way, from its own fields", () => {
 it("leaves out what isn't set", () => {
   expect(labels({ stipend: "₹4,000" })).toEqual(["Stipend"]);
 });
+
+// Not every Training + Internship program pays a stipend: the site must never
+// promise one for every internship (only "on programs that offer one").
+describe("stipend wording", () => {
+  const { trainingStages, process, benefits, legal, programDeliverables } = require("../data/content.js");
+  const faqs = require("../data/faqData.js").ALL_FAQS;
+  const seo = require("../data/seo.json");
+  it("makes no unconditional stipend promise", () => {
+    const text = JSON.stringify({ trainingStages, process, benefits, legal, programDeliverables, faqs, seo });
+    expect(text).not.toMatch(/stipend-based internship|stipend internship|earn a stipend|Training \+ Stipend/i);
+    expect(JSON.stringify(trainingStages)).toMatch(/Stipend/);
+  });
+});
+
+// Not every program includes a joining kit either.
+describe("joining kit wording", () => {
+  const { trainingStages, benefits, legal, programDeliverables } = require("../data/content.js");
+  const faqs = require("../data/faqData.js").ALL_FAQS;
+  it("never promises a kit to every trainee", () => {
+    const text = JSON.stringify({ trainingStages, benefits, legal, programDeliverables, faqs });
+    expect(text).not.toMatch(/Every trainee receives a physical joining kit|• A joining kit\n/);
+    expect(JSON.stringify(programDeliverables)).not.toMatch(/Joining kit/);
+  });
+});
+
+// Every program includes the offer letter, certificate and LOR; only the
+// stipend, joining kit and LinkedIn recognition depend on the program.
+describe("what every program includes", () => {
+  const { trainingStages, benefits, programDeliverables } = require("../data/content.js");
+  it("lists the core documents as included and the extras as optional", () => {
+    const included = trainingStages[0].points.join(" ");
+    ["Offer letter", "Training certificate", "Letter of Recommendation", "Mentor support", "Real project tasks", "industry experts", "resume boost"]
+      .forEach((x) => expect(included).toMatch(new RegExp(x, "i")));
+    expect(trainingStages[1].points).toEqual(["Stipend", "Joining kit", "LinkedIn recognition"]);
+    expect(benefits.filter((b) => b.optional).map((b) => b.title).sort()).toEqual(["Joining Kit", "LinkedIn Recognition", "Stipend"]);
+    expect(programDeliverables.internship).toEqual(expect.arrayContaining(["Offer letter", "Training certificate", "Letter of Recommendation"]));
+  });
+});
