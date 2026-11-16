@@ -922,11 +922,12 @@ body.no-copy img{-webkit-user-drag:none}
 .filter-pill:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .filter-empty{color:var(--muted);margin:8px 0 0}
 .filter-reset{font:inherit;color:var(--teal);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
-.card-price{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.card-price{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 .card-price-label{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
-.card-price-wallet{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;padding:8px 10px;border-radius:10px;background:rgba(var(--teal-rgb),.1);border:1px solid rgba(var(--teal-rgb),.35);color:var(--text);font-size:.92rem}
-.card-price-wallet b{color:var(--teal);font-size:1.05rem}
-.card-price-wallet-note{color:var(--muted);font-size:.8rem}
+/* Logged in with wallet credit: one quiet line under the (already reduced) price. */
+.card-price-wallet-note{color:var(--teal);font-size:.8rem}
+/* Label, then the price (struck price and "% off" wrap on a narrow card), then the wallet note. */
+.card-price .plan-price{min-width:0}
 .bonus-modal{text-align:center}
 .bonus-modal h3{padding-right:0;margin:6px 0 8px}
 .bonus-modal p{color:var(--muted);margin:0 0 18px}

@@ -24,7 +24,7 @@ import { variantLabel } from "../utils/variants.js";
 import { TIER_ORDER, offeredTiers, planPrice, listPrice, offPercent, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
-import { walletDiscount } from "../hooks/useWalletCredit.js";
+import { walletOffPrice } from "../hooks/useWalletCredit.js";
 import { programTitle } from "../hooks/usePageMeta.js";
 import { isFull, placeWord, positionsTag, programFacts } from "../utils/positions.js";
 
@@ -398,7 +398,21 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
    PlanPrice: one plan's price — the final price, with the original price
    struck through and the "% off" badge when Admin set an original price
    (utils/tiers.js listPrice / offPercent). */
-export function PlanPrice({ plan, className = "" }) {
+// `walletOff` (rupees): the student's wallet credit taken off as well — the
+// final price shows, against the full price struck through.
+export function PlanPrice({ plan, className = "", walletOff = 0 }) {
+  if (walletOff > 0) {
+    const full = listPrice(plan) || planPrice(plan);
+    const final = Math.max(0, planPrice(plan) - walletOff);
+    const pct = full > 0 ? Math.round(((full - final) / full) * 100) : 0;
+    return (
+      <span className={`plan-price ${className}`}>
+        <span className="price-old"><span className="sr-only">Full price </span>{formatINR(full)}</span>
+        <span className="price-now"><span className="sr-only">You pay </span>{formatINR(final)}</span>
+        {pct > 0 && <span className="price-off">{pct}% off</span>}
+      </span>
+    );
+  }
   const was = listPrice(plan);
   const pct = offPercent(plan);
   return (
@@ -501,7 +515,7 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
   const plans = offeredTiers(item);
   const cheapest = plans.length ? plans.reduce((a, b) => (planPrice(b) < planPrice(a) ? b : a)) : null;
   const canBuy = isOpenForBuy(item) && !full && !!item.slug;
-  const walletOff = cheapest && !owned ? walletDiscount(planPrice(cheapest), wallet) : 0;
+  const walletOff = cheapest && !owned ? walletOffPrice(planPrice(cheapest), wallet) : 0;
   const buy = () => {
     if (onBuy) onBuy(item);
     else navigate(`/training-internship?buy=${encodeURIComponent(item.slug)}`);
@@ -535,11 +549,12 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
           {cheapest && !closed ? (
             <div className="card-price">
               <span className="card-price-label">{plans.length > 1 ? "Training fee from" : "Training fee"}</span>
-              <PlanPrice plan={cheapest} />
+              {/* Logged in with wallet credit: the credit is taken straight off —
+                  the price they really pay, with the full price struck through. */}
+              <PlanPrice plan={cheapest} walletOff={walletOff} />
               {walletOff > 0 && (
-                <span className="card-price-wallet">
-                  Payable <b>{formatINR(planPrice(cheapest) - walletOff)}</b>
-                  <span className="card-price-wallet-note"> after {formatINR(walletOff)} wallet credit</span>
+                <span className="card-price-wallet-note">
+                  {walletOff >= planPrice(cheapest) ? "Paid in full from" : "Includes"} your {formatINR(walletOff)} wallet credit
                 </span>
               )}
             </div>

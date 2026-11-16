@@ -33,3 +33,13 @@ export function walletDiscount(price, wallet) {
   const usable = Math.max(0, Math.min(p - 1, cap));
   return Math.floor(Math.min(Math.max(0, wallet.available), usable));
 }
+
+// What wallet credit takes off a program's price as the card shows it: the
+// whole price when the wallet can pay for it outright (checkout then offers
+// "Pay with wallet", ₹0 left — Backend pricing.js walletCoversAll), else the
+// discount above.
+export function walletOffPrice(price, wallet) {
+  const p = Math.floor(Number(price) || 0);
+  if (wallet && p > 0 && wallet.usagePercent >= 100 && wallet.available >= p) return p;
+  return walletDiscount(p, wallet);
+}
