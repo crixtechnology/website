@@ -67,7 +67,7 @@ export const freeRules = [
   "Candidates who do well in the test are invited to an interview before the final selection.",
   "We contact you at the email address you give in the form, so check it (and its spam folder) regularly.",
   "Selection is based on your application, your test, your interview and the number of places. Decisions are final; applying or passing the test does not guarantee selection.",
-  "These internships are unpaid: there is no stipend. The duration and mode shown on each role apply to everyone selected for it.",
+  "These internships are unpaid: there is no stipend. Each role runs for 1, 2, 3 or 6 months, and the mode shown on it applies to everyone selected for it.",
   "The start shown on each role (\"Starts on\") is an estimate. Selected candidates are told the actual start date with their offer letter and joining details.",
 ];
 
