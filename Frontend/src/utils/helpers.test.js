@@ -72,3 +72,27 @@ describe("programTitle / programDescription", () => {
     expect(programDescription({ title: "Web", durationDays: 60 })).toMatch(/^Web — 2 months — online Training \+ Internship/);
   });
 });
+
+// Search results only: lengths of one domain share their visible text, so the
+// title and snippet differ by price and stipend instead.
+describe("programSeoTitle / programDescription for search results", () => {
+  const { programSeoTitle, programDescription } = require("../hooks/usePageMeta.js");
+  const desc = "The complete web training.";
+  const plain = { title: "MERN Stack Developer", durationDays: 30, desc, stipend: "No Stipend", tiers: [{ tier: "basic", price: 1799 }] };
+  const plain6 = { ...plain, durationDays: 180, tiers: [{ tier: "basic", price: 6299 }] };
+  const paid = { ...plain, durationDays: 180, stipend: "₹3000 - ₹7000/ month", stipendTrainingMonths: 3, tiers: [{ tier: "basic", price: 22999 }] };
+
+  test("marks the paid-internship version in the title", () => {
+    expect(programSeoTitle(plain6)).toBe("MERN Stack Developer — 6 months | Crix Technology");
+    expect(programSeoTitle(paid)).toBe("MERN Stack Developer — 6 months + Paid Internship | Crix Technology");
+  });
+  test("leads the snippet with what differs", () => {
+    expect(programDescription(plain)).toBe("MERN Stack Developer — 1 month: online training for ₹1,799, with offer letter, certificate and LOR. The complete web training.");
+    expect(programDescription(paid)).toBe("MERN Stack Developer — 6 months: 3 months training + 3 months paid internship (stipend ₹3,000 – ₹7,000/month, performance based), ₹22,999. The complete web training.");
+    expect(new Set([plain, plain6, paid].map(programDescription)).size).toBe(3);
+  });
+  test("never mentions a stipend for a program without one", () => {
+    expect(programDescription(plain6)).not.toMatch(/stipend|paid internship/i);
+    expect(programDescription({ ...plain, stipend: "" })).not.toMatch(/stipend/i);
+  });
+});

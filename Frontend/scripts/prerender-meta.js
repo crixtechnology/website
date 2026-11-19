@@ -43,6 +43,50 @@ function programTitle(c) {
   return already.test(c.title) ? c.title : `${c.title} — ${length}`;
 }
 
+// What search results show for a program — must match programSeoTitle() and
+// programDescription() in src/hooks/usePageMeta.js. One domain's 1 / 2 / 3 / 6
+// month programs share their visible text, so the search title and snippet are
+// told apart by length, price and stipend. The stipend is tidied the way
+// stipendInfo() in src/utils/positions.js does it.
+function paidStipend(c) {
+  const raw = String(c.stipend || "").trim();
+  if (!raw || /^(no stipend|none|unpaid|nil)\.?$/i.test(raw)) return "";
+  let text = raw.replace(/\(?\s*performance[\s-]*based\s*\)?/i, "").trim();
+  let per = "";
+  const perMatch = text.match(/\s*\/\s*(month|mo|week|day)\.?$/i);
+  if (perMatch) {
+    per = perMatch[1].toLowerCase() === "mo" ? "month" : perMatch[1].toLowerCase();
+    text = text.slice(0, perMatch.index).trim();
+  }
+  text = text.replace(/(₹\s*)(\d{4,})/g, (_, sign, d) => `₹${Number(d).toLocaleString("en-IN")}`).replace(/\s*-\s*(?=₹|\d)/g, " – ");
+  return text ? `${text}${per ? `/${per}` : ""}` : "";
+}
+function lowestPrice(c) {
+  const prices = (Array.isArray(c.tiers) ? c.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
+  return prices.length ? `₹${Math.min(...prices).toLocaleString("en-IN")}` : "";
+}
+function programSeoTitle(c) {
+  return `${programTitle(c)}${paidStipend(c) ? " + Paid Internship" : ""} | Crix Technology`;
+}
+function programDescription(c) {
+  const desc = String(c.desc || "").trim();
+  const price = lowestPrice(c);
+  const stipend = paidStipend(c);
+  const months = Math.round(Number(c.durationDays) / 30) || 0;
+  const training = Number(c.stipendTrainingMonths) || 0;
+  let lead = "";
+  if (stipend && months && training > 0 && training < months) {
+    lead = `${training} months training + ${months - training} months paid internship (stipend ${stipend}, performance based)${price ? `, ${price}` : ""}.`;
+  } else if (stipend) {
+    lead = `training + paid internship (stipend ${stipend}, performance based)${price ? `, ${price}` : ""}.`;
+  } else if (price) {
+    lead = `online training for ${price}, with offer letter, certificate and LOR.`;
+  }
+  const name = programTitle(c);
+  if (!desc) return `${name} — ${lead || "online Training + Internship by Crix Technology, Ahmedabad."}`;
+  return lead ? `${name}: ${lead} ${desc}` : `${name}: ${desc}`;
+}
+
 // Keywords for a course/internship page from its own content — must match
 // programKeywords() in src/hooks/usePageMeta.js, which the app uses.
 function programKeywords(c) {
@@ -235,11 +279,11 @@ const openFreeRoles = freeInternships.openings.filter((o) => !(o.positions && o.
     const p = `/programs/${c.slug}`;
     const kind = c.type === "internship" ? "Training + Internship" : "Course";
     const name = programTitle(c);
-    // Same text as programDescription() in src/hooks/usePageMeta.js.
-    const description = clip(c.desc ? `${name}: ${c.desc}` : `${name} — online ${kind} by Crix Technology, Ahmedabad.`);
+    // Same text as programDescription() / programSeoTitle() in src/hooks/usePageMeta.js.
+    const description = clip(programDescription(c));
     writePage({
       path: p,
-      title: `${name} | Crix Technology`,
+      title: programSeoTitle(c),
       description,
       h1: `${kind}: ${name}`,
       keywords: programKeywords(c),
