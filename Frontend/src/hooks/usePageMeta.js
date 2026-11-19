@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import seo from "../data/seo.json";
 import { formatDuration } from "../utils/duration.js";
+import { stipendInfo } from "../utils/positions.js";
 
 export const SITE_URL = seo.siteUrl;
 
@@ -51,12 +52,50 @@ export function programTitle(course) {
   return already.test(course.title) ? course.title : `${course.title} — ${length}`;
 }
 
-// A program page's meta description: its length-qualified name, then its own
-// summary — so the 1 / 2 / 3 / 6 month pages of one domain don't share one.
+// ---------- what search results show (never drawn on the page itself) ----------
+// One domain's 1 / 2 / 3 / 6 month programs (and a 6-month version with a paid
+// internship) share their visible text, so their search title and snippet are
+// told apart by what really differs: length, price and stipend.
+// scripts/prerender-meta.js builds the same text for the prebuilt pages.
+
+// The stipend's amount, e.g. "₹3,000 – ₹7,000/month", or "" when there is none.
+function paidStipend(course) {
+  const s = stipendInfo(course);
+  return s && !s.none && s.amount ? `${s.amount}${s.per ? `/${s.per}` : ""}` : "";
+}
+
+// The lowest price the program is sold for, e.g. "₹1,799", or "".
+function lowestPrice(course) {
+  const prices = (Array.isArray(course.tiers) ? course.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
+  return prices.length ? `₹${Math.min(...prices).toLocaleString("en-IN")}` : "";
+}
+
+// The <title> of a program page: "MERN Stack Developer — 6 months + Paid Internship | Crix Technology".
+export function programSeoTitle(course) {
+  if (!course || !course.title) return "";
+  return `${programTitle(course)}${paidStipend(course) ? " + Paid Internship" : ""} | Crix Technology`;
+}
+
+// A program page's meta description: its length-qualified name, what sets this
+// length apart (price; training and paid-internship months), then its summary.
 export function programDescription(course) {
   if (!course || !course.title) return "";
   const desc = String(course.desc || "").trim();
-  return desc ? `${programTitle(course)}: ${desc}` : `${programTitle(course)} — online Training + Internship by Crix Technology, Ahmedabad.`;
+  const price = lowestPrice(course);
+  const stipend = paidStipend(course);
+  const months = Math.round(Number(course.durationDays) / 30) || 0;
+  const training = Number(course.stipendTrainingMonths) || 0;
+  let lead = "";
+  if (stipend && months && training > 0 && training < months) {
+    lead = `${training} months training + ${months - training} months paid internship (stipend ${stipend}, performance based)${price ? `, ${price}` : ""}.`;
+  } else if (stipend) {
+    lead = `training + paid internship (stipend ${stipend}, performance based)${price ? `, ${price}` : ""}.`;
+  } else if (price) {
+    lead = `online training for ${price}, with offer letter, certificate and LOR.`;
+  }
+  const name = programTitle(course);
+  if (!desc) return `${name} — ${lead || "online Training + Internship by Crix Technology, Ahmedabad."}`;
+  return lead ? `${name}: ${lead} ${desc}` : `${name}: ${desc}`;
 }
 
 // Keywords for one course/internship page, taken only from its own content:

@@ -37,7 +37,7 @@ const ABOUT_INDEX = [
   { id: "tech-stack", label: "Technologies" },
 ];
 import { UserContext } from "../context/UserContext.jsx";
-import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL, programKeywords, programTitle, programDescription } from "../hooks/usePageMeta.js";
+import { usePageMeta, routeMeta, useJsonLd, canonicalUrl, SITE_URL, programKeywords, programTitle, programSeoTitle, programDescription } from "../hooks/usePageMeta.js";
 import { useMyPlans } from "../hooks/useMyPlans.js";
 import { useNoIndex } from "../hooks/useNoIndex.js";
 import { emailError, nameError } from "../utils/validators.js";
@@ -469,7 +469,7 @@ export function CourseDetail() {
   // own page, and the bare title made them all look the same to search engines.
   const fullTitle = programTitle(course);
   usePageMeta({
-    title: course ? `${fullTitle} | Crix Technology` : "Programs | Crix Technology",
+    title: course ? programSeoTitle(course) : "Programs | Crix Technology",
     description: course ? programDescription(course) : undefined,
     crumbs: course ? [{ name: "Home", path: "/" }, { name: "Training + Internship", path: "/training-internship" }, { name: fullTitle, path: `/programs/${slug}` }] : null,
     keywords: course ? programKeywords(course) : null,
