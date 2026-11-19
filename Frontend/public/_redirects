@@ -1,0 +1,23 @@
+# Cloudflare Pages only (Vercel ignores this file and uses vercel.json).
+#
+# Pages applies these rules even where a real file exists, so there is no
+# catch-all here: that would serve HTML in place of the JS/CSS files. Real
+# files (index.html, about.html, programs/<slug>.html, static/...) are served
+# as they are; unknown addresses get 404.html, a copy of the app.
+
+# Old addresses (same as the redirects in vercel.json).
+/programs          /training-internship  301
+/paid-internships  /training-internship  301
+/internships       /training-internship  301
+/courses           /training-internship  301
+/payment           /training-internship  301
+/ambassador        /                     301
+/bca-internships   /free-internships     301
+
+# App-only pages (logged-in areas): the app with a 200, not the 404 page.
+/dashboard    /app  200
+/dashboard/*  /app  200
+/profile      /app  200
+/profile/*    /app  200
+/learn/*      /app  200
+/test/*       /app  200
