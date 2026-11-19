@@ -10,6 +10,7 @@ const { careersStartup } = require("./utils/careersFirstRun");
 const { switchServicesOnce } = require("./utils/servicesSwitch");
 const { openTracksOnce } = require("./utils/tracksOpenOnce");
 const { cleanProgramSlugsOnce } = require("./utils/programSlugsOnce");
+const { applyProgramContentOnce } = require("./utils/programContentOnce");
 const { startBotDigest } = require("./utils/botDigest");
 const { startKeepAwake } = require("./utils/keepAwake");
 
@@ -74,4 +75,6 @@ connectWithRetry().then((connected) => {
   if (connected) openTracksOnce().catch((e) => console.error("[tracks] opening existing tracks failed (will retry on next start):", e.message));
   // Clean "/programs/<domain>-<length>" addresses for existing programs, once; old ones redirect.
   if (connected) cleanProgramSlugsOnce().catch((e) => console.error("[programs] cleaning program addresses failed (will retry on next start):", e.message));
+  // Its own description, points, outcomes and FAQs for each length of every program, once (utils/programContentOnce.js).
+  if (connected) applyProgramContentOnce().catch((e) => console.error("[programs] per-length content failed (will retry on next start):", e.message));
 });
