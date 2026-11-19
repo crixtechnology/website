@@ -11,6 +11,7 @@ const { switchServicesOnce } = require("./utils/servicesSwitch");
 const { openTracksOnce } = require("./utils/tracksOpenOnce");
 const { cleanProgramSlugsOnce } = require("./utils/programSlugsOnce");
 const { startBotDigest } = require("./utils/botDigest");
+const { startKeepAwake } = require("./utils/keepAwake");
 
 // A guessable JWT_SECRET would let anyone forge an admin login: stop here in production.
 checkSecretsOrExit();
@@ -62,6 +63,8 @@ connectWithRetry().then((connected) => {
   startSnapshotCleanup();
   // The weekly email of questions the help agent couldn't answer (utils/botDigest.js).
   startBotDigest();
+  // Pings our own /api/health every 14 minutes so Render's free plan never puts the API to sleep (utils/keepAwake.js).
+  startKeepAwake();
   // The starter job roles and question bank, the first time only, then the
   // free-internship role banks, once (utils/careersFirstRun.js).
   if (connected) careersStartup().catch((e) => console.error("[careers] first-run setup failed (will retry on next start):", e.message));
