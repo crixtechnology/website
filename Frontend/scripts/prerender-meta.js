@@ -12,6 +12,8 @@
 //   - build/app.html                 fallback for every other address, with
 //                                    no canonical/og:url (see below)
 //   - build/sitemap.xml
+// (On Cloudflare Pages, CF_PAGES set, pages are written as <page>.html
+// instead and a 404.html copy of app.html is added; see writePage below.)
 // Vercel serves real files before applying vercel.json's rewrites, so these
 // are picked up automatically; the app itself then boots exactly as before.
 const fs = require("fs");
@@ -144,8 +146,23 @@ function pageHtml(pg) {
   return html;
 }
 
+// Built on Cloudflare Pages (it sets CF_PAGES=1) rather than Vercel. Pages
+// redirects /about to /about/ when the page is about/index.html, while every
+// canonical URL has no trailing slash; about.html is served at /about as it
+// is. Vercel's build keeps the about/index.html layout its vercel.json expects.
+const ON_PAGES = !!process.env.CF_PAGES;
+// Hosted build (Vercel or Pages): a localhost API can't be reached there.
+const HOSTED = !!(process.env.VERCEL || process.env.CF_PAGES);
+
 function writePage(pg) {
-  const dir = path.join(buildDir, pg.path.replace(/^\//, ""));
+  const rel = pg.path.replace(/^\//, "");
+  if (ON_PAGES) {
+    const file = path.join(buildDir, `${rel}.html`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, pageHtml(pg));
+    return;
+  }
+  const dir = path.join(buildDir, rel);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "index.html"), pageHtml(pg));
 }
@@ -157,7 +174,7 @@ function writePage(pg) {
 // then fall back to app.html, like any other address) instead of failing.
 async function livePrograms() {
   const api = process.env.REACT_APP_API_URL;
-  if (!api || (process.env.VERCEL && /localhost|127\.0\.0\.1/.test(api))) return [];
+  if (!api || (HOSTED && /localhost|127\.0\.0\.1/.test(api))) return [];
   for (let attempt = 1; attempt <= 2; attempt++) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 60000);
@@ -188,7 +205,7 @@ function isFreeProgram(c) {
 // written, and the app adds the markup itself once it loads.
 async function liveOpenings() {
   const api = process.env.REACT_APP_API_URL;
-  if (!api || (process.env.VERCEL && /localhost|127\.0\.0\.1/.test(api))) return [];
+  if (!api || (HOSTED && /localhost|127\.0\.0\.1/.test(api))) return [];
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 60000);
   try {
@@ -314,6 +331,10 @@ const openFreeRoles = freeInternships.openings.filter((o) => !(o.positions && o.
     .replace(/\s*<meta name="keywords"[^>]*>/, "");
   if (/rel="canonical"|property="og:url"/.test(appHtml)) throw new Error("prerender-meta: couldn't strip canonical/og:url from app.html");
   fs.writeFileSync(path.join(buildDir, "app.html"), appHtml);
+  // Pages: an address with no file (a mistyped link, a program created after
+  // this build) gets the app as its 404 page, so the app still opens it.
+  // Without a 404.html, Pages would answer such addresses with the home page.
+  if (ON_PAGES) fs.writeFileSync(path.join(buildDir, "404.html"), appHtml);
 
   // 4. Sitemap: the static pages plus every live Training + Internship program's
   // page — one per duration (1 / 2 / 3 / 6 months), since each is its own card and page.

@@ -1,0 +1,9 @@
+# Cloudflare Pages only (Vercel ignores this file and uses vercel.json).
+# Same headers as vercel.json.
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/static/*
+  Cache-Control: public, max-age=31536000, immutable
