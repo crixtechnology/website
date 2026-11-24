@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { UserProvider } from "./context/UserContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { SignupBonusProvider } from "./context/SignupBonusContext.jsx";
 import "./styles/global.css";
 import "./styles/upgrade.css";
 import "./styles/careers.css";
@@ -14,7 +15,9 @@ root.render(
     <BrowserRouter>
       <ThemeProvider>
         <UserProvider>
-          <App />
+          <SignupBonusProvider>
+            <App />
+          </SignupBonusProvider>
         </UserProvider>
       </ThemeProvider>
     </BrowserRouter>
