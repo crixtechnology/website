@@ -916,6 +916,9 @@ body.no-copy img{-webkit-user-drag:none}
 .duration-switch{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;margin:2px 0 12px;border:1px solid var(--line);border-radius:999px;background:rgba(127,232,224,.04)}
 .duration-opt{font:inherit;font-family:'JetBrains Mono',monospace;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:none;border:0;border-radius:999px;padding:6px 12px;cursor:pointer;text-decoration:none;transition:background .2s,color .2s}
 .duration-opt:hover{color:var(--text)}
+/* No grey/blue flash over the whole card on a phone tap; the pill gives its own feedback. */
+.duration-switch,.duration-opt{-webkit-tap-highlight-color:transparent}
+.duration-opt:active{background:rgba(127,232,224,.12)}
 .duration-opt.on{background:var(--teal);color:#04170c}
 .duration-opt:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .duration-opt-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:.62rem;letter-spacing:.05em;background:rgba(245,196,81,.16);color:#f5c451;vertical-align:1px}
