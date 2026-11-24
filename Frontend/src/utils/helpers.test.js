@@ -89,7 +89,11 @@ describe("programSeoTitle / programDescription for search results", () => {
   test("leads the snippet with what differs", () => {
     expect(programDescription(plain)).toBe("MERN Stack Developer — 1 month: online training for ₹1XXX9*, with offer letter, certificate and LOR. The complete web training.");
     expect(programDescription(paid)).toBe("MERN Stack Developer — 6 months: 3 months training + 3 months paid internship (stipend ₹3,000 – ₹7,000/month, performance based), ₹2XXXX9*. The complete web training.");
-    expect(new Set([plain, plain6, paid].map(programDescription)).size).toBe(3);
+    expect(new Set([plain, plain6, paid].map((c) => programDescription(c))).size).toBe(3);
+  });
+  test("quotes the fee after the signup bonus when there is one", () => {
+    expect(programDescription({ ...plain, tiers: [{ tier: "basic", price: 4299 }] }, { amount: 300, usagePercent: 100 }))
+      .toBe("MERN Stack Developer — 1 month: online training for ₹3XXX9* after the ₹300 signup bonus, with offer letter, certificate and LOR. The complete web training.");
   });
   test("never mentions a stipend for a program without one", () => {
     expect(programDescription(plain6)).not.toMatch(/stipend|paid internship/i);

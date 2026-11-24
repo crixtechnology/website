@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import seo from "../data/seo.json";
 import { formatDuration } from "../utils/duration.js";
 import { stipendInfo } from "../utils/positions.js";
-import { maskINR } from "../utils/tiers.js";
+import { formatINR, maskINR } from "../utils/tiers.js";
+import { bonusOff } from "./usePriceText.js";
 
 export const SITE_URL = seo.siteUrl;
 
@@ -65,11 +66,15 @@ function paidStipend(course) {
   return s && !s.none && s.amount ? `${s.amount}${s.per ? `/${s.per}` : ""}` : "";
 }
 
-// The lowest price the program is sold for, masked as the logged-out page
-// shows it (₹1XXX9* — search engines never log in), or "".
-function lowestPrice(course) {
+// The lowest price the program is sold for, as the logged-out page shows it
+// (search engines never log in): after the signup bonus (`bonus`, { amount,
+// usagePercent } or null) and masked — "₹3XXX9* after the ₹300 signup bonus" — or "".
+function lowestPrice(course, bonus) {
   const prices = (Array.isArray(course.tiers) ? course.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
-  return prices.length ? maskINR(Math.min(...prices)) : "";
+  if (!prices.length) return "";
+  const low = Math.min(...prices);
+  const off = bonusOff(low, bonus);
+  return off > 0 ? `${maskINR(low - off)} after the ${formatINR(bonus.amount)} signup bonus` : maskINR(low);
 }
 
 // The <title> of a program page: "MERN Stack Developer — 6 months + Paid Internship | Crix Technology".
@@ -80,10 +85,10 @@ export function programSeoTitle(course) {
 
 // A program page's meta description: its length-qualified name, what sets this
 // length apart (price; training and paid-internship months), then its summary.
-export function programDescription(course) {
+export function programDescription(course, bonus = null) {
   if (!course || !course.title) return "";
   const desc = String(course.desc || "").trim();
-  const price = lowestPrice(course);
+  const price = lowestPrice(course, bonus);
   const stipend = paidStipend(course);
   const months = Math.round(Number(course.durationDays) / 30) || 0;
   const training = Number(course.stipendTrainingMonths) || 0;

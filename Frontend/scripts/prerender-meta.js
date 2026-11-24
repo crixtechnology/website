@@ -63,13 +63,33 @@ function paidStipend(c) {
   text = text.replace(/(₹\s*)(\d{4,})/g, (_, sign, d) => `₹${Number(d).toLocaleString("en-IN")}`).replace(/\s*-\s*(?=₹|\d)/g, " – ");
   return text ? `${text}${per ? `/${per}` : ""}` : "";
 }
-// Masked like the logged-out page (₹1XXX9*) — must match maskINR() in src/utils/tiers.js.
+// The signup bonus a new account gets (Admin's careers terms, read with the
+// openings below) — a logged-out visitor's fee is shown after it. Same default
+// as defaultTerms in src/data/careers.js.
+let signupTerms = { amount: 300, usagePercent: 100 };
+const maskINR = (n) => {
+  const num = n.toLocaleString("en-IN");
+  if (num.length < 3) return `₹${num}*`;
+  return `₹${num[0]}${"X".repeat(num.length - 2)}${num[num.length - 1]}*`;
+};
+// What the bonus takes off a price — the same rule as walletOffPrice() in src/hooks/useWalletCredit.js.
+function bonusOff(price) {
+  const p = Math.floor(Number(price) || 0);
+  const { amount, usagePercent } = signupTerms;
+  if (!(amount > 0) || p <= 0) return 0;
+  if (usagePercent >= 100 && amount >= p) return p;
+  if (p <= 1) return 0;
+  const cap = Math.floor((p * Math.max(0, Math.min(100, usagePercent))) / 100);
+  return Math.floor(Math.min(amount, Math.max(0, Math.min(p - 1, cap))));
+}
+// As the logged-out page shows it: after the signup bonus, masked — must match
+// lowestPrice() in src/hooks/usePageMeta.js ("₹3XXX9* after the ₹300 signup bonus").
 function lowestPrice(c) {
   const prices = (Array.isArray(c.tiers) ? c.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
   if (!prices.length) return "";
-  const num = Math.min(...prices).toLocaleString("en-IN");
-  if (num.length < 3) return `₹${num}*`;
-  return `₹${num[0]}${"X".repeat(num.length - 2)}${num[num.length - 1]}*`;
+  const low = Math.min(...prices);
+  const off = bonusOff(low);
+  return off > 0 ? `${maskINR(low - off)} after the ₹${signupTerms.amount.toLocaleString("en-IN")} signup bonus` : maskINR(low);
 }
 function programSeoTitle(c) {
   return `${programTitle(c)}${paidStipend(c) ? " + Paid Internship" : ""} | Crix Technology`;
@@ -215,6 +235,11 @@ async function liveOpenings() {
   try {
     const res = await fetch(`${api.replace(/\/+$/, "")}/careers/openings`, { signal: ctrl.signal });
     const json = await res.json();
+    if (json.ok && json.terms) {
+      const amount = Number(json.terms.signupBonus);
+      const usage = Number(json.terms.creditUsagePercent);
+      signupTerms = { amount: Number.isFinite(amount) ? amount : signupTerms.amount, usagePercent: Number.isFinite(usage) ? usage : signupTerms.usagePercent };
+    }
     return (json.ok && Array.isArray(json.openings) ? json.openings : []).filter((o) => o && typeof o.title === "string" && o.title.trim());
   } catch (e) {
     console.warn(`prerender-meta: openings fetch failed (${e.name === "AbortError" ? "timed out" : e.message})`);

@@ -57,7 +57,7 @@
     },
     "/training-internship": {
       "title": "Training + Internship Program | Crix Technology",
-      "description": "Mentored virtual training in MERN stack, AI and more — 1, 2, 3 or 6 month programs. Enroll online; offer letter, certificate + LOR included.",
+      "description": "Mentored virtual training in MERN stack, AI and more — 1, 2, 3 or 6 months, with 1–2 month BCA Special programs. Enroll online; offer letter, certificate + LOR.",
       "priority": "0.9",
       "changefreq": "weekly",
       "crumb": "Training + Internship",
@@ -68,6 +68,8 @@
         "2 month internship",
         "3 month internship",
         "6 month internship",
+        "BCA internship",
+        "internship for BCA students",
         "online internship enrollment",
         "virtual internship with certificate",
         "MERN stack training",

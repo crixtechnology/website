@@ -7,7 +7,7 @@ import { offeredTiers, planPrice, isOpenForBuy, isFreeProgram } from "../utils/t
 import { formatDuration } from "../utils/duration.js";
 import { isFull, placeWord, programFacts } from "../utils/positions.js";
 import { StipendStrip } from "./ui.jsx";
-import { usePriceText } from "../hooks/usePriceText.js";
+import { useFeeText } from "../hooks/usePriceText.js";
 import { useJsonLd, canonicalUrl, SITE_URL, programKeywords, programTitle } from "../hooks/usePageMeta.js";
 
 // The extra sections of a course / internship page (CourseDetail in pages/pages.jsx).
@@ -23,7 +23,7 @@ const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" &&
 // how long it runs, or that a course has no expiry (no duration set = lifetime access — see
 // Backend utils/enrollmentAccess.js), and what it costs when it's on sale.
 export function CourseFacts({ course }) {
-  const price = usePriceText();
+  const price = useFeeText();
   const plans = offeredTiers(course);
   const facts = [["Type", kindLabel(course)], ["Format", "Online"]];
   if (plans.length && course.status !== "closed") facts.push(["Training fee from", price(Math.min(...plans.map(planPrice)))]);
@@ -172,7 +172,7 @@ export function RelatedPrograms({ course }) {
 export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
   const [ctaSeen, setCtaSeen] = useState(true); // until the observer says otherwise the bar stays hidden
   const [footerSeen, setFooterSeen] = useState(false);
-  const price = usePriceText();
+  const price = useFeeText();
   const plans = offeredTiers(course);
   const full = isFull(course);
   // A priced, open track with a place left is bought online.

@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { UserContext } from "./context/UserContext.jsx";
+import { SignupBonusContext } from "./context/SignupBonusContext.jsx";
 import { TrainingInternship } from "./pages/pages.jsx";
 import * as api from "./services/api.js";
 
@@ -280,5 +281,46 @@ it("logged in, shows no * note", async () => {
   api.getMyWallet.mockResolvedValue({ ok: true, wallet: { available: 0, usagePercent: 100 } });
   api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [] });
   await renderTI({ user: { id: "u1", name: "Asha" }, isLoggedIn: true });
+  expect(container.querySelector(".price-login-note")).toBeNull();
+});
+
+// Logged out, the price is shown after the signup bonus (₹300 here), masked.
+const renderWithBonus = async (bonus, ctx = { user: null, isLoggedIn: false }) => {
+  await act(async () => {
+    root.render(
+      <UserContext.Provider value={ctx}>
+        <SignupBonusContext.Provider value={bonus}>
+          <MemoryRouter initialEntries={["/training-internship"]}><TrainingInternship /></MemoryRouter>
+        </SignupBonusContext.Provider>
+      </UserContext.Provider>
+    );
+  });
+};
+
+it("logged out, takes the signup bonus off the price: ₹4,299 shows as ₹3XXX9*", async () => {
+  api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 4299)] });
+  await renderWithBonus({ amount: 300, usagePercent: 100 });
+  const price = container.querySelector(".card-price");
+  expect(price.querySelector(".price-now").textContent).toBe("After signup bonus ₹3XXX9*");
+  expect(price.querySelector(".price-old").textContent).toBe("Full price ₹4XXX9*");
+  expect(price.querySelector(".price-off").textContent).toBe("7% off");
+  expect(price.querySelector(".price-login-note").textContent).toBe("* After the ₹300 signup bonus. Log in to see the full price");
+});
+
+it("logged out, the bonus comes off the offer price, against the original price", async () => {
+  const offer = { ...program("Python Developer", 4299), tiers: [{ tier: "basic", price: 4299, originalPrice: 5999, discountPercent: 0, features: [] }] };
+  api.getCourses.mockResolvedValue({ ok: true, courses: [offer] });
+  await renderWithBonus({ amount: 300, usagePercent: 100 });
+  const price = container.querySelector(".card-price");
+  expect(price.querySelector(".price-old").textContent).toMatch(/₹5XXX9\*$/);
+  expect(price.querySelector(".price-now").textContent).toMatch(/₹3XXX9\*$/);
+});
+
+it("logged in, ignores the signup bonus and shows the real price", async () => {
+  api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 4299)] });
+  api.getMyWallet.mockResolvedValue({ ok: true, wallet: { available: 0, usagePercent: 100 } });
+  api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [] });
+  await renderWithBonus({ amount: 300, usagePercent: 100 }, { user: { id: "u1", name: "Asha" }, isLoggedIn: true });
+  expect(container.querySelector(".card-price .price-now").textContent).toBe("₹4,299");
   expect(container.querySelector(".price-login-note")).toBeNull();
 });

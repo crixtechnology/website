@@ -5,6 +5,7 @@
 // simply left out, and the program's own page is always linked.
 import { offeredTiers, planPrice, listPrice, offPercent, formatINR, maskINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
+import { bonusOff } from "../hooks/usePriceText.js";
 
 // Title words too common to tell one program from another.
 const GENERIC = new Set([
@@ -51,30 +52,46 @@ const asked = (n, aspect) => ASPECTS[aspect].some((w) => n.includes(` ${w}`));
 const kind = (p) => (p.type === "internship" ? "internship" : "course");
 const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/training-internship", label: `Open ${p.title}` });
 
-// `money` prints a fee: formatINR for a logged-in student, maskINR (₹4XXX9*) before —
-// the same as the cards, so the chat never shows a price the page hides.
-function priceLine(p, money) {
+// Fees as the cards show them: the real price for a logged-in student; before
+// that, masked (₹4XXX9*) and after the signup bonus (`bonus`, { amount,
+// usagePercent } or null), so the chat never shows a price the page hides.
+function shownPlan(t, loggedIn, bonus) {
+  let now = planPrice(t);
+  let was = listPrice(t);
+  let pct = offPercent(t);
+  const off = loggedIn ? 0 : bonusOff(now, bonus);
+  if (off > 0) {
+    const full = was || now;
+    now = Math.max(0, now - off);
+    was = full;
+    pct = full > 0 ? Math.round(((full - now) / full) * 100) : 0;
+  }
+  return { now, was, pct };
+}
+const visitorNote = (bonus) => (bonus ? `Shown after the ${formatINR(bonus.amount)} signup bonus. Log in to see the full price.` : "Log in to see the full price.");
+
+function priceLine(p, loggedIn, bonus) {
+  const money = loggedIn ? formatINR : maskINR;
   // Training + Internship is bought online: quote the fee, then how to enroll.
   const howToJoin = "To join, tap “Enroll now” on its card on the Training + Internship page and pay the fee securely online with Razorpay — or call our Training + Internship team first.";
   if (p.type === "internship" && !isOpenForBuy(p)) return `Ask our Training + Internship team about the fee for ${p.title}. ${howToJoin}`;
   if (!isOpenForBuy(p)) return `${p.title} isn't open for online enrolment right now — use “Request to ${p.type === "internship" ? "apply" : "enroll"}” on its page and the team will tell you about the next batch and price.`;
   const plans = offeredTiers(p);
   const lines = plans.map((t) => {
-    const now = planPrice(t);
-    const was = listPrice(t);
-    return `• ${plans.length > 1 ? `${tierLabel(t.tier)}: ` : ""}${money(now)}${was ? ` (was ${money(was)}, ${offPercent(t)}% off)` : ""}`;
+    const { now, was, pct } = shownPlan(t, loggedIn, bonus);
+    return `• ${plans.length > 1 ? `${tierLabel(t.tier)}: ` : ""}${money(now)}${was ? ` (was ${money(was)}, ${pct}% off)` : ""}`;
   });
-  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}${money === maskINR ? "\nLog in to see the full price." : ""}\n${p.type === "internship" ? howToJoin : "Wallet credit is taken off at checkout."}`;
+  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}${loggedIn ? "" : `\n${visitorNote(bonus)}`}\n${p.type === "internship" ? howToJoin : "Wallet credit is taken off at checkout."}`;
 }
 
 // A program named in the message: answers the aspect asked about, or a short overview.
-export function programAnswer(p, n, loggedIn = false) {
+export function programAnswer(p, n, loggedIn = false, bonus = null) {
   const money = loggedIn ? formatINR : maskINR;
   const facts = [];
   const dur = formatDuration(p.durationDays);
   // A rough estimate the admin typed ("2nd week of January"); never an exact date.
   const starts = String(p.startingFrom || "").trim();
-  if (asked(n, "price")) facts.push(priceLine(p, money));
+  if (asked(n, "price")) facts.push(priceLine(p, loggedIn, bonus));
   if (asked(n, "duration")) facts.push(dur ? `${p.title} runs for ${dur}.` : `The length of ${p.title} is on its page.`);
   if (asked(n, "start")) facts.push(starts ? `The next batch is expected to start ${starts} — we confirm the exact start after you enroll.` : "We confirm the batch start after you enroll.");
   if (asked(n, "test")) facts.push("There's no aptitude test for Training + Internship — you enroll online by paying the training fee, and that confirms your seat. Aptitude tests are only for Free Internship and Careers roles.");
@@ -86,7 +103,7 @@ export function programAnswer(p, n, loggedIn = false) {
   if (asked(n, "syllabus") && (p.points || []).length) facts.push(`What it covers:\n${p.points.slice(0, 6).map((x) => `• ${x}`).join("\n")}`);
 
   if (!facts.length) {
-    const from = isOpenForBuy(p) ? Math.min(...offeredTiers(p).map(planPrice)) : null;
+    const from = isOpenForBuy(p) ? Math.min(...offeredTiers(p).map((t) => shownPlan(t, loggedIn, bonus).now)) : null;
     facts.push([
       `${p.title} — ${"paid, mentored training with an offer letter, certificate and LOR"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${money(from)}` : ""}.`,
       p.desc || "",

@@ -26,7 +26,7 @@ import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
 import { walletOffPrice } from "../hooks/useWalletCredit.js";
 import { programTitle } from "../hooks/usePageMeta.js";
-import { usePriceText } from "../hooks/usePriceText.js";
+import { usePriceText, useVisitorBonus, bonusOff } from "../hooks/usePriceText.js";
 import { isFull, placeWord, positionsTag, programFacts, stipendInfo } from "../utils/positions.js";
 
 export const REDUCED =
@@ -402,16 +402,20 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
 // `walletOff` (rupees): the student's wallet credit taken off as well — the
 // final price shows, against the full price struck through.
 // Logged out, everything between the first and last digit is X, with a * (₹4XXX9*); logging in shows the price.
+// A logged-out visitor's price has the signup bonus taken off the same way,
+// as the credit it becomes once they sign up (PriceLoginNote says so).
 export function PlanPrice({ plan, className = "", walletOff = 0 }) {
   const price = usePriceText();
-  if (walletOff > 0) {
+  const bonus = useVisitorBonus();
+  const off = walletOff > 0 ? walletOff : bonusOff(planPrice(plan), bonus);
+  if (off > 0) {
     const full = listPrice(plan) || planPrice(plan);
-    const final = Math.max(0, planPrice(plan) - walletOff);
+    const final = Math.max(0, planPrice(plan) - off);
     const pct = full > 0 ? Math.round(((full - final) / full) * 100) : 0;
     return (
       <span className={`plan-price ${className}`}>
-        <span className="price-old"><span className="sr-only">Full price </span>{formatINR(full)}</span>
-        <span className="price-now"><span className="sr-only">You pay </span>{formatINR(final)}</span>
+        <span className="price-old"><span className="sr-only">Full price </span>{price(full)}</span>
+        <span className="price-now"><span className="sr-only">{walletOff > 0 ? "You pay " : "After signup bonus "}</span>{price(final)}</span>
         {pct > 0 && <span className="price-off">{pct}% off</span>}
       </span>
     );
@@ -431,10 +435,11 @@ export function PlanPrice({ plan, className = "", walletOff = 0 }) {
 // visitor, with Log in opening the login popup. Nothing once they're logged in.
 export function PriceLoginNote({ className = "" }) {
   const { isLoggedIn, openAuthModal } = useContext(UserContext);
+  const bonus = useVisitorBonus();
   if (isLoggedIn) return null;
   return (
     <p className={`price-login-note ${className}`.trim()}>
-      *{" "}
+      *{bonus ? ` After the ${formatINR(bonus.amount)} signup bonus.` : ""}{" "}
       {openAuthModal ? (
         <button type="button" className="price-login-link" onClick={(e) => { e.stopPropagation(); openAuthModal("login"); }}>Log in</button>
       ) : "Log in"}{" "}

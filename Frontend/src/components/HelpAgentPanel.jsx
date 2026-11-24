@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { DEPARTMENTS, greeting, initialState, respond, answerFor, vocabFor } from "../data/helpAgent.js";
 import { internships, services as staticServices } from "../data/content.js";
 import { UserContext } from "../context/UserContext.jsx";
+import { useVisitorBonus } from "../hooks/usePriceText.js";
 import { getCourses, getOpenings, getServices, getTaughtAnswers, reportUnansweredQuestion } from "../services/api.js";
 import { isFreeProgram } from "../utils/tiers.js";
 
@@ -68,6 +69,8 @@ function Avatar({ small }) {
 // kept mounted while closed so the conversation is still there when reopened.
 export default function HelpAgentPanel({ open, onClose }) {
   const { user } = useContext(UserContext);
+  // Logged out: fees are quoted after the signup bonus, as the cards show them.
+  const bonus = useVisitorBonus();
   const [msgs, setMsgs] = useState(() => [{ from: "bot", ...greeting({ user }) }]);
   const [state, setState] = useState(initialState);
   const [typing, setTyping] = useState(false);
@@ -146,7 +149,7 @@ export default function HelpAgentPanel({ open, onClose }) {
   const send = (text) => {
     const clean = String(text || "").trim();
     if (!clean || typing) return;
-    const res = respond(state, clean, { user, ...data, vocab });
+    const res = respond(state, clean, { user, ...data, vocab, bonus });
     if (res.state.unanswered) reportUnansweredQuestion(clean);
     const { unanswered, ...nextState } = res.state;
     setState(nextState);
