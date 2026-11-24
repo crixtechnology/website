@@ -723,6 +723,16 @@ export function SignupBonusPopup({ bonus }) {
   );
 }
 
+// The length a card opens on: 3 months (the one without a stipend twin's
+// stipend, when there are two), else the shortest.
+const DEFAULT_DAYS = 90;
+function defaultVariant(variants) {
+  const paysStipend = (v) => { const info = stipendInfo(v); return !!info && !info.none; };
+  const three = (variants || []).map((v, n) => n).filter((n) => Number(variants[n].durationDays) === DEFAULT_DAYS);
+  if (!three.length) return 0;
+  return three.find((n) => !paysStipend(variants[n])) ?? three[0];
+}
+
 /* ---------- ProgramGroupCard: one card for a domain in several durations ----------
    The selected duration's track fills the card — its details, Request to apply
    and View details all follow the switch. ownedOf(item) says whether the
@@ -730,7 +740,7 @@ export function SignupBonusPopup({ bonus }) {
    (isProgram / kind are accepted for the callers' sake; every card here is a track.) */
 // eslint-disable-next-line no-unused-vars
 export function ProgramGroupCard({ variants, ownedOf, isProgram, kind, ...cardProps }) {
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(() => defaultVariant(variants));
   const item = variants[Math.min(active, variants.length - 1)];
   return (
     <TrainingCard {...cardProps} item={item} owned={ownedOf ? ownedOf(item) : false}

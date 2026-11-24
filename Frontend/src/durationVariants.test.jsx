@@ -71,11 +71,13 @@ describe("the Training + Internship page", () => {
     const opts = () => [...cards()[0].querySelectorAll(".duration-opt")];
     expect(opts().map((b) => b.textContent)).toEqual(["1 month", "3 months"]);
     const fact = (card, name) => [...card.querySelectorAll(".job-facts > div")].find((d) => d.querySelector("dt").textContent === name);
-    expect(fact(cards()[0], "Starts on").querySelector("dd").textContent).toBe("15 December");
-    expect(cards()[0].querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-1");
-    await act(async () => { opts()[1].click(); });
+    // Opens on 3 months.
+    expect(opts()[1].getAttribute("aria-pressed")).toBe("true");
     expect(fact(cards()[0], "Duration").querySelector("dd").textContent).toBe("3 months");
     expect(fact(cards()[0], "Starts on").querySelector("dd").textContent).toBe("2nd week of January");
+    await act(async () => { opts()[0].click(); });
+    expect(fact(cards()[0], "Starts on").querySelector("dd").textContent).toBe("15 December");
+    expect(cards()[0].querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-1");
     expect(cards()[1].querySelector(".duration-switch")).toBeNull();
     expect(fact(cards()[1], "Starts on")).toBeUndefined();
   });
@@ -101,7 +103,8 @@ describe("the Training + Internship page", () => {
     const card = () => container.querySelector("#programs .card");
     const top = () => [...card().querySelectorAll(".duration-switch > .duration-opt, .duration-group > .duration-opt")];
     // BCA Special comes after the other lengths.
-    expect(top().map((b) => b.textContent)).toEqual(["3 months", "BCA Special · 1 month▾"]);
+    expect(top().map((b) => b.textContent)).toEqual(["3 months", "BCA Special▾"]);
+    expect(top()[0].getAttribute("aria-pressed")).toBe("true");
     expect(card().querySelector(".duration-pop")).toBeNull();
     const pill = card().querySelector(".duration-opt--group");
     await act(async () => { pill.click(); });
@@ -126,7 +129,15 @@ describe("the Training + Internship page", () => {
       track("Web 6M Stipend", "web-6s", 180, { group: "Web", stipend: "₹3,000/month" }),
     ]);
     const top = [...container.querySelectorAll("#programs .duration-switch > .duration-opt, #programs .duration-group > .duration-opt")];
-    expect(top.map((b) => b.textContent)).toEqual(["3 months", "6 months", "BCA Special · 1 month▾", "Stipend"]);
+    expect(top.map((b) => b.textContent)).toEqual(["3 months", "6 months", "BCA Special▾", "Stipend"]);
+  });
+
+  it("opens on the shortest length when there is no 3-month one", async () => {
+    await renderPage([
+      track("Web 1M", "web-1", 30, { group: "Web" }),
+      track("Web 6M", "web-6", 180, { group: "Web" }),
+    ]);
+    expect([...container.querySelectorAll("#programs .duration-opt")].map((b) => b.getAttribute("aria-pressed"))).toEqual(["true", "false"]);
   });
 
   it("keeps a lone 1-month length as its own pill", async () => {
