@@ -427,6 +427,22 @@ export function PlanPrice({ plan, className = "", walletOff = 0 }) {
   );
 }
 
+// PriceLoginNote: explains the * on a hidden fee (₹4XXX9*) to a logged-out
+// visitor, with Log in opening the login popup. Nothing once they're logged in.
+export function PriceLoginNote({ className = "" }) {
+  const { isLoggedIn, openAuthModal } = useContext(UserContext);
+  if (isLoggedIn) return null;
+  return (
+    <p className={`price-login-note ${className}`.trim()}>
+      *{" "}
+      {openAuthModal ? (
+        <button type="button" className="price-login-link" onClick={(e) => { e.stopPropagation(); openAuthModal("login"); }}>Log in</button>
+      ) : "Log in"}{" "}
+      to see the full price
+    </p>
+  );
+}
+
 // PlanCards: the plan comparison — a card per plan with its price and
 // admin-written feature list, and a button that starts the purchase on that
 // plan. This is the only place plans are shown (the "See more" popup and the
@@ -438,37 +454,40 @@ export function PlanPrice({ plan, className = "", walletOff = 0 }) {
 export function PlanCards({ plans, onChoose, ownedTier, onUpgrade, readOnly = false }) {
   const ownedRank = ownedTier ? TIER_ORDER.indexOf(ownedTier) : -1;
   return (
-    <div className="plan-cards" role="list" style={{ "--plans": plans.length }}>
-      {plans.map((p) => {
-        const rank = TIER_ORDER.indexOf(p.tier);
-        return (
-          <div className={`plan-card plan-card--${p.tier}`} role="listitem" key={p.tier}>
-            <span className="plan-card-name">{tierLabel(p.tier)}</span>
-            <PlanPrice plan={p} />
-            {p.features?.length ? (
-              <ul className="plan-features">
-                {p.features.map((f) => <li key={f}>{f}</li>)}
-              </ul>
-            ) : null}
-            {readOnly ? (
-              rank === ownedRank ? <span className="plan-owned">Your current plan</span> : null
-            ) : !ownedTier ? (
-              <button className="btn btn-solid buy-btn" onClick={() => onChoose(p.tier)}>
-                Choose {tierLabel(p.tier)}
-              </button>
-            ) : rank === ownedRank ? (
-              <span className="plan-owned">Your current plan</span>
-            ) : rank < ownedRank ? (
-              <span className="plan-owned plan-owned--muted">Included in your plan</span>
-            ) : (
-              <button className="btn btn-solid buy-btn" onClick={() => onUpgrade(p.tier)}>
-                Upgrade to {tierLabel(p.tier)}
-              </button>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <>
+      <div className="plan-cards" role="list" style={{ "--plans": plans.length }}>
+        {plans.map((p) => {
+          const rank = TIER_ORDER.indexOf(p.tier);
+          return (
+            <div className={`plan-card plan-card--${p.tier}`} role="listitem" key={p.tier}>
+              <span className="plan-card-name">{tierLabel(p.tier)}</span>
+              <PlanPrice plan={p} />
+              {p.features?.length ? (
+                <ul className="plan-features">
+                  {p.features.map((f) => <li key={f}>{f}</li>)}
+                </ul>
+              ) : null}
+              {readOnly ? (
+                rank === ownedRank ? <span className="plan-owned">Your current plan</span> : null
+              ) : !ownedTier ? (
+                <button className="btn btn-solid buy-btn" onClick={() => onChoose(p.tier)}>
+                  Choose {tierLabel(p.tier)}
+                </button>
+              ) : rank === ownedRank ? (
+                <span className="plan-owned">Your current plan</span>
+              ) : rank < ownedRank ? (
+                <span className="plan-owned plan-owned--muted">Included in your plan</span>
+              ) : (
+                <button className="btn btn-solid buy-btn" onClick={() => onUpgrade(p.tier)}>
+                  Upgrade to {tierLabel(p.tier)}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <PriceLoginNote className="plan-cards-note" />
+    </>
   );
 }
 
@@ -613,6 +632,7 @@ export function TrainingCard({ item, i = 0, owned, onInquire, onBuy, onDetail, s
               {/* Logged in with wallet credit: the credit is taken straight off —
                   the price they really pay, with the full price struck through. */}
               <PlanPrice plan={cheapest} walletOff={walletOff} />
+              <PriceLoginNote />
               {walletOff > 0 && (
                 <span className="card-price-wallet-note">
                   {walletOff >= planPrice(cheapest) ? "Paid in full from" : "Includes"} your {formatINR(walletOff)} wallet credit

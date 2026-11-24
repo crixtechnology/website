@@ -91,9 +91,9 @@ it("shows each program's details and fee on its card, with Enroll now opening th
   // The fee the admin set is on the card, and Enroll now starts the checkout —
   // after logging in, for a visitor.
   expect(internship.querySelector(".card-price").textContent).toContain("₹2XXX9*");
-  const labelsOf = (card) => [...card.querySelectorAll("button")].map((b) => b.textContent);
+  const labelsOf = (card) => [...card.querySelectorAll("button:not(.price-login-link)")].map((b) => b.textContent);
   expect(labelsOf(internship)).toEqual(["Enroll now"]);
-  await act(async () => { internship.querySelector("button").click(); });
+  await act(async () => { internship.querySelector(".buy-btn").click(); });
   expect(openAuthModal).toHaveBeenCalledWith("login", expect.any(Function));
   // A full program, or one with no price, takes a request instead.
   expect(labelsOf(full)).toEqual(["Request to apply"]);
@@ -263,4 +263,22 @@ it("logged in with no wallet credit, shows the real price unmasked", async () =>
   api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [] });
   await renderTI({ user: { id: "u1", name: "Asha" }, isLoggedIn: true });
   expect(container.querySelector(".card-price .price-now").textContent).toBe("₹2,999");
+});
+
+it("logged out, explains the * under the price with a Log in link", async () => {
+  const openAuthModal = jest.fn();
+  api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 2999)] });
+  await renderTI({ user: null, isLoggedIn: false, openAuthModal });
+  const note = container.querySelector(".card-price .price-login-note");
+  expect(note.textContent).toBe("* Log in to see the full price");
+  await act(async () => { note.querySelector("button").click(); });
+  expect(openAuthModal).toHaveBeenCalledWith("login");
+});
+
+it("logged in, shows no * note", async () => {
+  api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 2999)] });
+  api.getMyWallet.mockResolvedValue({ ok: true, wallet: { available: 0, usagePercent: 100 } });
+  api.getMyEnrollments.mockResolvedValue({ ok: true, enrollments: [] });
+  await renderTI({ user: { id: "u1", name: "Asha" }, isLoggedIn: true });
+  expect(container.querySelector(".price-login-note")).toBeNull();
 });

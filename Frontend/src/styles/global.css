@@ -935,6 +935,10 @@ body.no-copy img{-webkit-user-drag:none}
 .card-price-label{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
 /* Logged in with wallet credit: one quiet line under the (already reduced) price. */
 .card-price-wallet-note{color:var(--teal);font-size:.8rem}
+.price-login-note{margin:0;color:var(--muted);font-size:.8rem}
+.price-login-link{font:inherit;color:var(--teal);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.price-login-link:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:2px}
+.plan-cards-note{margin-top:10px}
 /* Label, then the price (struck price and "% off" wrap on a narrow card), then the wallet note. */
 .card-price .plan-price{min-width:0}
 .bonus-modal{text-align:center}

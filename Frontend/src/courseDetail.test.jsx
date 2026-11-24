@@ -298,7 +298,7 @@ describe("the details a free internship shows", () => {
     const cta = q("#course-cta");
     expect(q("#plans").textContent).toContain("₹1XXX0*");
     const labels = [...cta.querySelectorAll("button")].map((x) => x.textContent);
-    expect(labels).toEqual(["Choose Basic"]);
+    expect(labels).toEqual(["Choose Basic", "Log in"]);
     await act(async () => { cta.querySelector("button").click(); });
     expect(openAuthModal).toHaveBeenCalledWith("login", expect.any(Function));
   });
