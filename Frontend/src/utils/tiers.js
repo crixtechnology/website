@@ -45,11 +45,11 @@ export const formatINR = (amount) =>
     : `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // A training fee as a logged-out visitor sees it: the first and last digit,
-// everything between (separators too) as X, and a * after it
-// (₹4,999 -> ₹4XXX9*; ₹12,499 -> ₹1XXXX9*). Logging in shows the real price.
+// one X for each digit between (no comma), and a * after it
+// (₹4,999 -> ₹4XX9*; ₹14,999 -> ₹1XXX9*). Logging in shows the real price.
 // Amounts of two digits or fewer keep their digits, still with the *.
 export const maskINR = (amount) => {
-  const num = formatINR(amount).slice(1);
+  const num = String(Math.round(Math.max(0, Number(amount) || 0)));
   if (num.length < 3) return `₹${num}*`;
   return `₹${num[0]}${"X".repeat(num.length - 2)}${num[num.length - 1]}*`;
 };

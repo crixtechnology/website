@@ -401,7 +401,7 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
    (utils/tiers.js listPrice / offPercent). */
 // `walletOff` (rupees): the student's wallet credit taken off as well — the
 // final price shows, against the full price struck through.
-// Logged out, everything between the first and last digit is X, with a * (₹4XXX9*); logging in shows the price.
+// Logged out, everything between the first and last digit is X, with a * (₹4XX9*); logging in shows the price.
 // A logged-out visitor's price has the signup bonus taken off the same way,
 // as the credit it becomes once they sign up (PriceLoginNote says so).
 export function PlanPrice({ plan, className = "", walletOff = 0 }) {
@@ -431,7 +431,7 @@ export function PlanPrice({ plan, className = "", walletOff = 0 }) {
   );
 }
 
-// PriceLoginNote: explains the * on a hidden fee (₹4XXX9*) to a logged-out
+// PriceLoginNote: explains the * on a hidden fee (₹4XX9*) to a logged-out
 // visitor, with Log in opening the login popup. Nothing once they're logged in.
 export function PriceLoginNote({ className = "" }) {
   const { isLoggedIn, openAuthModal } = useContext(UserContext);
@@ -509,35 +509,42 @@ const isBcaLength = (v) => BCA_DAYS.includes(Number(v && v.durationDays));
 export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Duration" }) {
   if (!variants || variants.length < 2) return null;
   // Two options of the same length (a 6-month track with a stipend and one
-  // without): the one that pays a stipend says so, so they can be told apart.
+  // without): the one that pays a stipend is the "Stipend" pill, last — or,
+  // when more than one length has such a twin, "6 months Stipend" so they
+  // can be told apart.
   const counts = {};
   variants.forEach((v) => { const t = variantLabel(v); counts[t] = (counts[t] || 0) + 1; });
   const paysStipend = (v) => { const info = stipendInfo(v); return !!info && !info.none; };
+  const isStipendTwin = (v) => counts[variantLabel(v)] > 1 && paysStipend(v);
+  const twins = variants.filter(isStipendTwin).length;
   const textOf = (v) => {
     const len = variantLabel(v);
-    return counts[len] > 1 && paysStipend(v) ? <>{len}<span className="duration-opt-tag"> Stipend</span></> : len;
+    if (!isStipendTwin(v)) return len;
+    return twins === 1 ? "Stipend" : <>{len}<span className="duration-opt-tag"> Stipend</span></>;
   };
   const option = (v, n, extra = "", after) => {
     const on = n === active;
+    const cls = `duration-opt${on ? " on" : ""}${isStipendTwin(v) && twins === 1 ? " duration-opt--stipend" : ""}${extra}`;
+    const aria = isStipendTwin(v) && twins === 1 ? `${variantLabel(v)} with stipend` : undefined;
     return hrefOf ? (
-      <Link key={v.slug || n} to={hrefOf(v)} className={`duration-opt${on ? " on" : ""}${extra}`} aria-current={on ? "page" : undefined}
+      <Link key={v.slug || n} to={hrefOf(v)} className={cls} aria-current={on ? "page" : undefined} aria-label={aria}
         onClick={after}>{textOf(v)}</Link>
     ) : (
-      <button key={v.slug || n} type="button" className={`duration-opt${on ? " on" : ""}${extra}`} aria-pressed={on}
+      <button key={v.slug || n} type="button" className={cls} aria-pressed={on} aria-label={aria}
         onClick={() => { onPick(n); if (after) after(); }}>{textOf(v)}</button>
     );
   };
-  const bca = variants.map((v, n) => n).filter((n) => isBcaLength(variants[n]));
+  const all = variants.map((v, n) => n);
+  const bca = all.filter((n) => isBcaLength(variants[n]) && !isStipendTwin(variants[n]));
   const grouped = bca.length >= 2;
+  // Order: the other lengths, then BCA Special, then the stipend option(s) last.
+  const plain = all.filter((n) => !isStipendTwin(variants[n]) && !(grouped && bca.includes(n)));
+  const stipend = all.filter((n) => isStipendTwin(variants[n]));
   return (
     <div className="duration-switch" role="group" aria-label={label}>
-      {variants.map((v, n) => {
-        if (!grouped || !bca.includes(n)) return option(v, n);
-        // The BCA pill stands where its first length would.
-        return n === bca[0]
-          ? <BcaSpecialPill key="bca" options={bca} active={active} variants={variants} option={option} />
-          : null;
-      })}
+      {plain.map((n) => option(variants[n], n))}
+      {grouped && <BcaSpecialPill key="bca" options={bca} active={active} variants={variants} option={option} />}
+      {stipend.map((n) => option(variants[n], n))}
     </div>
   );
 }

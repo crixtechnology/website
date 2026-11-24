@@ -91,7 +91,7 @@ it("shows each program's details and fee on its card, with Enroll now opening th
   expect(internship.querySelector(".deliverable-chip")).toBeNull();
   // The fee the admin set is on the card, and Enroll now starts the checkout —
   // after logging in, for a visitor.
-  expect(internship.querySelector(".card-price").textContent).toContain("₹2XXX9*");
+  expect(internship.querySelector(".card-price").textContent).toContain("₹2XX9*");
   const labelsOf = (card) => [...card.querySelectorAll("button:not(.price-login-link)")].map((b) => b.textContent);
   expect(labelsOf(internship)).toEqual(["Enroll now"]);
   await act(async () => { internship.querySelector(".buy-btn").click(); });
@@ -173,14 +173,14 @@ it("shows the original price crossed out beside the final price", async () => {
   const price = (title) => [...container.querySelectorAll("#programs .card")].find((c) => c.querySelector("h3").textContent === title).querySelector(".card-price");
   const offer = price("Cyber Security");
   // Logged out: first and last digit only (logging in shows the real price).
-  expect(offer.querySelector(".price-old").textContent).toContain("₹1XXX9*");
-  expect(offer.querySelector(".price-now").textContent).toContain("₹1XXX9*");
+  expect(offer.querySelector(".price-old").textContent).toContain("₹1XX9*");
+  expect(offer.querySelector(".price-now").textContent).toContain("₹1XX9*");
   expect(offer.querySelector(".price-off").textContent).toBe("25% off");
   // No original price: just the price.
   expect(price("Web Internship").querySelector(".price-old")).toBeNull();
-  expect(price("Web Internship").querySelector(".price-now").textContent).toBe("₹2XXX9*");
-  expect(price("Data Internship").querySelector(".price-old").textContent).toContain("₹5XXX0*");
-  expect(price("Data Internship").querySelector(".price-now").textContent).toContain("₹4XXX0*");
+  expect(price("Web Internship").querySelector(".price-now").textContent).toBe("₹2XX9*");
+  expect(price("Data Internship").querySelector(".price-old").textContent).toContain("₹5XX0*");
+  expect(price("Data Internship").querySelector(".price-now").textContent).toContain("₹4XX0*");
 });
 
 const renderTI = async (ctx) => {
@@ -297,12 +297,12 @@ const renderWithBonus = async (bonus, ctx = { user: null, isLoggedIn: false }) =
   });
 };
 
-it("logged out, takes the signup bonus off the price: ₹4,299 shows as ₹3XXX9*", async () => {
+it("logged out, takes the signup bonus off the price: ₹4,299 shows as ₹3XX9*", async () => {
   api.getCourses.mockResolvedValue({ ok: true, courses: [program("Web Internship", 4299)] });
   await renderWithBonus({ amount: 300, usagePercent: 100 });
   const price = container.querySelector(".card-price");
-  expect(price.querySelector(".price-now").textContent).toBe("After signup bonus ₹3XXX9*");
-  expect(price.querySelector(".price-old").textContent).toBe("Full price ₹4XXX9*");
+  expect(price.querySelector(".price-now").textContent).toBe("After signup bonus ₹3XX9*");
+  expect(price.querySelector(".price-old").textContent).toBe("Full price ₹4XX9*");
   expect(price.querySelector(".price-off").textContent).toBe("7% off");
   expect(price.querySelector(".price-login-note").textContent).toBe("* After the ₹300 signup bonus. Log in to see the full price");
 });
@@ -312,8 +312,8 @@ it("logged out, the bonus comes off the offer price, against the original price"
   api.getCourses.mockResolvedValue({ ok: true, courses: [offer] });
   await renderWithBonus({ amount: 300, usagePercent: 100 });
   const price = container.querySelector(".card-price");
-  expect(price.querySelector(".price-old").textContent).toMatch(/₹5XXX9\*$/);
-  expect(price.querySelector(".price-now").textContent).toMatch(/₹3XXX9\*$/);
+  expect(price.querySelector(".price-old").textContent).toMatch(/₹5XX9\*$/);
+  expect(price.querySelector(".price-now").textContent).toMatch(/₹3XX9\*$/);
 });
 
 it("logged in, ignores the signup bonus and shows the real price", async () => {

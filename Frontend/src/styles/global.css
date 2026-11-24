@@ -919,6 +919,8 @@ body.no-copy img{-webkit-user-drag:none}
 .duration-opt.on{background:var(--teal);color:#04170c}
 .duration-opt:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .duration-opt-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:.62rem;letter-spacing:.05em;background:rgba(245,196,81,.16);color:#f5c451;vertical-align:1px}
+.duration-opt--stipend{color:#f5c451}
+.duration-opt--stipend.on{background:#f5c451;color:#04170c}
 .duration-opt.on .duration-opt-tag{background:rgba(4,23,12,.18);color:#04170c}
 .duration-group{position:relative;display:inline-flex}
 .duration-caret{display:inline-block;margin-left:6px;font-size:.7em;transition:transform .2s}

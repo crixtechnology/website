@@ -5,7 +5,7 @@ import { walletOffPrice } from "./useWalletCredit.js";
 import { formatINR, maskINR } from "../utils/tiers.js";
 
 // How a Training + Internship fee prints for whoever is looking: the real
-// price once they're logged in, the masked one (₹4XXX9*) before — logging in
+// price once they're logged in, the masked one (₹4XX9*) before — logging in
 // is what reveals it. Only for program fees; wallet amounts and payments a
 // logged-in student makes always use formatINR.
 export function usePriceText() {
@@ -27,7 +27,7 @@ export const bonusOff = (price, bonus) =>
   (bonus ? walletOffPrice(price, { available: bonus.amount, usagePercent: bonus.usagePercent }) : 0);
 
 // A fee as one line of text: the real price logged in; logged out, the price
-// after the signup bonus, masked (₹4,299 less ₹300 -> ₹3XXX9*).
+// after the signup bonus, masked (₹4,299 less ₹300 -> ₹3XX9*).
 export function useFeeText() {
   const { isLoggedIn } = useContext(UserContext);
   const bonus = useVisitorBonus();

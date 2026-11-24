@@ -87,13 +87,13 @@ describe("programSeoTitle / programDescription for search results", () => {
     expect(programSeoTitle(paid)).toBe("MERN Stack Developer — 6 months + Paid Internship | Crix Technology");
   });
   test("leads the snippet with what differs", () => {
-    expect(programDescription(plain)).toBe("MERN Stack Developer — 1 month: online training for ₹1XXX9*, with offer letter, certificate and LOR. The complete web training.");
-    expect(programDescription(paid)).toBe("MERN Stack Developer — 6 months: 3 months training + 3 months paid internship (stipend ₹3,000 – ₹7,000/month, performance based), ₹2XXXX9*. The complete web training.");
+    expect(programDescription(plain)).toBe("MERN Stack Developer — 1 month: online training for ₹1XX9*, with offer letter, certificate and LOR. The complete web training.");
+    expect(programDescription(paid)).toBe("MERN Stack Developer — 6 months: 3 months training + 3 months paid internship (stipend ₹3,000 – ₹7,000/month, performance based), ₹2XXX9*. The complete web training.");
     expect(new Set([plain, plain6, paid].map((c) => programDescription(c))).size).toBe(3);
   });
   test("quotes the fee after the signup bonus when there is one", () => {
     expect(programDescription({ ...plain, tiers: [{ tier: "basic", price: 4299 }] }, { amount: 300, usagePercent: 100 }))
-      .toBe("MERN Stack Developer — 1 month: online training for ₹3XXX9* after the ₹300 signup bonus, with offer letter, certificate and LOR. The complete web training.");
+      .toBe("MERN Stack Developer — 1 month: online training for ₹3XX9* after the ₹300 signup bonus, with offer letter, certificate and LOR. The complete web training.");
   });
   test("never mentions a stipend for a program without one", () => {
     expect(programDescription(plain6)).not.toMatch(/stipend|paid internship/i);
@@ -102,9 +102,10 @@ describe("programSeoTitle / programDescription for search results", () => {
 });
 
 describe("maskINR", () => {
-  it("keeps the first and last digit, hides everything between, and adds a *", () => {
-    expect(maskINR(4999)).toBe("₹4XXX9*");
-    expect(maskINR(12499)).toBe("₹1XXXX9*");
+  it("keeps the first and last digit, one X per digit between, no comma, and a *", () => {
+    expect(maskINR(4999)).toBe("₹4XX9*");
+    expect(maskINR(14999)).toBe("₹1XXX9*");
+    expect(maskINR(149999)).toBe("₹1XXXX9*");
     expect(maskINR(999)).toBe("₹9X9*");
   });
   it("leaves one- and two-digit amounts unhidden, still with the *", () => {

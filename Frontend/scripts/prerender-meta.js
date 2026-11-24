@@ -68,7 +68,7 @@ function paidStipend(c) {
 // as defaultTerms in src/data/careers.js.
 let signupTerms = { amount: 300, usagePercent: 100 };
 const maskINR = (n) => {
-  const num = n.toLocaleString("en-IN");
+  const num = String(Math.round(Math.max(0, Number(n) || 0)));
   if (num.length < 3) return `₹${num}*`;
   return `₹${num[0]}${"X".repeat(num.length - 2)}${num[num.length - 1]}*`;
 };
@@ -83,7 +83,7 @@ function bonusOff(price) {
   return Math.floor(Math.min(amount, Math.max(0, Math.min(p - 1, cap))));
 }
 // As the logged-out page shows it: after the signup bonus, masked — must match
-// lowestPrice() in src/hooks/usePageMeta.js ("₹3XXX9* after the ₹300 signup bonus").
+// lowestPrice() in src/hooks/usePageMeta.js ("₹3XX9* after the ₹300 signup bonus").
 function lowestPrice(c) {
   const prices = (Array.isArray(c.tiers) ? c.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
   if (!prices.length) return "";

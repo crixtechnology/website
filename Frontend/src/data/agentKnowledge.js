@@ -53,7 +53,7 @@ const kind = (p) => (p.type === "internship" ? "internship" : "course");
 const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/training-internship", label: `Open ${p.title}` });
 
 // Fees as the cards show them: the real price for a logged-in student; before
-// that, masked (₹4XXX9*) and after the signup bonus (`bonus`, { amount,
+// that, masked (₹4XX9*) and after the signup bonus (`bonus`, { amount,
 // usagePercent } or null), so the chat never shows a price the page hides.
 function shownPlan(t, loggedIn, bonus) {
   let now = planPrice(t);
