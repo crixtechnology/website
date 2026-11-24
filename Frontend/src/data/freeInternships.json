@@ -82,48 +82,6 @@
       "datePosted": "2026-10-25"
     },
     {
-      "slug": "cyber-security-intern",
-      "title": "Cyber Security Intern",
-      "summary": "Learn how websites and networks are attacked and defended by working on real security tasks, guided by a mentor from our team. No experience needed — just curiosity, basic computer and networking knowledge, and the willingness to learn.",
-      "skills": [
-        "Networking basics",
-        "Linux basics",
-        "Web security (OWASP Top 10)",
-        "Vulnerability assessment",
-        "Burp Suite basics",
-        "Nmap",
-        "Security reporting"
-      ],
-      "responsibilities": [
-        "Test web applications for common weaknesses from the OWASP Top 10, only on systems you are authorised to test",
-        "Scan networks and servers with tools such as Nmap and explain what the results mean",
-        "Use Burp Suite to inspect and test how a website handles requests",
-        "Write clear reports: what you found, how serious it is and how to fix it",
-        "Review passwords, access and configuration settings against a security checklist",
-        "Share a short progress update with your mentor every day"
-      ],
-      "eligibility": [
-        "Students of any field or stream, in any year, at a recognised school, college or university in India, or recent graduates",
-        "18 years of age or older on the day of the test",
-        "Basic knowledge of computers, the internet and networking; some Linux is a plus, not a must",
-        "A laptop or desktop with a working webcam and a stable internet connection",
-        "Able to give about 2–3 hours a day for the length of the internship",
-        "Willing to follow our rules on ethical and authorised testing at all times"
-      ],
-      "stipend": "No Stipend",
-      "experience": "0–1 year (freshers welcome)",
-      "duration": "1, 2, 3 & 6 months",
-      "mode": "Remote / Ahmedabad",
-      "startsOn": "December-January",
-      "group": "Cyber Security",
-      "positions": {
-        "total": 6,
-        "filled": 0,
-        "left": 6
-      },
-      "datePosted": "2026-11-14"
-    },
-    {
       "slug": "mern-stack-developer-intern",
       "title": "MERN Stack Developer Intern",
       "summary": "Build full web apps end to end with the MERN stack — MongoDB, Express.js, React and Node.js. You'll work on both the screens users see and the APIs and database behind them on real projects, guided by a mentor from our team.",

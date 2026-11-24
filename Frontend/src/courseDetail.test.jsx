@@ -66,7 +66,7 @@ describe("key facts", () => {
   it("say what it is, that it is online, and what the training costs — nothing invented", async () => {
     await renderPage({ ...base, type: "internship" });
     const facts = Object.fromEntries(qa(".course-facts > div").map((d) => [d.querySelector("dt").textContent, d.querySelector("dd").textContent]));
-    expect(facts).toEqual({ Type: "Training + Internship", Format: "Online", "Training fee from": "₹1,000" });
+    expect(facts).toEqual({ Type: "Training + Internship", Format: "Online", "Training fee from": "₹1XXX0*" });
   });
 
   it("list the same facts as every program card, Starts on included", async () => {
@@ -235,7 +235,7 @@ describe("the sticky enroll bar", () => {
   it("offers 'Choose a plan' on a course that is on sale, with its starting price", async () => {
     await renderPage(base);
     expect(bar().textContent).toContain("Web Development");
-    expect(bar().textContent).toContain("From ₹1,000");
+    expect(bar().textContent).toContain("From ₹1XXX0*");
     expect(bar().querySelector("button").textContent).toBe("Choose a plan");
     expect(q("#plans")).not.toBeNull();
   });
@@ -296,9 +296,9 @@ describe("the details a free internship shows", () => {
     const openAuthModal = jest.fn();
     await renderPage(detailed, { openAuthModal });
     const cta = q("#course-cta");
-    expect(q("#plans").textContent).toContain("₹1,000");
+    expect(q("#plans").textContent).toContain("₹1XXX0*");
     const labels = [...cta.querySelectorAll("button")].map((x) => x.textContent);
-    expect(labels).toEqual(["Choose Basic"]);
+    expect(labels).toEqual(["Choose Basic", "Log in"]);
     await act(async () => { cta.querySelector("button").click(); });
     expect(openAuthModal).toHaveBeenCalledWith("login", expect.any(Function));
   });

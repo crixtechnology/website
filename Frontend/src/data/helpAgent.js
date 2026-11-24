@@ -29,8 +29,8 @@ import { findNamed, programAnswer, roleAnswer } from "./agentKnowledge.js";
 import { freeOpenings } from "./freeInternships.js";
 
 // The Free Internship page's roles — static, from data/freeInternships.json —
-// so the agent can answer about one named outright ("stipend for the Cyber
-// Security intern?"). Marked "free" so roleAnswer points at that page.
+// so the agent can answer about one named outright ("stipend for the Python
+// Developer intern?"). Marked "free" so roleAnswer points at that page.
 const FREE_ROLES = freeOpenings.map((o) => ({ ...o, audience: "free" }));
 const allRoles = (ctx) => [...(ctx.openings || []), ...FREE_ROLES];
 
@@ -219,7 +219,7 @@ function priceReply(state, ctx) {
     return { text: "IT projects are quoted individually — the price depends on what you need (pages, features, integrations). Send your requirements through the Services page and we'll send a quote.", links: [{ to: "/services", label: "Request a quote" }] };
   }
   if (state.topic === "programs") {
-    return { text: "Each program's price is on its card on the Training + Internship page — filter by 1, 2, 3 or 6 months, then tap Enroll now to pay online. Any discount running is shown there too, and wallet credit is taken off at checkout.", links: [{ to: "/training-internship", label: "See tracks & prices" }] };
+    return { text: "Each program's price is on its card on the Training + Internship page — pick the length on the card, then tap Enroll now to pay online. Any discount running is shown there too, and wallet credit is taken off at checkout.", links: [{ to: "/training-internship", label: "See tracks & prices" }] };
   }
   return {
     text: "Happy to help with pricing — which one is it about?",
@@ -408,13 +408,13 @@ export function respond(state, text, ctx = {}) {
   // Only the kind asked for: "an internship in react" isn't asking about the React.js course.
   const kindAsked = has(n, ["internship", "intern "]) ? "internship" : has(n, ["course"]) ? "course" : null;
   const program = findNamed((ctx.programs || []).filter((p) => !kindAsked || !p.type || p.type === kindAsked), n);
-  if (program && (topic === "programs" || !topic || has(n, WORDS.price))) return out(programAnswer(program, n), "programs", { kind: "program", title: program.title });
+  if (program && (topic === "programs" || !topic || has(n, WORDS.price))) return out(programAnswer(program, n, !!ctx.user), "programs", { kind: "program", title: program.title });
 
   // Short follow-ups ("how much?", "how long?", "how do I join?") are about what was being discussed.
   const aboutList = state.about ? (state.about.kind === "program" ? ctx.programs : allRoles(ctx)) || [] : [];
   const about = state.about && aboutList.find((x) => x.title === state.about.title);
   if (about && words.length <= 5 && (has(n, WORDS.price) || has(n, ["duration", "how long", "start", "certificate", "syllabus", "cover", "stipend", "test", "eligib", "remote", "mode"]))) {
-    return state.about.kind === "program" ? out(programAnswer(about, n), "programs") : out(roleAnswer(about, n), "careers");
+    return state.about.kind === "program" ? out(programAnswer(about, n, !!ctx.user), "programs") : out(roleAnswer(about, n), "careers");
   }
   if (has(n, WORDS.price) && words.length <= 3) return out(priceReply({ topic: state.topic }, ctx));
   if (has(n, WORDS.apply) && short && (!topic || topic === state.topic)) return out(applyReply({ topic: ctxTopic }, ctx), ctxTopic);

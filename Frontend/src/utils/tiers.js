@@ -44,6 +44,16 @@ export const formatINR = (amount) =>
     ? `₹${amount.toLocaleString("en-IN")}`
     : `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// A training fee as a logged-out visitor sees it: the first and last digit,
+// everything between (separators too) as X, and a * after it
+// (₹4,999 -> ₹4XXX9*; ₹12,499 -> ₹1XXXX9*). Logging in shows the real price.
+// Amounts of two digits or fewer keep their digits, still with the *.
+export const maskINR = (amount) => {
+  const num = formatINR(amount).slice(1);
+  if (num.length < 3) return `₹${num}*`;
+  return `₹${num[0]}${"X".repeat(num.length - 2)}${num[num.length - 1]}*`;
+};
+
 // Every plan priced at ₹0: a free opportunity, not something sold on the
 // Programs page (free roles live on Careers). Kept off the Programs grid,
 // "You might also like" and the sitemap (scripts/prerender-meta.js has a copy).

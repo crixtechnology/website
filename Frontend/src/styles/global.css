@@ -918,23 +918,30 @@ body.no-copy img{-webkit-user-drag:none}
 .duration-opt:hover{color:var(--text)}
 .duration-opt.on{background:var(--teal);color:#04170c}
 .duration-opt:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.duration-opt-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:.62rem;letter-spacing:.05em;background:rgba(245,196,81,.16);color:#f5c451;vertical-align:1px}
+.duration-opt.on .duration-opt-tag{background:rgba(4,23,12,.18);color:#04170c}
+.duration-group{position:relative;display:inline-flex}
+.duration-caret{display:inline-block;margin-left:6px;font-size:.7em;transition:transform .2s}
+.duration-group.open .duration-caret{transform:rotate(180deg)}
+.duration-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:20;display:flex;flex-direction:column;gap:2px;min-width:100%;padding:4px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 12px 28px rgba(0,0,0,.35);animation:durationPop .16s ease-out}
+.duration-pop::before{content:"";position:absolute;left:0;right:0;top:-8px;height:8px}
+.duration-pop-opt{text-align:left;white-space:nowrap;border-radius:10px}
+@keyframes durationPop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.duration-pop{animation:none}.duration-caret{transition:none}}
 
 /* ---------- Training + Internship: duration filter capsules + card fee ---------- */
-.filter-pills{display:flex;flex-wrap:wrap;gap:10px}
-.filter-pill{font:inherit;font-family:'JetBrains Mono',monospace;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:rgba(127,232,224,.04);border:1px solid var(--line);border-radius:999px;padding:10px 20px;min-height:44px;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s}
-.filter-pill:hover{color:var(--text);border-color:var(--teal)}
-.filter-pill.on{background:var(--teal);border-color:var(--teal);color:#04170c}
-.filter-pill:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .filter-empty{color:var(--muted);margin:8px 0 0}
-.filter-reset{font:inherit;color:var(--teal);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
 .card-price{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 .card-price-label{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase}
 /* Logged in with wallet credit: one quiet line under the (already reduced) price. */
 .card-price-wallet-note{color:var(--teal);font-size:.8rem}
+.price-login-note{margin:0;color:var(--muted);font-size:.8rem}
+.price-login-link{font:inherit;color:var(--teal);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.price-login-link:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:2px}
+.plan-cards-note{margin-top:10px}
 /* Label, then the price (struck price and "% off" wrap on a narrow card), then the wallet note. */
 .card-price .plan-price{min-width:0}
 .bonus-modal{text-align:center}
 .bonus-modal h3{padding-right:0;margin:6px 0 8px}
 .bonus-modal p{color:var(--muted);margin:0 0 18px}
 .bonus-modal-gift{display:block;font-size:2.6rem;line-height:1;margin:4px 0 10px}
-@media(max-width:560px){.filter-pills{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:2px 16px 6px;scrollbar-width:none}.filter-pills::-webkit-scrollbar{display:none}}

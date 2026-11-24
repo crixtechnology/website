@@ -78,11 +78,11 @@ describe("help agent", () => {
   });
 
   it("answers about a free internship role named outright, from the page's own list", () => {
-    const { last } = chat("when does the cyber security intern role start?");
+    const { last } = chat("when does the python developer intern role start?");
     expect(last.text).toContain("Expected to start: December-January");
     expect(last.links[0].to).toBe("/free-internships");
-    expect(chat("stipend for the cyber security intern role").last.text).toContain("Stipend: No Stipend.");
-    expect(chat("aptitude test for the cyber security intern role").last.text).toMatch(/after you apply through our form/);
+    expect(chat("stipend for the python developer intern role").last.text).toContain("Stipend: No Stipend.");
+    expect(chat("aptitude test for the python developer intern role").last.text).toMatch(/after you apply through our form/);
   });
 
   it("asks what a business needs, then points to a quote", () => {

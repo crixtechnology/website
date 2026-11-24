@@ -2,10 +2,9 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Reveal, InfoCard, BenefitIcon, Logo, BuyModal, InquiryModal, DetailModal, ServiceInquiryModal, UpgradeModal, PlanCards, Alert, Marquee, RotatingWord, Counter, Hero3D, Aurora, LiveDevice, SkeletonCards, SectionIndex, CopyButton, burstConfetti, REDUCED,
-  DownloadPdfButton, TrainingContact, ProgramGroupCard, TrainingCard, DurationSwitch, SignupBonusPopup,
+  DownloadPdfButton, TrainingContact, ProgramGroupCard, DurationSwitch, SignupBonusPopup,
 } from "../components/ui.jsx";
 import { groupVariants, siblingsOf } from "../utils/variants.js";
-import { formatDuration, PROGRAM_DURATIONS } from "../utils/duration.js";
 import {
   site, hero, internships, services, process, benefits, trainingStages, selectionCriteria, stats, about, legal,
   techStack, clientProcess, engagementModels, expertise, whyCrix, company, programDeliverables, fallbackPrograms,
@@ -48,7 +47,7 @@ import { useTouched, focusFirstError } from "../hooks/useTouched.js";
 import PhoneInput from "../components/PhoneInput.jsx";
 import { CourseFacts, CourseLists, CourseFaq, RelatedPrograms, EnrollBar, useCourseJsonLd } from "../components/CourseSections.jsx";
 import { offeredTiers, isOpenForBuy, isFreeProgram, TIER_ORDER } from "../utils/tiers.js";
-import { isFull, placeWord, positionsTag, stipendInfo } from "../utils/positions.js";
+import { isFull, placeWord, positionsTag } from "../utils/positions.js";
 
 // The ?tier= a purchase link carries, if it names a real plan.
 const tierFromParams = (params) => {
@@ -205,8 +204,8 @@ export function Home() {
 // Every program includes an offer letter, a training certificate and an LOR;
 // a stipend, joining kit or LinkedIn recognition only on some. Only internship-type programs are sold here — the
 // old Courses + Internship page is gone, and free roles live on Careers.
-// The program cards come first, under a duration filter (All / 1 / 2 / 3 / 6
-// months): one card per program, each with the fee the admin set and an
+// The program cards come first: one card per domain (its lengths on a
+// duration switch on the card — no separate filter bar), each with the fee the admin set and an
 // Enroll now button that pays online through Razorpay.
 const TRAINING_INDEX = [
   { id: "programs", label: "Programs" },
@@ -228,9 +227,6 @@ export function TrainingInternship() {
   const [buyItem, setBuyItem] = useState(null);
   const [buyTier, setBuyTier] = useState(null); // the plan BuyModal opens on
   const [detailData, setDetailData] = useState(null); // { item, kind, isProgram } | null
-  // The filter: "all", a length in days (30 / 60 / 90 / 180), or "stipend"
-  // (only programs that pay a stipend — Admin's Stipend box ticked).
-  const [duration, setDuration] = useState("all");
   const [params, setParams] = useSearchParams();
   // What they already have: those cards say "View in My Dashboard" instead of offering plans again.
   const { hasAccess } = useMyPlans();
@@ -287,15 +283,8 @@ export function TrainingInternship() {
   }, [params, liveInternships, setParams]);
 
   // Paid programs only. Anything priced at ₹0 on every plan is a free opportunity, which belongs on Careers.
-  // Shuffled once per list (each visit sees a fresh order), so every filter shows
-  // its cards in a random order but switching filters doesn't reshuffle.
+  // Shuffled once per list, so each visit sees a fresh order.
   const programs = useMemo(() => shuffled(liveInternships.filter((item) => !isFreeProgram(item))), [liveInternships]);
-  const paysStipend = (item) => { const info = stipendInfo(item); return !!info && !info.none; };
-  const shown = duration === "all" ? programs
-    : duration === "stipend" ? programs.filter(paysStipend)
-      : programs.filter((item) => Number(item.durationDays) === duration);
-  // "3 months" -> "3-month", for "No 3-month programs right now."
-  const durationWord = typeof duration === "number" ? formatDuration(duration).replace(" ", "-").replace(/s$/, "") : "";
 
   // Search engines: the programs on this page as an ItemList pointing at each
   // one's own page (only live entries have a slug/page to point at).
@@ -318,28 +307,16 @@ export function TrainingInternship() {
       <span id="courses" className="anchor-section" aria-hidden="true" />
       <section id="programs" className="section anchor-section" style={{ paddingTop: 20 }}>
         <div className="wrap">
-          {/* Filter: All, one capsule per length a program can run for, then Stipend. */}
-          <div className="filter-pills" role="group" aria-label="Filter programs">
-            {["all", ...PROGRAM_DURATIONS, "stipend"].map((d) => (
-              <button key={d} type="button" className={`filter-pill${duration === d ? " on" : ""}`} aria-pressed={duration === d}
-                onClick={() => setDuration(d)}>
-                {d === "all" ? "All" : d === "stipend" ? "Stipend" : formatDuration(d)}
-              </button>
-            ))}
-          </div>
-          <div className="grid3" style={{ marginTop: 24 }}>
-            {/* One card per program; a domain offered in several durations is a card for each. */}
-            {loading ? <SkeletonCards count={3} /> : shown.map((item, i) => (
-              <TrainingCard key={item.slug || item._id || item.title} item={item} i={i} owned={hasAccess(item)} wallet={wallet}
+          <div className="grid3">
+            {/* One card per domain: a domain offered in several durations is one card
+                with a duration switch (1 and 2 months share the BCA Special pill). */}
+            {loading ? <SkeletonCards count={3} /> : groupVariants(programs).map((g, i) => (
+              <ProgramGroupCard key={g.key} variants={g.variants} i={i} ownedOf={hasAccess} wallet={wallet}
                 onBuy={handleBuy} onInquire={setInquireItem} onDetail={setDetailData} />
             ))}
           </div>
-          {!loading && shown.length === 0 && (
-            <p className="filter-empty" role="status">
-              {duration === "all" ? "No programs are open right now — check back soon."
-                : duration === "stipend" ? "No programs with a stipend right now." : `No ${durationWord} programs right now.`}
-              {duration !== "all" && <>{" "}<button type="button" className="filter-reset" onClick={() => setDuration("all")}>Show all programs</button></>}
-            </p>
+          {!loading && programs.length === 0 && (
+            <p className="filter-empty" role="status">No programs are open right now — check back soon.</p>
           )}
           <p className="section-lede" style={{ marginTop: 28 }}>
             Training is paid, not free — each program shows its training fee. Every program includes an offer letter, a training certificate and an LOR; a stipend,

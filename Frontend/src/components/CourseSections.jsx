@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCourses } from "../services/api.js";
 import { site } from "../data/content.js";
-import { offeredTiers, planPrice, formatINR, isOpenForBuy, isFreeProgram } from "../utils/tiers.js";
+import { offeredTiers, planPrice, isOpenForBuy, isFreeProgram } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
 import { isFull, placeWord, programFacts } from "../utils/positions.js";
 import { StipendStrip } from "./ui.jsx";
+import { usePriceText } from "../hooks/usePriceText.js";
 import { useJsonLd, canonicalUrl, SITE_URL, programKeywords, programTitle } from "../hooks/usePageMeta.js";
 
 // The extra sections of a course / internship page (CourseDetail in pages/pages.jsx).
@@ -22,9 +23,10 @@ const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" &&
 // how long it runs, or that a course has no expiry (no duration set = lifetime access — see
 // Backend utils/enrollmentAccess.js), and what it costs when it's on sale.
 export function CourseFacts({ course }) {
+  const price = usePriceText();
   const plans = offeredTiers(course);
   const facts = [["Type", kindLabel(course)], ["Format", "Online"]];
-  if (plans.length && course.status !== "closed") facts.push(["Training fee from", formatINR(Math.min(...plans.map(planPrice)))]);
+  if (plans.length && course.status !== "closed") facts.push(["Training fee from", price(Math.min(...plans.map(planPrice)))]);
   // Positions, stipend, experience, duration, mode, starts on — the same facts
   // every card shows (Careers and Free Internship roles too).
   facts.push(...programFacts(course, { stipendStrip: true }));
@@ -170,6 +172,7 @@ export function RelatedPrograms({ course }) {
 export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
   const [ctaSeen, setCtaSeen] = useState(true); // until the observer says otherwise the bar stays hidden
   const [footerSeen, setFooterSeen] = useState(false);
+  const price = usePriceText();
   const plans = offeredTiers(course);
   const full = isFull(course);
   // A priced, open track with a place left is bought online.
@@ -207,7 +210,7 @@ export function EnrollBar({ course, onInquire, targetId = "course-cta" }) {
   const cheapest = plans.length ? Math.min(...plans.map(planPrice)) : null;
   // Admin's Open/Closed switch: a closed track takes no applications.
   const closed = course.status === "closed";
-  const sub = (openForBuy || course.type === "internship") && !closed && cheapest !== null ? `From ${formatINR(cheapest)}`
+  const sub = (openForBuy || course.type === "internship") && !closed && cheapest !== null ? `From ${price(cheapest)}`
     : closed ? "Currently closed"
     : full ? `All ${placeWord(course)}s filled`
     : course.type === "internship" ? "Apply to join" : "Ask about the next batch";
