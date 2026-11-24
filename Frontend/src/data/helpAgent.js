@@ -14,7 +14,8 @@
 //     line doesn't get student calls and the other way round.
 //
 // respond(state, text, ctx) -> { state, replies }
-//   ctx: { user, programs, openings, services, taught } — any may be empty/missing.
+//   ctx: { user, programs, openings, services, taught, bonus } — any may be empty/missing.
+//   bonus: the signup bonus a logged-out visitor would get (fees are quoted after it).
 //     taught: answers an admin wrote for questions visitors asked
 //             (Admin → Help agent questions): [{ q, a, keywords, linkTo, linkLabel, dept }]
 //   A reply: { text, links?, chips?, dept?, more? }
@@ -408,13 +409,13 @@ export function respond(state, text, ctx = {}) {
   // Only the kind asked for: "an internship in react" isn't asking about the React.js course.
   const kindAsked = has(n, ["internship", "intern "]) ? "internship" : has(n, ["course"]) ? "course" : null;
   const program = findNamed((ctx.programs || []).filter((p) => !kindAsked || !p.type || p.type === kindAsked), n);
-  if (program && (topic === "programs" || !topic || has(n, WORDS.price))) return out(programAnswer(program, n, !!ctx.user), "programs", { kind: "program", title: program.title });
+  if (program && (topic === "programs" || !topic || has(n, WORDS.price))) return out(programAnswer(program, n, !!ctx.user, ctx.bonus), "programs", { kind: "program", title: program.title });
 
   // Short follow-ups ("how much?", "how long?", "how do I join?") are about what was being discussed.
   const aboutList = state.about ? (state.about.kind === "program" ? ctx.programs : allRoles(ctx)) || [] : [];
   const about = state.about && aboutList.find((x) => x.title === state.about.title);
   if (about && words.length <= 5 && (has(n, WORDS.price) || has(n, ["duration", "how long", "start", "certificate", "syllabus", "cover", "stipend", "test", "eligib", "remote", "mode"]))) {
-    return state.about.kind === "program" ? out(programAnswer(about, n, !!ctx.user), "programs") : out(roleAnswer(about, n), "careers");
+    return state.about.kind === "program" ? out(programAnswer(about, n, !!ctx.user, ctx.bonus), "programs") : out(roleAnswer(about, n), "careers");
   }
   if (has(n, WORDS.price) && words.length <= 3) return out(priceReply({ topic: state.topic }, ctx));
   if (has(n, WORDS.apply) && short && (!topic || topic === state.topic)) return out(applyReply({ topic: ctxTopic }, ctx), ctxTopic);

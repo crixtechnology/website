@@ -70,6 +70,17 @@ describe("answers about a named program or role", () => {
     expect(last.text).toContain("Log in to see the full price.");
   });
 
+  it("logged out, quotes the fee after the signup bonus, as the cards do", () => {
+    const bonus = { amount: 300, usagePercent: 100 };
+    const { last } = chatAs({ ...ctx, bonus }, "mern internshp ka price kitna hai");
+    // ₹3,999 less ₹300 = ₹3,699, against the original ₹4,999.
+    expect(last.text).toContain("Basic: ₹3XXX9* (was ₹4XXX9*, 26% off)");
+    expect(last.text).toContain("Pro: ₹8XXX9* (was ₹8XXX9*, 3% off)");
+    expect(last.text).toContain("Shown after the ₹300 signup bonus. Log in to see the full price.");
+    // A logged-in student gets the real price; the bonus is ignored.
+    expect(chatAs({ ...ctx, bonus, user: { name: "Asha Rao" } }, "mern internshp ka price kitna hai").last.text).toContain("Basic: ₹3,999 (was ₹4,999, 20% off)");
+  });
+
   it("finds programs whose titles have a dot, like React.js", () => {
     const withReact = { ...ctx, programs: [...ctx.programs, { slug: "react-js", title: "React.js Programming", type: "course", status: "open", durationDays: 30, tiers: [{ tier: "basic", price: 999 }] }] };
     const r = respond(initialState(), "price of react.js course", withReact);

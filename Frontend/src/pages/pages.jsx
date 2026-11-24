@@ -11,6 +11,7 @@ import {
 } from "../data/content.js";
 import { submitContact, getCourses, getCourse, getServices, getOpenings, hasBackend } from "../services/api.js";
 import { useWalletCredit } from "../hooks/useWalletCredit.js";
+import { useVisitorBonus } from "../hooks/usePriceText.js";
 import { defaultTerms } from "../data/careers.js";
 
 // A copy of the list in random order (Fisher-Yates).
@@ -445,9 +446,11 @@ export function CourseDetail() {
   // The name with its length ("… — 3 months"): each duration of a domain is its
   // own page, and the bare title made them all look the same to search engines.
   const fullTitle = programTitle(course);
+  // Search engines see the page logged out: the fee after the signup bonus.
+  const visitorBonus = useVisitorBonus();
   usePageMeta({
     title: course ? programSeoTitle(course) : "Programs | Crix Technology",
-    description: course ? programDescription(course) : undefined,
+    description: course ? programDescription(course, visitorBonus) : undefined,
     crumbs: course ? [{ name: "Home", path: "/" }, { name: "Training + Internship", path: "/training-internship" }, { name: fullTitle, path: `/programs/${slug}` }] : null,
     keywords: course ? programKeywords(course) : null,
   });
