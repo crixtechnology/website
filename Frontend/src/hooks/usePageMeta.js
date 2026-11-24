@@ -68,7 +68,7 @@ function paidStipend(course) {
 
 // The lowest price the program is sold for, as the logged-out page shows it
 // (search engines never log in): after the signup bonus (`bonus`, { amount,
-// usagePercent } or null) and masked — "₹3XXX9* after the ₹300 signup bonus" — or "".
+// usagePercent } or null) and masked — "₹3XX9* after the ₹300 signup bonus" — or "".
 function lowestPrice(course, bonus) {
   const prices = (Array.isArray(course.tiers) ? course.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
   if (!prices.length) return "";

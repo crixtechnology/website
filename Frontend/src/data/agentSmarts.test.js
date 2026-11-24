@@ -17,7 +17,7 @@ const ctx = {
   taught: [{ q: "is there a weekend batch", a: "Yes — weekend batches run on Saturdays and Sundays.", keywords: "saturday sunday weekend", linkTo: "/programs", linkLabel: "Programs", dept: "" }],
 };
 
-// A logged-in student sees real prices; a visitor sees them masked (₹3XXX9*).
+// A logged-in student sees real prices; a visitor sees them masked (₹3XX9*).
 function chatAs(c, ...lines) {
   let state = initialState();
   let last;
@@ -65,7 +65,7 @@ describe("answers about a named program or role", () => {
 
   it("logged out, masks the price as the cards do and says to log in", () => {
     const { last } = chatAs(ctx, "mern internshp ka price kitna hai");
-    expect(last.text).toContain("Basic: ₹3XXX9* (was ₹4XXX9*, 20% off)");
+    expect(last.text).toContain("Basic: ₹3XX9* (was ₹4XX9*, 20% off)");
     expect(last.text).not.toContain("₹3,999");
     expect(last.text).toContain("Log in to see the full price.");
   });
@@ -74,8 +74,8 @@ describe("answers about a named program or role", () => {
     const bonus = { amount: 300, usagePercent: 100 };
     const { last } = chatAs({ ...ctx, bonus }, "mern internshp ka price kitna hai");
     // ₹3,999 less ₹300 = ₹3,699, against the original ₹4,999.
-    expect(last.text).toContain("Basic: ₹3XXX9* (was ₹4XXX9*, 26% off)");
-    expect(last.text).toContain("Pro: ₹8XXX9* (was ₹8XXX9*, 3% off)");
+    expect(last.text).toContain("Basic: ₹3XX9* (was ₹4XX9*, 26% off)");
+    expect(last.text).toContain("Pro: ₹8XX9* (was ₹8XX9*, 3% off)");
     expect(last.text).toContain("Shown after the ₹300 signup bonus. Log in to see the full price.");
     // A logged-in student gets the real price; the bonus is ignored.
     expect(chatAs({ ...ctx, bonus, user: { name: "Asha Rao" } }, "mern internshp ka price kitna hai").last.text).toContain("Basic: ₹3,999 (was ₹4,999, 20% off)");

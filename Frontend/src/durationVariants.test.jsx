@@ -87,8 +87,9 @@ describe("the Training + Internship page", () => {
       track("Web 6M Stipend", "web-6s", 180, { group: "Web", stipend: "₹3,000/month" }),
     ]);
     const opts = [...container.querySelectorAll("#programs .duration-opt")];
-    expect(opts.map((b) => b.textContent)).toEqual(["1 month", "6 months", "6 months Stipend"]);
-    expect(opts[2].querySelector(".duration-opt-tag")).not.toBeNull();
+    // The stipend one is just "Stipend", last.
+    expect(opts.map((b) => b.textContent)).toEqual(["1 month", "6 months", "Stipend"]);
+    expect(opts[2].getAttribute("aria-label")).toBe("6 months with stipend");
   });
 
   it("puts the 1- and 2-month lengths under one BCA Special pill with a popup", async () => {
@@ -99,7 +100,8 @@ describe("the Training + Internship page", () => {
     ]);
     const card = () => container.querySelector("#programs .card");
     const top = () => [...card().querySelectorAll(".duration-switch > .duration-opt, .duration-group > .duration-opt")];
-    expect(top().map((b) => b.textContent)).toEqual(["BCA Special · 1 month▾", "3 months"]);
+    // BCA Special comes after the other lengths.
+    expect(top().map((b) => b.textContent)).toEqual(["3 months", "BCA Special · 1 month▾"]);
     expect(card().querySelector(".duration-pop")).toBeNull();
     const pill = card().querySelector(".duration-opt--group");
     await act(async () => { pill.click(); });
@@ -111,8 +113,20 @@ describe("the Training + Internship page", () => {
     expect(card().querySelector(".duration-opt--group").textContent).toBe("BCA Special · 2 months▾");
     expect(card().querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/web-2");
     // Picking 3 months leaves the BCA pill unselected.
-    await act(async () => { top()[1].click(); });
+    await act(async () => { top()[0].click(); });
     expect(card().querySelector(".duration-opt--group").textContent).toBe("BCA Special▾");
+  });
+
+  it("orders the pills: other lengths, BCA Special, then Stipend", async () => {
+    await renderPage([
+      track("Web 1M", "web-1", 30, { group: "Web" }),
+      track("Web 2M", "web-2", 60, { group: "Web" }),
+      track("Web 3M", "web-3", 90, { group: "Web" }),
+      track("Web 6M", "web-6", 180, { group: "Web" }),
+      track("Web 6M Stipend", "web-6s", 180, { group: "Web", stipend: "₹3,000/month" }),
+    ]);
+    const top = [...container.querySelectorAll("#programs .duration-switch > .duration-opt, #programs .duration-group > .duration-opt")];
+    expect(top.map((b) => b.textContent)).toEqual(["3 months", "6 months", "BCA Special · 1 month▾", "Stipend"]);
   });
 
   it("keeps a lone 1-month length as its own pill", async () => {
