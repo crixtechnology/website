@@ -66,7 +66,7 @@ function paidStipend(course) {
 }
 
 // The lowest price the program is sold for, masked as the logged-out page
-// shows it (₹1,XX9 — search engines never log in), or "".
+// shows it (₹1XXX9* — search engines never log in), or "".
 function lowestPrice(course) {
   const prices = (Array.isArray(course.tiers) ? course.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
   return prices.length ? maskINR(Math.min(...prices)) : "";

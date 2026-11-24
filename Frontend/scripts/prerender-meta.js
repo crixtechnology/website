@@ -63,15 +63,13 @@ function paidStipend(c) {
   text = text.replace(/(₹\s*)(\d{4,})/g, (_, sign, d) => `₹${Number(d).toLocaleString("en-IN")}`).replace(/\s*-\s*(?=₹|\d)/g, " – ");
   return text ? `${text}${per ? `/${per}` : ""}` : "";
 }
-// Masked like the logged-out page (₹1,XX9) — must match maskINR() in src/utils/tiers.js.
+// Masked like the logged-out page (₹1XXX9*) — must match maskINR() in src/utils/tiers.js.
 function lowestPrice(c) {
   const prices = (Array.isArray(c.tiers) ? c.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
   if (!prices.length) return "";
-  const text = `₹${Math.min(...prices).toLocaleString("en-IN")}`;
-  const digits = (text.match(/\d/g) || []).length;
-  if (digits < 3) return text;
-  let seen = 0;
-  return text.replace(/\d/g, (d) => { seen += 1; return seen === 1 || seen === digits ? d : "X"; });
+  const num = Math.min(...prices).toLocaleString("en-IN");
+  if (num.length < 3) return `₹${num}*`;
+  return `₹${num[0]}${"X".repeat(num.length - 2)}${num[num.length - 1]}*`;
 }
 function programSeoTitle(c) {
   return `${programTitle(c)}${paidStipend(c) ? " + Paid Internship" : ""} | Crix Technology`;

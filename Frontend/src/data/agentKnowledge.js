@@ -51,7 +51,7 @@ const asked = (n, aspect) => ASPECTS[aspect].some((w) => n.includes(` ${w}`));
 const kind = (p) => (p.type === "internship" ? "internship" : "course");
 const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/training-internship", label: `Open ${p.title}` });
 
-// `money` prints a fee: formatINR for a logged-in student, maskINR (₹4,XX9) before —
+// `money` prints a fee: formatINR for a logged-in student, maskINR (₹4XXX9*) before —
 // the same as the cards, so the chat never shows a price the page hides.
 function priceLine(p, money) {
   // Training + Internship is bought online: quote the fee, then how to enroll.

@@ -17,7 +17,7 @@ const ctx = {
   taught: [{ q: "is there a weekend batch", a: "Yes — weekend batches run on Saturdays and Sundays.", keywords: "saturday sunday weekend", linkTo: "/programs", linkLabel: "Programs", dept: "" }],
 };
 
-// A logged-in student sees real prices; a visitor sees them masked (₹3,XX9).
+// A logged-in student sees real prices; a visitor sees them masked (₹3XXX9*).
 function chatAs(c, ...lines) {
   let state = initialState();
   let last;
@@ -65,7 +65,7 @@ describe("answers about a named program or role", () => {
 
   it("logged out, masks the price as the cards do and says to log in", () => {
     const { last } = chatAs(ctx, "mern internshp ka price kitna hai");
-    expect(last.text).toContain("Basic: ₹3,XX9 (was ₹4,XX9, 20% off)");
+    expect(last.text).toContain("Basic: ₹3XXX9* (was ₹4XXX9*, 20% off)");
     expect(last.text).not.toContain("₹3,999");
     expect(last.text).toContain("Log in to see the full price.");
   });

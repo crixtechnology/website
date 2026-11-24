@@ -401,7 +401,7 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
    (utils/tiers.js listPrice / offPercent). */
 // `walletOff` (rupees): the student's wallet credit taken off as well — the
 // final price shows, against the full price struck through.
-// Logged out, the digits between the first and last are X (₹4,XX9); logging in shows the price.
+// Logged out, everything between the first and last digit is X, with a * (₹4XXX9*); logging in shows the price.
 export function PlanPrice({ plan, className = "", walletOff = 0 }) {
   const price = usePriceText();
   if (walletOff > 0) {

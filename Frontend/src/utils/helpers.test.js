@@ -87,8 +87,8 @@ describe("programSeoTitle / programDescription for search results", () => {
     expect(programSeoTitle(paid)).toBe("MERN Stack Developer — 6 months + Paid Internship | Crix Technology");
   });
   test("leads the snippet with what differs", () => {
-    expect(programDescription(plain)).toBe("MERN Stack Developer — 1 month: online training for ₹1,XX9, with offer letter, certificate and LOR. The complete web training.");
-    expect(programDescription(paid)).toBe("MERN Stack Developer — 6 months: 3 months training + 3 months paid internship (stipend ₹3,000 – ₹7,000/month, performance based), ₹2X,XX9. The complete web training.");
+    expect(programDescription(plain)).toBe("MERN Stack Developer — 1 month: online training for ₹1XXX9*, with offer letter, certificate and LOR. The complete web training.");
+    expect(programDescription(paid)).toBe("MERN Stack Developer — 6 months: 3 months training + 3 months paid internship (stipend ₹3,000 – ₹7,000/month, performance based), ₹2XXXX9*. The complete web training.");
     expect(new Set([plain, plain6, paid].map(programDescription)).size).toBe(3);
   });
   test("never mentions a stipend for a program without one", () => {
@@ -98,13 +98,13 @@ describe("programSeoTitle / programDescription for search results", () => {
 });
 
 describe("maskINR", () => {
-  it("keeps the first and last digit and hides the ones between", () => {
-    expect(maskINR(4999)).toBe("₹4,XX9");
-    expect(maskINR(12499)).toBe("₹1X,XX9");
-    expect(maskINR(999)).toBe("₹9X9");
+  it("keeps the first and last digit, hides everything between, and adds a *", () => {
+    expect(maskINR(4999)).toBe("₹4XXX9*");
+    expect(maskINR(12499)).toBe("₹1XXXX9*");
+    expect(maskINR(999)).toBe("₹9X9*");
   });
-  it("leaves one- and two-digit amounts as they are", () => {
-    expect(maskINR(0)).toBe("₹0");
-    expect(maskINR(99)).toBe("₹99");
+  it("leaves one- and two-digit amounts unhidden, still with the *", () => {
+    expect(maskINR(0)).toBe("₹0*");
+    expect(maskINR(99)).toBe("₹99*");
   });
 });
