@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import seo from "../data/seo.json";
 import { formatDuration } from "../utils/duration.js";
 import { stipendInfo } from "../utils/positions.js";
+import { maskINR } from "../utils/tiers.js";
 
 export const SITE_URL = seo.siteUrl;
 
@@ -64,10 +65,11 @@ function paidStipend(course) {
   return s && !s.none && s.amount ? `${s.amount}${s.per ? `/${s.per}` : ""}` : "";
 }
 
-// The lowest price the program is sold for, e.g. "₹1,799", or "".
+// The lowest price the program is sold for, masked as the logged-out page
+// shows it (₹1,XX9 — search engines never log in), or "".
 function lowestPrice(course) {
   const prices = (Array.isArray(course.tiers) ? course.tiers : []).map((t) => Number(t && t.price)).filter((n) => n > 0);
-  return prices.length ? `₹${Math.min(...prices).toLocaleString("en-IN")}` : "";
+  return prices.length ? maskINR(Math.min(...prices)) : "";
 }
 
 // The <title> of a program page: "MERN Stack Developer — 6 months + Paid Internship | Crix Technology".

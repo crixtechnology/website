@@ -76,7 +76,7 @@ export const FAQ_TOPICS = [
         a: "• Open the Free Internship page and pick a role\n• Press Apply Now — it opens our application form (a Google Form, so you sign in with a Google account)\n• Fill in your details and upload your CV as a PDF\n• Our team reviews it and emails you about the aptitude test; candidates who do well are invited to an interview\nIt's free at every step.",
         links: [{ to: "/free-internships", label: "Free Internship" }] },
       { id: "k-free-roles", q: "Which free internships are open, and when do they start?",
-        k: "free internship roles list which open available start date when begin duration mern react python ai ml data analyst cyber security",
+        k: "free internship roles list which open available start date when begin duration mern react python ai ml data analyst",
         a: freeRolesAnswer,
         links: [{ to: "/free-internships", label: "Free Internship" }] },
       { id: "k-fee", q: "Do I have to pay to take the aptitude test?", k: "test fee registration fee processing fee cost charge free money aptitude",

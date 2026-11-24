@@ -26,6 +26,7 @@ import { startsInFuture, formatStartDate } from "../utils/startDate.js";
 import { formatDuration } from "../utils/duration.js";
 import { walletOffPrice } from "../hooks/useWalletCredit.js";
 import { programTitle } from "../hooks/usePageMeta.js";
+import { usePriceText } from "../hooks/usePriceText.js";
 import { isFull, placeWord, positionsTag, programFacts, stipendInfo } from "../utils/positions.js";
 
 export const REDUCED =
@@ -400,7 +401,9 @@ export function whatsappInquiryLink(title, verb = "learning more about") {
    (utils/tiers.js listPrice / offPercent). */
 // `walletOff` (rupees): the student's wallet credit taken off as well — the
 // final price shows, against the full price struck through.
+// Logged out, the digits between the first and last are X (₹4,XX9); logging in shows the price.
 export function PlanPrice({ plan, className = "", walletOff = 0 }) {
+  const price = usePriceText();
   if (walletOff > 0) {
     const full = listPrice(plan) || planPrice(plan);
     const final = Math.max(0, planPrice(plan) - walletOff);
@@ -417,8 +420,8 @@ export function PlanPrice({ plan, className = "", walletOff = 0 }) {
   const pct = offPercent(plan);
   return (
     <span className={`plan-price ${className}`}>
-      {was && <span className="price-old"><span className="sr-only">Original price </span>{formatINR(was)}</span>}
-      <span className="price-now">{was && <span className="sr-only">Now </span>}{formatINR(planPrice(plan))}</span>
+      {was && <span className="price-old"><span className="sr-only">Original price </span>{price(was)}</span>}
+      <span className="price-now">{was && <span className="sr-only">Now </span>}{price(planPrice(plan))}</span>
       {was && pct > 0 && <span className="price-off">{pct}% off</span>}
     </span>
   );
@@ -473,20 +476,77 @@ export function PlanCards({ plans, onChoose, ownedTier, onUpgrade, readOnly = fa
    variants: the domain's tracks, shortest first (utils/variants.js). Either
    onPick(index) — the card switches in place — or hrefOf(variant), which makes
    each option a link (a track's own page links to its other durations). */
+// The 1- and 2-month lengths are short programs meant for BCA students: when a
+// domain has both, they share one "BCA Special" pill whose popup (on hover, or
+// a tap on a phone) picks between them.
+const BCA_DAYS = [30, 60];
+const isBcaLength = (v) => BCA_DAYS.includes(Number(v && v.durationDays));
+
 export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Duration" }) {
   if (!variants || variants.length < 2) return null;
+  // Two options of the same length (a 6-month track with a stipend and one
+  // without): the one that pays a stipend says so, so they can be told apart.
+  const counts = {};
+  variants.forEach((v) => { const t = variantLabel(v); counts[t] = (counts[t] || 0) + 1; });
+  const paysStipend = (v) => { const info = stipendInfo(v); return !!info && !info.none; };
+  const textOf = (v) => {
+    const len = variantLabel(v);
+    return counts[len] > 1 && paysStipend(v) ? <>{len}<span className="duration-opt-tag"> Stipend</span></> : len;
+  };
+  const option = (v, n, extra = "", after) => {
+    const on = n === active;
+    return hrefOf ? (
+      <Link key={v.slug || n} to={hrefOf(v)} className={`duration-opt${on ? " on" : ""}${extra}`} aria-current={on ? "page" : undefined}
+        onClick={after}>{textOf(v)}</Link>
+    ) : (
+      <button key={v.slug || n} type="button" className={`duration-opt${on ? " on" : ""}${extra}`} aria-pressed={on}
+        onClick={() => { onPick(n); if (after) after(); }}>{textOf(v)}</button>
+    );
+  };
+  const bca = variants.map((v, n) => n).filter((n) => isBcaLength(variants[n]));
+  const grouped = bca.length >= 2;
   return (
     <div className="duration-switch" role="group" aria-label={label}>
       {variants.map((v, n) => {
-        const on = n === active;
-        const text = variantLabel(v);
-        return hrefOf ? (
-          <Link key={v.slug || n} to={hrefOf(v)} className={`duration-opt${on ? " on" : ""}`} aria-current={on ? "page" : undefined}>{text}</Link>
-        ) : (
-          <button key={v.slug || n} type="button" className={`duration-opt${on ? " on" : ""}`} aria-pressed={on} onClick={() => onPick(n)}>{text}</button>
-        );
+        if (!grouped || !bca.includes(n)) return option(v, n);
+        // The BCA pill stands where its first length would.
+        return n === bca[0]
+          ? <BcaSpecialPill key="bca" options={bca} active={active} variants={variants} option={option} />
+          : null;
       })}
     </div>
+  );
+}
+
+function BcaSpecialPill({ options, active, variants, option }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const on = options.includes(active);
+  // A tap outside (or Escape) closes it; hovering away closes it on a mouse.
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const mouse = (e) => e.pointerType === "mouse";
+  return (
+    <span ref={ref} className={`duration-group${open ? " open" : ""}`}
+      onPointerEnter={(e) => { if (mouse(e)) setOpen(true); }}
+      onPointerLeave={(e) => { if (mouse(e)) setOpen(false); }}>
+      <button type="button" className={`duration-opt duration-opt--group${on ? " on" : ""}`} aria-haspopup="true" aria-expanded={open}
+        onClick={() => setOpen(true)}>
+        BCA Special{on && <span className="duration-opt-sub"> · {variantLabel(variants[active])}</span>}
+        <span className="duration-caret" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <span className="duration-pop" role="group" aria-label="BCA Special: choose a duration">
+          {options.map((n) => option(variants[n], n, " duration-pop-opt", () => setOpen(false)))}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -642,7 +702,7 @@ export function ProgramGroupCard({ variants, ownedOf, isProgram, kind, ...cardPr
   const item = variants[Math.min(active, variants.length - 1)];
   return (
     <TrainingCard {...cardProps} item={item} owned={ownedOf ? ownedOf(item) : false}
-      switcher={<DurationSwitch variants={variants} active={active} onPick={setActive} label={`${item.title}: choose a duration`} />} />
+      switcher={variants.length > 1 ? <DurationSwitch variants={variants} active={active} onPick={setActive} label={`${item.title}: choose a duration`} /> : null} />
   );
 }
 

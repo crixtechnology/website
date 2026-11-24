@@ -17,12 +17,14 @@ const ctx = {
   taught: [{ q: "is there a weekend batch", a: "Yes — weekend batches run on Saturdays and Sundays.", keywords: "saturday sunday weekend", linkTo: "/programs", linkLabel: "Programs", dept: "" }],
 };
 
-function chat(...lines) {
+// A logged-in student sees real prices; a visitor sees them masked (₹3,XX9).
+function chatAs(c, ...lines) {
   let state = initialState();
   let last;
-  for (const line of lines) { const r = respond(state, line, ctx); state = r.state; last = r.replies[0]; last.unanswered = r.state.unanswered; }
+  for (const line of lines) { const r = respond(state, line, c); state = r.state; last = r.replies[0]; last.unanswered = r.state.unanswered; }
   return { state, last };
 }
+const chat = (...lines) => chatAs({ ...ctx, user: { name: "Asha Rao" } }, ...lines);
 
 describe("understanding what people type", () => {
   it("measures typos, including swapped letters", () => {
@@ -59,6 +61,13 @@ describe("answers about a named program or role", () => {
     expect(chat("tell me about mern", "how much?").last.text).toContain("₹3,999");
     expect(chat("tell me about mern", "kitne din ka hai").last.text).toBe("MERN Stack with AI Integration runs for 3 months.");
     expect(chat("how long is android").last.text).toBe("Android Development runs for 1 month.");
+  });
+
+  it("logged out, masks the price as the cards do and says to log in", () => {
+    const { last } = chatAs(ctx, "mern internshp ka price kitna hai");
+    expect(last.text).toContain("Basic: ₹3,XX9 (was ₹4,XX9, 20% off)");
+    expect(last.text).not.toContain("₹3,999");
+    expect(last.text).toContain("Log in to see the full price.");
   });
 
   it("finds programs whose titles have a dot, like React.js", () => {

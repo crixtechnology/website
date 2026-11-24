@@ -3,7 +3,7 @@
 // MERN internship?", "how long is Android Development?", "stipend for the data
 // science intern?". Nothing here is invented — a fact the data doesn't have is
 // simply left out, and the program's own page is always linked.
-import { offeredTiers, planPrice, listPrice, offPercent, formatINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
+import { offeredTiers, planPrice, listPrice, offPercent, formatINR, maskINR, isOpenForBuy, tierLabel } from "../utils/tiers.js";
 import { formatDuration } from "../utils/duration.js";
 
 // Title words too common to tell one program from another.
@@ -51,7 +51,9 @@ const asked = (n, aspect) => ASPECTS[aspect].some((w) => n.includes(` ${w}`));
 const kind = (p) => (p.type === "internship" ? "internship" : "course");
 const pageLink = (p) => ({ to: p.slug ? `/programs/${p.slug}` : "/training-internship", label: `Open ${p.title}` });
 
-function priceLine(p) {
+// `money` prints a fee: formatINR for a logged-in student, maskINR (₹4,XX9) before —
+// the same as the cards, so the chat never shows a price the page hides.
+function priceLine(p, money) {
   // Training + Internship is bought online: quote the fee, then how to enroll.
   const howToJoin = "To join, tap “Enroll now” on its card on the Training + Internship page and pay the fee securely online with Razorpay — or call our Training + Internship team first.";
   if (p.type === "internship" && !isOpenForBuy(p)) return `Ask our Training + Internship team about the fee for ${p.title}. ${howToJoin}`;
@@ -60,18 +62,19 @@ function priceLine(p) {
   const lines = plans.map((t) => {
     const now = planPrice(t);
     const was = listPrice(t);
-    return `• ${plans.length > 1 ? `${tierLabel(t.tier)}: ` : ""}${formatINR(now)}${was ? ` (was ${formatINR(was)}, ${offPercent(t)}% off)` : ""}`;
+    return `• ${plans.length > 1 ? `${tierLabel(t.tier)}: ` : ""}${money(now)}${was ? ` (was ${money(was)}, ${offPercent(t)}% off)` : ""}`;
   });
-  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}\n${p.type === "internship" ? howToJoin : "Wallet credit is taken off at checkout."}`;
+  return `${p.title} ${plans.length > 1 ? "has these plans" : "costs"}:\n${lines.join("\n")}${money === maskINR ? "\nLog in to see the full price." : ""}\n${p.type === "internship" ? howToJoin : "Wallet credit is taken off at checkout."}`;
 }
 
 // A program named in the message: answers the aspect asked about, or a short overview.
-export function programAnswer(p, n) {
+export function programAnswer(p, n, loggedIn = false) {
+  const money = loggedIn ? formatINR : maskINR;
   const facts = [];
   const dur = formatDuration(p.durationDays);
   // A rough estimate the admin typed ("2nd week of January"); never an exact date.
   const starts = String(p.startingFrom || "").trim();
-  if (asked(n, "price")) facts.push(priceLine(p));
+  if (asked(n, "price")) facts.push(priceLine(p, money));
   if (asked(n, "duration")) facts.push(dur ? `${p.title} runs for ${dur}.` : `The length of ${p.title} is on its page.`);
   if (asked(n, "start")) facts.push(starts ? `The next batch is expected to start ${starts} — we confirm the exact start after you enroll.` : "We confirm the batch start after you enroll.");
   if (asked(n, "test")) facts.push("There's no aptitude test for Training + Internship — you enroll online by paying the training fee, and that confirms your seat. Aptitude tests are only for Free Internship and Careers roles.");
@@ -85,7 +88,7 @@ export function programAnswer(p, n) {
   if (!facts.length) {
     const from = isOpenForBuy(p) ? Math.min(...offeredTiers(p).map(planPrice)) : null;
     facts.push([
-      `${p.title} — ${"paid, mentored training with an offer letter, certificate and LOR"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${formatINR(from)}` : ""}.`,
+      `${p.title} — ${"paid, mentored training with an offer letter, certificate and LOR"}${dur ? `, ${dur}` : ""}${from != null ? `, from ${money(from)}` : ""}.`,
       p.desc || "",
       (p.points || []).length ? (p.points || []).slice(0, 4).map((x) => `• ${x}`).join("\n") : "",
     ].filter(Boolean).join("\n"));

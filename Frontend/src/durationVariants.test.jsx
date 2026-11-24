@@ -59,67 +59,76 @@ describe("the Training + Internship page", () => {
     });
   };
   const titles = () => [...container.querySelectorAll("#programs .card h3")].map((h) => h.textContent);
-  const pills = () => [...container.querySelectorAll("#programs .filter-pill")];
-  const pick = (label) => act(async () => { pills().find((b) => b.textContent === label).click(); });
 
-  it("shows a card for every duration, each with its own details", async () => {
+  it("shows one card per domain, with a switch over its durations", async () => {
     await renderPage([
       track("MERN — 3 Months", "mern-3", 90, { group: "MERN", startingFrom: "2nd week of January" }),
       track("MERN — 1 Month", "mern-1", 30, { group: "MERN", startingFrom: "15 December" }),
       track("Android", "android", 30),
     ]);
-    const cards = [...container.querySelectorAll("#programs .card")];
-    expect(cards).toHaveLength(3);
-    expect(container.querySelector("#programs .duration-switch")).toBeNull();
+    const cards = () => [...container.querySelectorAll("#programs .card")];
+    expect(cards()).toHaveLength(2);
+    const opts = () => [...cards()[0].querySelectorAll(".duration-opt")];
+    expect(opts().map((b) => b.textContent)).toEqual(["1 month", "3 months"]);
     const fact = (card, name) => [...card.querySelectorAll(".job-facts > div")].find((d) => d.querySelector("dt").textContent === name);
-    expect(fact(cards[0], "Duration").querySelector("dd").textContent).toBe("3 months");
-    expect(fact(cards[0], "Starts on").querySelector("dd").textContent).toBe("2nd week of January");
-    expect(cards[1].querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-1");
-    expect(fact(cards[2], "Starts on")).toBeUndefined();
+    expect(fact(cards()[0], "Starts on").querySelector("dd").textContent).toBe("15 December");
+    expect(cards()[0].querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/mern-1");
+    await act(async () => { opts()[1].click(); });
+    expect(fact(cards()[0], "Duration").querySelector("dd").textContent).toBe("3 months");
+    expect(fact(cards()[0], "Starts on").querySelector("dd").textContent).toBe("2nd week of January");
+    expect(cards()[1].querySelector(".duration-switch")).toBeNull();
+    expect(fact(cards()[1], "Starts on")).toBeUndefined();
   });
 
-  it("filters the cards by duration with the capsules on top", async () => {
+  it("tags the stipend one when two options share a length", async () => {
     await renderPage([
-      track("Web 1M", "web-1", 30), track("Web 2M", "web-2", 60), track("Web 3M", "web-3", 90),
-      track("Data 3M", "data-3", 90), track("Any length", "any", null),
+      track("Web 1M", "web-1", 30, { group: "Web" }),
+      track("Web 6M", "web-6", 180, { group: "Web" }),
+      track("Web 6M Stipend", "web-6s", 180, { group: "Web", stipend: "₹3,000/month" }),
     ]);
-    expect(pills().map((b) => b.textContent)).toEqual(["All", "1 month", "2 months", "3 months", "6 months", "Stipend"]);
-    expect(pills()[0].getAttribute("aria-pressed")).toBe("true");
-    expect(titles()).toHaveLength(5);
-
-    await pick("3 months");
-    // Each card names its length, since one domain is a card per duration.
-    expect(titles()).toEqual(["Web 3M — 3 months", "Data 3M — 3 months"]);
-    expect(pills().map((b) => b.getAttribute("aria-pressed"))).toEqual(["false", "false", "false", "true", "false", "false"]);
-    await pick("2 months");
-    expect(titles()).toEqual(["Web 2M — 2 months"]);
-
-    // Nothing of that length: says so, and offers the way back.
-    await pick("6 months");
-    expect(titles()).toEqual([]);
-    expect(container.querySelector("#programs .filter-empty").textContent).toContain("No 6-month programs right now.");
-    await act(async () => { container.querySelector("#programs .filter-reset").click(); });
-    expect(titles()).toHaveLength(5);
-    await pick("All");
-    expect(titles()).toHaveLength(5);
+    const opts = [...container.querySelectorAll("#programs .duration-opt")];
+    expect(opts.map((b) => b.textContent)).toEqual(["1 month", "6 months", "6 months Stipend"]);
+    expect(opts[2].querySelector(".duration-opt-tag")).not.toBeNull();
   });
 
-  it("shows only programs that pay a stipend under Stipend", async () => {
+  it("puts the 1- and 2-month lengths under one BCA Special pill with a popup", async () => {
     await renderPage([
-      track("Paid A", "paid-a", 90, { stipend: "₹3,000/month" }),
-      track("Old none", "old-none", 90, { stipend: "No Stipend" }),
-      track("No stipend", "none", 30),
-      track("Paid B", "paid-b", 180, { stipend: "Up to ₹7,000/month", stipendTrainingMonths: 2 }),
+      track("Web 1M", "web-1", 30, { group: "Web" }),
+      track("Web 2M", "web-2", 60, { group: "Web" }),
+      track("Web 3M", "web-3", 90, { group: "Web" }),
     ]);
-    await pick("Stipend");
-    expect(titles()).toEqual(["Paid A — 3 months", "Paid B — 6 months"]);
-    expect(pills().find((b) => b.textContent === "Stipend").getAttribute("aria-pressed")).toBe("true");
+    const card = () => container.querySelector("#programs .card");
+    const top = () => [...card().querySelectorAll(".duration-switch > .duration-opt, .duration-group > .duration-opt")];
+    expect(top().map((b) => b.textContent)).toEqual(["BCA Special · 1 month▾", "3 months"]);
+    expect(card().querySelector(".duration-pop")).toBeNull();
+    const pill = card().querySelector(".duration-opt--group");
+    await act(async () => { pill.click(); });
+    expect(pill.getAttribute("aria-expanded")).toBe("true");
+    const opts = [...card().querySelectorAll(".duration-pop .duration-opt")];
+    expect(opts.map((b) => b.textContent)).toEqual(["1 month", "2 months"]);
+    await act(async () => { opts[1].click(); });
+    expect(card().querySelector(".duration-pop")).toBeNull();
+    expect(card().querySelector(".duration-opt--group").textContent).toBe("BCA Special · 2 months▾");
+    expect(card().querySelector("a.see-more-btn").getAttribute("href")).toBe("/programs/web-2");
+    // Picking 3 months leaves the BCA pill unselected.
+    await act(async () => { top()[1].click(); });
+    expect(card().querySelector(".duration-opt--group").textContent).toBe("BCA Special▾");
   });
 
-  it("says so when no program pays a stipend", async () => {
-    await renderPage([track("No stipend", "none", 30)]);
-    await pick("Stipend");
-    expect(titles()).toEqual([]);
-    expect(container.querySelector("#programs .filter-empty").textContent).toContain("No programs with a stipend right now.");
+  it("keeps a lone 1-month length as its own pill", async () => {
+    await renderPage([
+      track("Web 1M", "web-1", 30, { group: "Web" }),
+      track("Web 3M", "web-3", 90, { group: "Web" }),
+    ]);
+    expect(container.querySelector("#programs .duration-opt--group")).toBeNull();
+    expect([...container.querySelectorAll("#programs .duration-opt")].map((b) => b.textContent)).toEqual(["1 month", "3 months"]);
+  });
+
+  it("has no filter bar: every program shows, each card naming its own length", async () => {
+    await renderPage([
+      track("Web 1M", "web-1", 30), track("Data 3M", "data-3", 90), track("Any length", "any", null),
+    ]);
+    expect(container.querySelector("#programs .filter-pills")).toBeNull();
+    expect(titles()).toEqual(["Web 1M — 1 month", "Data 3M — 3 months", "Any length"]);
   });
 });
