@@ -537,14 +537,14 @@ export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Dura
   const all = variants.map((v, n) => n);
   const bca = all.filter((n) => isBcaLength(variants[n]) && !isStipendTwin(variants[n]));
   const grouped = bca.length >= 2;
-  // Order: the other lengths, then BCA Special, then the stipend option(s) last.
+  // Order: the other lengths, then the stipend option(s), then BCA Special last.
   const plain = all.filter((n) => !isStipendTwin(variants[n]) && !(grouped && bca.includes(n)));
   const stipend = all.filter((n) => isStipendTwin(variants[n]));
   return (
     <div className="duration-switch" role="group" aria-label={label}>
       {plain.map((n) => option(variants[n], n))}
-      {grouped && <BcaSpecialPill key="bca" options={bca} active={active} variants={variants} option={option} />}
       {stipend.map((n) => option(variants[n], n))}
+      {grouped && <BcaSpecialPill key="bca" options={bca} active={active} variants={variants} option={option} />}
     </div>
   );
 }

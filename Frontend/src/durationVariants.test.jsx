@@ -120,7 +120,7 @@ describe("the Training + Internship page", () => {
     expect(card().querySelector(".duration-opt--group").textContent).toBe("BCA Special▾");
   });
 
-  it("orders the pills: other lengths, BCA Special, then Stipend", async () => {
+  it("orders the pills: other lengths, Stipend, then BCA Special", async () => {
     await renderPage([
       track("Web 1M", "web-1", 30, { group: "Web" }),
       track("Web 2M", "web-2", 60, { group: "Web" }),
@@ -129,7 +129,7 @@ describe("the Training + Internship page", () => {
       track("Web 6M Stipend", "web-6s", 180, { group: "Web", stipend: "₹3,000/month" }),
     ]);
     const top = [...container.querySelectorAll("#programs .duration-switch > .duration-opt, #programs .duration-group > .duration-opt")];
-    expect(top.map((b) => b.textContent)).toEqual(["3 months", "6 months", "BCA Special▾", "Stipend"]);
+    expect(top.map((b) => b.textContent)).toEqual(["3 months", "6 months", "Stipend", "BCA Special▾"]);
   });
 
   it("opens on the shortest length when there is no 3-month one", async () => {
