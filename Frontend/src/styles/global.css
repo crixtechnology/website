@@ -918,6 +918,8 @@ body.no-copy img{-webkit-user-drag:none}
 .duration-opt:hover{color:var(--text)}
 /* No grey/blue flash over the whole card on a phone tap; the pill gives its own feedback. */
 .duration-switch,.duration-opt{-webkit-tap-highlight-color:transparent}
+.duration-switch{align-items:center}
+.duration-sep{color:var(--muted);opacity:.45;font-size:.9rem;line-height:1;user-select:none;pointer-events:none}
 .duration-opt:active{background:rgba(127,232,224,.12)}
 .duration-opt.on{background:var(--teal);color:#04170c}
 .duration-opt:focus-visible{outline:2px solid var(--teal);outline-offset:2px}

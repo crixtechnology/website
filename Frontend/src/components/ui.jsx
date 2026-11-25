@@ -537,16 +537,46 @@ export function DurationSwitch({ variants, active, onPick, hrefOf, label = "Dura
   const all = variants.map((v, n) => n);
   const bca = all.filter((n) => isBcaLength(variants[n]) && !isStipendTwin(variants[n]));
   const grouped = bca.length >= 2;
-  // Order: the other lengths, then BCA Special, then the stipend option(s) last.
+  // Order: the other lengths, then the stipend option(s), then BCA Special last.
   const plain = all.filter((n) => !isStipendTwin(variants[n]) && !(grouped && bca.includes(n)));
   const stipend = all.filter((n) => isStipendTwin(variants[n]));
+  const items = [
+    ...plain.map((n) => option(variants[n], n)),
+    ...stipend.map((n) => option(variants[n], n)),
+    ...(grouped ? [<BcaSpecialPill key="bca" options={bca} active={active} variants={variants} option={option} />] : []),
+  ];
+  // A thin "|" between the pills so each one reads as separate (decorative only).
   return (
-    <div className="duration-switch" role="group" aria-label={label}>
-      {plain.map((n) => option(variants[n], n))}
-      {grouped && <BcaSpecialPill key="bca" options={bca} active={active} variants={variants} option={option} />}
-      {stipend.map((n) => option(variants[n], n))}
-    </div>
+    <PillRow label={label}>
+      {items.flatMap((el, i) => (i ? [<span key={`sep-${i}`} className="duration-sep" aria-hidden="true">|</span>, el] : [el]))}
+    </PillRow>
   );
+}
+
+// The pill row. Where it wraps onto a second line, the "|" at the break would
+// sit at a line's start or end — those are hidden (kept in place, so the
+// layout doesn't shift), leaving dividers only between pills on one line.
+function PillRow({ label, children }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const row = ref.current;
+    if (!row) return undefined;
+    const trim = () => {
+      row.querySelectorAll(":scope > .duration-sep").forEach((sep) => {
+        const prev = sep.previousElementSibling;
+        const next = sep.nextElementSibling;
+        if (!prev || !next) return;
+        const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+        sep.style.visibility = Math.abs(mid(prev) - mid(next)) > 4 ? "hidden" : "";
+      });
+    };
+    trim();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(trim);
+    ro.observe(row);
+    return () => ro.disconnect();
+  });
+  return <div ref={ref} className="duration-switch" role="group" aria-label={label}>{children}</div>;
 }
 
 function BcaSpecialPill({ options, active, variants, option }) {
