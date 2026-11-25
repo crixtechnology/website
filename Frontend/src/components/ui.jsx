@@ -2796,14 +2796,7 @@ export function Footer() {
           </p>
           <div className="foot-contact">
             <ul className="foot-phones">
-              <li className="dept-block dept--it">
-                <span className="dept-tag">{site.phoneLabel}</span>
-                <span className="dept-hint">{site.phoneHint}</span>
-                <div className="foot-phone-row">
-                  <a href={tel(site.phone)}>{site.phone}</a>
-                  <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${site.phoneLabel}`}>WhatsApp</a>
-                </div>
-              </li>
+              {/* Training + Internship first, then IT services. */}
               {site.phoneAlt && (
                 <li className="dept-block dept--programs">
                   <span className="dept-tag">{site.phoneAltLabel}</span>
@@ -2814,6 +2807,14 @@ export function Footer() {
                   </div>
                 </li>
               )}
+              <li className="dept-block dept--it">
+                <span className="dept-tag">{site.phoneLabel}</span>
+                <span className="dept-hint">{site.phoneHint}</span>
+                <div className="foot-phone-row">
+                  <a href={tel(site.phone)}>{site.phone}</a>
+                  <a className="wa-pill" href={`https://wa.me/${site.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${site.phoneLabel}`}>WhatsApp</a>
+                </div>
+              </li>
             </ul>
             <a className="foot-email" href={`mailto:${site.email}`}>{site.email}</a>
             {site.hours && <span className="foot-hours">{site.hours}</span>}
